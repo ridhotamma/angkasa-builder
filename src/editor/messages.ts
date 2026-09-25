@@ -70,6 +70,8 @@ const MESSAGES = {
   choose: { en: 'Choose…', id: 'Pilih…' },
   preview: { en: 'Preview', id: 'Pratinjau' },
   close: { en: 'Close editor', id: 'Tutup editor' },
+  unsaved: { en: 'Unsaved changes', id: 'Belum disimpan' },
+  moreActions: { en: 'More actions', id: 'Aksi lainnya' },
   unsavedTitle: { en: 'Save your changes?', id: 'Simpan perubahan Anda?' },
   unsavedBody: {
     en: 'You have changes that are not saved yet. Save them before closing, or discard them.',

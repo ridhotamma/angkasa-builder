@@ -64,7 +64,10 @@ export function Labeled({
   children: ReactNode
 }) {
   return (
-    <Field.Root invalid={Boolean(error)}>
+    // `stretch`, not Chakra's default `flex-start`: a control inside a field —
+    // a select, a link picker, a list — should be as wide as the panel, not
+    // as wide as its current value.
+    <Field.Root invalid={Boolean(error)} alignItems="stretch">
       <Field.Label fontSize="sm">{label}</Field.Label>
       {children}
       {error ? (
@@ -110,6 +113,7 @@ export function SelectInput({
     <Select.Root
       collection={collection}
       size={size}
+      width="full"
       value={value ? [value] : []}
       onValueChange={({ value: next }) => onChange(next[0] ?? '')}
       positioning={{ sameWidth: true }}
@@ -157,6 +161,7 @@ export function NumberControl({
   return (
     <NumberInput.Root
       size="sm"
+      width="full"
       value={String(value)}
       min={min}
       max={max}
