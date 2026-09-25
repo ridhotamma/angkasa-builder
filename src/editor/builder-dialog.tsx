@@ -20,6 +20,7 @@ import {
   HStack,
   IconButton,
   Portal,
+  ScrollArea,
   Stack,
   Text,
 } from '@chakra-ui/react'
@@ -118,17 +119,25 @@ export function BuilderDialog({
               {actions}
             </Flex>
 
-            <Dialog.Body
-              flex="1"
-              minH="0"
-              display="flex"
-              flexDirection="column"
-              gap="4"
-              px={{ base: '3', md: '5' }}
-              py="4"
-              overflowY={{ base: 'auto', lg: 'hidden' }}
-            >
-              {children}
+            <Dialog.Body flex="1" minH="0" p="0" display="flex">
+              {/* On a wide screen the body is exactly the screen and the two
+                  panes scroll themselves; on a narrow one they stack, and the
+                  whole body scrolls instead. */}
+              <ScrollArea.Root size="xs" flex="1" minH="0">
+                <ScrollArea.Viewport>
+                  <ScrollArea.Content
+                    display="flex"
+                    flexDirection="column"
+                    gap="4"
+                    h={{ lg: 'full' }}
+                    px={{ base: '3', md: '5' }}
+                    py="4"
+                  >
+                    {children}
+                  </ScrollArea.Content>
+                </ScrollArea.Viewport>
+                <ScrollArea.Scrollbar />
+              </ScrollArea.Root>
             </Dialog.Body>
 
             <Dialog.Root

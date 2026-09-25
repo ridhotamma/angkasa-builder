@@ -14,6 +14,7 @@ import {
   IconButton,
   Menu,
   Portal,
+  ScrollArea,
   Stack,
   Text,
 } from '@chakra-ui/react'
@@ -151,7 +152,10 @@ export function AddSectionMenu({
   return (
     <Menu.Root
       onSelect={({ value }) => onAdd(value as SectionType)}
-      positioning={{ placement: 'bottom-start' }}
+      // Opens upward when there is more room above — the button sits at the
+      // bottom of a long list — and never taller than the space it has, which
+      // Chakra exposes as `--available-height`.
+      positioning={{ placement: 'bottom-start', flip: true, fitViewport: true }}
     >
       <Menu.Trigger asChild>
         <Button size="sm" variant="outline" w="full" disabled={disabled}>
@@ -161,19 +165,26 @@ export function AddSectionMenu({
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
-          <Menu.Content maxH="96" overflowY="auto" minW="72">
-            {SECTION_SCHEMAS.map((schema) => (
-              <Menu.Item key={schema.type} value={schema.type} py="2">
-                <Stack gap="0.5">
-                  <Text fontSize="sm" fontWeight="medium">
-                    {l(schema.name)}
-                  </Text>
-                  <Text fontSize="xs" color="fg.muted">
-                    {l(schema.description)}
-                  </Text>
-                </Stack>
-              </Menu.Item>
-            ))}
+          <Menu.Content minW="72" p="0" overflow="hidden">
+            <ScrollArea.Root size="xs">
+              <ScrollArea.Viewport maxH="min(28rem, calc(var(--available-height) - 0.5rem))">
+                <ScrollArea.Content p="1">
+                  {SECTION_SCHEMAS.map((schema) => (
+                    <Menu.Item key={schema.type} value={schema.type} py="2">
+                      <Stack gap="0.5">
+                        <Text fontSize="sm" fontWeight="medium">
+                          {l(schema.name)}
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted">
+                          {l(schema.description)}
+                        </Text>
+                      </Stack>
+                    </Menu.Item>
+                  ))}
+                </ScrollArea.Content>
+              </ScrollArea.Viewport>
+              <ScrollArea.Scrollbar />
+            </ScrollArea.Root>
           </Menu.Content>
         </Menu.Positioner>
       </Portal>

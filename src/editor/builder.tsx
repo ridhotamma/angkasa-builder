@@ -11,7 +11,17 @@
  * a new value.
  */
 
-import { Box, Button, Container, Flex, Grid, Icon, Stack, Tabs, Text } from '@chakra-ui/react'
+import {
+  Button,
+  Container,
+  Flex,
+  Grid,
+  Icon,
+  ScrollArea,
+  Stack,
+  Tabs,
+  Text,
+} from '@chakra-ui/react'
 import { useState, type ReactNode } from 'react'
 import { LuChevronLeft } from 'react-icons/lu'
 
@@ -147,17 +157,20 @@ export function PageBuilder({
       h={{ lg: height }}
       minH="0"
     >
-      <Box
+      <ScrollArea.Root
+        size="xs"
+        h={{ lg: 'full' }}
+        minH="0"
         borderWidth="1px"
         borderColor="border.subtle"
         rounded="lg"
         bg="bg.panel"
-        p="4"
-        overflowY="auto"
-        minH="0"
       >
-        {panel}
-      </Box>
+        <ScrollArea.Viewport>
+          <ScrollArea.Content p="4">{panel}</ScrollArea.Content>
+        </ScrollArea.Viewport>
+        <ScrollArea.Scrollbar />
+      </ScrollArea.Root>
 
       <Flex direction="column" gap="3" minH="0" minW="0">
         <Flex justify="space-between" align="center" gap="3" wrap="wrap">
@@ -167,27 +180,33 @@ export function PageBuilder({
           </Text>
           {toolbar}
         </Flex>
-        <Box
+        {/* React 19 hoists this into <head> and de-duplicates it by href. */}
+        <link rel="stylesheet" href={googleFontsHref(settings)} precedence="default" />
+        <ScrollArea.Root
           flex="1"
-          minH={{ base: '32rem', lg: '0' }}
-          overflowY="auto"
+          h={{ base: '32rem', lg: 'auto' }}
+          minH="0"
           rounded="lg"
           borderWidth="1px"
           borderColor="border.subtle"
+          overflow="hidden"
         >
-          {/* React 19 hoists this into <head> and de-duplicates it by href. */}
-          <link rel="stylesheet" href={googleFontsHref(settings)} precedence="default" />
-          <ThemeScope settings={settings} minH="full">
-            <Container maxW="6xl" py={{ base: '6', md: '10' }}>
-              <SectionsRenderer
-                sections={sections}
-                env={env}
-                selectedId={selectedId}
-                onSelect={select}
-              />
-            </Container>
-          </ThemeScope>
-        </Box>
+          <ScrollArea.Viewport>
+            <ScrollArea.Content>
+              <ThemeScope settings={settings} minH="full">
+                <Container maxW="6xl" py={{ base: '6', md: '10' }}>
+                  <SectionsRenderer
+                    sections={sections}
+                    env={env}
+                    selectedId={selectedId}
+                    onSelect={select}
+                  />
+                </Container>
+              </ThemeScope>
+            </ScrollArea.Content>
+          </ScrollArea.Viewport>
+          <ScrollArea.Scrollbar />
+        </ScrollArea.Root>
       </Flex>
     </Grid>
   )
