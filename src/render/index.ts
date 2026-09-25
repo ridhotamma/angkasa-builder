@@ -10,5 +10,7 @@ export {
   type StorefrontRenderData,
   type StorefrontShelfData,
 } from './context'
+export { FullBleed, PAGE_WIDTH_CONTAINER } from './primitives'
+export { RichTextView } from './rich-text'
 export { SectionsRenderer, ThemeScope, type SectionsRendererProps } from './renderer'
 export { SECTION_RENDERERS, type SectionProps } from './sections'

@@ -120,6 +120,22 @@ export function Paragraphs({ text, align = 'left' }: { text: string; align?: 'le
   )
 }
 
+/**
+ * The page's width, for a section that runs edge to edge.
+ *
+ * Put on the element that spans the whole page (the storefront shell, the
+ * editor's preview) so a section inside the centred column can size itself
+ * against it. Container units rather than `100vw`: the viewport is wrong in
+ * the editor, where the preview is narrower than the window, and on the
+ * storefront it includes the scrollbar, which makes the page scroll sideways.
+ */
+export const PAGE_WIDTH_CONTAINER = { containerType: 'inline-size' } as const
+
+/** Runs edge to edge across the page, from inside the centred column. */
+export function FullBleed(props: BoxProps) {
+  return <Box w="100cqw" marginInline="calc(50% - 50cqw)" {...props} />
+}
+
 /** Shown in a preview where the live storefront would render nothing. */
 export function EmptyNotice({ children }: { children: ReactNode }) {
   const { mode } = useRenderEnvironment()

@@ -11,6 +11,7 @@ import {
   Box,
   Button,
   Collapsible,
+  ColorPicker,
   createListCollection,
   Field,
   FileUpload,
@@ -20,6 +21,7 @@ import {
   Image,
   Input,
   NumberInput,
+  parseColor,
   Portal,
   ScrollArea,
   Select,
@@ -44,6 +46,7 @@ import {
   defaultValues,
   isFieldShown,
   newId,
+  readRichText,
   readText,
   type Field as FieldSpec,
   type FieldValues,
@@ -51,6 +54,7 @@ import {
   type ListField,
 } from '../model/fields'
 import { NO_LINK, type Link, type LinkKind } from '../model/links'
+import { RichTextControl } from './rich-text-control'
 import { useEditorText, type EditorMessage } from './messages'
 import type { EditorServices } from './services'
 
@@ -501,6 +505,50 @@ function ListControl({
   )
 }
 
+/**
+ * Chakra's `ColorPicker`, in hex. Opaque only: stored colours have no alpha,
+ * and `toString('hex')` keeps them in the `#rrggbb` shape both the theme and
+ * the section sanitisers accept.
+ */
+export function ColorInput({
+  label,
+  value,
+  onChange,
+}: {
+  /** Omitted when a surrounding `Labeled` already names the field. */
+  label?: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  const color = useMemo(() => parseColor(value), [value])
+
+  return (
+    <ColorPicker.Root
+      size="sm"
+      value={color}
+      onValueChange={({ value: next }) => onChange(next.toString('hex').toLowerCase())}
+    >
+      <ColorPicker.HiddenInput />
+      {label && <ColorPicker.Label fontSize="sm">{label}</ColorPicker.Label>}
+      <ColorPicker.Control>
+        <ColorPicker.Input fontFamily="mono" />
+        <ColorPicker.Trigger />
+      </ColorPicker.Control>
+      <Portal>
+        <ColorPicker.Positioner>
+          <ColorPicker.Content>
+            <ColorPicker.Area />
+            <HStack>
+              <ColorPicker.EyeDropper size="xs" variant="outline" />
+              <ColorPicker.ChannelSlider channel="hue" flex="1" />
+            </HStack>
+          </ColorPicker.Content>
+        </ColorPicker.Positioner>
+      </Portal>
+    </ColorPicker.Root>
+  )
+}
+
 /* -------------------------------------------------------------------------- */
 /* Dispatch                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -530,6 +578,15 @@ function FieldControl({
             maxLength={field.max}
             placeholder={field.placeholder ? l(field.placeholder) : undefined}
             onChange={(event) => onChange(event.currentTarget.value)}
+          />
+        </Labeled>
+      )
+    case 'richtext':
+      return (
+        <Labeled label={label} help={help}>
+          <RichTextControl
+            value={readRichText({ value: value as JsonValue }, 'value')}
+            onChange={onChange}
           />
         </Labeled>
       )
@@ -589,6 +646,15 @@ function FieldControl({
             </Switch.Root>
           </HStack>
         </Field.Root>
+      )
+    case 'color':
+      return (
+        <Labeled label={label} help={help}>
+          <ColorInput
+            value={typeof value === 'string' ? value : field.default}
+            onChange={onChange}
+          />
+        </Labeled>
       )
     case 'image':
       return (

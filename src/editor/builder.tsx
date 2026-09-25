@@ -29,6 +29,7 @@ import type { SectionInstance } from '../model/content'
 import { sectionSchema } from '../model/sections'
 import { googleFontsHref, type ThemeSettings } from '../model/settings'
 import type { RenderEnvironment, StorefrontRenderData } from '../render/context'
+import { PAGE_WIDTH_CONTAINER } from '../render/primitives'
 import { SectionsRenderer, ThemeScope } from '../render/renderer'
 import { FieldsForm } from './controls'
 import { useEditorText } from './messages'
@@ -204,7 +205,7 @@ export function PageBuilder({
                 `min-width: fit-content` would otherwise allow (a marquee's
                 natural width is its whole strip of cards). */}
             <ScrollArea.Content style={{ minWidth: 0 }}>
-              <ThemeScope settings={settings} minH="full">
+              <ThemeScope settings={settings} minH="full" {...PAGE_WIDTH_CONTAINER}>
                 <Container maxW="6xl" py={{ base: '6', md: '10' }}>
                   <SectionsRenderer
                     sections={sections}

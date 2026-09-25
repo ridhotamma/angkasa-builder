@@ -84,6 +84,24 @@ const MESSAGES = {
     en: 'Click a section in the preview to edit it.',
     id: 'Klik bagian di pratinjau untuk mengeditnya.',
   },
+  bold: { en: 'Bold', id: 'Tebal' },
+  italic: { en: 'Italic', id: 'Miring' },
+  underline: { en: 'Underline', id: 'Garis bawah' },
+  strike: { en: 'Strikethrough', id: 'Coret' },
+  heading2: { en: 'Heading', id: 'Judul' },
+  heading3: { en: 'Subheading', id: 'Subjudul' },
+  bulletList: { en: 'Bulleted list', id: 'Daftar berpoin' },
+  orderedList: { en: 'Numbered list', id: 'Daftar bernomor' },
+  quote: { en: 'Quote', id: 'Kutipan' },
+  link: { en: 'Link', id: 'Tautan' },
+  linkPlaceholder: { en: 'https://… or /pages/…', id: 'https://… atau /pages/…' },
+  linkInvalid: {
+    en: 'Use a web address, email (mailto:), phone (tel:) or a path starting with /.',
+    id: 'Gunakan alamat web, email (mailto:), telepon (tel:) atau path diawali /.',
+  },
+  applyLink: { en: 'Apply', id: 'Terapkan' },
+  removeLink: { en: 'Remove link', id: 'Hapus tautan' },
+  clearFormatting: { en: 'Clear formatting', id: 'Hapus format' },
 } satisfies Record<string, Localized>
 
 export type EditorMessage = keyof typeof MESSAGES

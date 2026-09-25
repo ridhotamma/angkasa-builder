@@ -35,17 +35,12 @@ const heading = (fallback = ''): Field => ({
   default: fallback,
 })
 
-const body = (rows = 4): ItemField => ({
-  kind: 'textarea',
+const body = (): ItemField => ({
+  kind: 'richtext',
   key: 'body',
   label: { en: 'Text', id: 'Teks' },
-  help: {
-    en: 'Leave an empty line between paragraphs.',
-    id: 'Beri satu baris kosong di antara paragraf.',
-  },
-  max: 2000,
+  max: 5000,
   default: '',
-  rows,
 })
 
 const buttonLabel: ItemField = {
@@ -72,6 +67,18 @@ const align: Field = {
     { value: 'center', label: { en: 'Center', id: 'Tengah' } },
   ],
   default: 'left',
+}
+
+/** How wide a column of text runs. Each section maps the two to its own widths. */
+const width: Field = {
+  kind: 'select',
+  key: 'width',
+  label: { en: 'Width', id: 'Lebar' },
+  options: [
+    { value: 'narrow', label: { en: 'Narrow', id: 'Sempit' } },
+    { value: 'wide', label: { en: 'Wide', id: 'Lebar' } },
+  ],
+  default: 'narrow',
 }
 
 const limit = (fallback: number, max = 24): Field => ({
@@ -261,6 +268,61 @@ export const SECTION_SCHEMAS = [
         default: true,
       },
       align,
+      {
+        kind: 'select',
+        key: 'background',
+        label: { en: 'Background', id: 'Latar' },
+        help: {
+          en: 'A full-width band behind the top of the section, with the logo overlapping it.',
+          id: 'Pita selebar layar di bagian atas, dengan logo menumpang di atasnya.',
+        },
+        options: [
+          { value: 'none', label: { en: 'None', id: 'Tanpa latar' } },
+          { value: 'pattern', label: { en: 'Pattern', id: 'Pola' } },
+          { value: 'image', label: { en: 'Image', id: 'Gambar' } },
+        ],
+        default: 'none',
+      },
+      {
+        kind: 'select',
+        key: 'pattern',
+        label: { en: 'Pattern', id: 'Pola' },
+        // Keys match `PATTERN_KEYS` in `../render/patterns`.
+        options: [
+          { value: 'geometric', label: { en: 'Geometric', id: 'Geometris' } },
+          { value: 'lines', label: { en: 'Lines', id: 'Garis' } },
+          { value: 'scales', label: { en: 'Scales', id: 'Sisik' } },
+          { value: 'waves', label: { en: 'Waves', id: 'Gelombang' } },
+          { value: 'dots', label: { en: 'Dots', id: 'Titik' } },
+          { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
+        ],
+        default: 'dots',
+        showWhen: { key: 'background', is: ['pattern'] },
+      },
+      {
+        kind: 'color',
+        key: 'patternColor',
+        label: { en: 'Pattern colour', id: 'Warna pola' },
+        default: '#444cf7',
+        showWhen: { key: 'background', is: ['pattern'] },
+      },
+      {
+        kind: 'color',
+        key: 'patternBackground',
+        label: { en: 'Pattern background', id: 'Warna dasar pola' },
+        default: '#e5e5f7',
+        showWhen: { key: 'background', is: ['pattern'] },
+      },
+      {
+        kind: 'image',
+        key: 'backgroundImage',
+        label: { en: 'Background image', id: 'Gambar latar' },
+        help: {
+          en: 'A wide image works best; it is cropped to fill the band.',
+          id: 'Gambar lebar paling cocok; gambar dipotong agar memenuhi pita.',
+        },
+        showWhen: { key: 'background', is: ['image'] },
+      },
     ],
   },
   {
@@ -270,6 +332,20 @@ export const SECTION_SCHEMAS = [
     usesCatalogue: true,
     fields: [
       heading('Shop by category'),
+      {
+        kind: 'select',
+        key: 'layout',
+        label: { en: 'Layout', id: 'Tampilan' },
+        options: [
+          { value: 'tiles', label: { en: 'Tiles', id: 'Ubin' } },
+          { value: 'bento', label: { en: 'Bento grid', id: 'Kisi bento' } },
+        ],
+        default: 'tiles',
+        help: {
+          en: 'Bento shows each image as a background with the name on top, in tiles of mixed sizes.',
+          id: 'Bento menampilkan gambar sebagai latar dengan nama di atasnya, dalam ubin beragam ukuran.',
+        },
+      },
       {
         kind: 'number',
         key: 'limit',
@@ -330,21 +406,7 @@ export const SECTION_SCHEMAS = [
     type: 'rich-text',
     name: { en: 'Text', id: 'Teks' },
     description: { en: 'A heading and paragraphs.', id: 'Judul dan paragraf.' },
-    fields: [
-      heading('Our story'),
-      body(6),
-      align,
-      {
-        kind: 'select',
-        key: 'width',
-        label: { en: 'Width', id: 'Lebar' },
-        options: [
-          { value: 'narrow', label: { en: 'Narrow', id: 'Sempit' } },
-          { value: 'wide', label: { en: 'Wide', id: 'Lebar' } },
-        ],
-        default: 'narrow',
-      },
-    ],
+    fields: [heading('Our story'), body(), align, width],
   },
   {
     type: 'image-with-text',
@@ -436,6 +498,9 @@ export const SECTION_SCHEMAS = [
           },
         ],
       },
+      // Centred by default: that is where every FAQ sat before it had the setting.
+      { ...align, default: 'center' },
+      width,
     ],
   },
   {

@@ -16,6 +16,8 @@ import {
   Carousel,
   Container,
   Flex,
+  Grid,
+  GridItem,
   Heading,
   HStack,
   IconButton,
@@ -26,7 +28,7 @@ import {
   Text,
   useBreakpointValue,
 } from '@chakra-ui/react'
-import type { ComponentType } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
@@ -37,13 +39,17 @@ import {
   readLink,
   readList,
   readNumber,
+  readRichText,
   readText,
   type FieldValues,
 } from '../model/fields'
 import type { SectionType } from '../model/sections'
-import { useRenderEnvironment } from './context'
+import { useRenderEnvironment, type StorefrontCategoryData } from './context'
+import { isPatternKey, patternStyle } from './patterns'
+import { RichTextView } from './rich-text'
 import {
   EmptyNotice,
+  FullBleed,
   gridColumns,
   Paragraphs,
   ProductGrid,
@@ -290,25 +296,82 @@ function ratioValue(ratio: string): number {
   return width && height ? width / height : 16 / 9
 }
 
+/** The band behind the shop's introduction; the logo overlaps its bottom edge. */
+const INTRO_BAND_HEIGHT = { base: '8rem', md: '12rem' } as const
+
 function ShopIntro({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
   const align = alignOf(settings)
   const { shop } = data
+  const band = readText(settings, 'background')
+  const hasBand = band === 'pattern' || band === 'image'
+  const showLogo = readBoolean(settings, 'showLogo')
 
   return (
-    <Stack gap="3" align={align === 'center' ? 'center' : 'start'} textAlign={align}>
-      {readBoolean(settings, 'showLogo') && shop.logoUrl && (
-        <Image src={shop.logoUrl} alt="" boxSize="16" rounded="l2" objectFit="cover" />
-      )}
-      <Heading as="h1" size={{ base: 'xl', md: '2xl' }} letterSpacing="-0.02em">
-        {shop.name}
-      </Heading>
-      {readBoolean(settings, 'showDescription') && shop.description && (
-        <Text color="fg.muted" maxW="2xl">
-          {shop.description}
-        </Text>
-      )}
+    <Stack as="section" gap="0">
+      {hasBand && <IntroBand settings={settings} />}
+      <Stack
+        gap="3"
+        align={align === 'center' ? 'center' : 'start'}
+        textAlign={align}
+        // Over a band, the logo is pulled up by half its height to sit on the
+        // band's edge; without a logo the name simply starts below it.
+        mt={hasBand ? (showLogo ? { base: '-10', md: '-12' } : '5') : '0'}
+        position="relative"
+      >
+        {showLogo && (
+          // A shop without a logo still gets its square, with its initials, so
+          // switching the logo on never leaves the band's edge empty.
+          <Avatar.Root
+            shape="rounded"
+            rounded="l2"
+            boxSize={hasBand ? { base: '20', md: '24' } : '16'}
+            fontSize={hasBand ? { base: '2xl', md: '3xl' } : 'xl'}
+            colorPalette="brand"
+            variant="solid"
+            // A ring in the page colour separates the logo from the band.
+            {...(hasBand && { borderWidth: '4px', borderColor: 'bg', shadow: 'md' })}
+          >
+            <Avatar.Fallback name={shop.name} />
+            {shop.logoUrl && <Avatar.Image src={shop.logoUrl} alt="" objectFit="cover" />}
+          </Avatar.Root>
+        )}
+        <Heading as="h1" size={{ base: 'xl', md: '2xl' }} letterSpacing="-0.02em">
+          {shop.name}
+        </Heading>
+        {readBoolean(settings, 'showDescription') && shop.description && (
+          <Text color="fg.muted" maxW="2xl">
+            {shop.description}
+          </Text>
+        )}
+      </Stack>
     </Stack>
+  )
+}
+
+function IntroBand({ settings }: { settings: FieldValues }) {
+  const { imageUrl } = useRenderEnvironment()
+
+  if (readText(settings, 'background') === 'image') {
+    const fileId = readText(settings, 'backgroundImage')
+    const src = fileId ? imageUrl(fileId, { width: 1920, height: 480 }) : null
+    return (
+      <FullBleed h={INTRO_BAND_HEIGHT} overflow="hidden" bg="bg.subtle">
+        {src && <Image src={src} alt="" w="full" h="full" objectFit="cover" />}
+      </FullBleed>
+    )
+  }
+
+  const pattern = readText(settings, 'pattern')
+  return (
+    <FullBleed
+      h={INTRO_BAND_HEIGHT}
+      css={patternStyle(
+        isPatternKey(pattern) ? pattern : 'dots',
+        readText(settings, 'patternColor'),
+        readText(settings, 'patternBackground'),
+      )}
+    />
   )
 }
 
@@ -323,6 +386,8 @@ function CategoryRail({ settings }: SectionProps) {
       <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
       {categories.length === 0 ? (
         <EmptyNotice>{empty('categories')}</EmptyNotice>
+      ) : readText(settings, 'layout') === 'bento' ? (
+        <CategoryBento categories={categories} />
       ) : (
         <SimpleGrid columns={{ base: 3, md: 5, lg: 6 }} gap="3">
           {categories.map((category) => (
@@ -348,6 +413,117 @@ function CategoryRail({ settings }: SectionProps) {
         </SimpleGrid>
       )}
     </Stack>
+  )
+}
+
+/**
+ * A tile's place in the desktop bento, repeating every eight: a big square,
+ * two small ones and a wide one, then the same mirrored. Auto-placement puts
+ * each group of four into exactly two rows of the four-column grid.
+ */
+const BENTO_PATTERN = ['big', 'small', 'small', 'wide', 'small', 'small', 'big', 'wide'] as const
+
+type BentoShape = (typeof BENTO_PATTERN)[number] | 'full'
+
+/**
+ * The desktop shape of tile `index` of `count`. A last group short of four
+ * would leave holes beside its big square, so it is laid out as one full row
+ * instead: one tile across, two halves, or a half and two quarters.
+ */
+function bentoShape(index: number, count: number): BentoShape {
+  const groupStart = index - (index % 4)
+  const inGroup = count - groupStart
+  if (inGroup >= 4) return BENTO_PATTERN[index % BENTO_PATTERN.length]!
+  if (inGroup === 1) return 'full'
+  if (inGroup === 2) return 'wide'
+  return index === groupStart ? 'wide' : 'small'
+}
+
+const BENTO_COLUMNS: Record<BentoShape, number> = { big: 2, wide: 2, small: 1, full: 4 }
+
+/**
+ * Phones repeat a full-width tile then two halves. A last pair would leave its
+ * second half alone, so a short final group of two is laid out as two halves.
+ */
+function bentoPhoneColumns(index: number, count: number): number {
+  const groupStart = index - (index % 3)
+  return index === groupStart && count - groupStart !== 2 ? 2 : 1
+}
+
+function CategoryBento({ categories }: { categories: StorefrontCategoryData[] }) {
+  const { frame } = useCardStyle()
+
+  return (
+    <Grid
+      templateColumns={{ base: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }}
+      autoRows={{ base: '8.5rem', md: '11rem' }}
+      autoFlow="dense"
+      gap="3"
+    >
+      {categories.map((category, index) => {
+        const shape = bentoShape(index, categories.length)
+        return (
+          <GridItem
+            key={category.id}
+            colSpan={{
+              base: bentoPhoneColumns(index, categories.length),
+              md: BENTO_COLUMNS[shape],
+            }}
+            rowSpan={{ base: 1, md: shape === 'big' ? 2 : 1 }}
+            rounded="l3"
+            overflow="hidden"
+            bg="bg.subtle"
+            {...frame}
+          >
+            <SmartLink
+              link={{ kind: 'category', slug: category.slug }}
+              display="block"
+              position="relative"
+              h="full"
+              className="group"
+            >
+              <Box
+                position="absolute"
+                inset="0"
+                transition="transform 0.4s ease"
+                _groupHover={{ transform: 'scale(1.05)' }}
+              >
+                <ImageWithFallback
+                  src={category.imageUrl ?? undefined}
+                  alt=""
+                  w="full"
+                  h="full"
+                  objectFit="cover"
+                  loading="lazy"
+                  fallbackIconSize="6"
+                />
+              </Box>
+              {/* Darkest at the bottom where the name sits, so it reads on
+                  any photo while the rest of the image stays visible. */}
+              <Box
+                position="absolute"
+                inset="0"
+                bgGradient="to-t"
+                gradientFrom="blackAlpha.700"
+                gradientTo="transparent"
+              />
+              <Text
+                position="absolute"
+                insetX="0"
+                bottom="0"
+                p={{ base: '3', md: '4' }}
+                color="white"
+                fontWeight="semibold"
+                fontSize={shape === 'big' ? { base: 'md', md: 'xl' } : 'md'}
+                lineClamp={2}
+              >
+                {category.name}
+              </Text>
+            </SmartLink>
+          </GridItem>
+        )
+      })}
+    </Grid>
   )
 }
 
@@ -452,20 +628,41 @@ function LatestProducts({ settings }: SectionProps) {
   )
 }
 
-function RichText({ settings }: SectionProps) {
-  const align = alignOf(settings)
+/**
+ * A column of reading width, placed by the section's `width` and `align`
+ * settings. `narrow`/`wide` are the widths that setting means for this
+ * section — a paragraph reads best narrower than a list of questions does.
+ */
+function TextColumn({
+  settings,
+  narrow,
+  wide,
+  children,
+}: {
+  settings: FieldValues
+  narrow: string
+  wide: string
+  children: ReactNode
+}) {
   return (
     <Container
       as="section"
-      maxW={readText(settings, 'width') === 'wide' ? '5xl' : '2xl'}
+      maxW={readText(settings, 'width') === 'wide' ? wide : narrow}
       px="0"
-      mx={align === 'center' ? 'auto' : '0'}
+      mx={alignOf(settings) === 'center' ? 'auto' : '0'}
     >
-      <Stack gap="4">
-        <SectionHeading align={align}>{readText(settings, 'heading')}</SectionHeading>
-        <Paragraphs text={readText(settings, 'body')} align={align} />
-      </Stack>
+      <Stack gap="4">{children}</Stack>
     </Container>
+  )
+}
+
+function RichText({ settings }: SectionProps) {
+  const align = alignOf(settings)
+  return (
+    <TextColumn settings={settings} narrow="2xl" wide="5xl">
+      <SectionHeading align={align}>{readText(settings, 'heading')}</SectionHeading>
+      <RichTextView doc={readRichText(settings, 'body')} align={align} />
+    </TextColumn>
   )
 }
 
@@ -495,7 +692,7 @@ function ImageWithText({ settings }: SectionProps) {
           width with or without a link. */}
       <Stack gap="4" align="start">
         <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
-        <Paragraphs text={readText(settings, 'body')} />
+        <RichTextView doc={readRichText(settings, 'body')} />
         <ThemeButton
           label={readText(settings, 'buttonLabel')}
           link={readLink(settings, 'buttonLink')}
@@ -550,31 +747,31 @@ function Faq({ settings }: SectionProps) {
   const empty = useEmptyText()
   const items = readList(settings, 'items').filter((item) => readText(item, 'question'))
 
+  // Only the heading follows the alignment: questions and answers stay
+  // left-aligned inside the box, where a centred paragraph would be hard to read.
   return (
-    <Container as="section" maxW="3xl" px="0">
-      <Stack gap="4">
-        <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
-        {items.length === 0 ? (
-          <EmptyNotice>{empty('items')}</EmptyNotice>
-        ) : (
-          <Accordion.Root collapsible variant="enclosed" rounded="l3">
-            {items.map((item) => (
-              <Accordion.Item key={item.id} value={item.id}>
-                <Accordion.ItemTrigger fontWeight="medium">
-                  <Box flex="1">{readText(item, 'question')}</Box>
-                  <Accordion.ItemIndicator />
-                </Accordion.ItemTrigger>
-                <Accordion.ItemContent>
-                  <Accordion.ItemBody>
-                    <Paragraphs text={readText(item, 'answer')} />
-                  </Accordion.ItemBody>
-                </Accordion.ItemContent>
-              </Accordion.Item>
-            ))}
-          </Accordion.Root>
-        )}
-      </Stack>
-    </Container>
+    <TextColumn settings={settings} narrow="3xl" wide="6xl">
+      <SectionHeading align={alignOf(settings)}>{readText(settings, 'heading')}</SectionHeading>
+      {items.length === 0 ? (
+        <EmptyNotice>{empty('items')}</EmptyNotice>
+      ) : (
+        <Accordion.Root collapsible variant="enclosed" rounded="l3">
+          {items.map((item) => (
+            <Accordion.Item key={item.id} value={item.id}>
+              <Accordion.ItemTrigger fontWeight="medium">
+                <Box flex="1">{readText(item, 'question')}</Box>
+                <Accordion.ItemIndicator />
+              </Accordion.ItemTrigger>
+              <Accordion.ItemContent>
+                <Accordion.ItemBody>
+                  <Paragraphs text={readText(item, 'answer')} />
+                </Accordion.ItemBody>
+              </Accordion.ItemContent>
+            </Accordion.Item>
+          ))}
+        </Accordion.Root>
+      )}
+    </TextColumn>
   )
 }
 

@@ -1,7 +1,6 @@
 /** The theme tab: colours, fonts and shape, with the contrast check live. */
 
-import { Alert, ColorPicker, HStack, parseColor, Portal, Stack, Text } from '@chakra-ui/react'
-import { useMemo } from 'react'
+import { Alert, Stack, Text } from '@chakra-ui/react'
 
 import {
   BUTTON_STYLES,
@@ -13,51 +12,8 @@ import {
   type FontFamily,
   type ThemeSettings,
 } from '../model/settings'
-import { Labeled, SelectInput } from './controls'
+import { ColorInput, Labeled, SelectInput } from './controls'
 import { useEditorText, type EditorMessage } from './messages'
-
-/**
- * Chakra's `ColorPicker`, in hex. Opaque only: theme colours have no alpha,
- * and `toString('hex')` keeps them in the `#rrggbb` shape the settings
- * sanitiser accepts.
- */
-function ColorInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-}) {
-  const color = useMemo(() => parseColor(value), [value])
-
-  return (
-    <ColorPicker.Root
-      size="sm"
-      value={color}
-      onValueChange={({ value: next }) => onChange(next.toString('hex').toLowerCase())}
-    >
-      <ColorPicker.HiddenInput />
-      <ColorPicker.Label fontSize="sm">{label}</ColorPicker.Label>
-      <ColorPicker.Control>
-        <ColorPicker.Input fontFamily="mono" />
-        <ColorPicker.Trigger />
-      </ColorPicker.Control>
-      <Portal>
-        <ColorPicker.Positioner>
-          <ColorPicker.Content>
-            <ColorPicker.Area />
-            <HStack>
-              <ColorPicker.EyeDropper size="xs" variant="outline" />
-              <ColorPicker.ChannelSlider channel="hue" flex="1" />
-            </HStack>
-          </ColorPicker.Content>
-        </ColorPicker.Positioner>
-      </Portal>
-    </ColorPicker.Root>
-  )
-}
 
 function Heading({ children }: { children: string }) {
   return (

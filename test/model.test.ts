@@ -59,6 +59,26 @@ describe('sections', () => {
     expect(sections[0]!.settings).not.toHaveProperty('style')
   })
 
+  test('an FAQ saved before it had layout settings stays centred and narrow', () => {
+    const [faq] = sanitizeSections([
+      { id: 'f', type: 'faq', settings: { heading: 'FAQ', items: [] } },
+    ])
+    expect(faq!.settings.align).toBe('center')
+    expect(faq!.settings.width).toBe('narrow')
+  })
+
+  test('a colour setting accepts only a hex code, since it lands inside CSS', () => {
+    const [intro] = sanitizeSections([
+      {
+        id: 'i',
+        type: 'shop-intro',
+        settings: { patternColor: 'red; background: url(x)', patternBackground: '#ABCDEF' },
+      },
+    ])
+    expect(intro!.settings.patternColor).toBe('#444cf7')
+    expect(intro!.settings.patternBackground).toBe('#abcdef')
+  })
+
   test('re-ids duplicate section ids', () => {
     const sections = sanitizeSections([
       { id: 'same', type: 'rich-text', settings: {} },

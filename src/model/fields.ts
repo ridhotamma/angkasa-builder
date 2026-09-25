@@ -12,6 +12,7 @@
  */
 
 import { sanitizeLink, NO_LINK, type Link } from './links'
+import { EMPTY_RICH_DOC, sanitizeRichDoc, type RichDoc } from './rich-text'
 import type { Localized } from './localized'
 
 interface BaseField {
@@ -48,6 +49,17 @@ export interface TextareaField extends BaseField {
   rows?: number
 }
 
+/**
+ * Formatted text, stored as a document tree (see `./rich-text`). `max` counts
+ * characters of text, not of the stored JSON. `default` is plain text, and so
+ * is any value saved before the field could be formatted.
+ */
+export interface RichTextField extends BaseField {
+  kind: 'richtext'
+  max: number
+  default: string
+}
+
 export interface NumberField extends BaseField {
   kind: 'number'
   min: number
@@ -67,6 +79,12 @@ export interface BooleanField extends BaseField {
   default: boolean
 }
 
+/** An opaque colour as `#rrggbb` — the only shape a stored colour may take. */
+export interface ColorField extends BaseField {
+  kind: 'color'
+  default: string
+}
+
 /** A media file id in the shop's own bucket — never a URL. */
 export interface ImageField extends BaseField {
   kind: 'image'
@@ -84,7 +102,15 @@ export interface LinkField extends BaseField {
 }
 
 export type ItemField =
-  TextField | TextareaField | NumberField | SelectField | BooleanField | ImageField | LinkField
+  | TextField
+  | TextareaField
+  | RichTextField
+  | NumberField
+  | SelectField
+  | BooleanField
+  | ColorField
+  | ImageField
+  | LinkField
 
 export interface ListField extends BaseField {
   kind: 'list'
@@ -104,6 +130,7 @@ export type JsonValue =
 export type FieldValues = { [key: string]: JsonValue }
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
 function text(value: unknown, max: number, fallback: string): string {
   return typeof value === 'string' ? value.slice(0, max) : fallback
@@ -114,6 +141,8 @@ function sanitizeField(field: Field, value: unknown): JsonValue {
     case 'text':
     case 'textarea':
       return text(value, field.max, field.default)
+    case 'richtext':
+      return sanitizeRichDoc(value ?? field.default, field.max) as unknown as JsonValue
     case 'number': {
       if (typeof value !== 'number' || !Number.isFinite(value)) return field.default
       if (value < field.min || value > field.max) return field.default
@@ -125,6 +154,11 @@ function sanitizeField(field: Field, value: unknown): JsonValue {
         : field.default
     case 'boolean':
       return typeof value === 'boolean' ? value : field.default
+    // A colour ends up inside a CSS value, so nothing but a hex code gets through.
+    case 'color':
+      return typeof value === 'string' && HEX_COLOR.test(value)
+        ? value.toLowerCase()
+        : field.default
     case 'image':
     case 'collection':
     case 'category':
@@ -168,6 +202,11 @@ export function newId(): string {
 export function readText(values: FieldValues, key: string): string {
   const value = values[key]
   return typeof value === 'string' ? value : ''
+}
+
+export function readRichText(values: FieldValues, key: string): RichDoc {
+  const value = values[key]
+  return isRecord(value) && value.type === 'doc' ? (value as unknown as RichDoc) : EMPTY_RICH_DOC
 }
 
 export function readNumber(values: FieldValues, key: string, fallback: number): number {
