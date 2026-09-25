@@ -1,0 +1,562 @@
+/**
+ * One control per field kind, generated from a section's schema.
+ *
+ * Controlled and form-library-free on purpose: the editor's whole document is
+ * one value held by the screen, every keystroke replaces it, and the preview
+ * re-renders from it. A form library would add a second copy of the state to
+ * keep in step for no gain.
+ */
+
+import {
+  Box,
+  Button,
+  Collapsible,
+  Field,
+  HStack,
+  Icon,
+  IconButton,
+  Image,
+  Input,
+  NativeSelect,
+  Spinner,
+  Stack,
+  Switch,
+  Text,
+  Textarea,
+} from '@chakra-ui/react'
+import { useRef, useState, type ReactNode } from 'react'
+import {
+  LuArrowDown,
+  LuArrowUp,
+  LuChevronDown,
+  LuChevronRight,
+  LuImagePlus,
+  LuPlus,
+  LuTrash2,
+} from 'react-icons/lu'
+
+import {
+  defaultValues,
+  newId,
+  readText,
+  type Field as FieldSpec,
+  type FieldValues,
+  type JsonValue,
+  type ListField,
+} from '../model/fields'
+import { NO_LINK, type Link, type LinkKind } from '../model/links'
+import { useEditorText, type EditorMessage } from './messages'
+import type { EditorServices } from './services'
+
+export function Labeled({
+  label,
+  help,
+  error,
+  children,
+}: {
+  label: string
+  help?: string
+  error?: string | null
+  children: ReactNode
+}) {
+  return (
+    <Field.Root invalid={Boolean(error)}>
+      <Field.Label fontSize="sm">{label}</Field.Label>
+      {children}
+      {error ? (
+        <Field.ErrorText>{error}</Field.ErrorText>
+      ) : (
+        help && <Field.HelperText>{help}</Field.HelperText>
+      )}
+    </Field.Root>
+  )
+}
+
+export function SelectInput({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: ReadonlyArray<{ value: string; label: string }>
+  placeholder?: string
+}) {
+  return (
+    <NativeSelect.Root size="sm">
+      <NativeSelect.Field value={value} onChange={(event) => onChange(event.currentTarget.value)}>
+        {placeholder !== undefined && <option value="">{placeholder}</option>}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </NativeSelect.Field>
+      <NativeSelect.Indicator />
+    </NativeSelect.Root>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Image                                                                      */
+/* -------------------------------------------------------------------------- */
+
+function ImageControl({
+  value,
+  onChange,
+  services,
+}: {
+  value: string
+  onChange: (fileId: string) => void
+  services: EditorServices
+}) {
+  const { t } = useEditorText()
+  const input = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const src = value ? services.imageUrl(value, { width: 480, height: 320 }) : null
+
+  async function upload(file: File) {
+    setBusy(true)
+    setError(null)
+    try {
+      onChange(await services.uploadImage(file))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Stack gap="2">
+      <Box
+        rounded="md"
+        overflow="hidden"
+        borderWidth="1px"
+        borderColor="border.subtle"
+        bg="bg.subtle"
+        h="28"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        {busy ? (
+          <Spinner size="sm" />
+        ) : src ? (
+          <Image src={src} alt="" w="full" h="full" objectFit="cover" />
+        ) : (
+          <Text fontSize="xs" color="fg.muted">
+            {t('noImage')}
+          </Text>
+        )}
+      </Box>
+      <HStack gap="2">
+        <Button size="xs" variant="outline" onClick={() => input.current?.click()} disabled={busy}>
+          <Icon as={LuImagePlus} />
+          {busy ? t('uploading') : value ? t('replace') : t('upload')}
+        </Button>
+        {value && (
+          <Button size="xs" variant="ghost" colorPalette="danger" onClick={() => onChange('')}>
+            {t('remove')}
+          </Button>
+        )}
+      </HStack>
+      {error && (
+        <Text fontSize="xs" color="danger.fg">
+          {error}
+        </Text>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0]
+          event.currentTarget.value = ''
+          if (file) void upload(file)
+        }}
+      />
+    </Stack>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Link                                                                       */
+/* -------------------------------------------------------------------------- */
+
+const LINK_KIND_LABELS: Record<LinkKind, EditorMessage> = {
+  none: 'linkNone',
+  home: 'linkHome',
+  page: 'linkPage',
+  product: 'linkProduct',
+  collection: 'linkCollection',
+  category: 'linkCategory',
+  search: 'linkSearch',
+  url: 'linkUrl',
+}
+
+function emptyLink(kind: LinkKind): Link {
+  switch (kind) {
+    case 'none':
+    case 'home':
+      return { kind }
+    case 'page':
+    case 'product':
+    case 'collection':
+    case 'category':
+      return { kind, slug: '' }
+    case 'search':
+      return { kind, query: '' }
+    case 'url':
+      return { kind, href: 'https://' }
+  }
+}
+
+function LinkControl({
+  value,
+  onChange,
+  services,
+}: {
+  value: Link
+  onChange: (link: Link) => void
+  services: EditorServices
+}) {
+  const { t } = useEditorText()
+  const link = value ?? NO_LINK
+
+  const slugOptions =
+    link.kind === 'collection'
+      ? services.collections
+      : link.kind === 'category'
+        ? services.categories
+        : link.kind === 'page'
+          ? services.pages
+          : null
+
+  return (
+    <Stack gap="2">
+      <SelectInput
+        value={link.kind}
+        onChange={(kind) => onChange(emptyLink(kind as LinkKind))}
+        options={(Object.keys(LINK_KIND_LABELS) as LinkKind[]).map((kind) => ({
+          value: kind,
+          label: t(LINK_KIND_LABELS[kind]),
+        }))}
+      />
+      {slugOptions && 'slug' in link && (
+        <SelectInput
+          value={link.slug}
+          placeholder={t('choose')}
+          onChange={(slug) => onChange({ ...link, slug })}
+          options={slugOptions.map((option) => ({ value: option.slug, label: option.name }))}
+        />
+      )}
+      {link.kind === 'product' && (
+        <Input
+          size="sm"
+          placeholder={t('productSlug')}
+          value={link.slug}
+          onChange={(event) =>
+            onChange({ kind: 'product', slug: event.currentTarget.value.trim().toLowerCase() })
+          }
+        />
+      )}
+      {link.kind === 'search' && (
+        <Input
+          size="sm"
+          placeholder={t('searchQuery')}
+          value={link.query}
+          maxLength={120}
+          onChange={(event) => onChange({ kind: 'search', query: event.currentTarget.value })}
+        />
+      )}
+      {link.kind === 'url' && (
+        <Stack gap="1">
+          <Input
+            size="sm"
+            type="url"
+            value={link.href}
+            maxLength={2000}
+            onChange={(event) => onChange({ kind: 'url', href: event.currentTarget.value.trim() })}
+          />
+          <Text fontSize="xs" color="fg.muted">
+            {t('urlHelp')}
+          </Text>
+        </Stack>
+      )}
+    </Stack>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* List                                                                       */
+/* -------------------------------------------------------------------------- */
+
+function ListControl({
+  field,
+  value,
+  onChange,
+  services,
+}: {
+  field: ListField
+  value: unknown
+  onChange: (items: FieldValues[]) => void
+  services: EditorServices
+}) {
+  const { t, l } = useEditorText()
+  const items = Array.isArray(value) ? (value as Array<FieldValues & { id: string }>) : []
+  const [open, setOpen] = useState<string | null>(null)
+
+  function move(index: number, by: number) {
+    const next = [...items]
+    const [item] = next.splice(index, 1)
+    next.splice(index + by, 0, item!)
+    onChange(next)
+  }
+
+  return (
+    <Stack gap="2">
+      {items.map((item, index) => {
+        const title = readText(item, field.titleKey) || `${l(field.itemLabel)} ${index + 1}`
+        const expanded = open === item.id
+        return (
+          <Collapsible.Root
+            key={item.id}
+            open={expanded}
+            onOpenChange={({ open: next }) => setOpen(next ? item.id : null)}
+          >
+            <Box borderWidth="1px" borderColor="border.subtle" rounded="md">
+              <HStack gap="1" px="2" py="1.5">
+                <Collapsible.Trigger asChild>
+                  <Button variant="ghost" size="xs" flex="1" justifyContent="start" minW="0">
+                    <Icon as={expanded ? LuChevronDown : LuChevronRight} />
+                    <Text truncate>{title}</Text>
+                  </Button>
+                </Collapsible.Trigger>
+                <IconButton
+                  aria-label={t('moveUp')}
+                  size="2xs"
+                  variant="ghost"
+                  disabled={index === 0}
+                  onClick={() => move(index, -1)}
+                >
+                  <LuArrowUp />
+                </IconButton>
+                <IconButton
+                  aria-label={t('moveDown')}
+                  size="2xs"
+                  variant="ghost"
+                  disabled={index === items.length - 1}
+                  onClick={() => move(index, 1)}
+                >
+                  <LuArrowDown />
+                </IconButton>
+                <IconButton
+                  aria-label={t('remove')}
+                  size="2xs"
+                  variant="ghost"
+                  colorPalette="danger"
+                  onClick={() => onChange(items.filter((other) => other.id !== item.id))}
+                >
+                  <LuTrash2 />
+                </IconButton>
+              </HStack>
+              <Collapsible.Content>
+                <Stack gap="3" px="3" pb="3">
+                  <FieldsForm
+                    fields={field.fields}
+                    values={item}
+                    services={services}
+                    onChange={(values) =>
+                      onChange(
+                        items.map((other) =>
+                          other.id === item.id ? { ...values, id: item.id } : other,
+                        ),
+                      )
+                    }
+                  />
+                </Stack>
+              </Collapsible.Content>
+            </Box>
+          </Collapsible.Root>
+        )
+      })}
+      <Button
+        size="xs"
+        variant="outline"
+        alignSelf="start"
+        disabled={items.length >= field.max}
+        onClick={() => {
+          const item = { id: newId(), ...defaultValues(field.fields) }
+          onChange([...items, item])
+          setOpen(item.id)
+        }}
+      >
+        <Icon as={LuPlus} />
+        {t('addItem')} {l(field.itemLabel).toLowerCase()}
+      </Button>
+    </Stack>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dispatch                                                                   */
+/* -------------------------------------------------------------------------- */
+
+function FieldControl({
+  field,
+  value,
+  onChange,
+  services,
+}: {
+  field: FieldSpec
+  value: unknown
+  onChange: (value: unknown) => void
+  services: EditorServices
+}) {
+  const { t, l } = useEditorText()
+  const help = field.help ? l(field.help) : undefined
+  const label = l(field.label)
+
+  switch (field.kind) {
+    case 'text':
+      return (
+        <Labeled label={label} help={help}>
+          <Input
+            size="sm"
+            value={typeof value === 'string' ? value : ''}
+            maxLength={field.max}
+            placeholder={field.placeholder ? l(field.placeholder) : undefined}
+            onChange={(event) => onChange(event.currentTarget.value)}
+          />
+        </Labeled>
+      )
+    case 'textarea':
+      return (
+        <Labeled label={label} help={help}>
+          <Textarea
+            size="sm"
+            rows={field.rows ?? 4}
+            value={typeof value === 'string' ? value : ''}
+            maxLength={field.max}
+            onChange={(event) => onChange(event.currentTarget.value)}
+          />
+        </Labeled>
+      )
+    case 'number':
+      return (
+        <Labeled label={label} help={help}>
+          <Input
+            size="sm"
+            type="number"
+            min={field.min}
+            max={field.max}
+            step={field.step ?? 1}
+            value={typeof value === 'number' ? value : field.default}
+            onChange={(event) => {
+              const next = event.currentTarget.valueAsNumber
+              if (Number.isFinite(next)) onChange(Math.min(field.max, Math.max(field.min, next)))
+            }}
+          />
+        </Labeled>
+      )
+    case 'select':
+      return (
+        <Labeled label={label} help={help}>
+          <SelectInput
+            value={typeof value === 'string' ? value : field.default}
+            onChange={onChange}
+            options={field.options.map((option) => ({
+              value: option.value,
+              label: l(option.label),
+            }))}
+          />
+        </Labeled>
+      )
+    case 'boolean':
+      return (
+        <Field.Root>
+          <HStack justify="space-between" w="full" align="flex-start" gap="4">
+            <Box>
+              <Field.Label fontSize="sm">{label}</Field.Label>
+              {help && <Field.HelperText>{help}</Field.HelperText>}
+            </Box>
+            <Switch.Root
+              size="sm"
+              colorPalette="brand"
+              checked={value === true}
+              onCheckedChange={({ checked }) => onChange(checked)}
+            >
+              <Switch.HiddenInput />
+              <Switch.Control />
+            </Switch.Root>
+          </HStack>
+        </Field.Root>
+      )
+    case 'image':
+      return (
+        <Labeled label={label} help={help}>
+          <ImageControl
+            value={typeof value === 'string' ? value : ''}
+            onChange={onChange}
+            services={services}
+          />
+        </Labeled>
+      )
+    case 'collection':
+    case 'category': {
+      const options = field.kind === 'collection' ? services.collections : services.categories
+      return (
+        <Labeled label={label} help={help}>
+          <SelectInput
+            value={typeof value === 'string' ? value : ''}
+            onChange={onChange}
+            placeholder={field.emptyLabel ? l(field.emptyLabel) : t('choose')}
+            options={options.map((option) => ({ value: option.id, label: option.name }))}
+          />
+        </Labeled>
+      )
+    }
+    case 'link':
+      return (
+        <Labeled label={label} help={help}>
+          <LinkControl value={value as Link} onChange={onChange} services={services} />
+        </Labeled>
+      )
+    case 'list':
+      return (
+        <Labeled label={label} help={help}>
+          <ListControl field={field} value={value} onChange={onChange} services={services} />
+        </Labeled>
+      )
+  }
+}
+
+export function FieldsForm({
+  fields,
+  values,
+  onChange,
+  services,
+}: {
+  fields: readonly FieldSpec[]
+  values: FieldValues
+  onChange: (values: FieldValues) => void
+  services: EditorServices
+}) {
+  return (
+    <>
+      {fields.map((field) => (
+        <FieldControl
+          key={field.key}
+          field={field}
+          value={values[field.key]}
+          services={services}
+          onChange={(value) => onChange({ ...values, [field.key]: value as JsonValue })}
+        />
+      ))}
+    </>
+  )
+}
