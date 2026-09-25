@@ -161,13 +161,20 @@ export function PageBuilder({
         size="xs"
         h={{ lg: 'full' }}
         minH="0"
+        minW="0"
         borderWidth="1px"
         borderColor="border.subtle"
         rounded="lg"
         bg="bg.panel"
       >
         <ScrollArea.Viewport>
-          <ScrollArea.Content p="4">{panel}</ScrollArea.Content>
+          {/* Zag gives the content an inline `min-width: fit-content`, which
+              lets one long line — a help text, a long caption typed into an
+              input — push the whole panel wider than its column and clip the
+              controls. The panel only ever scrolls vertically. */}
+          <ScrollArea.Content p="4" style={{ minWidth: 0 }}>
+            {panel}
+          </ScrollArea.Content>
         </ScrollArea.Viewport>
         <ScrollArea.Scrollbar />
       </ScrollArea.Root>
@@ -192,7 +199,11 @@ export function PageBuilder({
           overflow="hidden"
         >
           <ScrollArea.Viewport>
-            <ScrollArea.Content>
+            {/* The page is laid out at the pane's width, as a storefront is at
+                the window's — not at the widest thing on it, which Zag's inline
+                `min-width: fit-content` would otherwise allow (a marquee's
+                natural width is its whole strip of cards). */}
+            <ScrollArea.Content style={{ minWidth: 0 }}>
               <ThemeScope settings={settings} minH="full">
                 <Container maxW="6xl" py={{ base: '6', md: '10' }}>
                   <SectionsRenderer

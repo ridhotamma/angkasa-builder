@@ -643,15 +643,17 @@ export function FieldsForm({
 }) {
   return (
     <>
-      {fields.filter((field) => isFieldShown(field, values)).map((field) => (
-        <FieldControl
-          key={field.key}
-          field={field}
-          value={values[field.key]}
-          services={services}
-          onChange={(value) => onChange({ ...values, [field.key]: value as JsonValue })}
-        />
-      ))}
+      {fields
+        .filter((field) => isFieldShown(field, values))
+        .map((field) => (
+          <FieldControl
+            key={field.key}
+            field={field}
+            value={values[field.key]}
+            services={services}
+            onChange={(value) => onChange({ ...values, [field.key]: value as JsonValue })}
+          />
+        ))}
     </>
   )
 }

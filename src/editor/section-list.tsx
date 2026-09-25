@@ -165,17 +165,19 @@ export function AddSectionMenu({
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
-          <Menu.Content minW="72" p="0" overflow="hidden">
+          {/* A fixed width with wrapping descriptions: sized to its longest
+              description, the menu ran across the whole editor. */}
+          <Menu.Content w="xs" maxW="calc(100vw - 2rem)" p="0" overflow="hidden">
             <ScrollArea.Root size="xs">
               <ScrollArea.Viewport maxH="min(28rem, calc(var(--available-height) - 0.5rem))">
-                <ScrollArea.Content p="1">
+                <ScrollArea.Content p="1" style={{ minWidth: 0 }}>
                   {SECTION_SCHEMAS.map((schema) => (
                     <Menu.Item key={schema.type} value={schema.type} py="2">
-                      <Stack gap="0.5">
+                      <Stack gap="0.5" minW="0" whiteSpace="normal">
                         <Text fontSize="sm" fontWeight="medium">
                           {l(schema.name)}
                         </Text>
-                        <Text fontSize="xs" color="fg.muted">
+                        <Text fontSize="xs" color="fg.muted" lineHeight="short">
                           {l(schema.description)}
                         </Text>
                       </Stack>

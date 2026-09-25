@@ -132,6 +132,8 @@ export function BuilderDialog({
                     h={{ lg: 'full' }}
                     px={{ base: '3', md: '5' }}
                     py="4"
+                    // Vertical scrolling only — see the panel in `builder.tsx`.
+                    style={{ minWidth: 0 }}
                   >
                     {children}
                   </ScrollArea.Content>
@@ -170,7 +172,12 @@ export function BuilderDialog({
                         )}
                       </Stack>
                     </Dialog.Body>
-                    <Dialog.Footer>
+                    {/* Three buttons do not fit one row on a phone: there they
+                        stack full width, the safe choice (save) on top. */}
+                    <Dialog.Footer
+                      flexDirection={{ base: 'column-reverse', sm: 'row' }}
+                      alignItems={{ base: 'stretch', sm: 'center' }}
+                    >
                       <Button
                         variant="ghost"
                         disabled={saving}

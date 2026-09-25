@@ -73,6 +73,10 @@ const EMPTY = {
   products: { en: 'No published products yet.', id: 'Belum ada produk yang terbit.' },
   items: { en: 'Add items in the section settings.', id: 'Tambahkan item di pengaturan bagian.' },
   image: { en: 'Pick an image in the section settings.', id: 'Pilih gambar di pengaturan bagian.' },
+  slides: {
+    en: 'Add a slide with an image in the section settings.',
+    id: 'Tambahkan slide bergambar di pengaturan bagian.',
+  },
 }
 
 function useEmptyText() {
@@ -167,6 +171,123 @@ function Hero({ settings }: SectionProps) {
       )}
     </Box>
   )
+}
+
+/** Round arrows laid over the slider's edges; phones swipe instead. */
+const OVERLAY_ARROW = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: '1',
+  rounded: 'full',
+  size: { base: 'sm', md: 'md' },
+  variant: 'subtle',
+  bg: 'bg/85',
+  shadow: 'md',
+  _hover: { bg: 'bg' },
+  hideBelow: 'md',
+} as const
+
+/**
+ * Image banners in a row, each optionally a link. Swiped on a phone and
+ * dragged with the mouse on a desktop, a whole page of `perPage` slides at a
+ * time. A single slide is simply a still banner — there is nothing to slide to.
+ *
+ * Keep this on the same default `Carousel` setup as the testimonial slider.
+ * Centring the active slide needs padding at both ends, which a finite row
+ * shows as blank space, and Zag's snapping did not hold a centred position.
+ */
+function BannerSlider({ settings }: SectionProps) {
+  const empty = useEmptyText()
+  const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
+  const desktop = Number(readText(settings, 'perPage')) || 2
+  const perPage = Math.min(useBreakpointValue({ base: 1, md: desktop }) ?? 1, slides.length)
+  const ratio = ratioValue(readText(settings, 'ratio'))
+
+  if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
+  if (slides.length === 1) {
+    return (
+      <Box as="section">
+        <BannerSlide slide={slides[0]!} ratio={ratio} eager />
+      </Box>
+    )
+  }
+
+  const paged = slides.length > perPage
+
+  return (
+    <Carousel.Root
+      as="section"
+      slideCount={slides.length}
+      slidesPerPage={perPage}
+      spacing="12px"
+      loop={readBoolean(settings, 'loop')}
+      allowMouseDrag
+      autoplay={readBoolean(settings, 'autoplay') ? { delay: 5000 } : false}
+      gap="3"
+    >
+      {/* Positioned around the slides only, so the arrows centre on the
+          images rather than on images plus dots. */}
+      <Box position="relative">
+        <Carousel.ItemGroup>
+          {slides.map((slide, index) => (
+            <Carousel.Item key={slide.id} index={index}>
+              <BannerSlide slide={slide} ratio={ratio} eager={index === 0} />
+            </Carousel.Item>
+          ))}
+        </Carousel.ItemGroup>
+
+        {paged && (
+          <>
+            <Carousel.PrevTrigger asChild>
+              <IconButton {...OVERLAY_ARROW} left="3">
+                <LuChevronLeft />
+              </IconButton>
+            </Carousel.PrevTrigger>
+            <Carousel.NextTrigger asChild>
+              <IconButton {...OVERLAY_ARROW} right="3">
+                <LuChevronRight />
+              </IconButton>
+            </Carousel.NextTrigger>
+          </>
+        )}
+      </Box>
+      {paged && <Carousel.Indicators justifyContent="center" />}
+    </Carousel.Root>
+  )
+}
+
+function BannerSlide({
+  slide,
+  ratio,
+  eager,
+}: {
+  slide: FieldValues
+  ratio: number
+  eager: boolean
+}) {
+  const { imageUrl } = useRenderEnvironment()
+
+  return (
+    <SmartLink link={readLink(slide, 'link')} display="block" draggable={false}>
+      <AspectRatio ratio={ratio} rounded="l3" overflow="hidden" bg="bg.subtle">
+        <ImageWithFallback
+          src={imageUrl(readText(slide, 'image'), { width: 1200, height: 800 }) ?? undefined}
+          alt={readText(slide, 'alt')}
+          objectFit="cover"
+          loading={eager ? 'eager' : 'lazy'}
+          // A native image drag would steal the gesture from the slider.
+          draggable={false}
+        />
+      </AspectRatio>
+    </SmartLink>
+  )
+}
+
+/** `'16/9'` as the number `AspectRatio` wants. */
+function ratioValue(ratio: string): number {
+  const [width, height] = ratio.split('/').map(Number)
+  return width && height ? width / height : 16 / 9
 }
 
 function ShopIntro({ settings }: SectionProps) {
@@ -509,6 +630,12 @@ function TestimonialMarquee({
       spacing="1rem"
       autoFill
       pauseOnInteraction
+      // The strip's natural width is every card end to end. Pinned to its
+      // container and clipped, so it can never widen the section — or the
+      // page — around it.
+      w="full"
+      minW="0"
+      overflow="hidden"
     >
       <Marquee.Edge side="start" />
       <Marquee.Viewport>
@@ -529,13 +656,7 @@ function TestimonialMarquee({
  * One page of cards at a time — one on a phone, up to three on a desktop —
  * moved by the arrows, the dots, a swipe, or a drag with the mouse.
  */
-function TestimonialCarousel({
-  items,
-  autoplay,
-}: {
-  items: TestimonialItem[]
-  autoplay: boolean
-}) {
+function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; autoplay: boolean }) {
   const perPage = Math.min(useBreakpointValue({ base: 1, md: 2, lg: 3 }) ?? 1, items.length)
 
   return (
@@ -620,6 +741,7 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
 export const SECTION_RENDERERS = {
   'announcement-bar': AnnouncementBar,
   hero: Hero,
+  'banner-slider': BannerSlider,
   'shop-intro': ShopIntro,
   'category-rail': CategoryRail,
   'featured-collection': FeaturedCollection,

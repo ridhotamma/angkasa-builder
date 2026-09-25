@@ -162,6 +162,85 @@ export const SECTION_SCHEMAS = [
     ],
   },
   {
+    type: 'banner-slider',
+    name: { en: 'Banner slider', id: 'Slider banner' },
+    description: {
+      en: 'Image banners that slide, each with its own link.',
+      id: 'Banner gambar yang bisa digeser, masing-masing bertautan.',
+    },
+    fields: [
+      {
+        kind: 'list',
+        key: 'slides',
+        label: { en: 'Slides', id: 'Slide' },
+        itemLabel: { en: 'Slide', id: 'Slide' },
+        titleKey: 'alt',
+        max: 12,
+        fields: [
+          { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+          {
+            kind: 'text',
+            key: 'alt',
+            label: { en: 'Image description', id: 'Keterangan gambar' },
+            help: {
+              en: 'Read out to shoppers who cannot see the image.',
+              id: 'Dibacakan untuk pembeli yang tidak bisa melihat gambar.',
+            },
+            max: 120,
+            default: '',
+          },
+          { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
+        ],
+      },
+      {
+        kind: 'select',
+        key: 'perPage',
+        label: { en: 'Slides visible on desktop', id: 'Slide terlihat di desktop' },
+        help: {
+          en: 'Phones always show one slide at a time.',
+          id: 'Di ponsel selalu tampil satu slide.',
+        },
+        options: [
+          { value: '1', label: { en: '1', id: '1' } },
+          { value: '2', label: { en: '2', id: '2' } },
+          { value: '3', label: { en: '3', id: '3' } },
+        ],
+        default: '2',
+      },
+      {
+        kind: 'select',
+        key: 'ratio',
+        label: { en: 'Slide shape', id: 'Bentuk slide' },
+        options: [
+          { value: '16/9', label: { en: 'Standard (16:9)', id: 'Standar (16:9)' } },
+          { value: '2/1', label: { en: 'Wide (2:1)', id: 'Lebar (2:1)' } },
+          { value: '1/1', label: { en: 'Square (1:1)', id: 'Persegi (1:1)' } },
+        ],
+        default: '16/9',
+      },
+      {
+        kind: 'boolean',
+        key: 'loop',
+        label: { en: 'Loop', id: 'Putar berulang' },
+        help: {
+          en: 'After the last slide, go back to the first.',
+          id: 'Setelah slide terakhir, kembali ke slide pertama.',
+        },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'autoplay',
+        label: { en: 'Slide automatically', id: 'Geser otomatis' },
+        help: {
+          en: 'Moves to the next slide every few seconds.',
+          id: 'Pindah ke slide berikutnya setiap beberapa detik.',
+        },
+        default: false,
+      },
+    ],
+  },
+  {
     type: 'shop-intro',
     name: { en: 'Shop introduction', id: 'Perkenalan toko' },
     description: {
