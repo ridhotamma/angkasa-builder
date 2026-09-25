@@ -10,17 +10,24 @@
 import {
   Accordion,
   AspectRatio,
+  Avatar,
   Box,
   Card,
+  Carousel,
   Container,
   Flex,
   Heading,
+  HStack,
+  IconButton,
   Image,
+  Marquee,
   SimpleGrid,
   Stack,
   Text,
+  useBreakpointValue,
 } from '@chakra-ui/react'
 import type { ComponentType } from 'react'
+import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 import { useLocale } from '@repo/i18n'
@@ -363,7 +370,9 @@ function ImageWithText({ settings }: SectionProps) {
       >
         <ImageWithFallback src={src ?? undefined} alt="" objectFit="cover" loading="lazy" />
       </AspectRatio>
-      <Stack gap="4">
+      {/* `start` rather than the default stretch, so the button keeps its own
+          width with or without a link. */}
+      <Stack gap="4" align="start">
         <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
         <Paragraphs text={readText(settings, 'body')} />
         <ThemeButton
@@ -448,38 +457,159 @@ function Faq({ settings }: SectionProps) {
   )
 }
 
+type TestimonialItem = FieldValues & { id: string }
+
+/** Pixels per second for each of the running-cards speeds. */
+const MARQUEE_SPEED = { slow: 25, normal: 45, fast: 80 } as const
+
 function Testimonials({ settings }: SectionProps) {
-  const { frame } = useCardStyle()
   const empty = useEmptyText()
   const items = readList(settings, 'items').filter((item) => readText(item, 'quote'))
+  const layout = readText(settings, 'layout')
 
   return (
     <Stack as="section" gap="4">
       <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
+      ) : layout === 'marquee' ? (
+        <TestimonialMarquee items={items} settings={settings} />
+      ) : layout === 'carousel' ? (
+        <TestimonialCarousel items={items} autoplay={readBoolean(settings, 'autoplay')} />
       ) : (
         <SimpleGrid columns={{ base: 1, md: Math.min(3, items.length) }} gap="4">
           {items.map((item) => (
-            <Card.Root key={item.id} bg="bg.subtle" rounded="l3" {...frame}>
-              <Card.Body gap="4">
-                <Text fontSize="lg" lineHeight="tall">
-                  “{readText(item, 'quote')}”
-                </Text>
-                <Box>
-                  <Text fontWeight="semibold">{readText(item, 'author')}</Text>
-                  {readText(item, 'role') && (
-                    <Text fontSize="sm" color="fg.muted">
-                      {readText(item, 'role')}
-                    </Text>
-                  )}
-                </Box>
-              </Card.Body>
-            </Card.Root>
+            <TestimonialCard key={item.id} item={item} />
           ))}
         </SimpleGrid>
       )}
     </Stack>
+  )
+}
+
+/**
+ * Cards that drift across the section without stopping, and pause while
+ * hovered or focused so a quote can actually be read. `autoFill` repeats the
+ * set when a shop has only a few, so the strip never runs out mid-screen.
+ */
+function TestimonialMarquee({
+  items,
+  settings,
+}: {
+  items: TestimonialItem[]
+  settings: FieldValues
+}) {
+  const speed = readText(settings, 'speed') as keyof typeof MARQUEE_SPEED
+
+  return (
+    <Marquee.Root
+      // `start` scrolls towards the start edge — right to left in an LTR page.
+      side={readText(settings, 'direction') === 'right' ? 'end' : 'start'}
+      speed={MARQUEE_SPEED[speed] ?? MARQUEE_SPEED.normal}
+      spacing="1rem"
+      autoFill
+      pauseOnInteraction
+    >
+      <Marquee.Edge side="start" />
+      <Marquee.Viewport>
+        <Marquee.Content>
+          {items.map((item) => (
+            <Marquee.Item key={item.id} w={{ base: '72', md: 'sm' }} alignSelf="stretch">
+              <TestimonialCard item={item} />
+            </Marquee.Item>
+          ))}
+        </Marquee.Content>
+      </Marquee.Viewport>
+      <Marquee.Edge side="end" />
+    </Marquee.Root>
+  )
+}
+
+/**
+ * One page of cards at a time — one on a phone, up to three on a desktop —
+ * moved by the arrows, the dots, a swipe, or a drag with the mouse.
+ */
+function TestimonialCarousel({
+  items,
+  autoplay,
+}: {
+  items: TestimonialItem[]
+  autoplay: boolean
+}) {
+  const perPage = Math.min(useBreakpointValue({ base: 1, md: 2, lg: 3 }) ?? 1, items.length)
+
+  return (
+    <Carousel.Root
+      slideCount={items.length}
+      slidesPerPage={perPage}
+      spacing="1rem"
+      loop
+      allowMouseDrag
+      autoplay={autoplay ? { delay: 5000 } : false}
+      gap="4"
+    >
+      <Carousel.ItemGroup>
+        {items.map((item, index) => (
+          <Carousel.Item key={item.id} index={index} display="flex">
+            <TestimonialCard item={item} />
+          </Carousel.Item>
+        ))}
+      </Carousel.ItemGroup>
+
+      {items.length > perPage && (
+        <Carousel.Control justifyContent="center" gap="4">
+          <Carousel.PrevTrigger asChild>
+            <IconButton size="xs" variant="outline" rounded="full">
+              <LuChevronLeft />
+            </IconButton>
+          </Carousel.PrevTrigger>
+          <Carousel.Indicators />
+          <Carousel.NextTrigger asChild>
+            <IconButton size="xs" variant="outline" rounded="full">
+              <LuChevronRight />
+            </IconButton>
+          </Carousel.NextTrigger>
+        </Carousel.Control>
+      )}
+    </Carousel.Root>
+  )
+}
+
+/** The quote, then who said it — with their photo, or their initials without one. */
+function TestimonialCard({ item }: { item: TestimonialItem }) {
+  const { frame } = useCardStyle()
+  const { imageUrl } = useRenderEnvironment()
+  const author = readText(item, 'author')
+  const role = readText(item, 'role')
+  const avatar = readText(item, 'avatar')
+  const src = avatar ? imageUrl(avatar, { width: 96, height: 96 }) : null
+
+  return (
+    <Card.Root bg="bg.subtle" rounded="l3" w="full" h="full" {...frame}>
+      <Card.Body gap="4" justifyContent="space-between">
+        <Text fontSize="lg" lineHeight="tall">
+          “{readText(item, 'quote')}”
+        </Text>
+        {(author || src) && (
+          <HStack gap="3">
+            <Avatar.Root size="md" flexShrink="0">
+              <Avatar.Fallback name={author || undefined} />
+              {src && <Avatar.Image src={src} alt="" loading="lazy" />}
+            </Avatar.Root>
+            <Box minW="0">
+              <Text fontWeight="semibold" truncate>
+                {author}
+              </Text>
+              {role && (
+                <Text fontSize="sm" color="fg.muted" truncate>
+                  {role}
+                </Text>
+              )}
+            </Box>
+          </HStack>
+        )}
+      </Card.Body>
+    </Card.Root>
   )
 }
 

@@ -18,6 +18,20 @@ interface BaseField {
   key: string
   label: Localized
   help?: Localized
+  /**
+   * Show the control only while a sibling field holds one of these values —
+   * e.g. a marquee's direction only under the running-cards layout. Editor
+   * only: the value is still stored and sanitised, so switching back restores
+   * what the seller had chosen.
+   */
+  showWhen?: { key: string; is: readonly string[] }
+}
+
+/** Whether a field's control belongs on screen, given its siblings' values. */
+export function isFieldShown(field: { showWhen?: BaseField['showWhen'] }, values: FieldValues) {
+  if (!field.showWhen) return true
+  const current = values[field.showWhen.key]
+  return typeof current === 'string' && field.showWhen.is.includes(current)
 }
 
 export interface TextField extends BaseField {

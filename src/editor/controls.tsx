@@ -21,6 +21,7 @@ import {
   Input,
   NumberInput,
   Portal,
+  ScrollArea,
   Select,
   Spinner,
   Stack,
@@ -41,6 +42,7 @@ import {
 
 import {
   defaultValues,
+  isFieldShown,
   newId,
   readText,
   type Field as FieldSpec,
@@ -130,13 +132,24 @@ export function SelectInput({
       </Select.Control>
       <Portal disabled={!portalled}>
         <Select.Positioner>
-          <Select.Content>
-            {collection.items.map((item) => (
-              <Select.Item item={item} key={item.value}>
-                {item.label}
-                <Select.ItemIndicator />
-              </Select.Item>
-            ))}
+          {/* An overlay scrollbar rather than the content's own `overflow:
+              auto`, as the builder's panels use: the native bar is a grey
+              gutter beside a long list like the fonts. The root is only
+              capped, so a short list keeps its natural height. */}
+          <Select.Content p="0" maxH="none" overflow="hidden">
+            <ScrollArea.Root size="xs" maxH="xs">
+              <ScrollArea.Viewport style={{ overscrollBehavior: 'contain' }}>
+                <ScrollArea.Content p="1">
+                  {collection.items.map((item) => (
+                    <Select.Item item={item} key={item.value}>
+                      {item.label}
+                      <Select.ItemIndicator />
+                    </Select.Item>
+                  ))}
+                </ScrollArea.Content>
+              </ScrollArea.Viewport>
+              <ScrollArea.Scrollbar />
+            </ScrollArea.Root>
           </Select.Content>
         </Select.Positioner>
       </Portal>
@@ -630,7 +643,7 @@ export function FieldsForm({
 }) {
   return (
     <>
-      {fields.map((field) => (
+      {fields.filter((field) => isFieldShown(field, values)).map((field) => (
         <FieldControl
           key={field.key}
           field={field}

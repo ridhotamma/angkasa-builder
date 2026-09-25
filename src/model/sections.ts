@@ -366,6 +366,51 @@ export const SECTION_SCHEMAS = [
     fields: [
       heading('What our customers say'),
       {
+        kind: 'select',
+        key: 'layout',
+        label: { en: 'Layout', id: 'Tampilan' },
+        options: [
+          { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
+          { value: 'marquee', label: { en: 'Running cards', id: 'Kartu berjalan' } },
+          { value: 'carousel', label: { en: 'Slider', id: 'Slider (geser)' } },
+        ],
+        default: 'grid',
+      },
+      {
+        kind: 'select',
+        key: 'direction',
+        label: { en: 'Direction', id: 'Arah berjalan' },
+        options: [
+          { value: 'left', label: { en: 'Right to left', id: 'Kanan ke kiri' } },
+          { value: 'right', label: { en: 'Left to right', id: 'Kiri ke kanan' } },
+        ],
+        default: 'left',
+        showWhen: { key: 'layout', is: ['marquee'] },
+      },
+      {
+        kind: 'select',
+        key: 'speed',
+        label: { en: 'Speed', id: 'Kecepatan' },
+        options: [
+          { value: 'slow', label: { en: 'Slow', id: 'Pelan' } },
+          { value: 'normal', label: { en: 'Normal', id: 'Normal' } },
+          { value: 'fast', label: { en: 'Fast', id: 'Cepat' } },
+        ],
+        default: 'normal',
+        showWhen: { key: 'layout', is: ['marquee'] },
+      },
+      {
+        kind: 'boolean',
+        key: 'autoplay',
+        label: { en: 'Slide automatically', id: 'Geser otomatis' },
+        help: {
+          en: 'Moves to the next card every few seconds.',
+          id: 'Pindah ke kartu berikutnya setiap beberapa detik.',
+        },
+        default: false,
+        showWhen: { key: 'layout', is: ['carousel'] },
+      },
+      {
         kind: 'list',
         key: 'items',
         label: { en: 'Testimonials', id: 'Testimoni' },
@@ -387,6 +432,15 @@ export const SECTION_SCHEMAS = [
             label: { en: 'Name', id: 'Nama' },
             max: 80,
             default: '',
+          },
+          {
+            kind: 'image',
+            key: 'avatar',
+            label: { en: 'Photo', id: 'Foto' },
+            help: {
+              en: 'Optional. Without one, the initials are shown.',
+              id: 'Opsional. Tanpa foto, inisial nama yang ditampilkan.',
+            },
           },
           {
             kind: 'text',

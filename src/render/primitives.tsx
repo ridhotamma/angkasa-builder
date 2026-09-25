@@ -55,6 +55,12 @@ export function SmartLink({
   )
 }
 
+/**
+ * Both branches — plain button and link — must size the same way, so neither
+ * sets its own alignment: the section's container decides (`align` on the
+ * surrounding `Stack`). A container that leaves the default `stretch` gets a
+ * full-width button whether or not a link is chosen.
+ */
 export function ThemeButton({ label, link }: { label: string; link: Link }) {
   const { settings } = useRenderEnvironment()
   const anchor = useAnchor(link)
@@ -65,7 +71,7 @@ export function ThemeButton({ label, link }: { label: string; link: Link }) {
 
   if (!anchor) {
     return (
-      <Button colorPalette="brand" variant={variant} rounded={rounded} size="lg" alignSelf="start">
+      <Button colorPalette="brand" variant={variant} rounded={rounded} size="lg">
         {label}
       </Button>
     )
