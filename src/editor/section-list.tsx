@@ -8,7 +8,6 @@
 
 import {
   Badge,
-  Box,
   Button,
   HStack,
   Icon,
@@ -90,14 +89,17 @@ function Row({
       >
         <LuGripVertical />
       </IconButton>
-      <Box
-        as="button"
+      <Button
+        variant="plain"
+        size="sm"
         flex="1"
         minW="0"
-        textAlign="start"
+        h="auto"
+        px="1"
         py="1"
+        justifyContent="start"
+        gap="2"
         onClick={onSelect}
-        cursor="pointer"
       >
         <Text fontSize="sm" fontWeight="medium" truncate>
           {schema ? l(schema.name) : section.type}
@@ -107,7 +109,7 @@ function Row({
             {t('hidden')}
           </Badge>
         )}
-      </Box>
+      </Button>
       <IconButton
         aria-label={section.hidden ? t('show') : t('hide')}
         size="2xs"

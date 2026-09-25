@@ -2,6 +2,9 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   contrastIssues,
+  contrastRatio,
+  darkModeBrandFg,
+  themeStylesheet,
   createSection,
   DEFAULT_THEME_SETTINGS,
   imageFileIds,
@@ -160,6 +163,21 @@ describe('colour', () => {
     }
     expect(contrastIssues(settings)).toContain('text')
     expect(contrastIssues(DEFAULT_THEME_SETTINGS)).not.toContain('text')
+  })
+
+  test('keeps brand text readable in dark mode for a near-black brand colour', () => {
+    const fg = darkModeBrandFg('#1f2937')
+    expect(fg).not.toBe('#1f2937')
+    expect(contrastRatio(fg, '#140c0c')).toBeGreaterThanOrEqual(4.5)
+    expect(darkModeBrandFg('#ff9900')).toBe('#ff9900')
+  })
+
+  test('scopes light surfaces to light mode in the document stylesheet', () => {
+    const css = themeStylesheet(DEFAULT_THEME_SETTINGS)
+    expect(css).toMatch(/^:root\{[^}]*--chakra-colors-brand-solid:/)
+    expect(css).toMatch(/html:not\(\.dark\)\{[^}]*--chakra-colors-bg:#fffefb/)
+    expect(css).not.toMatch(/:root\{[^}]*--chakra-colors-bg:/)
+    expect(css).toContain('html.dark{--chakra-colors-brand-fg:')
   })
 
   test('overrides semantic tokens, not only the ramp', () => {

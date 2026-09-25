@@ -1,6 +1,7 @@
 /** `@repo/page-builder/editor` — the editor both dashboards render. */
 
 export { PageBuilder, type PageBuilderProps } from './builder'
-export { FieldsForm } from './controls'
+export { BuilderDialog, type BuilderDialogProps } from './builder-dialog'
+export { FieldsForm, NumberControl, SelectInput } from './controls'
 export { useEditorText } from './messages'
 export type { CatalogueOption, EditorOption, EditorServices } from './services'

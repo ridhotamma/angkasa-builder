@@ -69,6 +69,15 @@ const MESSAGES = {
   urlHelp: { en: 'Must start with https://', id: 'Harus diawali https://' },
   choose: { en: 'Choose…', id: 'Pilih…' },
   preview: { en: 'Preview', id: 'Pratinjau' },
+  close: { en: 'Close editor', id: 'Tutup editor' },
+  unsavedTitle: { en: 'Save your changes?', id: 'Simpan perubahan Anda?' },
+  unsavedBody: {
+    en: 'You have changes that are not saved yet. Save them before closing, or discard them.',
+    id: 'Ada perubahan yang belum disimpan. Simpan sebelum menutup, atau buang perubahannya.',
+  },
+  keepEditing: { en: 'Keep editing', id: 'Lanjut mengedit' },
+  discard: { en: 'Discard changes', id: 'Buang perubahan' },
+  saveAndClose: { en: 'Save and close', id: 'Simpan dan tutup' },
   previewNote: {
     en: 'Click a section in the preview to edit it.',
     id: 'Klik bagian di pratinjau untuk mengeditnya.',

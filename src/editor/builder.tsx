@@ -37,7 +37,9 @@ export interface PageBuilderProps {
   formatPrice: RenderEnvironment['formatPrice']
   /** Rendered above the preview, e.g. save and publish buttons. */
   toolbar?: ReactNode
-  /** Pixel height the editor fills; panels scroll inside it. */
+  /** Said above the preview before the "click a section" hint, e.g. which theme it uses. */
+  previewNote?: string
+  /** The height the editor fills (a length or `100%`); panels scroll inside it. */
   height?: string
 }
 
@@ -50,6 +52,7 @@ export function PageBuilder({
   services,
   formatPrice,
   toolbar,
+  previewNote,
   height = 'calc(100dvh - 9rem)',
 }: PageBuilderProps) {
   const { t, l } = useEditorText()
@@ -138,7 +141,12 @@ export function PageBuilder({
     )
 
   return (
-    <Grid templateColumns={{ base: '1fr', lg: '20rem 1fr' }} gap="4" h={{ lg: height }} minH="0">
+    <Grid
+      templateColumns={{ base: '1fr', lg: '20rem 1fr', '2xl': '24rem 1fr' }}
+      gap="4"
+      h={{ lg: height }}
+      minH="0"
+    >
       <Box
         borderWidth="1px"
         borderColor="border.subtle"
@@ -154,6 +162,7 @@ export function PageBuilder({
       <Flex direction="column" gap="3" minH="0" minW="0">
         <Flex justify="space-between" align="center" gap="3" wrap="wrap">
           <Text fontSize="xs" color="fg.muted">
+            {previewNote ? `${previewNote} ` : ''}
             {t('previewNote')}
           </Text>
           {toolbar}

@@ -11,20 +11,24 @@ import {
   Box,
   Button,
   Collapsible,
+  createListCollection,
   Field,
+  FileUpload,
   HStack,
   Icon,
   IconButton,
   Image,
   Input,
-  NativeSelect,
+  NumberInput,
+  Portal,
+  Select,
   Spinner,
   Stack,
   Switch,
   Text,
   Textarea,
 } from '@chakra-ui/react'
-import { useRef, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   LuArrowDown,
   LuArrowUp,
@@ -72,29 +76,98 @@ export function Labeled({
   )
 }
 
+/**
+ * Chakra's `Select`, reduced to the one-value case every field here needs.
+ *
+ * `clearable` is for fields where "nothing picked" is a real answer (a
+ * collection picker whose empty value means "the first collection"): the
+ * placeholder names that answer, and a clear button returns to it.
+ */
 export function SelectInput({
   value,
   onChange,
   options,
   placeholder,
+  clearable = false,
+  size = 'sm',
+  portalled = true,
 }: {
   value: string
   onChange: (value: string) => void
   options: ReadonlyArray<{ value: string; label: string }>
   placeholder?: string
+  clearable?: boolean
+  size?: 'xs' | 'sm' | 'md'
+  /** `false` inside a dialog, where a portalled list would open behind it. */
+  portalled?: boolean
+}) {
+  const collection = useMemo(
+    () => createListCollection({ items: options.map(({ value, label }) => ({ value, label })) }),
+    [options],
+  )
+
+  return (
+    <Select.Root
+      collection={collection}
+      size={size}
+      value={value ? [value] : []}
+      onValueChange={({ value: next }) => onChange(next[0] ?? '')}
+      positioning={{ sameWidth: true }}
+    >
+      <Select.HiddenSelect />
+      <Select.Control>
+        <Select.Trigger>
+          <Select.ValueText placeholder={placeholder} />
+        </Select.Trigger>
+        <Select.IndicatorGroup>
+          {clearable && value && <Select.ClearTrigger />}
+          <Select.Indicator />
+        </Select.IndicatorGroup>
+      </Select.Control>
+      <Portal disabled={!portalled}>
+        <Select.Positioner>
+          <Select.Content>
+            {collection.items.map((item) => (
+              <Select.Item item={item} key={item.value}>
+                {item.label}
+                <Select.ItemIndicator />
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Positioner>
+      </Portal>
+    </Select.Root>
+  )
+}
+
+/** Chakra's `NumberInput`, clamped to the field's range. */
+export function NumberControl({
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+}: {
+  value: number
+  onChange: (value: number) => void
+  min: number
+  max: number
+  step?: number
 }) {
   return (
-    <NativeSelect.Root size="sm">
-      <NativeSelect.Field value={value} onChange={(event) => onChange(event.currentTarget.value)}>
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </NativeSelect.Field>
-      <NativeSelect.Indicator />
-    </NativeSelect.Root>
+    <NumberInput.Root
+      size="sm"
+      value={String(value)}
+      min={min}
+      max={max}
+      step={step}
+      onValueChange={({ valueAsNumber }) => {
+        if (Number.isFinite(valueAsNumber)) onChange(Math.min(max, Math.max(min, valueAsNumber)))
+      }}
+    >
+      <NumberInput.Control />
+      <NumberInput.Input />
+    </NumberInput.Root>
   )
 }
 
@@ -112,9 +185,11 @@ function ImageControl({
   services: EditorServices
 }) {
   const { t } = useEditorText()
-  const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Bumped after every upload so the picker forgets the file it just took and
+  // accepts the next one, rather than refusing it as one file too many.
+  const [attempt, setAttempt] = useState(0)
   const src = value ? services.imageUrl(value, { width: 480, height: 320 }) : null
 
   async function upload(file: File) {
@@ -126,6 +201,7 @@ function ImageControl({
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setBusy(false)
+      setAttempt((n) => n + 1)
     }
   }
 
@@ -153,10 +229,25 @@ function ImageControl({
         )}
       </Box>
       <HStack gap="2">
-        <Button size="xs" variant="outline" onClick={() => input.current?.click()} disabled={busy}>
-          <Icon as={LuImagePlus} />
-          {busy ? t('uploading') : value ? t('replace') : t('upload')}
-        </Button>
+        <FileUpload.Root
+          key={attempt}
+          accept="image/*"
+          maxFiles={1}
+          disabled={busy}
+          w="auto"
+          onFileAccept={({ files }) => {
+            const [file] = files
+            if (file) void upload(file)
+          }}
+        >
+          <FileUpload.HiddenInput />
+          <FileUpload.Trigger asChild>
+            <Button size="xs" variant="outline" loading={busy} loadingText={t('uploading')}>
+              <Icon as={LuImagePlus} />
+              {value ? t('replace') : t('upload')}
+            </Button>
+          </FileUpload.Trigger>
+        </FileUpload.Root>
         {value && (
           <Button size="xs" variant="ghost" colorPalette="danger" onClick={() => onChange('')}>
             {t('remove')}
@@ -168,17 +259,6 @@ function ImageControl({
           {error}
         </Text>
       )}
-      <input
-        ref={input}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0]
-          event.currentTarget.value = ''
-          if (file) void upload(file)
-        }}
-      />
     </Stack>
   )
 }
@@ -250,6 +330,7 @@ function LinkControl({
         <SelectInput
           value={link.slug}
           placeholder={t('choose')}
+          clearable
           onChange={(slug) => onChange({ ...link, slug })}
           options={slugOptions.map((option) => ({ value: option.slug, label: option.name }))}
         />
@@ -449,17 +530,12 @@ function FieldControl({
     case 'number':
       return (
         <Labeled label={label} help={help}>
-          <Input
-            size="sm"
-            type="number"
+          <NumberControl
+            value={typeof value === 'number' ? value : field.default}
             min={field.min}
             max={field.max}
-            step={field.step ?? 1}
-            value={typeof value === 'number' ? value : field.default}
-            onChange={(event) => {
-              const next = event.currentTarget.valueAsNumber
-              if (Number.isFinite(next)) onChange(Math.min(field.max, Math.max(field.min, next)))
-            }}
+            step={field.step}
+            onChange={onChange}
           />
         </Labeled>
       )
@@ -515,6 +591,7 @@ function FieldControl({
             value={typeof value === 'string' ? value : ''}
             onChange={onChange}
             placeholder={field.emptyLabel ? l(field.emptyLabel) : t('choose')}
+            clearable
             options={options.map((option) => ({ value: option.id, label: option.name }))}
           />
         </Labeled>

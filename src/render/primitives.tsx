@@ -12,66 +12,70 @@ import {
   Button,
   Card,
   Heading,
+  Link as ChakraLink,
   SimpleGrid,
   Stack,
   Text,
   type BoxProps,
+  type LinkProps,
 } from '@chakra-ui/react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 
 import { ImageWithFallback } from '@repo/theme'
 
 import type { Link } from '../model/links'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 
-/** An anchor that does not navigate in a preview. */
+/** The anchor props a link needs: where it goes, and whether it opens a new tab. */
+function useAnchor(link: Link) {
+  const { href, mode } = useRenderEnvironment()
+  const url = href(link)
+  if (!url) return null
+  return {
+    href: url,
+    ...(link.kind === 'url' ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+    // A preview shows where a link goes without going there.
+    onClick:
+      mode === 'preview' ? (event: MouseEvent<HTMLElement>) => event.preventDefault() : undefined,
+  }
+}
+
+/** Chakra's `Link`, unstyled so it takes on whatever it wraps; a plain box when there is no link. */
 export function SmartLink({
   link,
   children,
   ...props
-}: { link: Link; children: ReactNode } & Omit<BoxProps, 'as'>) {
-  const { href, mode } = useRenderEnvironment()
-  const url = href(link)
-  if (!url) return <Box {...props}>{children}</Box>
-
-  const external = link.kind === 'url'
+}: { link: Link; children: ReactNode } & Omit<LinkProps, 'href' | 'onClick'>) {
+  const anchor = useAnchor(link)
+  if (!anchor) return <Box {...(props as BoxProps)}>{children}</Box>
   return (
-    <Box
-      asChild
-      {...props}
-      onClick={mode === 'preview' ? (event) => event.preventDefault() : undefined}
-    >
-      <a href={url} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-        {children}
-      </a>
-    </Box>
+    <ChakraLink unstyled {...props} {...anchor}>
+      {children}
+    </ChakraLink>
   )
 }
 
 export function ThemeButton({ label, link }: { label: string; link: Link }) {
-  const { settings, href, mode } = useRenderEnvironment()
-  const url = href(link)
+  const { settings } = useRenderEnvironment()
+  const anchor = useAnchor(link)
   if (!label) return null
 
   const variant = settings.buttonStyle === 'outline' ? 'outline' : 'solid'
   const rounded = settings.buttonStyle === 'pill' ? 'full' : 'l2'
 
-  const button = (
-    <Button colorPalette="brand" variant={variant} rounded={rounded} size="lg" alignSelf="start">
-      {label}
-    </Button>
-  )
-  if (!url) return button
+  if (!anchor) {
+    return (
+      <Button colorPalette="brand" variant={variant} rounded={rounded} size="lg" alignSelf="start">
+        {label}
+      </Button>
+    )
+  }
 
   return (
     <Button asChild colorPalette="brand" variant={variant} rounded={rounded} size="lg">
-      <a
-        href={url}
-        onClick={mode === 'preview' ? (event) => event.preventDefault() : undefined}
-        {...(link.kind === 'url' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      >
+      <ChakraLink unstyled {...anchor}>
         {label}
-      </a>
+      </ChakraLink>
     </Button>
   )
 }

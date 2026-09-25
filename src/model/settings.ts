@@ -280,21 +280,49 @@ const RADII: Record<RadiusOption, [string, string, string]> = {
  * would leave every semantic token still pointing at the root's orange.
  */
 export function themeCssVars(settings: ThemeSettings): Record<string, string> {
+  const { always, surfaces } = themeCssVarGroups(settings)
+  return { ...always, ...surfaces }
+}
+
+/**
+ * The same variables, split by whether they hold in dark mode.
+ *
+ * `always` is the brand ramp, the solid brand colours, fonts and radii — true
+ * whichever mode the shopper picked. `surfaces` is every colour derived from
+ * the theme's background and text; a theme is designed in light, so those
+ * apply only in light mode and dark mode keeps Chakra's own dark surfaces.
+ */
+export function themeCssVarGroups(settings: ThemeSettings): {
+  always: Record<string, string>
+  surfaces: Record<string, string>
+} {
   const { brand, background, text } = settings.colors
   const ramp = brandRamp(brand)
   const [l1, l2, l3] = RADII[settings.radius]
 
-  const vars: Record<string, string> = {}
-  for (const shade of BRAND_SHADES) vars[`--chakra-colors-brand-${shade}`] = ramp[shade]
+  const always: Record<string, string> = {}
+  for (const shade of BRAND_SHADES) always[`--chakra-colors-brand-${shade}`] = ramp[shade]
 
-  Object.assign(vars, {
+  Object.assign(always, {
     '--chakra-colors-brand-solid': brand,
     '--chakra-colors-brand-contrast': readableOn(brand),
+    '--chakra-colors-brand-emphasized': ramp[600],
+    '--chakra-colors-brand-focus-ring': brand,
+
+    '--chakra-fonts-heading': fontStack(settings.fonts.heading),
+    '--chakra-fonts-body': fontStack(settings.fonts.body),
+
+    '--chakra-radii-l1': l1,
+    '--chakra-radii-l2': l2,
+    '--chakra-radii-l3': l3,
+
+    '--pb-accent': settings.colors.accent,
+  })
+
+  const surfaces: Record<string, string> = {
     '--chakra-colors-brand-fg': contrastRatio(brand, background) >= 3 ? brand : ramp[700],
     '--chakra-colors-brand-muted': mix(brand, background, 0.75),
     '--chakra-colors-brand-subtle': mix(brand, background, 0.88),
-    '--chakra-colors-brand-emphasized': ramp[600],
-    '--chakra-colors-brand-focus-ring': brand,
 
     '--chakra-colors-bg': background,
     '--chakra-colors-bg-subtle': mix(background, text, 0.04),
@@ -308,24 +336,51 @@ export function themeCssVars(settings: ThemeSettings): Record<string, string> {
 
     '--chakra-colors-border': mix(text, background, 0.78),
     '--chakra-colors-border-subtle': mix(text, background, 0.88),
+  }
 
-    '--chakra-fonts-heading': fontStack(settings.fonts.heading),
-    '--chakra-fonts-body': fontStack(settings.fonts.body),
-
-    '--chakra-radii-l1': l1,
-    '--chakra-radii-l2': l2,
-    '--chakra-radii-l3': l3,
-
-    '--pb-accent': settings.colors.accent,
-  })
-
-  return vars
+  return { always, surfaces }
 }
 
-/** The same variables as a CSS declaration block, for a `<style>` tag. */
-export function themeCssText(selector: string, settings: ThemeSettings): string {
-  const body = Object.entries(themeCssVars(settings))
+function declarations(vars: Record<string, string>): string {
+  return Object.entries(vars)
     .map(([name, value]) => `${name}:${value};`)
     .join('')
-  return `${selector}{${body}}`
+}
+
+/**
+ * A whole document's theme, as the text of a `<style>` tag.
+ *
+ * Unlayered on purpose: Chakra declares its tokens inside `@layer tokens`, and
+ * an unlayered rule beats a layered one whatever its specificity, so these
+ * win without `!important`. Light-mode surfaces are keyed off the `dark` class
+ * the colour-mode provider puts on `<html>`.
+ *
+ * Every value comes out of `sanitizeThemeSettings` — hex colours, fonts from a
+ * fixed list, radii from a fixed table — so the text is safe to inline.
+ */
+export function themeStylesheet(settings: ThemeSettings): string {
+  const { always, surfaces } = themeCssVarGroups(settings)
+  const dark = { '--chakra-colors-brand-fg': darkModeBrandFg(settings.colors.brand) }
+  return (
+    `:root{${declarations(always)}}` +
+    `html:not(.dark){${declarations(surfaces)}}` +
+    `html.dark{${declarations(dark)}}`
+  )
+}
+
+/** The platform's dark page background (`surface.900`), which dark mode keeps. */
+const DARK_BACKGROUND = '#140c0c'
+
+/**
+ * Brand-coloured text in dark mode: the brand colour itself when it reads on a
+ * dark page, otherwise the first lighter shade of it that does. A theme with a
+ * near-black brand colour — Minimal's charcoal — would otherwise write its
+ * links in charcoal on black.
+ */
+export function darkModeBrandFg(brand: string): string {
+  const ramp = brandRamp(brand)
+  for (const shade of [500, 400, 300, 200, 100, 50] as const) {
+    if (contrastRatio(ramp[shade], DARK_BACKGROUND) >= MIN_CONTRAST) return ramp[shade]
+  }
+  return ramp[50]
 }
