@@ -24,6 +24,7 @@ import type { MouseEvent, ReactNode } from 'react'
 import { ImageWithFallback } from '@repo/theme'
 
 import type { Link } from '../model/links'
+import type { ButtonStyle, CardStyle } from '../model/settings'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 
 /** The anchor props a link needs: where it goes, and whether it opens a new tab. */
@@ -61,13 +62,39 @@ export function SmartLink({
  * surrounding `Stack`). A container that leaves the default `stretch` gets a
  * full-width button whether or not a link is chosen.
  */
+/**
+ * What a theme's button style means for a primary button. Shared with the
+ * storefront's own pages (checkout, order status), so a theme's buttons look
+ * the same inside page-builder sections and out of them.
+ */
+export function buttonLook(style: ButtonStyle): {
+  variant: 'solid' | 'outline'
+  rounded: 'full' | 'l2'
+} {
+  return {
+    variant: style === 'outline' ? 'outline' : 'solid',
+    rounded: style === 'pill' ? 'full' : 'l2',
+  }
+}
+
+/** What a theme's card style means for a card's frame. Shared like `buttonLook`. */
+export function cardFrame(style: CardStyle): BoxProps {
+  switch (style) {
+    case 'shadow':
+      return { borderWidth: '0', shadow: 'md' }
+    case 'flat':
+      return { borderWidth: '0', shadow: 'none', bg: 'transparent' }
+    case 'border':
+      return { borderWidth: '1px', borderColor: 'border.subtle' }
+  }
+}
+
 export function ThemeButton({ label, link }: { label: string; link: Link }) {
   const { settings } = useRenderEnvironment()
   const anchor = useAnchor(link)
   if (!label) return null
 
-  const variant = settings.buttonStyle === 'outline' ? 'outline' : 'solid'
-  const rounded = settings.buttonStyle === 'pill' ? 'full' : 'l2'
+  const { variant, rounded } = buttonLook(settings.buttonStyle)
 
   if (!anchor) {
     return (
@@ -159,14 +186,7 @@ export function EmptyNotice({ children }: { children: ReactNode }) {
 /** A card's frame under the theme's card style; `flat` drops the frame entirely. */
 export function useCardStyle(): { frame: BoxProps; flat: boolean } {
   const { settings } = useRenderEnvironment()
-  switch (settings.cardStyle) {
-    case 'shadow':
-      return { frame: { borderWidth: '0', shadow: 'md' }, flat: false }
-    case 'flat':
-      return { frame: { borderWidth: '0', shadow: 'none', bg: 'transparent' }, flat: true }
-    case 'border':
-      return { frame: { borderWidth: '1px', borderColor: 'border.subtle' }, flat: false }
-  }
+  return { frame: cardFrame(settings.cardStyle), flat: settings.cardStyle === 'flat' }
 }
 
 export function ProductCard({ product }: { product: StorefrontProductCard }) {
