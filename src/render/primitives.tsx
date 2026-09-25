@@ -29,15 +29,24 @@ import { useRenderEnvironment, type StorefrontProductCard } from './context'
 
 /** The anchor props a link needs: where it goes, and whether it opens a new tab. */
 function useAnchor(link: Link) {
-  const { href, mode } = useRenderEnvironment()
+  const { href, mode, navigate } = useRenderEnvironment()
   const url = href(link)
   if (!url) return null
+  const external = link.kind === 'url'
   return {
     href: url,
-    ...(link.kind === 'url' ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
-    // A preview shows where a link goes without going there.
-    onClick:
-      mode === 'preview' ? (event: MouseEvent<HTMLElement>) => event.preventDefault() : undefined,
+    ...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+    onClick: (event: MouseEvent<HTMLElement>) => {
+      // A preview shows where a link goes without going there.
+      if (mode === 'preview') return event.preventDefault()
+      // Inside the shop, hand the click to the host's router instead of
+      // reloading the whole document. Modified clicks (new tab, new window)
+      // keep the browser's own behaviour.
+      if (external || !navigate || event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      event.preventDefault()
+      navigate(url)
+    },
   }
 }
 

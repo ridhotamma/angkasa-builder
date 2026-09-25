@@ -315,6 +315,9 @@ export function themeCssVarGroups(settings: ThemeSettings): {
     '--chakra-radii-l1': l1,
     '--chakra-radii-l2': l2,
     '--chakra-radii-l3': l3,
+    // Every button's shape, read by the shared button recipe. Mirrors
+    // `buttonLook`: a capsule for `pill`, the theme's button corner otherwise.
+    '--button-radius': settings.buttonStyle === 'pill' ? '9999px' : l2,
 
     '--pb-accent': settings.colors.accent,
   })

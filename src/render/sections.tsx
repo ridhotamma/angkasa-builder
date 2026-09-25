@@ -24,11 +24,12 @@ import {
   Image,
   Marquee,
   SimpleGrid,
+  Skeleton,
   Stack,
   Text,
   useBreakpointValue,
 } from '@chakra-ui/react'
-import type { ComponentType, ReactNode } from 'react'
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
@@ -202,13 +203,23 @@ const OVERLAY_ARROW = {
  * Keep this on the same default `Carousel` setup as the testimonial slider.
  * Centring the active slide needs padding at both ends, which a finite row
  * shows as blank space, and Zag's snapping did not hold a centred position.
+ *
+ * Until the page has hydrated and every slide's image has settled, a skeleton
+ * of the same shape stands in. The server-rendered carousel was visible long
+ * before its script ran, so on a slow connection it sat there ignoring swipes
+ * and arrow clicks, then jumped from one slide per page to `perPage` when
+ * `useBreakpointValue` finally saw the real viewport.
  */
 function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
+  const { imageUrl } = useRenderEnvironment()
   const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
   const desktop = Number(readText(settings, 'perPage')) || 2
   const perPage = Math.min(useBreakpointValue({ base: 1, md: desktop }) ?? 1, slides.length)
   const ratio = ratioValue(readText(settings, 'ratio'))
+  const ready = useImagesSettled(
+    slides.length > 1 ? slides.map((slide) => bannerImageUrl(imageUrl, slide)) : [],
+  )
 
   if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
   if (slides.length === 1) {
@@ -216,6 +227,27 @@ function BannerSlider({ settings }: SectionProps) {
       <Box as="section">
         <BannerSlide slide={slides[0]!} ratio={ratio} eager />
       </Box>
+    )
+  }
+
+  if (!ready) {
+    const columns = Math.min(desktop, slides.length)
+    return (
+      <Grid
+        as="section"
+        aria-busy
+        templateColumns={{ base: '1fr', md: `repeat(${columns}, minmax(0, 1fr))` }}
+        gap="12px"
+        // Room for the dots the real slider will have, so nothing below moves
+        // when it swaps in: gap `3` plus a `2.5` indicator.
+        pb={{ base: '22px', md: slides.length > desktop ? '22px' : '0' }}
+      >
+        {Array.from({ length: columns }, (_, index) => (
+          <AspectRatio key={index} ratio={ratio} hideBelow={index > 0 ? 'md' : undefined}>
+            <Skeleton rounded="l3" />
+          </AspectRatio>
+        ))}
+      </Grid>
     )
   }
 
@@ -278,7 +310,7 @@ function BannerSlide({
     <SmartLink link={readLink(slide, 'link')} display="block" draggable={false}>
       <AspectRatio ratio={ratio} rounded="l3" overflow="hidden" bg="bg.subtle">
         <ImageWithFallback
-          src={imageUrl(readText(slide, 'image'), { width: 1200, height: 800 }) ?? undefined}
+          src={bannerImageUrl(imageUrl, slide) ?? undefined}
           alt={readText(slide, 'alt')}
           objectFit="cover"
           loading={eager ? 'eager' : 'lazy'}
@@ -288,6 +320,56 @@ function BannerSlide({
       </AspectRatio>
     </SmartLink>
   )
+}
+
+/** One URL per slide, shared by the preload and the `<img>` so the second hits the cache. */
+function bannerImageUrl(
+  imageUrl: ReturnType<typeof useRenderEnvironment>['imageUrl'],
+  slide: FieldValues,
+): string | null {
+  return imageUrl(readText(slide, 'image'), { width: 1200, height: 800 }) ?? null
+}
+
+/** Longest the slider waits on its images before showing anyway. */
+const IMAGE_SETTLE_TIMEOUT_MS = 10_000
+
+/**
+ * `true` once the page has hydrated and every URL has loaded or failed.
+ *
+ * `false` on the server and on the first client render — an effect is what
+ * says the script is running. Once `true` it stays `true`: adding a slide in
+ * the editor should not blank the whole slider while one more image loads.
+ * A failed image counts as settled, since `ImageWithFallback` has a
+ * placeholder for it, and the timeout keeps one stalled request from hiding
+ * the slider indefinitely.
+ */
+function useImagesSettled(urls: (string | null)[]): boolean {
+  const [settled, setSettled] = useState(false)
+  const key = urls.filter(Boolean).join('\n')
+
+  useEffect(() => {
+    if (settled) return
+    let cancelled = false
+    const pending = key
+      ? key.split('\n').map(
+          (url) =>
+            new Promise<void>((resolve) => {
+              const image = new window.Image()
+              image.onload = image.onerror = () => resolve()
+              image.src = url
+            }),
+        )
+      : []
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, IMAGE_SETTLE_TIMEOUT_MS))
+    void Promise.race([Promise.all(pending), timeout]).then(() => {
+      if (!cancelled) setSettled(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [key, settled])
+
+  return settled
 }
 
 /** `'16/9'` as the number `AspectRatio` wants. */
@@ -333,7 +415,22 @@ function ShopIntro({ settings }: SectionProps) {
             {...(hasBand && { borderWidth: '4px', borderColor: 'bg', shadow: 'md' })}
           >
             <Avatar.Fallback name={shop.name} />
-            {shop.logoUrl && <Avatar.Image src={shop.logoUrl} alt="" objectFit="cover" />}
+            {/* A plain image over the initials rather than `Avatar.Image`,
+                which stays hidden until its script runs — on a slow
+                connection that is seconds of initials on every page load,
+                even with the logo already in the browser's cache. */}
+            {shop.logoUrl && (
+              <ImageWithFallback
+                src={shop.logoUrl}
+                alt=""
+                fallback={false}
+                position="absolute"
+                inset="0"
+                boxSize="full"
+                objectFit="cover"
+                rounded="inherit"
+              />
+            )}
           </Avatar.Root>
         )}
         <Heading as="h1" size={{ base: 'xl', md: '2xl' }} letterSpacing="-0.02em">

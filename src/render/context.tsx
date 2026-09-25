@@ -67,6 +67,12 @@ export interface RenderEnvironment {
   formatPrice: (amount: number, currency: string) => string
   /** A link as a URL. Defaults to the storefront's own route shapes. */
   href?: (link: Link) => string | null
+  /**
+   * Follows an internal link without a document load, through the host's
+   * router. Without it, links are plain anchors and every click reloads the
+   * page — header, fonts and all.
+   */
+  navigate?: (href: string) => void
 }
 
 const RenderContext = createContext<RenderEnvironment | null>(null)
