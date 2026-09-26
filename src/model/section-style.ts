@@ -85,8 +85,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'showFrom',
     label: { en: 'Show from', id: 'Tampil mulai' },
     help: {
-      en: 'Optional. The section appears on the storefront from this moment.',
-      id: 'Opsional. Bagian ini muncul di etalase mulai saat ini.',
+      en: 'Optional. Appears from this time.',
+      id: 'Opsional. Muncul mulai waktu ini.',
     },
   },
   {
@@ -94,8 +94,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'showUntil',
     label: { en: 'Show until', id: 'Tampil sampai' },
     help: {
-      en: 'Optional. The section disappears after this moment — handy for a campaign.',
-      id: 'Opsional. Bagian ini hilang setelah saat ini — cocok untuk kampanye.',
+      en: 'Optional. Disappears after this time.',
+      id: 'Opsional. Hilang setelah waktu ini.',
     },
   },
 ]

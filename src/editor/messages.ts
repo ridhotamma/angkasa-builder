@@ -142,9 +142,11 @@ const MESSAGES = {
   tableColumnLabel: { en: 'Column', id: 'Kolom' },
   tableRowLabel: { en: 'Row', id: 'Baris' },
   tableColumnName: { en: 'Column name', id: 'Nama kolom' },
+  tableColumnActions: { en: 'Column actions', id: 'Aksi kolom' },
+  tableRowActions: { en: 'Row actions', id: 'Aksi baris' },
   tableHint: {
-    en: 'Click a cell to move or delete its row and column (or Alt + arrow keys). Paste cells from a spreadsheet into any cell.',
-    id: 'Klik sel untuk memindah atau menghapus baris dan kolomnya (atau Alt + tombol panah). Tempel sel dari spreadsheet ke sel mana pun.',
+    en: 'Click a cell, then use the grip above its column or beside its row to move or delete it (or Alt + arrow keys). Paste cells from a spreadsheet into any cell.',
+    id: 'Klik sel, lalu gunakan pegangan di atas kolom atau di samping barisnya untuk memindah atau menghapus (atau Alt + tombol panah). Tempel sel dari spreadsheet ke sel mana pun.',
   },
   addBlock: { en: 'Add block', id: 'Tambah blok' },
 

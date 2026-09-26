@@ -2,12 +2,14 @@
  * A small spreadsheet: a header row and body rows of short text cells — a
  * size chart, a comparison table.
  *
- * Click a cell and a toolbar floats beside it with that cell's column and row
- * actions: move left or right, move up or down, delete. The cell's row and
- * column are tinted so it is plain what the buttons act on, and hovering a
- * delete tints what would go. Alt + an arrow key moves the row or column from
- * the keyboard. The header row is the table's column names, so it is never
- * moved or deleted as a row.
+ * Focus a cell and grips appear at the table's edges: above its column and
+ * beside its row, in gutters that hold no cells, so nothing is covered (the
+ * pattern Notion, Google Docs and Airtable use). They follow the cell being
+ * typed in, not the pointer, so the table stays still while it is read. A grip opens that column's or
+ * row's actions: move, or delete. The cell's row and column are tinted so it
+ * is plain what a grip acts on, and pointing at a delete tints what would go.
+ * Alt + an arrow key moves the row or column from the keyboard. The header row
+ * is the table's column names, so it has no row grip.
  *
  * Pasting a block copied from a spreadsheet into any cell fills the grid from
  * there — the usual way a size chart arrives.
@@ -20,12 +22,23 @@ import {
   HStack,
   IconButton,
   Input,
+  Menu,
+  Portal,
   ScrollArea,
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { LuArrowDown, LuArrowLeft, LuArrowRight, LuArrowUp, LuPlus, LuTrash2 } from 'react-icons/lu'
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  LuArrowDown,
+  LuArrowLeft,
+  LuArrowRight,
+  LuArrowUp,
+  LuGripHorizontal,
+  LuGripVertical,
+  LuPlus,
+  LuTrash2,
+} from 'react-icons/lu'
 
 import { Tooltip } from '@repo/theme'
 
@@ -84,9 +97,13 @@ export function removeTableRow(table: TableValue, row: number): TableValue {
 /* Control                                                                    */
 /* -------------------------------------------------------------------------- */
 
-type Emphasis = 'row' | 'column' | 'remove-row' | 'remove-column' | null
+/** What the tint shows beyond the active row and column: what a delete would take. */
+type Emphasis = 'remove-row' | 'remove-column' | null
 
 const keyOf = ({ row, column }: TableCell) => `${row}:${column}`
+
+/** The gutters that hold the grips, beside and above the cells. */
+const GUTTER = '1.25rem'
 
 export function TableControl({
   value,
@@ -103,76 +120,68 @@ export function TableControl({
   const { columns, rows } = value
 
   const [active, setActive] = useState<TableCell | null>(null)
+  // The grip whose menu is open. Its menu takes focus out of the table (into a
+  // portal, past a dialog's focus trap), so nothing about the grips may hang
+  // on the focused cell — every grip stays mounted, and only its visibility
+  // follows the active cell, the pointer, and this.
+  const [menu, setMenu] = useState<{ kind: 'row' | 'column'; index: number } | null>(null)
   const [emphasis, setEmphasis] = useState<Emphasis>(null)
   const container = useRef<HTMLDivElement>(null)
   const inputs = useRef(new Map<string, HTMLInputElement>())
-  const cells = useRef(new Map<string, HTMLDivElement>())
-  const [toolbarAt, setToolbarAt] = useState<{
-    top: number
-    /** From the left edge, or — for a cell in the right half — from the right. */
-    left?: number
-    right?: number
-    below: boolean
-  } | null>(null)
+  // The last cell typed in, for where the caret lands after a menu action.
+  const lastCell = useRef<TableCell | null>(null)
 
   // A move or delete can leave the active cell elsewhere, or gone.
   const current =
     active && active.column < columns.length && active.row < rows.length ? active : null
+  if (current) lastCell.current = current
 
-  // Keep the toolbar beside the active cell, and the caret in it after a move.
+  // After a move, the caret follows the cell it was in.
   useLayoutEffect(() => {
-    if (!current) {
-      setToolbarAt(null)
-      return
-    }
-    const cell = cells.current.get(keyOf(current))
-    const box = container.current
-    if (!cell || !box) return
+    if (!current) return
     const input = inputs.current.get(keyOf(current))
-    if (input && document.activeElement !== input && box.contains(document.activeElement)) {
+    const box = container.current
+    if (input && box && document.activeElement !== input && box.contains(document.activeElement)) {
       input.focus()
     }
-    // Above the cell, or below it for the header row, which has nothing above.
-    // Lined up with the cell's near edge, so it never runs off the table.
-    const below = current.row < 0
-    const rightHalf = cell.offsetLeft + cell.offsetWidth / 2 > box.clientWidth / 2
-    setToolbarAt({
-      top: below ? cell.offsetTop + cell.offsetHeight + 4 : cell.offsetTop - 4,
-      ...(rightHalf
-        ? { right: box.clientWidth - cell.offsetLeft - cell.offsetWidth }
-        : { left: cell.offsetLeft }),
-      below,
-    })
-  }, [current?.row, current?.column, columns.length, rows.length])
+  }, [current?.row, current?.column])
 
   function apply(next: TableValue, focus: TableCell | null) {
     onChange(next)
     setActive(focus)
     setEmphasis(null)
+    if (!focus) return
+    // Back into the moved cell once the menu has closed and handed focus back
+    // to its grip.
+    requestAnimationFrame(() => setTimeout(() => inputs.current.get(keyOf(focus))?.focus(), 0))
   }
 
-  const moveColumn = (by: number) =>
-    current &&
-    apply(moveTableColumn(value, current.column, by), { ...current, column: current.column + by })
-  const moveRow = (by: number) =>
-    current && apply(moveTableRow(value, current.row, by), { ...current, row: current.row + by })
-  const removeColumn = () =>
-    current &&
-    apply(removeTableColumn(value, current.column), {
-      ...current,
-      column: Math.min(current.column, columns.length - 2),
+  const moveColumn = (column: number, by: number) =>
+    apply(moveTableColumn(value, column, by), {
+      row: lastCell.current?.row ?? -1,
+      column: column + by,
     })
-  const removeRow = () =>
-    current &&
+  const moveRow = (row: number, by: number) =>
+    apply(moveTableRow(value, row, by), { row: row + by, column: lastCell.current?.column ?? 0 })
+  const removeColumn = (column: number) =>
+    apply(removeTableColumn(value, column), {
+      row: lastCell.current?.row ?? -1,
+      column: Math.max(0, Math.min(column, columns.length - 2)),
+    })
+  const removeRow = (row: number) =>
     apply(
-      removeTableRow(value, current.row),
-      rows.length > 1 ? { ...current, row: Math.min(current.row, rows.length - 2) } : null,
+      removeTableRow(value, row),
+      rows.length > 1
+        ? { row: Math.min(row, rows.length - 2), column: lastCell.current?.column ?? 0 }
+        : null,
     )
 
-  const canMoveLeft = Boolean(current && current.column > 0)
-  const canMoveRight = Boolean(current && current.column < columns.length - 1)
-  const canMoveUp = Boolean(current && current.row > 0)
-  const canMoveDown = Boolean(current && current.row >= 0 && current.row < rows.length - 1)
+  // A grip shows for the focused cell's column and row, and while its menu
+  // is open (which takes focus out of the cell).
+  const columnGripShown = (column: number) =>
+    (menu?.kind === 'column' && menu.index === column) || current?.column === column
+  const rowGripShown = (row: number) =>
+    (menu?.kind === 'row' && menu.index === row) || current?.row === row
 
   const setCell = (row: number, column: number, text: string) => {
     if (row < 0) {
@@ -220,27 +229,34 @@ export function TableControl({
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (!event.altKey) return
-    const moves: Record<string, () => unknown> = {
-      ArrowLeft: () => canMoveLeft && moveColumn(-1),
-      ArrowRight: () => canMoveRight && moveColumn(1),
-      ArrowUp: () => canMoveUp && moveRow(-1),
-      ArrowDown: () => canMoveDown && moveRow(1),
+    if (!event.altKey || !current) return
+    const { row, column } = current
+    const moves: Record<string, (() => unknown) | false> = {
+      ArrowLeft: column > 0 && (() => moveColumn(column, -1)),
+      ArrowRight: column < columns.length - 1 && (() => moveColumn(column, 1)),
+      ArrowUp: row > 0 && (() => moveRow(row, -1)),
+      ArrowDown: row >= 0 && row < rows.length - 1 && (() => moveRow(row, 1)),
     }
-    const move = moves[event.key]
-    if (!move) return
+    if (!(event.key in moves)) return
     event.preventDefault()
-    move()
+    const move = moves[event.key]
+    if (move) move()
   }
 
-  /** How a cell is tinted: its row and column while active, red while about to go. */
+  /** A cell's tint: its row and column while active, red while about to go. */
   const tint = (row: number, column: number) => {
-    if (!current) return undefined
-    const inColumn = column === current.column
-    const inRow = row === current.row
+    // An open menu speaks for its own column or row only.
+    const target = menu
+      ? menu.kind === 'column'
+        ? { row: Number.NaN, column: menu.index }
+        : { row: menu.index, column: Number.NaN }
+      : current
+    if (!target) return undefined
+    const inColumn = column === target.column
+    const inRow = row >= 0 && row === target.row
     if (emphasis === 'remove-column' && inColumn) return 'danger.subtle'
     if (emphasis === 'remove-row' && inRow) return 'danger.subtle'
-    if (inColumn || (inRow && row >= 0)) return 'brand.subtle'
+    if (inColumn || inRow) return 'brand.subtle'
     return undefined
   }
 
@@ -248,17 +264,7 @@ export function TableControl({
     const key = keyOf({ row, column })
     const header = row < 0
     return (
-      <Box
-        key={key}
-        ref={(node: HTMLDivElement | null) => {
-          if (node) cells.current.set(key, node)
-          else cells.current.delete(key)
-        }}
-        rounded="sm"
-        p="0.5"
-        bg={tint(row, column)}
-        transition="background 120ms"
-      >
+      <Box key={key} rounded="sm" p="0.5" bg={tint(row, column)} transition="background 120ms">
         <Input
           ref={(node) => {
             if (node) inputs.current.set(key, node)
@@ -282,6 +288,14 @@ export function TableControl({
     )
   }
 
+  const gripMenu = (kind: 'row' | 'column', index: number) => ({
+    onOpenChange: (open: boolean) => {
+      setMenu(open ? { kind, index } : null)
+      if (!open) setEmphasis(null)
+    },
+    onEmphasis: setEmphasis,
+  })
+
   return (
     <Stack gap="2">
       <ScrollArea.Root size="xs">
@@ -289,109 +303,103 @@ export function TableControl({
           <ScrollArea.Content style={{ minWidth: 0 }}>
             <Box
               ref={container}
-              position="relative"
               onBlur={(event) => {
-                // Leaving the table closes the toolbar; moving between its
-                // cells or onto the toolbar does not.
+                // Leaving the table clears the active cell. The grips do not
+                // depend on it, so a menu taking focus away is harmless.
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                   setActive(null)
                   setEmphasis(null)
                 }
               }}
             >
+              {/* A gutter column for the row grips and a gutter row for the
+                  column grips: the grips sit beside the cells, never on them. */}
               <Grid
-                // Columns share the width; past 4.5rem each the table scrolls sideways.
-                templateColumns={`repeat(${columns.length}, minmax(0, 1fr))`}
+                templateColumns={`${GUTTER} repeat(${columns.length}, minmax(0, 1fr))`}
                 gap="0.5"
-                minW={`${columns.length * 4.5}rem`}
+                alignItems="center"
+                minW={`calc(${GUTTER} + ${columns.length * 4.5}rem)`}
               >
-                {columns.map((text, column) => cell(-1, column, text))}
-                {rows.map((cells, row) => cells.map((text, column) => cell(row, column, text)))}
-              </Grid>
+                <Box h={GUTTER} />
+                {columns.map((_, column) => (
+                  <Box key={`grip:${column}`} h={GUTTER} display="flex" justifyContent="center">
+                    <GripMenu
+                      {...gripMenu('column', column)}
+                      shown={columnGripShown(column)}
+                      kind="column"
+                      label={t('tableColumnActions')}
+                      actions={[
+                        {
+                          value: 'left',
+                          label: t('tableMoveLeft'),
+                          icon: <LuArrowLeft />,
+                          disabled: column === 0,
+                          onSelect: () => moveColumn(column, -1),
+                        },
+                        {
+                          value: 'right',
+                          label: t('tableMoveRight'),
+                          icon: <LuArrowRight />,
+                          disabled: column === columns.length - 1,
+                          onSelect: () => moveColumn(column, 1),
+                        },
+                        {
+                          value: 'delete',
+                          label: t('tableRemoveColumn'),
+                          icon: <LuTrash2 />,
+                          danger: true,
+                          disabled: columns.length <= 1,
+                          onSelect: () => removeColumn(column),
+                        },
+                      ]}
+                    />
+                  </Box>
+                ))}
 
-              {current && toolbarAt && (
-                <HStack
-                  position="absolute"
-                  zIndex="2"
-                  gap="0.5"
-                  p="0.5"
-                  rounded="md"
-                  bg="bg.panel"
-                  borderWidth="1px"
-                  borderColor="border"
-                  shadow="md"
-                  style={{
-                    top: toolbarAt.top,
-                    left: toolbarAt.left,
-                    right: toolbarAt.right,
-                    transform: toolbarAt.below ? undefined : 'translateY(-100%)',
-                  }}
-                  // The toolbar never takes focus from the cell: the caret
-                  // stays where the seller was typing.
-                  onMouseDown={(event) => event.preventDefault()}
-                >
-                  <ToolbarGroup
-                    label={t('tableColumnLabel')}
-                    onHover={(on) => setEmphasis(on ? 'column' : null)}
+                <Box />
+                {columns.map((text, column) => cell(-1, column, text))}
+
+                {rows.map((cells, row) => [
+                  <Box
+                    key={`grip:row:${row}`}
+                    display="flex"
+                    justifyContent="center"
+                    alignSelf="stretch"
+                    alignItems="center"
                   >
-                    <ToolButton
-                      label="tableMoveLeft"
-                      disabled={!canMoveLeft}
-                      onClick={() => moveColumn(-1)}
-                    >
-                      <LuArrowLeft />
-                    </ToolButton>
-                    <ToolButton
-                      label="tableMoveRight"
-                      disabled={!canMoveRight}
-                      onClick={() => moveColumn(1)}
-                    >
-                      <LuArrowRight />
-                    </ToolButton>
-                    <ToolButton
-                      label="tableRemoveColumn"
-                      danger
-                      disabled={columns.length <= 1}
-                      onClick={removeColumn}
-                      onHover={(on) => setEmphasis(on ? 'remove-column' : 'column')}
-                    >
-                      <LuTrash2 />
-                    </ToolButton>
-                  </ToolbarGroup>
-                  {current.row >= 0 && (
-                    <>
-                      <Box w="1px" h="5" bg="border" mx="0.5" />
-                      <ToolbarGroup
-                        label={t('tableRowLabel')}
-                        onHover={(on) => setEmphasis(on ? 'row' : null)}
-                      >
-                        <ToolButton
-                          label="moveUp"
-                          disabled={!canMoveUp}
-                          onClick={() => moveRow(-1)}
-                        >
-                          <LuArrowUp />
-                        </ToolButton>
-                        <ToolButton
-                          label="moveDown"
-                          disabled={!canMoveDown}
-                          onClick={() => moveRow(1)}
-                        >
-                          <LuArrowDown />
-                        </ToolButton>
-                        <ToolButton
-                          label="tableRemoveRow"
-                          danger
-                          onClick={removeRow}
-                          onHover={(on) => setEmphasis(on ? 'remove-row' : 'row')}
-                        >
-                          <LuTrash2 />
-                        </ToolButton>
-                      </ToolbarGroup>
-                    </>
-                  )}
-                </HStack>
-              )}
+                    <GripMenu
+                      {...gripMenu('row', row)}
+                      shown={rowGripShown(row)}
+                      kind="row"
+                      label={t('tableRowActions')}
+                      actions={[
+                        {
+                          value: 'up',
+                          label: t('moveUp'),
+                          icon: <LuArrowUp />,
+                          disabled: row === 0,
+                          onSelect: () => moveRow(row, -1),
+                        },
+                        {
+                          value: 'down',
+                          label: t('moveDown'),
+                          icon: <LuArrowDown />,
+                          disabled: row === rows.length - 1,
+                          onSelect: () => moveRow(row, 1),
+                        },
+                        {
+                          value: 'delete',
+                          label: t('tableRemoveRow'),
+                          icon: <LuTrash2 />,
+                          danger: true,
+                          onSelect: () => removeRow(row),
+                        },
+                      ]}
+                    />
+                  </Box>,
+                  ...cells.map((text, column) => cell(row, column, text)),
+                ])}
+              </Grid>
             </Box>
           </ScrollArea.Content>
         </ScrollArea.Viewport>
@@ -426,55 +434,89 @@ export function TableControl({
   )
 }
 
-function ToolbarGroup({
-  label,
-  onHover,
-  children,
-}: {
+interface GripAction {
+  value: string
   label: string
-  onHover: (on: boolean) => void
-  children: ReactNode
-}) {
-  return (
-    <HStack gap="0" onPointerEnter={() => onHover(true)} onPointerLeave={() => onHover(false)}>
-      <Text fontSize="2xs" fontWeight="medium" color="fg.muted" px="1.5" textTransform="uppercase">
-        {label}
-      </Text>
-      {children}
-    </HStack>
-  )
-}
-
-function ToolButton({
-  label,
-  danger,
-  disabled,
-  onClick,
-  onHover,
-  children,
-}: {
-  label: EditorMessage
+  icon: ReactNode
   danger?: boolean
   disabled?: boolean
-  onClick: () => void
-  onHover?: (on: boolean) => void
-  children: ReactNode
+  onSelect: () => void
+}
+
+/**
+ * The grip above a column or beside a row, opening its actions. Pointing at
+ * (or arrowing to) the delete item tints what it would remove.
+ */
+function GripMenu({
+  kind,
+  shown,
+  label,
+  actions,
+  onOpenChange,
+  onEmphasis,
+}: {
+  kind: 'row' | 'column'
+  /** Hidden grips stay mounted — a menu must never lose its anchor. */
+  shown: boolean
+  label: string
+  actions: GripAction[]
+  onOpenChange: (open: boolean) => void
+  onEmphasis: (emphasis: Emphasis) => void
 }) {
-  const { t } = useEditorText()
+  const removing: Emphasis = kind === 'column' ? 'remove-column' : 'remove-row'
+  // Shared by the menu and its tooltip, which wrap the same button.
+  const triggerId = useId()
   return (
-    <Tooltip content={t(label)} wrap>
-      <IconButton
-        aria-label={t(label)}
-        size="2xs"
-        variant="ghost"
-        colorPalette={danger ? 'danger' : 'gray'}
-        disabled={disabled}
-        onClick={onClick}
-        onPointerEnter={onHover ? () => onHover(true) : undefined}
-        onPointerLeave={onHover ? () => onHover(false) : undefined}
-      >
-        {children}
-      </IconButton>
-    </Tooltip>
+    <Menu.Root
+      ids={{ trigger: triggerId }}
+      positioning={{ placement: kind === 'column' ? 'bottom' : 'right-start' }}
+      onOpenChange={({ open }) => onOpenChange(open)}
+      onHighlightChange={({ highlightedValue }) =>
+        onEmphasis(
+          actions.find((action) => action.value === highlightedValue)?.danger ? removing : null,
+        )
+      }
+      onSelect={({ value }) => actions.find((action) => action.value === value)?.onSelect()}
+    >
+      <Tooltip content={label} triggerId={triggerId}>
+        <Menu.Trigger asChild>
+          <IconButton
+            aria-label={label}
+            size="2xs"
+            variant="subtle"
+            colorPalette="brand"
+            h={kind === 'column' ? '4' : '6'}
+            minW={kind === 'column' ? '6' : '4'}
+            px="0"
+            rounded="sm"
+            opacity={shown ? 1 : 0}
+            pointerEvents={shown ? 'auto' : 'none'}
+            tabIndex={shown ? 0 : -1}
+            aria-hidden={shown ? undefined : true}
+            transition="opacity 120ms"
+          >
+            {kind === 'column' ? <LuGripHorizontal /> : <LuGripVertical />}
+          </IconButton>
+        </Menu.Trigger>
+      </Tooltip>
+      <Portal>
+        <Menu.Positioner>
+          <Menu.Content minW="10rem">
+            {actions.map((action) => (
+              <Menu.Item
+                key={action.value}
+                value={action.value}
+                disabled={action.disabled}
+                color={action.danger ? 'fg.error' : undefined}
+                _highlighted={action.danger ? { bg: 'bg.error', color: 'fg.error' } : undefined}
+              >
+                {action.icon}
+                {action.label}
+              </Menu.Item>
+            ))}
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
   )
 }

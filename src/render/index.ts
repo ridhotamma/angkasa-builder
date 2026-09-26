@@ -41,3 +41,4 @@ export {
 } from './renderer'
 export { SECTION_RENDERERS } from './registry'
 export type { SectionProps } from './sections'
+export { ThemePreview, type ThemePreviewProps } from './theme-preview'

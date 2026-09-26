@@ -21,7 +21,7 @@ import {
 } from '@chakra-ui/react'
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useEffect, useState, type ComponentType } from 'react'
+import { useEffect, useId, useState, type ComponentType } from 'react'
 import {
   LuBold,
   LuHeading2,
@@ -242,6 +242,8 @@ function ToolButton({
 /** A link is typed into a small popover, and refused unless it is safe to follow. */
 function LinkButton({ editor, active }: { editor: Editor; active: boolean }) {
   const { t } = useEditorText()
+  // Shared by the popover and its tooltip, which wrap the same button.
+  const triggerId = useId()
   const [open, setOpen] = useState(false)
   const [href, setHref] = useState('')
   const [invalid, setInvalid] = useState(false)
@@ -263,6 +265,7 @@ function LinkButton({ editor, active }: { editor: Editor; active: boolean }) {
 
   return (
     <Popover.Root
+      ids={{ trigger: triggerId }}
       open={open}
       onOpenChange={({ open: next }) => {
         if (next) {
@@ -273,7 +276,7 @@ function LinkButton({ editor, active }: { editor: Editor; active: boolean }) {
       }}
       positioning={{ placement: 'bottom-start' }}
     >
-      <Tooltip content={t('link')}>
+      <Tooltip content={t('link')} triggerId={triggerId}>
         <Popover.Trigger asChild>
           <IconButton
             aria-label={t('link')}
