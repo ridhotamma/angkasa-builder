@@ -41,4 +41,9 @@ export {
 } from './renderer'
 export { SECTION_RENDERERS } from './registry'
 export type { SectionProps } from './sections'
-export { ThemePreview, type ThemePreviewProps } from './theme-preview'
+export {
+  SNAPSHOT_WIDTH,
+  TemplateSnapshotPage,
+  ThemePreview,
+  type ThemePreviewProps,
+} from './theme-preview'

@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./render": "./src/render/index.ts",
     "./editor": "./src/editor/index.ts",
+    "./snapshot": "./src/snapshot/index.ts",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -21,12 +22,14 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@emotion/cache": "^11.14.0",
+    "@emotion/server": "^11.11.0",
     "@repo/appwrite-config": "workspace:*",
     "@repo/i18n": "workspace:*",
     "@repo/theme": "workspace:*",
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
+    "puppeteer-core": "^25.12.0",
     "react-icons": "^5.7.0",
     "zod": "^4.6.2"
   },

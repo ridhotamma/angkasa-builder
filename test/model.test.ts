@@ -30,6 +30,7 @@ import {
   ContentTooLargeError,
   storefrontHref,
   THEME_PRESETS,
+  findPreset,
   themeCssVars,
 } from '../src/index'
 
@@ -153,11 +154,9 @@ describe('theme content', () => {
     expect(settings.radius).toBe('md')
   })
 
-  test('every preset survives its own sanitiser unchanged', () => {
-    for (const preset of THEME_PRESETS) {
-      const content = preset.content()
-      expect(sanitizeThemeContent(content)).toEqual(content)
-    }
+  test('the built-in library is empty — templates are designed from scratch', () => {
+    expect(THEME_PRESETS).toEqual([])
+    expect(findPreset('classic')).toBeNull()
   })
 
   test('refuses content past the column size', () => {

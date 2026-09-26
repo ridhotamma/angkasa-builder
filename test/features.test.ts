@@ -158,13 +158,11 @@ describe('section style', () => {
 
 describe('colour schemes', () => {
   test('automatic schemes are readable', () => {
-    for (const preset of THEME_PRESETS) {
-      const settings = preset.content().settings
-      expect(schemeContrastIssues(settings)).toEqual([])
-      for (const key of ['subtle', 'inverse', 'brand', 'accent'] as const) {
-        const scheme = resolveScheme(settings, key)
-        expect(scheme.background).toMatch(/^#[0-9a-f]{6}$/)
-      }
+    const settings = DEFAULT_THEME_SETTINGS
+    expect(schemeContrastIssues(settings)).toEqual([])
+    for (const key of ['subtle', 'inverse', 'brand', 'accent'] as const) {
+      const scheme = resolveScheme(settings, key)
+      expect(scheme.background).toMatch(/^#[0-9a-f]{6}$/)
     }
   })
 
@@ -257,15 +255,7 @@ describe('layout', () => {
 })
 
 describe('presets', () => {
-  test('every preset survives its own sanitiser unchanged in shape', () => {
-    for (const preset of THEME_PRESETS) {
-      const content = preset.content()
-      const again = sanitizeThemeContent(JSON.parse(JSON.stringify(content)))
-      expect(again.templates.home.map((s) => s.type)).toEqual(content.templates.home.map((s) => s.type))
-      expect(again.templates.product.map((s) => s.type)).toEqual(
-        content.templates.product.map((s) => s.type),
-      )
-      expect(again.layout).toEqual(content.layout)
-    }
+  test('the built-in library is empty — templates are designed from scratch', () => {
+    expect(THEME_PRESETS).toEqual([])
   })
 })
