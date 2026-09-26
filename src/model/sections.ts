@@ -589,8 +589,8 @@ export const SECTION_SCHEMAS = [
         label: { en: 'Video', id: 'Video' },
         uploadOnly: true,
         help: {
-          en: 'An MP4 or WebM up to 50 MB. Short (10–30 s) and without sound works best — it plays muted.',
-          id: 'MP4 atau WebM hingga 50 MB. Pendek (10–30 detik) dan tanpa suara paling cocok — diputar tanpa suara.',
+          en: 'An MP4 or WebM up to 30 MB. Short (10–30 s) and without sound works best — it plays muted.',
+          id: 'MP4 atau WebM hingga 30 MB. Pendek (10–30 detik) dan tanpa suara paling cocok — diputar tanpa suara.',
         },
       },
       {
@@ -1276,8 +1276,8 @@ export const SECTION_SCHEMAS = [
             label: { en: 'Video', id: 'Video' },
             uploadOnly: true,
             help: {
-              en: 'A vertical MP4 or WebM up to 50 MB.',
-              id: 'MP4 atau WebM vertikal hingga 50 MB.',
+              en: 'A vertical MP4 or WebM up to 30 MB.',
+              id: 'MP4 atau WebM vertikal hingga 30 MB.',
             },
           },
           { kind: 'image', key: 'poster', label: { en: 'Cover image', id: 'Gambar sampul' } },
