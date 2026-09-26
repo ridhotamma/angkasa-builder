@@ -44,6 +44,5 @@ export type { SectionProps } from './sections'
 export {
   SNAPSHOT_WIDTH,
   TemplateSnapshotPage,
-  ThemePreview,
-  type ThemePreviewProps,
+  type SnapshotPageProps,
 } from './theme-preview'
