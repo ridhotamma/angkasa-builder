@@ -262,19 +262,35 @@ export function Timeline({ settings }: SectionProps) {
               const image = readText(item, 'image')
               const right = index % 2 === 1
               return (
+                // Every piece is placed by column, in one row. (Ordering them
+                // instead put a left-hand milestone's text in the 3rem middle
+                // track, one word per line.) Phones: dot | text. Desktop:
+                // text | dot | — then — | dot | text, alternating.
                 <Grid
                   key={item.id}
-                  templateColumns={{ base: '1.5rem 1fr', md: '1fr 3rem 1fr' }}
-                  gap={{ base: '4', md: '0' }}
+                  templateColumns={{ base: '1.5rem minmax(0, 1fr)', md: 'minmax(0, 1fr) 3rem minmax(0, 1fr)' }}
+                  columnGap={{ base: '4', md: '0' }}
                   alignItems="start"
                 >
-                  <Box hideBelow="md" order={right ? 2 : 0} />
-                  <Box order={{ base: 0, md: 1 }} display="flex" justifyContent="center" pt="1">
-                    <Circle size="4" bg="brand.solid" borderWidth="3px" borderColor="bg" shadow="0 0 0 2px var(--chakra-colors-brand-solid)" />
+                  <Box
+                    gridRow="1"
+                    gridColumn={{ base: '1', md: '2' }}
+                    display="flex"
+                    justifyContent="center"
+                    pt="1"
+                  >
+                    <Circle
+                      size="4"
+                      bg="brand.solid"
+                      borderWidth="3px"
+                      borderColor="bg"
+                      shadow="0 0 0 2px var(--chakra-colors-brand-solid)"
+                    />
                   </Box>
                   <Stack
                     gap="2"
-                    order={{ base: 1, md: right ? 2 : 0 }}
+                    gridRow="1"
+                    gridColumn={{ base: '2', md: right ? '3' : '1' }}
                     textAlign={{ base: 'left', md: right ? 'left' : 'right' }}
                     align={{ base: 'start', md: right ? 'start' : 'end' }}
                     px={{ md: '6' }}
@@ -289,7 +305,13 @@ export function Timeline({ settings }: SectionProps) {
                         {readText(item, 'title')}
                       </Heading>
                     )}
-                    <Paragraphs text={readText(item, 'text')} />
+                    {/* Plain text rather than `Paragraphs`, which sets its own
+                        left alignment: a milestone on the left reads right-aligned. */}
+                    {readText(item, 'text') && (
+                      <Text color="fg.muted" whiteSpace="pre-line" lineHeight="tall">
+                        {readText(item, 'text')}
+                      </Text>
+                    )}
                     {image && (
                       <Image
                         src={imageUrl(image, { width: 640, height: 420 }) ?? undefined}

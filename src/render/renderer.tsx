@@ -59,17 +59,72 @@ export function liveSections(
   })
 }
 
+/**
+ * The sections a renderer in `mode` draws: live ones on the storefront,
+ * everything not hidden in the editor.
+ */
+export function drawnSections(
+  sections: readonly SectionInstance[],
+  mode: RenderEnvironment['mode'],
+  now: Date,
+): SectionInstance[] {
+  return mode === 'live' ? liveSections(sections, now) : sections.filter((section) => !section.hidden)
+}
+
+/** A section that runs past the page column — edge to edge, or on a full-width band. */
+export function isFullBleed(section: SectionInstance): boolean {
+  return readSectionStyle(section.style).width !== 'contained'
+}
+
+/**
+ * Whether the page's own padding above and below the sections should go.
+ *
+ * The page column is padded top and bottom; a section that runs edge to edge
+ * inside it would open (or close) with a strip of page background across it —
+ * a banner that does not reach the header. The host drops that padding when
+ * the first (or last) drawn section is full-bleed. Pass the sections the host
+ * will draw, from `drawnSections`.
+ */
+export interface PageEdges {
+  /** Drop the page's padding above the sections. */
+  flushTop: boolean
+  /** Drop it below them, and the footer's gap. */
+  flushBottom: boolean
+  /** The page opens with an edge-to-edge section a see-through header can float over. */
+  bannerFirst: boolean
+}
+
+export const NO_PAGE_EDGES: PageEdges = { flushTop: false, flushBottom: false, bannerFirst: false }
+
+export function pageEdges(drawn: readonly SectionInstance[]): PageEdges {
+  const first = drawn[0]
+  const last = drawn[drawn.length - 1]
+  return {
+    flushTop: first !== undefined && isFullBleed(first),
+    flushBottom: last !== undefined && isFullBleed(last),
+    bannerFirst: first !== undefined && readSectionStyle(first.style).width === 'edge',
+  }
+}
+
+/** The space between two sections in the page column. */
+const SECTION_GAP = { base: '10', md: '14' } as const
+
 export function SectionsRenderer({ sections, env, selectedId, onSelect }: SectionsRendererProps) {
   const now = env.now ?? new Date()
-  const visible =
-    env.mode === 'live' ? liveSections(sections, now) : sections.filter((section) => !section.hidden)
+  const visible = drawnSections(sections, env.mode, now)
 
   return (
     <RenderProvider value={env}>
-      <Stack gap={{ base: '10', md: '14' }}>
-        {visible.map((section) => {
+      <Stack gap="0">
+        {visible.map((section, index) => {
           const Section = SECTION_RENDERERS[section.type]
           if (!Section) return null
+          // Two full-bleed sections in a row touch, like bands on a poster:
+          // the page gap between them would be a strip of page background.
+          // Their own "space above/below" is what separates them.
+          const previous = visible[index - 1]
+          const bleed = isFullBleed(section)
+          const mt = !previous || (bleed && isFullBleed(previous)) ? '0' : SECTION_GAP
           const rendered = (
             <SectionIdContext.Provider value={section.id}>
               <SectionFrame style={section.style}>
@@ -77,19 +132,28 @@ export function SectionsRenderer({ sections, env, selectedId, onSelect }: Sectio
               </SectionFrame>
             </SectionIdContext.Provider>
           )
-          if (!onSelect) return <Box key={section.id}>{rendered}</Box>
+          if (!onSelect) {
+            return (
+              <Box key={section.id} mt={mt}>
+                {rendered}
+              </Box>
+            )
+          }
 
           const selected = section.id === selectedId
           return (
             <Box
               key={section.id}
+              mt={mt}
               data-section-id={section.id}
               position="relative"
               cursor="pointer"
               rounded="md"
               outline="2px solid"
               outlineColor={selected ? 'brand.solid' : 'transparent'}
-              outlineOffset="6px"
+              // Inside the section when it touches the page edges, where an
+              // outline outside it would be cut off.
+              outlineOffset={bleed ? '-2px' : '6px'}
               transition="outline-color 120ms"
               _hover={{ outlineColor: selected ? 'brand.solid' : 'brand.muted' }}
               onClickCapture={(event) => {

@@ -39,6 +39,7 @@ import { isMegaMenu, type MenuItem } from '../model/menus'
 import { resolveScheme, schemeCssVars, SCHEME_KEYS, type SchemeKey } from '../model/settings'
 import { useRenderEnvironment } from './context'
 import { SmartLink } from './primitives'
+import type { PageEdges } from './renderer'
 
 export type SocialPlatform = 'instagram' | 'tiktok' | 'facebook' | 'youtube' | 'twitter' | 'website'
 
@@ -285,6 +286,16 @@ function Logo({ shop, centered = false }: { shop: ChromeShop; centered?: boolean
   )
 }
 
+/**
+ * Whether the header goes see-through over a page laid out as `edges` (from
+ * `pageEdges`): the setting asks for it, and the page opens with an
+ * edge-to-edge banner — there has to be something to see through to. The
+ * host also limits it to the home page.
+ */
+export function isHeaderTransparent(header: FieldValues, edges: PageEdges): boolean {
+  return readBoolean(header, 'transparentOnHome') && edges.bannerFirst
+}
+
 export interface StoreHeaderProps {
   header: FieldValues
   shop: ChromeShop
@@ -299,11 +310,28 @@ export interface StoreHeaderProps {
    * See-through over the page's first section, until the shopper scrolls.
    * The host decides — the setting asks for it, but only a home page that
    * starts with an edge-to-edge banner has something to see through to.
+   *
+   * A see-through header is taken out of the flow and laid over the page, so
+   * the banner starts at the very top with no measuring: the host only drops
+   * its own top padding (see `pageEdges`).
    */
   transparent?: boolean
-  /** The element scrolled; the editor's preview is not the window. */
-  scrollRoot?: () => HTMLElement | Window | null
 }
+
+/**
+ * Over a photo: white text, and every surface the slots draw on (the search
+ * box, the cart badge's ring) a translucent white instead of the page's
+ * light grey — a grey pill with white text in it cannot be read.
+ */
+const CLEAR_VARS = {
+  '--chakra-colors-fg': '#ffffff',
+  '--chakra-colors-fg-muted': 'rgba(255, 255, 255, 0.85)',
+  '--chakra-colors-fg-subtle': 'rgba(255, 255, 255, 0.7)',
+  '--chakra-colors-bg-subtle': 'rgba(255, 255, 255, 0.16)',
+  '--chakra-colors-bg-muted': 'rgba(255, 255, 255, 0.24)',
+  '--chakra-colors-border': 'rgba(255, 255, 255, 0.35)',
+  '--chakra-colors-border-emphasized': 'rgba(255, 255, 255, 0.6)',
+} as const
 
 /**
  * The header as the theme lays it out. Sticky unless the seller turned that
@@ -318,7 +346,6 @@ export function StoreHeader({
   searchButton,
   actions,
   transparent = false,
-  scrollRoot,
 }: StoreHeaderProps) {
   const layout = readText(header, 'layout') || 'classic'
   const sticky = readBoolean(header, 'sticky')
@@ -326,35 +353,26 @@ export function StoreHeader({
   const ref = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
 
+  // Read from the header's own window, which in the editor is the preview's.
   useEffect(() => {
-    if (!transparent) return
-    const element = ref.current
-    const root = scrollRoot?.() ?? element?.ownerDocument.defaultView ?? null
-    if (!root) return
-    const read = () =>
-      setScrolled(
-        (root instanceof HTMLElement ? root.scrollTop : (root as Window).scrollY) > 24,
-      )
+    const view = ref.current?.ownerDocument.defaultView
+    if (!transparent || !view) return
+    const read = () => setScrolled(view.scrollY > 24)
     read()
-    root.addEventListener('scroll', read, { passive: true })
-    return () => root.removeEventListener('scroll', read)
-  }, [transparent, scrollRoot])
-
-  // The header's height, as a variable on the document, so the host can pull
-  // the first section up underneath a see-through header.
-  useEffect(() => {
-    const element = ref.current
-    const view = element?.ownerDocument.defaultView
-    if (!element || !view || !('ResizeObserver' in view)) return
-    const root = element.ownerDocument.documentElement
-    const observer = new view.ResizeObserver(() =>
-      root.style.setProperty('--pb-header-height', `${element.offsetHeight}px`),
-    )
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
+    view.addEventListener('scroll', read, { passive: true })
+    return () => view.removeEventListener('scroll', read)
+  }, [transparent])
 
   const clear = transparent && !scrolled
+  // Out of the flow when see-through: fixed if it should stay on screen,
+  // absolute if it should scroll away with the banner.
+  const position = transparent
+    ? sticky
+      ? 'fixed'
+      : 'absolute'
+    : sticky
+      ? 'sticky'
+      : 'relative'
   const search = showSearch ? searchButton : null
   const right = (
     <HStack gap="0.5" justifySelf="end" flexShrink="0">
@@ -410,8 +428,9 @@ export function StoreHeader({
     <Box
       ref={ref}
       as="header"
-      position={sticky || transparent ? 'sticky' : 'relative'}
+      position={position}
       top="0"
+      insetX={transparent ? '0' : undefined}
       zIndex="docked"
       transition="background-color 250ms, color 250ms, border-color 250ms"
       borderBottomWidth="1px"
@@ -420,8 +439,7 @@ export function StoreHeader({
       color={clear ? 'white' : 'fg'}
       backdropFilter={clear ? undefined : 'blur(8px)'}
       data-transparent={clear ? '' : undefined}
-      // Over a photo, the icon buttons in the slots follow the white text.
-      css={clear ? { '--chakra-colors-fg': 'white', '--chakra-colors-fg-muted': 'rgba(255,255,255,0.8)' } : undefined}
+      css={clear ? CLEAR_VARS : undefined}
     >
       <AnnouncementStrip header={header} />
       <Container maxW="6xl" px={{ base: '4', md: '6' }} py="3">
@@ -476,9 +494,19 @@ export interface StoreFooterProps {
   labels: { information: string; followUs: string; links: string }
   /** The small print under everything — "Powered by Pesanle". */
   bottom?: ReactNode
+  /** The page ends in a full-bleed section, which the footer should meet with no gap. */
+  flush?: boolean
 }
 
-export function StoreFooter({ footer, shop, menu, pages, labels, bottom }: StoreFooterProps) {
+export function StoreFooter({
+  footer,
+  shop,
+  menu,
+  pages,
+  labels,
+  bottom,
+  flush = false,
+}: StoreFooterProps) {
   const schemeValue = readText(footer, 'colorScheme') || 'subtle'
   const scheme = useSchemeCss(schemeValue)
   const about = readText(footer, 'about') || shop.description || ''
@@ -493,7 +521,7 @@ export function StoreFooter({ footer, shop, menu, pages, labels, bottom }: Store
   return (
     <Box
       as="footer"
-      mt="10"
+      mt={flush ? '0' : '10'}
       borderTopWidth={schemeValue === 'default' ? '1px' : '0'}
       borderColor="border"
       {...(isScheme(schemeValue) ? scheme : { bg: 'bg' })}

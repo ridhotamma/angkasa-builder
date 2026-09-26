@@ -16,6 +16,7 @@ export {
   type StorefrontSizeGuide,
 } from './context'
 export {
+  isHeaderTransparent,
   StoreFooter,
   StoreHeader,
   type ChromeShop,
@@ -28,7 +29,12 @@ export { embedUrl } from './media'
 export { buttonLook, cardFrame, FullBleed, PAGE_WIDTH_CONTAINER } from './primitives'
 export { RichTextView } from './rich-text'
 export {
+  drawnSections,
+  isFullBleed,
   liveSections,
+  NO_PAGE_EDGES,
+  pageEdges,
+  type PageEdges,
   SectionsRenderer,
   ThemeScope,
   type SectionsRendererProps,

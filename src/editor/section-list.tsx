@@ -21,7 +21,6 @@ import {
   Input,
   InputGroup,
   Portal,
-  ScrollArea,
   SimpleGrid,
   Stack,
   Text,

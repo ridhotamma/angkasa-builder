@@ -57,14 +57,14 @@ import type { MenuItem } from '../model/menus'
 import { SECTION_STYLE_FIELDS, VISIBILITY_STYLE_KEYS } from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { googleFontsHref, type ThemeSettings } from '../model/settings'
-import { StoreFooter, StoreHeader } from '../render/chrome'
+import { isHeaderTransparent, StoreFooter, StoreHeader } from '../render/chrome'
 import {
   RenderProvider,
   type RenderEnvironment,
   type StorefrontRenderData,
 } from '../render/context'
 import { PAGE_WIDTH_CONTAINER } from '../render/primitives'
-import { SectionsRenderer, ThemeScope } from '../render/renderer'
+import { drawnSections, pageEdges, SectionsRenderer, ThemeScope } from '../render/renderer'
 import { CatalogueProvider } from './catalogue'
 import { FieldsForm, SelectInput } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
@@ -385,6 +385,7 @@ function Builder({
   const pickable = (id: string, content: ReactNode, sticky = false) =>
     editableLayout ? (
       <Box
+        data-section-id={id}
         // A sticky header can only stick inside its parent: the wrapper sticks instead.
         {...(sticky && { position: 'sticky', top: '0', zIndex: 'docked' })}
         cursor="pointer"
@@ -403,13 +404,36 @@ function Builder({
       content
     )
 
-  const firstEdge = sections.find((section) => !section.hidden)?.style.width === 'edge'
-  const transparent =
-    scope === 'home' && Boolean(layout?.header.transparentOnHome) && firstEdge
+  // The same rules the storefront applies, from the same helpers, so the
+  // preview's banner meets the header exactly as the live one does.
+  const drawn = drawnSections(sections, 'preview', new Date())
+  const edges = pageEdges(drawn)
+  const transparent = scope === 'home' && !!layout && isHeaderTransparent(layout.header, edges)
+
+  /**
+   * Clicking the preview's empty space — outside every section and the
+   * header/footer rows — drops the selection and returns to the list.
+   * Bubble phase, so a click on a section reaches that section's own
+   * capture-phase picker first and is left alone here.
+   */
+  const clickAway = (event: { target: EventTarget | null }) => {
+    const target = event.target as HTMLElement | null
+    if (typeof target?.closest !== 'function' || target.closest('[data-section-id]')) return
+    setSelectedId(null)
+  }
 
   const preview = (
     <RenderProvider value={env}>
-      <ThemeScope settings={settings} minH="100dvh" display="flex" flexDirection="column" {...PAGE_WIDTH_CONTAINER}>
+      {/* No size container here: it would become the containing block of the
+          see-through header, which is `position: fixed` to the preview's own
+          window. The page's width container is the box around the sections. */}
+      <ThemeScope
+        settings={settings}
+        minH="100dvh"
+        display="flex"
+        flexDirection="column"
+        onClick={clickAway}
+      >
         {layout &&
           pickable(
             HEADER_ID,
@@ -441,23 +465,23 @@ function Builder({
               }
               transparent={transparent}
             />,
-            Boolean(layout.header.sticky) || transparent,
+            // A see-through header is fixed itself; only an in-flow one needs
+            // its wrapper to stick.
+            Boolean(layout.header.sticky) && !transparent,
           )}
         <Box flex="1" {...PAGE_WIDTH_CONTAINER}>
           <Container
             maxW="6xl"
             px={{ base: '4', md: '6' }}
-            py={{ base: '6', md: '10' }}
-            pt={transparent ? '0' : undefined}
+            pt={edges.flushTop ? '0' : { base: '6', md: '10' }}
+            pb={edges.flushBottom ? '0' : { base: '6', md: '10' }}
           >
-            <Box mt={transparent ? 'calc(-1 * var(--pb-header-height, 0px))' : undefined}>
-              <SectionsRenderer
-                sections={sections}
-                env={env}
-                selectedId={selectedId}
-                onSelect={(id) => select(id, true)}
-              />
-            </Box>
+            <SectionsRenderer
+              sections={sections}
+              env={env}
+              selectedId={selectedId}
+              onSelect={(id) => select(id, true)}
+            />
           </Container>
         </Box>
         {layout &&
@@ -474,6 +498,7 @@ function Builder({
                 links: t('footerLinks'),
               }}
               bottom={t('poweredBy')}
+              flush={edges.flushBottom}
             />,
           )}
       </ThemeScope>
