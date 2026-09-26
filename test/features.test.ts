@@ -25,6 +25,7 @@ import {
   THEME_PRESETS,
   videoFileIds,
 } from '../src/index'
+import { schemeCss } from '../src/render/frame'
 
 describe('videos', () => {
   test('keeps only the id of a YouTube or Vimeo address', () => {
@@ -177,6 +178,16 @@ describe('colour schemes', () => {
     expect(schemeContrastIssues(settings)).toEqual(['brand'])
   })
 
+  test('soft scheme bands step aside in dark mode, brand bands stay', () => {
+    const vars = { '--chakra-colors-bg': '#fff8f0' }
+    // A subtle footer on a dark page keeps the dark surfaces instead of
+    // freezing light cream — the reported dark-mode footer bug.
+    expect(schemeCss('subtle', vars)).toEqual({ 'html:not(.dark) &': vars })
+    expect(schemeCss('inverse', vars)).toEqual({ 'html:not(.dark) &': vars })
+    expect(schemeCss('brand', vars)).toEqual(vars)
+    expect(schemeCss('accent', vars)).toEqual(vars)
+  })
+
   test('scheme variables are only ever hex colours', () => {
     const vars = schemeCssVars(resolveScheme(DEFAULT_THEME_SETTINGS, 'inverse'))
     for (const value of Object.values(vars)) expect(value).toMatch(/^#[0-9a-f]{6}$/)
@@ -250,7 +261,7 @@ describe('layout', () => {
   test('header and footer default to the look the storefront had', () => {
     const layout = sanitizeLayout(null)
     expect(layout.header).toMatchObject({ layout: 'classic', sticky: true, transparentOnHome: false })
-    expect(layout.footer).toMatchObject({ colorScheme: 'subtle', showPages: true })
+    expect(layout.footer).toMatchObject({ colorScheme: 'default', showPages: true })
   })
 })
 

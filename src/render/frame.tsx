@@ -47,8 +47,12 @@ function padding(spacing: SectionSpacing, banded: boolean): BoxProps['py'] {
  * page, so in dark mode — where the page is already dark — they step aside
  * and the section keeps the dark surfaces; brand and accent bands are the
  * brand's own statement and stay in both modes.
+ *
+ * Shared with the header/footer chrome, whose bands must behave exactly like
+ * a section's — a subtle footer that stayed light cream on a dark page is
+ * what this scoping fixes.
  */
-function schemeCss(key: SchemeKey, vars: Record<string, string>): BoxProps['css'] {
+export function schemeCss(key: SchemeKey, vars: Record<string, string>): BoxProps['css'] {
   if (key === 'brand' || key === 'accent') return vars
   return { 'html:not(.dark) &': vars }
 }

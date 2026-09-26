@@ -99,7 +99,7 @@ export const FOOTER_FIELDS: readonly Field[] = [
       value,
       label: SCHEME_LABELS[value],
     })),
-    default: 'subtle',
+    default: 'default',
   },
   {
     kind: 'textarea',

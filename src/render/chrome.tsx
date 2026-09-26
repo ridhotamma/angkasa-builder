@@ -38,6 +38,7 @@ import { readBoolean, readLink, readList, readText, type FieldValues } from '../
 import { isMegaMenu, type MenuItem } from '../model/menus'
 import { resolveScheme, schemeCssVars, SCHEME_KEYS, type SchemeKey } from '../model/settings'
 import { useRenderEnvironment } from './context'
+import { schemeCss } from './frame'
 import { SmartLink } from './primitives'
 import type { PageEdges } from './renderer'
 
@@ -61,7 +62,8 @@ function isScheme(value: string): value is SchemeKey {
 function useSchemeCss(value: string): BoxProps {
   const { settings } = useRenderEnvironment()
   if (!isScheme(value)) return {}
-  return { css: schemeCssVars(resolveScheme(settings, value)), bg: 'bg', color: 'fg' }
+  // Same scoping as a section band: soft schemes step aside in dark mode.
+  return { css: schemeCss(value, schemeCssVars(resolveScheme(settings, value))), bg: 'bg', color: 'fg' }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -507,7 +509,7 @@ export function StoreFooter({
   bottom,
   flush = false,
 }: StoreFooterProps) {
-  const schemeValue = readText(footer, 'colorScheme') || 'subtle'
+  const schemeValue = readText(footer, 'colorScheme') || 'default'
   const scheme = useSchemeCss(schemeValue)
   const about = readText(footer, 'about') || shop.description || ''
   const socials = readBoolean(footer, 'showSocials') ? (shop.socialLinks ?? []) : []
