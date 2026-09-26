@@ -21,8 +21,8 @@ import {
   Text,
   useListCollection,
 } from '@chakra-ui/react'
-import { useEffect, useRef, useState } from 'react'
-import { LuFilm, LuPlus, LuTrash2, LuUpload, LuX } from 'react-icons/lu'
+import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { LuFilm, LuMove, LuPlus, LuTrash2, LuUpload, LuX } from 'react-icons/lu'
 
 import {
   parseVideoUrl,
@@ -328,6 +328,9 @@ export function ProductControl({
 /* Point on an image                                                          */
 /* -------------------------------------------------------------------------- */
 
+/** Keeps the white ring visible on a pale photo. */
+const RING_SHADOW = '0 1px 4px rgba(0, 0, 0, 0.35)'
+
 export function PointControl({
   value,
   onChange,
@@ -341,6 +344,34 @@ export function PointControl({
 }) {
   const { t } = useEditorText()
   const src = imageId ? services.imageUrl(imageId, { width: 640, height: 640 }) : null
+  const [dragging, setDragging] = useState(false)
+  // Bumped on every press and every drop, so the ripple and the settle
+  // animations replay instead of running once.
+  const [presses, setPresses] = useState<{ count: number; at: PointValue }>({
+    count: 0,
+    at: value,
+  })
+  const [drops, setDrops] = useState(0)
+
+  function pointAt(event: PointerEvent<HTMLDivElement>): PointValue {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const share = (offset: number, size: number) =>
+      Math.round(Math.min(1, Math.max(0, offset / size)) * 1000) / 10
+    return {
+      x: share(event.clientX - rect.left, rect.width),
+      y: share(event.clientY - rect.top, rect.height),
+    }
+  }
+
+  function place(next: PointValue) {
+    if (next.x !== value.x || next.y !== value.y) onChange(next)
+  }
+
+  function drop() {
+    if (!dragging) return
+    setDragging(false)
+    setDrops((count) => count + 1)
+  }
 
   if (!src) {
     return (
@@ -350,36 +381,168 @@ export function PointControl({
     )
   }
 
+  const at = { left: `${value.x}%`, top: `${value.y}%` }
+  // The chip by the dot flips below it near the top edge, and inward near the
+  // sides, so it never runs off the photo.
+  const chipBelow = value.y < 18
+  const chipAlign = value.x < 25 ? '0%' : value.x > 75 ? '-100%' : '-50%'
+
   return (
     <Stack gap="1.5">
       <Box
+        className="group"
         position="relative"
         rounded="md"
         overflow="hidden"
-        cursor="crosshair"
+        cursor={dragging ? 'grabbing' : 'grab'}
         borderWidth="1px"
         borderColor="border.subtle"
-        onClick={(event) => {
-          const rect = event.currentTarget.getBoundingClientRect()
-          onChange({
-            x: Math.round(((event.clientX - rect.left) / rect.width) * 1000) / 10,
-            y: Math.round(((event.clientY - rect.top) / rect.height) * 1000) / 10,
-          })
+        userSelect="none"
+        // Press to place the dot, keep holding to drag it; the history's
+        // coalescing makes one drag one undo step.
+        touchAction="none"
+        onPointerDown={(event) => {
+          const next = pointAt(event)
+          setDragging(true)
+          setPresses(({ count }) => ({ count: count + 1, at: next }))
+          // Keeps the drag going when the pointer leaves the photo.
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId)
+          } catch {
+            // Not a live pointer (a synthetic event); the drag still works inside the photo.
+          }
+          place(next)
+        }}
+        onPointerMove={(event) => {
+          if (dragging) place(pointAt(event))
+        }}
+        onPointerUp={drop}
+        onPointerCancel={drop}
+        css={{
+          // Animate `scale` alone: `transform` carries the centring offset,
+          // and animating it too is what pushed the ring off the dot.
+          '@keyframes pb-point-pulse': {
+            // A glow spreading off the ring: a shadow follows the ring's own
+            // outline, so it cannot drift off-centre.
+            '0%': { boxShadow: `0 0 0 0 rgba(255, 255, 255, 0.7), ${RING_SHADOW}` },
+            '100%': { boxShadow: `0 0 0 10px rgba(255, 255, 255, 0), ${RING_SHADOW}` },
+          },
+          '@keyframes pb-point-ripple': {
+            '0%': { scale: '0.4', opacity: 0.8 },
+            '100%': { scale: '2.4', opacity: 0 },
+          },
+          '@keyframes pb-point-settle': {
+            '0%': { scale: '1.3' },
+            '55%': { scale: '0.9' },
+            '100%': { scale: '1' },
+          },
+          '@media (prefers-reduced-motion: reduce)': {
+            '& *': { animation: 'none !important', transition: 'none !important' },
+          },
         }}
       >
         <Image src={src} alt="" w="full" display="block" draggable={false} />
+
+        {/* Dims the photo while held, so the dot stands out. */}
         <Box
           position="absolute"
-          boxSize="4"
-          rounded="full"
-          bg="white"
-          borderWidth="3px"
-          borderColor="brand.solid"
-          shadow="md"
+          inset="0"
+          bg="blackAlpha.400"
+          opacity={dragging ? 1 : 0}
+          transition="opacity 150ms"
+          pointerEvents="none"
+        />
+
+        {/* A one-off ripple where the photo was pressed. */}
+        {presses.count > 0 && (
+          <Box
+            key={presses.count}
+            position="absolute"
+            transform="translate(-50%, -50%)"
+            pointerEvents="none"
+            style={{ left: `${presses.at.x}%`, top: `${presses.at.y}%` }}
+          >
+            <Box
+              boxSize="6"
+              rounded="full"
+              bg="whiteAlpha.700"
+              opacity="0"
+              animation="pb-point-ripple 450ms ease-out"
+            />
+          </Box>
+        )}
+
+        {/* The dot, drawn like the storefront's: a white disc inside a white
+            ring. The ring is the disc's padded wrapper, not a layer laid over
+            it, so the two stay concentric at any sub-pixel position. It grows
+            while held and settles with a small bounce when let go. */}
+        <Box
+          position="absolute"
           transform="translate(-50%, -50%)"
           pointerEvents="none"
-          style={{ left: `${value.x}%`, top: `${value.y}%` }}
-        />
+          style={at}
+        >
+          <Box
+            key={`dot-${drops}`}
+            display="flex"
+            p="1"
+            rounded="full"
+            borderWidth="2px"
+            borderColor="white"
+            shadow={RING_SHADOW}
+            scale={dragging ? '1.3' : '1'}
+            transition="scale 150ms ease-out"
+            animation={
+              dragging
+                ? undefined
+                : drops > 0
+                  ? 'pb-point-settle 320ms ease-out, pb-point-pulse 2.4s ease-out 320ms infinite'
+                  : 'pb-point-pulse 2.4s ease-out infinite'
+            }
+            _groupHover={dragging ? undefined : { scale: '1.1' }}
+          >
+            <Box
+              boxSize="4"
+              rounded="full"
+              bg="white"
+              shadow={dragging ? '0 4px 12px rgba(0, 0, 0, 0.45)' : '0 1px 4px rgba(0, 0, 0, 0.35)'}
+              transition="box-shadow 150ms"
+            />
+          </Box>
+        </Box>
+
+        {/* A chip by the dot: "Drag to move" on hover, the position while held. */}
+        <HStack
+          position="absolute"
+          gap="1"
+          px="2"
+          py="0.5"
+          rounded="full"
+          bg="blackAlpha.800"
+          color="white"
+          fontSize="2xs"
+          fontWeight="medium"
+          whiteSpace="nowrap"
+          pointerEvents="none"
+          opacity={dragging ? 1 : 0}
+          transition="opacity 150ms"
+          _groupHover={{ opacity: 1 }}
+          style={{
+            ...at,
+            transform: `translate(${chipAlign}, ${chipBelow ? '28px' : 'calc(-100% - 28px)'})`,
+          }}
+        >
+          {dragging ? (
+            <Text fontVariantNumeric="tabular-nums">
+              {Math.round(value.x)}% · {Math.round(value.y)}%
+            </Text>
+          ) : (
+            <>
+              <Icon as={LuMove} boxSize="3" />
+              <Text>{t('pointDrag')}</Text>
+            </>
+          )}
+        </HStack>
       </Box>
       <Text fontSize="xs" color="fg.muted">
         {t('pointHint')}

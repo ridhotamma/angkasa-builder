@@ -336,6 +336,9 @@ function ReelPlayer({ item, poster }: { item: FieldValues; poster: string | null
 /* Shop the look                                                              */
 /* -------------------------------------------------------------------------- */
 
+/** Keeps a hotspot's white ring visible on a pale photo. */
+const DOT_RING_SHADOW = '0 1px 4px rgba(0, 0, 0, 0.35)'
+
 export function Lookbook({ settings }: SectionProps) {
   const { data, imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
@@ -364,34 +367,50 @@ export function Lookbook({ settings }: SectionProps) {
                 position="absolute"
                 left={`${x}%`}
                 top={`${y}%`}
-                transform="translate(-50%, -50%)"
-                size="xs"
+                variant="plain"
+                // The ring is the button itself — transparent, padded, with a
+                // white border — and the disc sits inside it, so the two stay
+                // concentric at any sub-pixel position. (A ring drawn as an
+                // overlay outside the disc rounded differently and sat off-centre.)
+                w="auto"
+                h="auto"
+                minW="0"
+                p="1"
                 rounded="full"
-                bg="white"
-                color="gray.900"
-                shadow="lg"
-                _hover={{ transform: 'translate(-50%, -50%) scale(1.1)' }}
-                transition="transform 150ms"
+                borderWidth="2px"
+                borderColor="white"
+                shadow={DOT_RING_SHADOW}
+                _hover={{ scale: '1.1' }}
+                transition="scale 150ms"
                 css={{
-                  // A slow ring pulse, so the dots read as tappable.
-                  '&::after': {
-                    content: '""',
-                    position: 'absolute',
-                    inset: '-6px',
-                    rounded: 'full',
-                    border: '2px solid white',
-                    opacity: 0.8,
-                    animation: 'pb-pulse 2.4s ease-out infinite',
-                    animationDelay: `${index * 0.3}s`,
-                  },
+                  // Centred with the `translate` property, not `transform`. The
+                  // browser applies `transform` first and `scale` after it, so
+                  // the hover grow also scaled the centring shift and the dot
+                  // slid as it grew; `translate` applies after `scale`, which
+                  // then grows from the centre.
+                  translate: '-50% -50%',
+                  // A slow glow off the ring, so the dots read as tappable. A
+                  // shadow follows the ring's own outline, so it cannot drift.
+                  animation: 'pb-pulse 2.4s ease-out infinite',
+                  animationDelay: `${index * 0.3}s`,
                   '@keyframes pb-pulse': {
-                    '0%': { transform: 'scale(0.8)', opacity: 0.8 },
-                    '100%': { transform: 'scale(1.6)', opacity: 0 },
+                    '0%': { boxShadow: `0 0 0 0 rgba(255, 255, 255, 0.7), ${DOT_RING_SHADOW}` },
+                    '100%': { boxShadow: `0 0 0 12px rgba(255, 255, 255, 0), ${DOT_RING_SHADOW}` },
                   },
-                  '@media (prefers-reduced-motion: reduce)': { '&::after': { animation: 'none' } },
+                  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
                 }}
               >
-                <LuPlus />
+                <Flex
+                  boxSize="7"
+                  rounded="full"
+                  bg="white"
+                  color="gray.900"
+                  align="center"
+                  justify="center"
+                  shadow="md"
+                >
+                  <LuPlus />
+                </Flex>
               </IconButton>
             </Popover.Trigger>
             <Portal>

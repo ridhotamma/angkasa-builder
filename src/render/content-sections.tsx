@@ -247,7 +247,9 @@ export function Timeline({ settings }: SectionProps) {
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
         <Box position="relative">
-          {/* The spine: down the left on a phone, down the middle on a desktop. */}
+          {/* The spine: down the left on a phone, down the middle on a desktop —
+              the centre of the dot column either way (half of 1.5rem, or 50%),
+              pulled back by half its width so it runs through the dots' centres. */}
           <Box
             position="absolute"
             top="2"
@@ -255,7 +257,8 @@ export function Timeline({ settings }: SectionProps) {
             left={{ base: '3', md: '50%' }}
             w="2px"
             bg="border"
-            transform={{ md: 'translateX(-1px)' }}
+            transform="translateX(-1px)"
+            zIndex="0"
           />
           <Stack gap={{ base: '8', md: '12' }}>
             {items.map((item, index) => {
@@ -278,6 +281,9 @@ export function Timeline({ settings }: SectionProps) {
                     display="flex"
                     justifyContent="center"
                     pt="1"
+                    // Positioned, so it paints above the (absolutely placed) spine.
+                    position="relative"
+                    zIndex="1"
                   >
                     <Circle
                       size="4"

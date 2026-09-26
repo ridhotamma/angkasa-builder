@@ -67,7 +67,8 @@ function useProduct(): StorefrontProductDetail | null {
 /**
  * A photo that magnifies under the pointer on a desktop: the image scales up
  * with its origin following the cursor, so the part being pointed at is the
- * part that grows. Touch screens pinch instead, and keep the plain photo.
+ * part that grows. It switches instantly, with no easing. Touch screens pinch
+ * instead, and keep the plain photo.
  */
 function ZoomImage({ src, alt, zoom }: { src: string | null; alt: string; zoom: boolean }) {
   const [origin, setOrigin] = useState<string | null>(null)
@@ -92,7 +93,10 @@ function ZoomImage({ src, alt, zoom }: { src: string | null; alt: string; zoom: 
         alt={alt}
         objectFit="cover"
         fallbackIconSize="12"
-        transition="transform 250ms ease"
+        // No transition: zoom snaps in and out, as on most stores. Eased, the
+        // photo swelled and shrank on every entry and exit — and on exit it
+        // also lurched, the origin snapping back to the centre mid-shrink —
+        // which reads as motion and can make people queasy.
         style={origin ? { transform: 'scale(1.8)', transformOrigin: origin } : undefined}
       />
     </AspectRatio>

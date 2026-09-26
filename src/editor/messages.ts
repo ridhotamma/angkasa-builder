@@ -127,7 +127,11 @@ const MESSAGES = {
     en: 'Add the section image first, then place the dot on it.',
     id: 'Tambahkan gambar bagian dulu, lalu taruh titiknya.',
   },
-  pointHint: { en: 'Click the photo to move the dot.', id: 'Klik foto untuk memindahkan titik.' },
+  pointDrag: { en: 'Drag to move', id: 'Geser untuk memindah' },
+  pointHint: {
+    en: 'Click or drag on the photo to move the dot.',
+    id: 'Klik atau geser di foto untuk memindahkan titik.',
+  },
   clear: { en: 'Clear', id: 'Hapus' },
   tableAddRow: { en: 'Row', id: 'Baris' },
   tableAddColumn: { en: 'Column', id: 'Kolom' },

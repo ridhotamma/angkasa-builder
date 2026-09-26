@@ -1331,6 +1331,10 @@ export const SECTION_SCHEMAS = [
             kind: 'text',
             key: 'label',
             label: { en: 'Label in the editor', id: 'Label di editor' },
+            help: {
+              en: 'Names this dot in the list above, so it is easy to find. Shoppers never see it.',
+              id: 'Nama titik ini di daftar di atas, agar mudah dicari. Tidak terlihat oleh pembeli.',
+            },
             max: 60,
             default: '',
           },
