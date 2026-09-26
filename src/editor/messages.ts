@@ -135,11 +135,16 @@ const MESSAGES = {
   clear: { en: 'Clear', id: 'Hapus' },
   tableAddRow: { en: 'Row', id: 'Baris' },
   tableAddColumn: { en: 'Column', id: 'Kolom' },
-  tableRemoveRow: { en: 'Remove row', id: 'Hapus baris' },
-  tableRemoveColumn: { en: 'Remove last column', id: 'Hapus kolom terakhir' },
-  tablePasteHint: {
-    en: 'Tip: copy cells from a spreadsheet and paste them into any cell.',
-    id: 'Tip: salin sel dari spreadsheet lalu tempel ke sel mana pun.',
+  tableRemoveRow: { en: 'Delete row', id: 'Hapus baris' },
+  tableRemoveColumn: { en: 'Delete column', id: 'Hapus kolom' },
+  tableMoveLeft: { en: 'Move left', id: 'Geser ke kiri' },
+  tableMoveRight: { en: 'Move right', id: 'Geser ke kanan' },
+  tableColumnLabel: { en: 'Column', id: 'Kolom' },
+  tableRowLabel: { en: 'Row', id: 'Baris' },
+  tableColumnName: { en: 'Column name', id: 'Nama kolom' },
+  tableHint: {
+    en: 'Click a cell to move or delete its row and column (or Alt + arrow keys). Paste cells from a spreadsheet into any cell.',
+    id: 'Klik sel untuk memindah atau menghapus baris dan kolomnya (atau Alt + tombol panah). Tempel sel dari spreadsheet ke sel mana pun.',
   },
   addBlock: { en: 'Add block', id: 'Tambah blok' },
 

@@ -22,7 +22,7 @@ import {
   useListCollection,
 } from '@chakra-ui/react'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
-import { LuFilm, LuMove, LuPlus, LuTrash2, LuUpload, LuX } from 'react-icons/lu'
+import { LuFilm, LuMove, LuUpload, LuX } from 'react-icons/lu'
 
 import { InstantPicker } from '@repo/theme'
 
@@ -30,7 +30,6 @@ import {
   parseVideoUrl,
   sanitizeVideo,
   type PointValue,
-  type TableValue,
   type VideoRef,
 } from '../model/fields'
 import type { StorefrontProductCard } from '../render/context'
@@ -579,141 +578,4 @@ export function DateTimeControl({ value, onChange }: { value: string; onChange: 
 /* Table                                                                      */
 /* -------------------------------------------------------------------------- */
 
-/**
- * A small spreadsheet: a header row and body rows of short text cells.
- * Pasting a block copied from a spreadsheet into any cell fills the grid
- * from there — the usual way a size chart arrives.
- */
-export function TableControl({
-  value,
-  onChange,
-  maxColumns,
-  maxRows,
-}: {
-  value: TableValue
-  onChange: (table: TableValue) => void
-  maxColumns: number
-  maxRows: number
-}) {
-  const { t } = useEditorText()
-  const { columns, rows } = value
-
-  const setCell = (row: number, column: number, text: string) => {
-    if (row < 0) {
-      onChange({ columns: columns.map((cell, index) => (index === column ? text : cell)), rows })
-    } else {
-      onChange({
-        columns,
-        rows: rows.map((cells, index) =>
-          index === row ? cells.map((cell, at) => (at === column ? text : cell)) : cells,
-        ),
-      })
-    }
-  }
-
-  const paste = (row: number, column: number, text: string): boolean => {
-    if (!text.includes('\t') && !text.includes('\n')) return false
-    const grid = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map((line) => line.split('\t'))
-    const width = Math.min(maxColumns, Math.max(columns.length, column + Math.max(...grid.map((line) => line.length))))
-    const nextColumns = Array.from({ length: width }, (_, index) => columns[index] ?? '')
-    const nextRows = rows.map((cells) => Array.from({ length: width }, (_, index) => cells[index] ?? ''))
-    grid.forEach((line, lineIndex) => {
-      const target = row + lineIndex
-      line.forEach((cell, cellIndex) => {
-        const at = column + cellIndex
-        if (at >= width) return
-        if (target < 0) nextColumns[at] = cell.trim()
-        else {
-          if (target >= maxRows) return
-          while (nextRows.length <= target) nextRows.push(Array.from({ length: width }, () => ''))
-          nextRows[target]![at] = cell.trim()
-        }
-      })
-    })
-    onChange({ columns: nextColumns, rows: nextRows })
-    return true
-  }
-
-  const cell = (row: number, column: number, text: string) => (
-    <Input
-      key={`${row}:${column}`}
-      size="xs"
-      value={text}
-      maxLength={80}
-      fontWeight={row < 0 ? 'semibold' : undefined}
-      bg={row < 0 ? 'bg.muted' : undefined}
-      minW="16"
-      onChange={(event) => setCell(row, column, event.currentTarget.value)}
-      onPaste={(event) => {
-        if (paste(row, column, event.clipboardData.getData('text/plain'))) event.preventDefault()
-      }}
-    />
-  )
-
-  return (
-    <Stack gap="2">
-      <ScrollArea.Root size="xs">
-        <ScrollArea.Viewport>
-          <ScrollArea.Content style={{ minWidth: 0 }}>
-            <Stack gap="1">
-              <HStack gap="1">
-                {columns.map((text, column) => cell(-1, column, text))}
-                <Box w="6" flexShrink="0" />
-              </HStack>
-              {rows.map((cells, row) => (
-                <HStack key={row} gap="1">
-                  {cells.map((text, column) => cell(row, column, text))}
-                  <IconButton
-                    aria-label={t('tableRemoveRow')}
-                    size="2xs"
-                    variant="ghost"
-                    colorPalette="danger"
-                    flexShrink="0"
-                    onClick={() => onChange({ columns, rows: rows.filter((_, index) => index !== row) })}
-                  >
-                    <LuTrash2 />
-                  </IconButton>
-                </HStack>
-              ))}
-            </Stack>
-          </ScrollArea.Content>
-        </ScrollArea.Viewport>
-        <ScrollArea.Scrollbar orientation="horizontal" />
-      </ScrollArea.Root>
-      <HStack gap="2" wrap="wrap">
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={rows.length >= maxRows}
-          onClick={() => onChange({ columns, rows: [...rows, columns.map(() => '')] })}
-        >
-          <LuPlus />
-          {t('tableAddRow')}
-        </Button>
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={columns.length >= maxColumns}
-          onClick={() => onChange({ columns: [...columns, ''], rows: rows.map((cells) => [...cells, '']) })}
-        >
-          <LuPlus />
-          {t('tableAddColumn')}
-        </Button>
-        <Button
-          size="xs"
-          variant="ghost"
-          colorPalette="danger"
-          disabled={columns.length <= 1}
-          onClick={() =>
-            onChange({ columns: columns.slice(0, -1), rows: rows.map((cells) => cells.slice(0, -1)) })
-          }
-        >
-          {t('tableRemoveColumn')}
-        </Button>
-      </HStack>
-      <Text fontSize="xs" color="fg.muted">
-        {t('tablePasteHint')}
-      </Text>
-    </Stack>
-  )
-}
+export { TableControl } from './table-control'
