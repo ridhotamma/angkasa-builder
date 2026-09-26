@@ -24,6 +24,8 @@ import {
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { LuFilm, LuMove, LuPlus, LuTrash2, LuUpload, LuX } from 'react-icons/lu'
 
+import { InstantPicker } from '@repo/theme'
+
 import {
   parseVideoUrl,
   sanitizeVideo,
@@ -555,36 +557,21 @@ export function PointControl({
 /* Date and time                                                              */
 /* -------------------------------------------------------------------------- */
 
-/** An ISO moment as the `datetime-local` value for the seller's own time zone. */
-function toLocalInput(iso: string): string {
-  const time = Date.parse(iso)
-  if (!Number.isFinite(time)) return ''
-  const date = new Date(time)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
+/**
+ * A moment for a section's schedule, as an ISO instant (`''` for none), on
+ * the shared Chakra day-and-time picker rather than the browser's native
+ * `datetime-local`. The picker joins the day and time in the seller's own
+ * time zone — the zone they think of the sale in.
+ */
 export function DateTimeControl({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
-  const { t } = useEditorText()
+  const { locale } = useEditorText()
   return (
-    <HStack gap="2">
-      <Input
-        size="sm"
-        type="datetime-local"
-        value={toLocalInput(value)}
-        onChange={(event) => {
-          const raw = event.currentTarget.value
-          // `datetime-local` has no zone; `new Date` reads it as local time,
-          // which is the seller's — the zone they will think of the sale in.
-          onChange(raw ? new Date(raw).toISOString() : '')
-        }}
-      />
-      {value && (
-        <IconButton aria-label={t('clear')} size="xs" variant="ghost" onClick={() => onChange('')}>
-          <LuX />
-        </IconButton>
-      )}
-    </HStack>
+    <InstantPicker
+      value={value}
+      onChange={onChange}
+      locale={locale === 'id' ? 'id-ID' : 'en-US'}
+      size="sm"
+    />
   )
 }
 

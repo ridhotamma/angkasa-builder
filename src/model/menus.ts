@@ -12,6 +12,8 @@
  * only where a button can.
  */
 
+import { z } from 'zod'
+
 import { isRecord, newId } from './fields'
 import { sanitizeLink, type Link } from './links'
 import type { Localized } from './localized'
@@ -48,6 +50,27 @@ export const MENU_DESCRIPTIONS: Record<MenuHandle, Localized> = {
     id: 'Tautan di footer. Setiap tautan tingkat atas menjadi judul kolom; tautan di bawahnya menjadi isi kolom.',
   },
 }
+
+/**
+ * A menu as a form value, for the admin's menu editor. The sanitiser below
+ * quietly drops a link with no label; the form says so on the field instead,
+ * before the seller loses the link on save. Depth and counts are enforced by
+ * the editor (it offers no way past them) and by the sanitiser on the server.
+ */
+const menuItemSchema: z.ZodType<MenuItem, MenuItem> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    label: z.string().trim().min(1, 'Give the link a label.').max(MAX_MENU_LABEL),
+    link: z.custom<Link>((value) => isRecord(value) && typeof value.kind === 'string'),
+    children: z.array(menuItemSchema).max(MAX_MENU_ITEMS_PER_LEVEL),
+  }),
+)
+
+export const menuFormSchema = z.object({
+  items: z.array(menuItemSchema).max(MAX_MENU_ITEMS_PER_LEVEL),
+})
+
+export type MenuFormValues = z.infer<typeof menuFormSchema>
 
 export function sanitizeMenuItems(value: unknown): MenuItem[] {
   let budget = MAX_MENU_ITEMS

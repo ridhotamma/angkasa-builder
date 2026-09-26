@@ -57,9 +57,19 @@ import {
   LuSearch,
   LuSmartphone,
   LuTrash2,
+  LuX,
 } from 'react-icons/lu'
 
-import { createSection, MAX_SECTIONS, sanitizeSections, type SectionInstance } from '../model/content'
+import { Tooltip } from '@repo/theme'
+
+import {
+  canDuplicateSection,
+  createSection,
+  duplicateSection,
+  MAX_SECTIONS,
+  sanitizeSections,
+  type SectionInstance,
+} from '../model/content'
 import { newId, readText } from '../model/fields'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
@@ -100,6 +110,14 @@ function readClipboard(scope: SectionScope): SectionInstance | null {
   }
 }
 
+function clearClipboard() {
+  try {
+    window.localStorage.removeItem(CLIPBOARD_KEY)
+  } catch {
+    // Storage unavailable: there was nothing kept to clear.
+  }
+}
+
 function writeClipboard(section: SectionInstance): boolean {
   try {
     window.localStorage.setItem(CLIPBOARD_KEY, JSON.stringify(section))
@@ -107,6 +125,24 @@ function writeClipboard(section: SectionInstance): boolean {
   } catch {
     return false
   }
+}
+
+/** A section's icon on a small tile, as in the add-section dialog. */
+function IconTile({ icon, selected }: { icon: string; selected: boolean }) {
+  return (
+    <Box
+      boxSize="8"
+      rounded="md"
+      bg={selected ? 'bg.panel' : 'bg.muted'}
+      color="fg.muted"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      flexShrink="0"
+    >
+      <Icon as={sectionIcon(icon)} boxSize="4" />
+    </Box>
+  )
 }
 
 /* -------------------------------------------------------------------------- */
@@ -210,7 +246,7 @@ function Row({
         gap="2"
         onClick={onSelect}
       >
-        <Icon as={sectionIcon(schema?.icon ?? '')} boxSize="4" color="fg.muted" flexShrink="0" />
+        <IconTile icon={schema?.icon ?? ''} selected={selected} />
         <Stack gap="0" minW="0" align="start" flex="1">
           <HStack gap="1.5" minW="0" maxW="full">
             <Text fontSize="sm" fontWeight="medium" truncate>
@@ -242,15 +278,17 @@ function Row({
           aria-label={t('duplicate')}
           size="2xs"
           variant="ghost"
-          disabled={!canDuplicate || schema?.max === 1}
+          disabled={!canDuplicate}
           onClick={onDuplicate}
         >
           <LuCopy />
         </IconButton>
         {required ? (
-          <IconButton aria-label={t('required')} title={t('required')} size="2xs" variant="ghost" disabled>
-            <LuLock />
-          </IconButton>
+          <Tooltip content={t('required')} wrap>
+            <IconButton aria-label={t('required')} size="2xs" variant="ghost" disabled>
+              <LuLock />
+            </IconButton>
+          </Tooltip>
         ) : (
           <IconButton
             aria-label={t('remove')}
@@ -296,7 +334,7 @@ export function PinnedRow({
       gap="2"
       onClick={onSelect}
     >
-      <Icon as={sectionIcon(icon)} boxSize="4" color="fg.muted" />
+      <IconTile icon={icon} selected={selected} />
       <Stack gap="0" align="start" minW="0">
         <Text fontSize="sm" fontWeight="medium">
           {label}
@@ -405,20 +443,41 @@ function AddSectionDialog({
                   onChange={(event) => setQuery(event.currentTarget.value)}
                 />
               </InputGroup>
+              {/* The copy stays after pasting, like a clipboard, so it can go on
+                  several pages; the cross forgets it. */}
               {copied && (
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  colorPalette="brand"
-                  justifyContent="start"
-                  onClick={() => {
-                    onPaste(copied)
-                    setOpen(false)
-                  }}
-                >
-                  <LuClipboardPaste />
-                  {t('pasteSection')} — {l(sectionSchema(copied.type)!.name)}
-                </Button>
+                <HStack gap="1">
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    colorPalette="brand"
+                    justifyContent="start"
+                    flex="1"
+                    minW="0"
+                    onClick={() => {
+                      onPaste(copied)
+                      setOpen(false)
+                    }}
+                  >
+                    <LuClipboardPaste />
+                    <Text truncate>
+                      {t('pasteSection')} — {l(sectionSchema(copied.type)!.name)}
+                    </Text>
+                  </Button>
+                  <Tooltip content={t('clearCopied')}>
+                    <IconButton
+                      aria-label={t('clearCopied')}
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        clearClipboard()
+                        setCopied(null)
+                      }}
+                    >
+                      <LuX />
+                    </IconButton>
+                  </Tooltip>
+                </HStack>
               )}
             </Dialog.Header>
             <Dialog.Body pt="0">
@@ -472,20 +531,20 @@ function AddSectionDialog({
                               >
                                 <Icon as={sectionIcon(entry.schema.icon)} boxSize="4.5" />
                               </Box>
-                              <Stack gap="0.5" minW="0">
-                                <HStack gap="1.5">
-                                  <Text fontSize="sm" fontWeight="medium">
-                                    {entry.name}
-                                  </Text>
-                                  {entry.preset && (
-                                    <Badge size="xs" colorPalette="brand" variant="subtle">
-                                      {t('preset')}
-                                    </Badge>
-                                  )}
-                                </HStack>
+                              {/* The badge goes under the description, not beside
+                                  the name, so a long name keeps the card's width. */}
+                              <Stack gap="0.5" minW="0" flex="1" align="start">
+                                <Text fontSize="sm" fontWeight="medium">
+                                  {entry.name}
+                                </Text>
                                 <Text fontSize="xs" color="fg.muted" fontWeight="normal" lineHeight="short">
                                   {entry.description}
                                 </Text>
+                                {entry.preset && (
+                                  <Badge size="xs" colorPalette="brand" variant="subtle" mt="1">
+                                    {t('preset')}
+                                  </Badge>
+                                )}
                               </Stack>
                             </Button>
                           ))}
@@ -587,7 +646,7 @@ export function SectionList({
                   key={section.id}
                   section={section}
                   selected={section.id === selectedId}
-                  canDuplicate={!full}
+                  canDuplicate={canDuplicateSection(sections, section.id)}
                   onSelect={() => onSelect(section.id)}
                   onToggleHidden={() =>
                     onChange(
@@ -597,11 +656,8 @@ export function SectionList({
                     )
                   }
                   onDuplicate={() => {
-                    const index = sections.findIndex((other) => other.id === section.id)
-                    const copy = { ...structuredClone(section), id: newId() }
-                    const next = [...sections]
-                    next.splice(index + 1, 0, copy)
-                    onChange(next)
+                    const result = duplicateSection(sections, section.id)
+                    if (result) onChange(result.sections)
                   }}
                   onCopy={() => {
                     if (writeClipboard(section)) onNotice?.(t('sectionCopied'))

@@ -155,6 +155,7 @@ const MESSAGES = {
   searchSections: { en: 'Search sections…', id: 'Cari bagian…' },
   noSectionsMatch: { en: 'No sections match.', id: 'Tidak ada bagian yang cocok.' },
   pasteSection: { en: 'Paste copied section', id: 'Tempel bagian yang disalin' },
+  clearCopied: { en: 'Forget the copied section', id: 'Lupakan bagian yang disalin' },
   copySection: { en: 'Copy', id: 'Salin' },
   sectionCopied: {
     en: 'Section copied. Paste it from "Add section" on any page or theme.',
@@ -211,6 +212,12 @@ const MESSAGES = {
   menuAddChild: { en: 'Add link under this one', id: 'Tambah tautan di bawahnya' },
   menuLabel: { en: 'Label', id: 'Label' },
   menuEmpty: { en: 'No links yet.', id: 'Belum ada tautan.' },
+  menuEmptyHint: {
+    en: 'Add the pages shoppers should reach from here.',
+    id: 'Tambahkan halaman yang perlu dijangkau pembeli dari sini.',
+  },
+  menuLabelPlaceholder: { en: 'e.g. Shop all', id: 'mis. Semua produk' },
+  menuNeedsLabel: { en: 'Needs a label', id: 'Perlu label' },
   menuUntitled: { en: 'New link', id: 'Tautan baru' },
 } satisfies Record<string, Localized>
 

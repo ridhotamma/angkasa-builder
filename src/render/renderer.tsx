@@ -39,6 +39,12 @@ export interface SectionsRendererProps {
   /** Editor only: highlights a section and reports clicks on one. */
   selectedId?: string | null
   onSelect?: (id: string) => void
+  /**
+   * Editor only: quick actions for the selected section (move, duplicate,
+   * remove), drawn on its outline. The editor supplies them, so the renderer
+   * needs to know nothing about editing.
+   */
+  toolbar?: (section: SectionInstance) => ReactNode
 }
 
 /**
@@ -109,7 +115,13 @@ export function pageEdges(drawn: readonly SectionInstance[]): PageEdges {
 /** The space between two sections in the page column. */
 const SECTION_GAP = { base: '10', md: '14' } as const
 
-export function SectionsRenderer({ sections, env, selectedId, onSelect }: SectionsRendererProps) {
+export function SectionsRenderer({
+  sections,
+  env,
+  selectedId,
+  onSelect,
+  toolbar,
+}: SectionsRendererProps) {
   const now = env.now ?? new Date()
   const visible = drawnSections(sections, env.mode, now)
 
@@ -169,12 +181,33 @@ export function SectionsRenderer({ sections, env, selectedId, onSelect }: Sectio
               }}
             >
               <ScheduleBadge section={section} now={now} />
+              {selected && toolbar && <ToolbarSlot inside={bleed || index === 0}>{toolbar(section)}</ToolbarSlot>}
               {rendered}
             </Box>
           )
         })}
       </Stack>
     </RenderProvider>
+  )
+}
+
+/**
+ * Where the selected section's toolbar sits: on the outline's top-right
+ * corner, just above the section. It tucks inside the corner instead on a
+ * full-bleed section, whose outline is drawn inside it and would cut it off at
+ * the page edge, and on the first section, where above is the store header.
+ */
+function ToolbarSlot({ inside, children }: { inside: boolean; children: ReactNode }) {
+  return (
+    <Box
+      position="absolute"
+      right={inside ? '2' : '-6px'}
+      top={inside ? '2' : '-6px'}
+      transform={inside ? undefined : 'translateY(calc(-100% - 4px))'}
+      zIndex="3"
+    >
+      {children}
+    </Box>
   )
 }
 

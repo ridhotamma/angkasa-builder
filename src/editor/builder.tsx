@@ -44,6 +44,8 @@ import {
   LuUndo2,
 } from 'react-icons/lu'
 
+import { Tooltip } from '@repo/theme'
+
 import type { SectionInstance, TemplateKey } from '../model/content'
 import type { FieldValues } from '../model/fields'
 import {
@@ -71,6 +73,7 @@ import { useHistoryKeys, type EditorHistory } from './history'
 import { useEditorText } from './messages'
 import { PreviewFrame, type PreviewDevice } from './preview-frame'
 import { PinnedRow, SectionList } from './section-list'
+import { SectionToolbar } from './section-toolbar'
 import type { EditorServices } from './services'
 import { ThemeSettingsPanel } from './theme-settings'
 
@@ -200,6 +203,17 @@ function Builder({
         ?.querySelector(`[data-section-id="${id}"]`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
+  }
+
+  /**
+   * After the preview re-renders — a section moved or was copied — keep it in
+   * view. `nearest` and no smooth scroll: a nudge only when it went off-screen.
+   */
+  function revealSoon(id: string) {
+    const view = previewDoc?.defaultView
+    view?.requestAnimationFrame(() =>
+      previewDoc?.querySelector(`[data-section-id="${id}"]`)?.scrollIntoView({ block: 'nearest' }),
+    )
   }
 
   const back = (
@@ -481,6 +495,19 @@ function Builder({
               env={env}
               selectedId={selectedId}
               onSelect={(id) => select(id, true)}
+              toolbar={(section) => (
+                <SectionToolbar
+                  section={section}
+                  sections={sections}
+                  onChange={onSectionsChange}
+                  onSelect={(id) => {
+                    select(id, true)
+                    revealSoon(id)
+                  }}
+                  onMoved={revealSoon}
+                  onRemoved={() => setSelectedId(null)}
+                />
+              )}
             />
           </Container>
         </Box>
@@ -550,36 +577,40 @@ function Builder({
                   ['mobile', LuSmartphone, 'deviceMobile'],
                 ] as const
               ).map(([value, glyph, label]) => (
-                <SegmentGroup.Item key={value} value={value} aria-label={t(label)} title={t(label)}>
-                  <SegmentGroup.ItemText>
-                    <Icon as={glyph} boxSize="3.5" />
-                  </SegmentGroup.ItemText>
-                  <SegmentGroup.ItemHiddenInput />
-                </SegmentGroup.Item>
+                <Tooltip key={value} content={t(label)}>
+                  <SegmentGroup.Item value={value} aria-label={t(label)}>
+                    <SegmentGroup.ItemText>
+                      <Icon as={glyph} boxSize="3.5" />
+                    </SegmentGroup.ItemText>
+                    <SegmentGroup.ItemHiddenInput />
+                  </SegmentGroup.Item>
+                </Tooltip>
               ))}
             </SegmentGroup.Root>
             {history && (
               <HStack gap="0.5">
-                <IconButton
-                  aria-label={t('undo')}
-                  title={`${t('undo')} (Ctrl+Z)`}
-                  size="xs"
-                  variant="ghost"
-                  disabled={!history.canUndo}
-                  onClick={history.undo}
-                >
-                  <LuUndo2 />
-                </IconButton>
-                <IconButton
-                  aria-label={t('redo')}
-                  title={`${t('redo')} (Ctrl+Shift+Z)`}
-                  size="xs"
-                  variant="ghost"
-                  disabled={!history.canRedo}
-                  onClick={history.redo}
-                >
-                  <LuRedo2 />
-                </IconButton>
+                <Tooltip content={`${t('undo')} (Ctrl+Z)`} wrap>
+                  <IconButton
+                    aria-label={t('undo')}
+                    size="xs"
+                    variant="ghost"
+                    disabled={!history.canUndo}
+                    onClick={history.undo}
+                  >
+                    <LuUndo2 />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={`${t('redo')} (Ctrl+Shift+Z)`} wrap>
+                  <IconButton
+                    aria-label={t('redo')}
+                    size="xs"
+                    variant="ghost"
+                    disabled={!history.canRedo}
+                    onClick={history.redo}
+                  >
+                    <LuRedo2 />
+                  </IconButton>
+                </Tooltip>
               </HStack>
             )}
             <Text fontSize="xs" color="fg.muted" hideBelow="xl">

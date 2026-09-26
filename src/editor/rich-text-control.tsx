@@ -36,6 +36,8 @@ import {
   LuUnderline,
 } from 'react-icons/lu'
 
+import { Tooltip } from '@repo/theme'
+
 import { isSafeRichHref, type RichDoc } from '../model/rich-text'
 import { useEditorText, type EditorMessage } from './messages'
 
@@ -220,19 +222,20 @@ function ToolButton({
 }) {
   const { t } = useEditorText()
   return (
-    <IconButton
-      aria-label={t(label)}
-      title={t(label)}
-      aria-pressed={active}
-      size="xs"
-      variant={active ? 'subtle' : 'ghost'}
-      colorPalette={active ? 'brand' : 'gray'}
-      // Keeps the editor's selection: a click would otherwise blur it first.
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
-    >
-      <Icon />
-    </IconButton>
+    <Tooltip content={t(label)}>
+      <IconButton
+        aria-label={t(label)}
+        aria-pressed={active}
+        size="xs"
+        variant={active ? 'subtle' : 'ghost'}
+        colorPalette={active ? 'brand' : 'gray'}
+        // Keeps the editor's selection: a click would otherwise blur it first.
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={onClick}
+      >
+        <Icon />
+      </IconButton>
+    </Tooltip>
   )
 }
 
@@ -270,19 +273,20 @@ function LinkButton({ editor, active }: { editor: Editor; active: boolean }) {
       }}
       positioning={{ placement: 'bottom-start' }}
     >
-      <Popover.Trigger asChild>
-        <IconButton
-          aria-label={t('link')}
-          title={t('link')}
-          aria-pressed={active}
-          size="xs"
-          variant={active ? 'subtle' : 'ghost'}
-          colorPalette={active ? 'brand' : 'gray'}
-          onMouseDown={(event) => event.preventDefault()}
-        >
-          <LuLink />
-        </IconButton>
-      </Popover.Trigger>
+      <Tooltip content={t('link')}>
+        <Popover.Trigger asChild>
+          <IconButton
+            aria-label={t('link')}
+            aria-pressed={active}
+            size="xs"
+            variant={active ? 'subtle' : 'ghost'}
+            colorPalette={active ? 'brand' : 'gray'}
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            <LuLink />
+          </IconButton>
+        </Popover.Trigger>
+      </Tooltip>
       <Portal>
         <Popover.Positioner>
           <Popover.Content w="xs" maxW="calc(100vw - 2rem)">

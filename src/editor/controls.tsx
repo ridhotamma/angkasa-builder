@@ -304,7 +304,7 @@ function ImageControl({
 /* Link                                                                       */
 /* -------------------------------------------------------------------------- */
 
-const LINK_KIND_LABELS: Record<LinkKind, EditorMessage> = {
+export const LINK_KIND_LABELS: Record<LinkKind, EditorMessage> = {
   none: 'linkNone',
   home: 'linkHome',
   page: 'linkPage',

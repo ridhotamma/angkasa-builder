@@ -86,6 +86,40 @@ export function createSection(
   }
 }
 
+/* Editing a list of sections — shared by the editor's list and its preview toolbar. */
+
+/** `sections` with the one `id` moved `by` places; unchanged when it would leave the list. */
+export function moveSection(sections: SectionInstance[], id: string, by: number): SectionInstance[] {
+  const from = sections.findIndex((section) => section.id === id)
+  const to = from + by
+  if (from < 0 || to < 0 || to >= sections.length) return sections
+  const next = [...sections]
+  const [section] = next.splice(from, 1)
+  next.splice(to, 0, section!)
+  return next
+}
+
+/** Whether another copy of section `id` fits: room on the page, and under its type's cap. */
+export function canDuplicateSection(sections: readonly SectionInstance[], id: string): boolean {
+  const section = sections.find((other) => other.id === id)
+  if (!section || sections.length >= MAX_SECTIONS) return false
+  const max = sectionSchema(section.type)?.max
+  return max === undefined || sections.filter((other) => other.type === section.type).length < max
+}
+
+/** `sections` with a copy of `id` right after it, and the copy — or `null` when it does not fit. */
+export function duplicateSection(
+  sections: SectionInstance[],
+  id: string,
+): { sections: SectionInstance[]; copy: SectionInstance } | null {
+  if (!canDuplicateSection(sections, id)) return null
+  const index = sections.findIndex((section) => section.id === id)
+  const copy = { ...structuredClone(sections[index]!), id: newId() }
+  const next = [...sections]
+  next.splice(index + 1, 0, copy)
+  return { sections: next, copy }
+}
+
 /**
  * A stored list of sections, cleaned.
  *

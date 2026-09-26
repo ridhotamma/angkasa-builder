@@ -32,7 +32,7 @@ import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 
 import { FaFacebookF, FaInstagram, FaTiktok, FaXTwitter, FaYoutube } from 'react-icons/fa6'
 import { LuChevronDown, LuGlobe, LuMail, LuMapPin, LuMenu, LuPhone } from 'react-icons/lu'
 
-import { ImageWithFallback } from '@repo/theme'
+import { ImageWithFallback, Tooltip } from '@repo/theme'
 
 import { readBoolean, readLink, readList, readText, type FieldValues } from '../model/fields'
 import { isMegaMenu, type MenuItem } from '../model/menus'
@@ -559,11 +559,13 @@ export function StoreFooter({
                   {socials.map((link) => {
                     const { icon, label } = SOCIAL_ICONS[link.platform]
                     return (
-                      <IconButton key={link.platform} asChild aria-label={label} title={label} variant="outline" size="sm" rounded="full">
-                        <ChakraLink href={link.url} target="_blank" rel="noopener noreferrer">
-                          <Icon as={icon} boxSize="4" />
-                        </ChakraLink>
-                      </IconButton>
+                      <Tooltip key={link.platform} content={label}>
+                        <IconButton asChild aria-label={label} variant="outline" size="sm" rounded="full">
+                          <ChakraLink href={link.url} target="_blank" rel="noopener noreferrer">
+                            <Icon as={icon} boxSize="4" />
+                          </ChakraLink>
+                        </IconButton>
+                      </Tooltip>
                     )
                   })}
                 </HStack>

@@ -5,7 +5,13 @@ import {
   contrastRatio,
   darkModeBrandFg,
   themeStylesheet,
+  canDuplicateSection,
   createSection,
+  duplicateSection,
+  MAX_SECTIONS,
+  menuFormSchema,
+  moveSection,
+  type MenuItem,
   DEFAULT_THEME_SETTINGS,
   imageFileIds,
   parseThemeContent,
@@ -208,5 +214,58 @@ describe('colour', () => {
     expect(vars['--chakra-colors-brand-500']).toBe('#0055ff')
     expect(vars['--chakra-colors-brand-solid']).toBe('#0055ff')
     expect(vars['--chakra-colors-brand-contrast']).toBe('#ffffff')
+  })
+})
+
+describe('editing a section list', () => {
+  const page = () => [createSection('timeline'), createSection('faq'), createSection('lookbook')]
+
+  test('moves a section one place, and not off either end', () => {
+    const sections = page()
+    const [a, b, c] = sections.map((section) => section.id) as [string, string, string]
+    expect(moveSection(sections, a, 1).map((section) => section.id)).toEqual([b, a, c])
+    expect(moveSection(sections, c, -1).map((section) => section.id)).toEqual([a, c, b])
+    expect(moveSection(sections, a, -1)).toBe(sections)
+    expect(moveSection(sections, c, 1)).toBe(sections)
+  })
+
+  test('duplicates right after the original, as a separate copy', () => {
+    const sections = page()
+    const result = duplicateSection(sections, sections[0]!.id)!
+    expect(result.sections).toHaveLength(4)
+    expect(result.sections[1]).toBe(result.copy)
+    expect(result.copy.id).not.toBe(sections[0]!.id)
+    expect(result.copy.settings).toEqual(sections[0]!.settings)
+    expect(result.copy.settings).not.toBe(sections[0]!.settings)
+  })
+
+  test('will not copy a one-per-page section, or past the page limit', () => {
+    const reviews = [createSection('product-reviews')]
+    expect(canDuplicateSection(reviews, reviews[0]!.id)).toBe(false)
+    expect(duplicateSection(reviews, reviews[0]!.id)).toBeNull()
+
+    const full = Array.from({ length: MAX_SECTIONS }, () => createSection('faq'))
+    expect(canDuplicateSection(full, full[0]!.id)).toBe(false)
+  })
+})
+
+describe('menu form', () => {
+  const link = (label: string, children: MenuItem[] = []): MenuItem => ({
+    id: label || 'blank',
+    label,
+    link: { kind: 'none' },
+    children,
+  })
+
+  test('accepts labelled links, nested', () => {
+    expect(menuFormSchema.safeParse({ items: [link('Shop', [link('Shirts')])] }).success).toBe(true)
+  })
+
+  test('flags a link with no label at its own path, instead of dropping it', () => {
+    const result = menuFormSchema.safeParse({ items: [link('Shop', [link('Shirts'), link('  ')])] })
+    expect(result.success).toBe(false)
+    expect(result.error!.issues.map((issue) => issue.path)).toEqual([
+      ['items', 0, 'children', 1, 'label'],
+    ])
   })
 })
