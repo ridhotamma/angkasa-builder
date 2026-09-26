@@ -8,9 +8,13 @@
 
 export * from './model/content'
 export * from './model/fields'
+export * from './model/layout'
 export * from './model/links'
 export * from './model/localized'
+export * from './model/menus'
 export * from './model/presets'
 export * from './model/rich-text'
+export * from './model/section-style'
 export * from './model/sections'
 export * from './model/settings'
+export * from './model/size-guide'

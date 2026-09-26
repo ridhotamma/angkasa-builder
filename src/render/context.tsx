@@ -11,6 +11,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react'
 
+import type { TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
 
@@ -22,6 +23,47 @@ export interface StorefrontProductCard {
   price: number
   compareAtPrice: number | null
   imageUrl: string | null
+  /** More photos, when the section shows a gallery (a featured product). */
+  imageUrls?: string[]
+  /** Plain text. Only read by sections that show it. */
+  description?: string
+}
+
+/** One photo in the product page's gallery. */
+export interface StorefrontGalleryImage {
+  /** Large enough for the main photo. */
+  url: string | null
+  /** A small square for the thumbnails. */
+  thumbUrl: string | null
+}
+
+export interface StorefrontSizeGuide {
+  name: string
+  table: TableValue
+  note: string
+}
+
+/**
+ * The product a product page is about, as the product template draws it. The
+ * gallery is whatever the page is showing *now* — a chosen variant's own
+ * photos replace the product's — so the host passes it in on every render.
+ */
+export interface StorefrontProductDetail {
+  id: string
+  name: string
+  slug: string
+  /** Minor units: the chosen variant's price once one is picked. */
+  price: number
+  compareAtPrice: number | null
+  images: StorefrontGalleryImage[]
+  description: string
+  rating: number | null
+  ratingCount: number
+  /** Units left to sell, or `null` when the shop does not track stock. */
+  available: number | null
+  category: { name: string; slug: string } | null
+  sizeGuide: StorefrontSizeGuide | null
+  related: StorefrontProductCard[]
 }
 
 export interface StorefrontShelfData {
@@ -46,11 +88,17 @@ export interface StorefrontRenderData {
     logoUrl: string | null
     bannerUrl: string | null
     currency: string
+    /** From shop settings, for the contact section's email button. */
+    email?: string | null
   }
   categories: StorefrontCategoryData[]
   /** Active collections in sort order, each with its first products. */
   collections: StorefrontShelfData[]
   latest: StorefrontProductCard[]
+  /** Products the layout picks by id (featured product, hotspots, video tags). */
+  products?: StorefrontProductCard[]
+  /** Only on the product page. */
+  product?: StorefrontProductDetail
 }
 
 export interface RenderEnvironment {
@@ -73,6 +121,33 @@ export interface RenderEnvironment {
    * page — header, fonts and all.
    */
   navigate?: (href: string) => void
+  /** An uploaded video's file id as a URL the `<video>` element can stream. */
+  videoUrl?: (fileId: string) => string | null
+  /**
+   * The moment scheduled sections and countdowns are judged against. The
+   * storefront passes the request's time, so the server and the browser
+   * agree on which sections exist; defaults to now.
+   */
+  now?: Date
+  /**
+   * Parts of the product page only the host can draw: the variant picker and
+   * buy buttons need its cart, reviews its session. The editor leaves them
+   * out and gets stand-ins.
+   */
+  slots?: {
+    productPurchase?: ReactNode
+    productReviews?: ReactNode
+  }
+  /**
+   * The window media queries run against. The editor renders its preview in
+   * an iframe the width of the chosen device, and a breakpoint read from the
+   * editor's own window would lay the phone preview out as a desktop.
+   */
+  getWindow?: () => Window
+  /** Editor only: text typed straight into the preview. */
+  editing?: {
+    onEditText: (sectionId: string, key: string, value: string) => void
+  }
 }
 
 const RenderContext = createContext<RenderEnvironment | null>(null)
@@ -147,4 +222,66 @@ export function sampleStorefrontData(shopName = 'Your shop'): StorefrontRenderDa
     ],
     latest: products(6, 24),
   }
+}
+
+/**
+ * The product a product-page preview shows: the shop's newest product when
+ * it has one — with the details the editor knows — otherwise a sample. The
+ * editor has no variant picker or reviews of its own, so the host's slots
+ * are replaced by stand-ins in `render/product-page`.
+ */
+export function previewProductDetail(data: StorefrontRenderData): StorefrontProductDetail {
+  if (data.product) return data.product
+  const card = data.latest[0]
+  const related = data.latest.slice(1, 9)
+  return {
+    id: card?.id ?? 'sample-product',
+    name: card?.name ?? 'Signature linen shirt',
+    slug: card?.slug ?? 'sample-product',
+    price: card?.price ?? 249_000,
+    compareAtPrice: card?.compareAtPrice ?? 299_000,
+    images: (card?.imageUrls?.length ? card.imageUrls : [card?.imageUrl ?? null, null, null]).map(
+      (url) => ({ url, thumbUrl: url }),
+    ),
+    description:
+      card?.description ||
+      'A relaxed shirt in breathable linen, cut for everyday wear.\n\nMachine wash cold, line dry.',
+    rating: 4.8,
+    ratingCount: 126,
+    available: 4,
+    category: data.categories[0]
+      ? { name: data.categories[0].name, slug: data.categories[0].slug }
+      : { name: 'Apparel', slug: 'apparel' },
+    sizeGuide: {
+      name: 'Tops',
+      table: {
+        columns: ['Size', 'Chest (cm)', 'Length (cm)'],
+        rows: [
+          ['S', '96', '68'],
+          ['M', '102', '70'],
+          ['L', '108', '72'],
+        ],
+      },
+      note: 'Measured flat, across the chest from armpit to armpit.',
+    },
+    related,
+  }
+}
+
+/**
+ * One product card by id, from anywhere the render data has it: the picked
+ * products first, then the newest products and the shelves, so a product the
+ * page already shows elsewhere needs no second read.
+ */
+export function findProductCard(
+  data: StorefrontRenderData,
+  id: string,
+): StorefrontProductCard | null {
+  if (!id) return null
+  return (
+    data.products?.find((product) => product.id === id) ??
+    data.latest.find((product) => product.id === id) ??
+    data.collections.flatMap((shelf) => shelf.products).find((product) => product.id === id) ??
+    null
+  )
 }

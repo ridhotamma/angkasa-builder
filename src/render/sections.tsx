@@ -27,7 +27,7 @@ import {
   Skeleton,
   Stack,
   Text,
-  useBreakpointValue,
+  type BoxProps,
 } from '@chakra-ui/react'
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
@@ -46,9 +46,13 @@ import {
 } from '../model/fields'
 import type { SectionType } from '../model/sections'
 import { useRenderEnvironment, type StorefrontCategoryData } from './context'
+import { useSectionLayout } from './frame'
+import { useResponsive } from './hooks'
 import { isPatternKey, patternStyle } from './patterns'
 import { RichTextView } from './rich-text'
 import {
+  ButtonRow,
+  EditableText,
   EmptyNotice,
   FullBleed,
   gridColumns,
@@ -64,11 +68,11 @@ export interface SectionProps {
   settings: FieldValues
 }
 
-type Align = 'left' | 'center'
-const alignOf = (settings: FieldValues): Align =>
+export type Align = 'left' | 'center'
+export const alignOf = (settings: FieldValues): Align =>
   readText(settings, 'align') === 'center' ? 'center' : 'left'
 
-const EMPTY = {
+export const EMPTY = {
   collections: {
     en: 'This shop has no active collections yet.',
     id: 'Toko ini belum punya koleksi aktif.',
@@ -86,7 +90,7 @@ const EMPTY = {
   },
 }
 
-function useEmptyText() {
+export function useEmptyText() {
   const { locale } = useLocale()
   return (key: keyof typeof EMPTY) => EMPTY[key][locale] || EMPTY[key].en
 }
@@ -114,68 +118,134 @@ function AnnouncementBar({ settings }: SectionProps) {
   )
 }
 
-const HERO_HEIGHT = {
+export const HERO_HEIGHT = {
   sm: { base: '14rem', md: '18rem' },
   md: { base: '18rem', md: '26rem' },
   lg: { base: '24rem', md: '34rem' },
+  // Small-viewport units, so the address bar never hides the buttons; in the
+  // editor's iframe that is one screen of the previewed device. The header's
+  // height comes off the top.
+  screen: { base: 'calc(100svh - 4rem)', md: 'calc(100svh - 4.5rem)' },
 } as const
+
+export function heroHeight(settings: FieldValues) {
+  const key = readText(settings, 'height') as keyof typeof HERO_HEIGHT
+  return HERO_HEIGHT[key] ?? HERO_HEIGHT.md
+}
+
+/** The shade between a photo and the white text on it. */
+export function overlayProps(
+  overlay: string,
+): Pick<BoxProps, 'bg' | 'bgGradient' | 'gradientFrom' | 'gradientTo'> {
+  switch (overlay) {
+    case 'none':
+      return {}
+    case 'light':
+      return { bg: 'blackAlpha.300' }
+    case 'dark':
+      return { bg: 'blackAlpha.600' }
+    default:
+      return { bgGradient: 'to-t', gradientFrom: 'blackAlpha.700', gradientTo: 'transparent' }
+  }
+}
+
+/**
+ * A banner's words and buttons, over whatever the banner shows behind them.
+ * Shared by the image, video and parallax banners so all three read alike.
+ */
+export function BannerCopy({
+  settings,
+  onImage,
+}: {
+  settings: FieldValues
+  onImage: boolean
+}) {
+  const heading = readText(settings, 'heading')
+  const subheading = readText(settings, 'subheading')
+  const align = alignOf(settings)
+  const middle = readText(settings, 'contentPosition') === 'middle'
+  const height = heroHeight(settings)
+
+  return (
+    <Flex
+      position="relative"
+      minH={height}
+      align={middle ? 'center' : 'end'}
+      justify={align === 'center' ? 'center' : 'start'}
+      p={{ base: '6', md: '12' }}
+      {...(onImage ? overlayProps(readText(settings, 'overlay')) : {})}
+    >
+      <Stack
+        gap="4"
+        maxW="3xl"
+        textAlign={align}
+        align={align === 'center' ? 'center' : 'start'}
+        color={onImage ? 'white' : 'fg'}
+      >
+        {heading && (
+          <Heading
+            as="h1"
+            size={{ base: '3xl', md: '5xl' }}
+            letterSpacing="-0.025em"
+            lineHeight="1.05"
+            textWrap="balance"
+          >
+            <EditableText field="heading" value={heading} />
+          </Heading>
+        )}
+        {subheading && (
+          <Text fontSize={{ base: 'md', md: 'xl' }} opacity={0.9} textWrap="pretty">
+            <EditableText field="subheading" value={subheading} />
+          </Text>
+        )}
+        <ButtonRow settings={settings} align={align} onImage={onImage} />
+      </Stack>
+    </Flex>
+  )
+}
 
 function Hero({ settings }: SectionProps) {
   const { data, imageUrl } = useRenderEnvironment()
+  const { width } = useSectionLayout()
   const empty = useEmptyText()
   const fileId = readText(settings, 'image')
   const src =
-    (fileId && imageUrl(fileId, { width: 1600, height: 700 })) ||
+    (fileId && imageUrl(fileId, { width: 1920, height: 1080 })) ||
     (readBoolean(settings, 'useShopBanner') ? data.shop.bannerUrl : null)
 
-  const heading = readText(settings, 'heading')
-  const subheading = readText(settings, 'subheading')
-  const button = readText(settings, 'buttonLabel')
-  const align = alignOf(settings)
-  const hasCopy = Boolean(heading || subheading || button)
-  const height = HERO_HEIGHT[(readText(settings, 'height') as keyof typeof HERO_HEIGHT) || 'md']
+  const hasCopy = Boolean(
+    readText(settings, 'heading') ||
+      readText(settings, 'subheading') ||
+      readText(settings, 'buttonLabel') ||
+      readText(settings, 'secondaryButtonLabel'),
+  )
+  const height = heroHeight(settings)
 
   if (!src && !hasCopy) {
     return <EmptyNotice>{empty('image')}</EmptyNotice>
   }
 
   return (
-    <Box position="relative" rounded="l3" overflow="hidden" minH={height} bg="brand.subtle">
+    <Box
+      position="relative"
+      rounded={width === 'edge' ? 'none' : 'l3'}
+      overflow="hidden"
+      minH={height}
+      bg="brand.subtle"
+    >
       {src && (
-        <Image src={src} alt="" position="absolute" inset="0" w="full" h="full" objectFit="cover" />
+        <Image
+          src={src}
+          alt=""
+          position="absolute"
+          inset="0"
+          w="full"
+          h="full"
+          objectFit="cover"
+          fetchPriority="high"
+        />
       )}
-      {hasCopy && (
-        <Flex
-          position="relative"
-          minH={height}
-          align="end"
-          justify={align === 'center' ? 'center' : 'start'}
-          p={{ base: '6', md: '12' }}
-          bgGradient={src ? 'to-t' : undefined}
-          gradientFrom={src ? 'blackAlpha.700' : undefined}
-          gradientTo={src ? 'transparent' : undefined}
-        >
-          <Stack
-            gap="4"
-            maxW="2xl"
-            textAlign={align}
-            align={align === 'center' ? 'center' : 'start'}
-            color={src ? 'white' : 'fg'}
-          >
-            {heading && (
-              <Heading as="h1" size={{ base: '2xl', md: '4xl' }} letterSpacing="-0.02em">
-                {heading}
-              </Heading>
-            )}
-            {subheading && (
-              <Text fontSize={{ base: 'md', md: 'lg' }} opacity={0.9}>
-                {subheading}
-              </Text>
-            )}
-            <ThemeButton label={button} link={readLink(settings, 'buttonLink')} />
-          </Stack>
-        </Flex>
-      )}
+      {hasCopy && <BannerCopy settings={settings} onImage={Boolean(src)} />}
     </Box>
   )
 }
@@ -215,7 +285,7 @@ function BannerSlider({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
   const desktop = Number(readText(settings, 'perPage')) || 2
-  const perPage = Math.min(useBreakpointValue({ base: 1, md: desktop }) ?? 1, slides.length)
+  const perPage = Math.min(useResponsive({ base: 1, md: desktop }), slides.length)
   const ratio = ratioValue(readText(settings, 'ratio'))
   const ready = useImagesSettled(
     slides.length > 1 ? slides.map((slide) => bannerImageUrl(imageUrl, slide)) : [],
@@ -480,7 +550,7 @@ function CategoryRail({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="4">
-      <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
+      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       {categories.length === 0 ? (
         <EmptyNotice>{empty('categories')}</EmptyNotice>
       ) : readText(settings, 'layout') === 'bento' ? (
@@ -715,7 +785,7 @@ function LatestProducts({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="4">
-      <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
+      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       {products.length === 0 ? (
         <EmptyNotice>{empty('products')}</EmptyNotice>
       ) : (
@@ -757,7 +827,9 @@ function RichText({ settings }: SectionProps) {
   const align = alignOf(settings)
   return (
     <TextColumn settings={settings} narrow="2xl" wide="5xl">
-      <SectionHeading align={align}>{readText(settings, 'heading')}</SectionHeading>
+      <SectionHeading align={align} field="heading">
+        {readText(settings, 'heading')}
+      </SectionHeading>
       <RichTextView doc={readRichText(settings, 'body')} align={align} />
     </TextColumn>
   )
@@ -788,7 +860,7 @@ function ImageWithText({ settings }: SectionProps) {
       {/* `start` rather than the default stretch, so the button keeps its own
           width with or without a link. */}
       <Stack gap="4" align="start">
-        <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
         <RichTextView doc={readRichText(settings, 'body')} />
         <ThemeButton
           label={readText(settings, 'buttonLabel')}
@@ -806,7 +878,7 @@ function ImageGallery({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="4">
-      <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
+      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
@@ -848,7 +920,9 @@ function Faq({ settings }: SectionProps) {
   // left-aligned inside the box, where a centred paragraph would be hard to read.
   return (
     <TextColumn settings={settings} narrow="3xl" wide="6xl">
-      <SectionHeading align={alignOf(settings)}>{readText(settings, 'heading')}</SectionHeading>
+      <SectionHeading align={alignOf(settings)} field="heading">
+        {readText(settings, 'heading')}
+      </SectionHeading>
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
@@ -884,7 +958,7 @@ function Testimonials({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="4">
-      <SectionHeading>{readText(settings, 'heading')}</SectionHeading>
+      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : layout === 'marquee' ? (
@@ -951,7 +1025,7 @@ function TestimonialMarquee({
  * moved by the arrows, the dots, a swipe, or a drag with the mouse.
  */
 function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; autoplay: boolean }) {
-  const perPage = Math.min(useBreakpointValue({ base: 1, md: 2, lg: 3 }) ?? 1, items.length)
+  const perPage = Math.min(useResponsive({ base: 1, md: 2, lg: 3 }), items.length)
 
   return (
     <Carousel.Root
@@ -1028,11 +1102,8 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
   )
 }
 
-/**
- * Every section type's renderer. `satisfies Record<SectionType, …>` is what
- * makes a schema without a renderer a compile error.
- */
-export const SECTION_RENDERERS = {
+/** The first sections' renderers; the full registry is `./registry`. */
+export const BASE_SECTION_RENDERERS = {
   'announcement-bar': AnnouncementBar,
   hero: Hero,
   'banner-slider': BannerSlider,
@@ -1046,4 +1117,4 @@ export const SECTION_RENDERERS = {
   'image-gallery': ImageGallery,
   faq: Faq,
   testimonials: Testimonials,
-} satisfies Record<SectionType, ComponentType<SectionProps>>
+} satisfies Partial<Record<SectionType, ComponentType<SectionProps>>>

@@ -1,20 +1,28 @@
 /**
- * The ordered list of sections, and the menu that adds one.
+ * The ordered list of sections, and the picker that adds one.
  *
  * Reordering is drag-and-drop with a keyboard fallback (dnd-kit's keyboard
  * sensor: focus the handle, space, arrows, space). Every change is a new
  * array handed up — nothing here holds its own copy of the order.
+ *
+ * A theme's header and footer are pinned above and below the list: always
+ * there, never moved or removed, but picked like any section to edit them.
  */
 
 import {
   Badge,
+  Box,
   Button,
+  CloseButton,
+  Dialog,
   HStack,
   Icon,
   IconButton,
-  Menu,
+  Input,
+  InputGroup,
   Portal,
   ScrollArea,
+  SimpleGrid,
   Stack,
   Text,
 } from '@chakra-ui/react'
@@ -36,12 +44,108 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { LuCopy, LuEye, LuEyeOff, LuGripVertical, LuPlus, LuTrash2 } from 'react-icons/lu'
+import { useMemo, useState, type ReactNode } from 'react'
+import {
+  LuClipboardCopy,
+  LuClipboardPaste,
+  LuCopy,
+  LuEye,
+  LuEyeOff,
+  LuGripVertical,
+  LuLock,
+  LuMonitor,
+  LuPlus,
+  LuSearch,
+  LuSmartphone,
+  LuTrash2,
+} from 'react-icons/lu'
 
-import { createSection, MAX_SECTIONS, type SectionInstance } from '../model/content'
-import { newId } from '../model/fields'
-import { SECTION_SCHEMAS, sectionSchema, type SectionType } from '../model/sections'
+import { createSection, MAX_SECTIONS, sanitizeSections, type SectionInstance } from '../model/content'
+import { newId, readText } from '../model/fields'
+import { localize } from '../model/localized'
+import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
+import {
+  isSectionAllowed,
+  SECTION_CATEGORIES,
+  SECTION_CATEGORY_LABELS,
+  SECTION_SCHEMAS,
+  sectionSchema,
+  type SectionPreset,
+  type SectionSchema,
+  type SectionScope,
+  type SectionType,
+} from '../model/sections'
 import { useEditorText } from './messages'
+import { sectionIcon } from './section-icons'
+
+/* -------------------------------------------------------------------------- */
+/* Clipboard                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One copied section, kept in this browser so it can be pasted into another
+ * page or theme. Local storage, so it survives moving between editors; read
+ * back through the sanitiser like any stored layout, and it may simply be
+ * missing (a private window) — pasting is then just not offered.
+ */
+const CLIPBOARD_KEY = 'pesanle.page-builder.clipboard'
+
+function readClipboard(scope: SectionScope): SectionInstance | null {
+  try {
+    const raw = window.localStorage.getItem(CLIPBOARD_KEY)
+    if (!raw) return null
+    const [section] = sanitizeSections([JSON.parse(raw)], scope)
+    return section ?? null
+  } catch {
+    return null
+  }
+}
+
+function writeClipboard(section: SectionInstance): boolean {
+  try {
+    window.localStorage.setItem(CLIPBOARD_KEY, JSON.stringify(section))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rows                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/** What the row says under the section's name: its heading, when it has one. */
+function rowDetail(section: SectionInstance): string {
+  return readText(section.settings, 'heading') || readText(section.settings, 'text')
+}
+
+function RowBadges({ section }: { section: SectionInstance }) {
+  const { t, locale } = useEditorText()
+  const style = readSectionStyle(section.style)
+  const schedule = scheduleState(style, new Date())
+  return (
+    <>
+      {section.hidden && (
+        <Badge size="xs" variant="subtle">
+          {t('hidden')}
+        </Badge>
+      )}
+      {style.visibility !== 'all' && (
+        <Icon
+          as={style.visibility === 'mobile' ? LuSmartphone : LuMonitor}
+          boxSize="3.5"
+          color="fg.muted"
+          aria-label={t(style.visibility === 'mobile' ? 'onlyMobile' : 'onlyDesktop')}
+        />
+      )}
+      {schedule !== 'always' && (
+        <Badge size="xs" variant="subtle" colorPalette={schedule === 'live' ? 'green' : schedule === 'scheduled' ? 'blue' : 'gray'}>
+          {localize(SCHEDULE_LABELS[schedule], locale)}
+        </Badge>
+      )}
+    </>
+  )
+}
 
 function Row({
   section,
@@ -49,6 +153,7 @@ function Row({
   onSelect,
   onToggleHidden,
   onDuplicate,
+  onCopy,
   onRemove,
   canDuplicate,
 }: {
@@ -57,6 +162,7 @@ function Row({
   onSelect: () => void
   onToggleHidden: () => void
   onDuplicate: () => void
+  onCopy: () => void
   onRemove: () => void
   canDuplicate: boolean
 }) {
@@ -65,6 +171,8 @@ function Row({
     id: section.id,
   })
   const schema = sectionSchema(section.type)
+  const detail = rowDetail(section)
+  const required = schema?.required === true
 
   return (
     <HStack
@@ -79,6 +187,7 @@ function Row({
       bg={isDragging ? 'bg.muted' : selected ? 'brand.subtle' : 'bg.panel'}
       zIndex={isDragging ? 1 : undefined}
       opacity={section.hidden ? 0.6 : 1}
+      className="group"
     >
       <IconButton
         aria-label={t('dragToReorder')}
@@ -102,14 +211,20 @@ function Row({
         gap="2"
         onClick={onSelect}
       >
-        <Text fontSize="sm" fontWeight="medium" truncate>
-          {schema ? l(schema.name) : section.type}
-        </Text>
-        {section.hidden && (
-          <Badge size="xs" variant="subtle">
-            {t('hidden')}
-          </Badge>
-        )}
+        <Icon as={sectionIcon(schema?.icon ?? '')} boxSize="4" color="fg.muted" flexShrink="0" />
+        <Stack gap="0" minW="0" align="start" flex="1">
+          <HStack gap="1.5" minW="0" maxW="full">
+            <Text fontSize="sm" fontWeight="medium" truncate>
+              {schema ? l(schema.name) : section.type}
+            </Text>
+            <RowBadges section={section} />
+          </HStack>
+          {detail && (
+            <Text fontSize="xs" color="fg.muted" fontWeight="normal" truncate maxW="full">
+              {detail}
+            </Text>
+          )}
+        </Stack>
       </Button>
       <IconButton
         aria-label={section.hidden ? t('show') : t('hide')}
@@ -119,91 +234,305 @@ function Row({
       >
         {section.hidden ? <LuEyeOff /> : <LuEye />}
       </IconButton>
-      <IconButton
-        aria-label={t('duplicate')}
-        size="2xs"
-        variant="ghost"
-        disabled={!canDuplicate}
-        onClick={onDuplicate}
-      >
-        <LuCopy />
-      </IconButton>
-      <IconButton
-        aria-label={t('remove')}
-        size="2xs"
-        variant="ghost"
-        colorPalette="danger"
-        onClick={onRemove}
-      >
-        <LuTrash2 />
-      </IconButton>
+      {/* The rarer actions appear on hover or focus, so the list stays calm. */}
+      <HStack gap="0" opacity={{ base: 1, lg: 0 }} _groupHover={{ opacity: 1 }} _groupFocusWithin={{ opacity: 1 }}>
+        <IconButton aria-label={t('copySection')} size="2xs" variant="ghost" onClick={onCopy}>
+          <LuClipboardCopy />
+        </IconButton>
+        <IconButton
+          aria-label={t('duplicate')}
+          size="2xs"
+          variant="ghost"
+          disabled={!canDuplicate || schema?.max === 1}
+          onClick={onDuplicate}
+        >
+          <LuCopy />
+        </IconButton>
+        {required ? (
+          <IconButton aria-label={t('required')} title={t('required')} size="2xs" variant="ghost" disabled>
+            <LuLock />
+          </IconButton>
+        ) : (
+          <IconButton
+            aria-label={t('remove')}
+            size="2xs"
+            variant="ghost"
+            colorPalette="danger"
+            onClick={onRemove}
+          >
+            <LuTrash2 />
+          </IconButton>
+        )}
+      </HStack>
     </HStack>
   )
 }
 
-export function AddSectionMenu({
-  onAdd,
-  disabled,
+/** The header or footer: in the list, not of it. */
+export function PinnedRow({
+  icon,
+  label,
+  detail,
+  selected,
+  onSelect,
 }: {
-  onAdd: (type: SectionType) => void
-  disabled?: boolean
+  icon: string
+  label: string
+  detail?: string
+  selected: boolean
+  onSelect: () => void
+}) {
+  return (
+    <Button
+      variant="plain"
+      h="auto"
+      px="3"
+      py="2"
+      rounded="md"
+      borderWidth="1px"
+      borderStyle="dashed"
+      borderColor={selected ? 'brand.solid' : 'border'}
+      bg={selected ? 'brand.subtle' : 'bg.subtle'}
+      justifyContent="start"
+      gap="2"
+      onClick={onSelect}
+    >
+      <Icon as={sectionIcon(icon)} boxSize="4" color="fg.muted" />
+      <Stack gap="0" align="start" minW="0">
+        <Text fontSize="sm" fontWeight="medium">
+          {label}
+        </Text>
+        {detail && (
+          <Text fontSize="xs" color="fg.muted" fontWeight="normal" truncate maxW="full">
+            {detail}
+          </Text>
+        )}
+      </Stack>
+    </Button>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Picker                                                                     */
+/* -------------------------------------------------------------------------- */
+
+interface PickerEntry {
+  key: string
+  schema: SectionSchema
+  preset: SectionPreset | null
+  name: string
+  description: string
+}
+
+/**
+ * Every section this page can hold, by category, with the ready-made
+ * variants beside the plain ones and a search across both.
+ */
+function AddSectionDialog({
+  scope,
+  counts,
+  disabled,
+  onAdd,
+  onPaste,
+}: {
+  scope: SectionScope
+  counts: Map<string, number>
+  disabled: boolean
+  onAdd: (type: SectionType, preset: SectionPreset | null) => void
+  onPaste: (section: SectionInstance) => void
 }) {
   const { t, l } = useEditorText()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [copied, setCopied] = useState<SectionInstance | null>(null)
+
+  const entries = useMemo(() => {
+    const out: PickerEntry[] = []
+    for (const schema of SECTION_SCHEMAS as readonly SectionSchema[]) {
+      if (!isSectionAllowed(schema, scope)) continue
+      out.push({ key: schema.type, schema, preset: null, name: l(schema.name), description: l(schema.description) })
+      for (const preset of schema.presets ?? []) {
+        out.push({
+          key: `${schema.type}:${preset.key}`,
+          schema,
+          preset,
+          name: l(preset.name),
+          description: l(preset.description),
+        })
+      }
+    }
+    return out
+  }, [scope, l])
+
+  const needle = query.trim().toLowerCase()
+  const shown = needle
+    ? entries.filter((entry) => `${entry.name} ${entry.description}`.toLowerCase().includes(needle))
+    : entries
+
+  const full = (schema: SectionSchema) =>
+    schema.max !== undefined && (counts.get(schema.type) ?? 0) >= schema.max
+
   return (
-    <Menu.Root
-      onSelect={({ value }) => onAdd(value as SectionType)}
-      // Opens upward when there is more room above — the button sits at the
-      // bottom of a long list — and never taller than the space it has, which
-      // Chakra exposes as `--available-height`.
-      positioning={{ placement: 'bottom-start', flip: true, fitViewport: true }}
+    <Dialog.Root
+      open={open}
+      onOpenChange={({ open: next }) => {
+        setOpen(next)
+        if (next) {
+          setQuery('')
+          setCopied(readClipboard(scope))
+        }
+      }}
+      size="lg"
+      scrollBehavior="inside"
     >
-      <Menu.Trigger asChild>
+      <Dialog.Trigger asChild>
         <Button size="sm" variant="outline" w="full" disabled={disabled}>
           <Icon as={LuPlus} />
           {t('addSection')}
         </Button>
-      </Menu.Trigger>
+      </Dialog.Trigger>
       <Portal>
-        <Menu.Positioner>
-          {/* A fixed width with wrapping descriptions: sized to its longest
-              description, the menu ran across the whole editor. */}
-          <Menu.Content w="xs" maxW="calc(100vw - 2rem)" p="0" overflow="hidden">
-            <ScrollArea.Root size="xs">
-              <ScrollArea.Viewport maxH="min(28rem, calc(var(--available-height) - 0.5rem))">
-                <ScrollArea.Content p="1" style={{ minWidth: 0 }}>
-                  {SECTION_SCHEMAS.map((schema) => (
-                    <Menu.Item key={schema.type} value={schema.type} py="2">
-                      <Stack gap="0.5" minW="0" whiteSpace="normal">
-                        <Text fontSize="sm" fontWeight="medium">
-                          {l(schema.name)}
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content maxH="min(44rem, calc(100dvh - 4rem))">
+            <Dialog.Header flexDirection="column" alignItems="stretch" gap="3">
+              <Dialog.Title>{t('addSection')}</Dialog.Title>
+              <InputGroup startElement={<Icon as={LuSearch} color="fg.subtle" />}>
+                <Input
+                  size="sm"
+                  autoFocus
+                  placeholder={t('searchSections')}
+                  value={query}
+                  onChange={(event) => setQuery(event.currentTarget.value)}
+                />
+              </InputGroup>
+              {copied && (
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  colorPalette="brand"
+                  justifyContent="start"
+                  onClick={() => {
+                    onPaste(copied)
+                    setOpen(false)
+                  }}
+                >
+                  <LuClipboardPaste />
+                  {t('pasteSection')} — {l(sectionSchema(copied.type)!.name)}
+                </Button>
+              )}
+            </Dialog.Header>
+            <Dialog.Body pt="0">
+              {shown.length === 0 ? (
+                <Text fontSize="sm" color="fg.muted" py="6" textAlign="center">
+                  {t('noSectionsMatch')}
+                </Text>
+              ) : (
+                <Stack gap="5">
+                  {SECTION_CATEGORIES.map((category) => {
+                    const inCategory = shown.filter((entry) => entry.schema.category === category)
+                    if (inCategory.length === 0) return null
+                    return (
+                      <Stack key={category} gap="2">
+                        <Text
+                          fontSize="xs"
+                          fontWeight="semibold"
+                          textTransform="uppercase"
+                          letterSpacing="wide"
+                          color="fg.muted"
+                        >
+                          {l(SECTION_CATEGORY_LABELS[category])}
                         </Text>
-                        <Text fontSize="xs" color="fg.muted" lineHeight="short">
-                          {l(schema.description)}
-                        </Text>
+                        <SimpleGrid columns={{ base: 1, sm: 2 }} gap="2">
+                          {inCategory.map((entry) => (
+                            <Button
+                              key={entry.key}
+                              variant="outline"
+                              h="auto"
+                              p="3"
+                              justifyContent="start"
+                              alignItems="start"
+                              textAlign="left"
+                              whiteSpace="normal"
+                              gap="3"
+                              disabled={full(entry.schema)}
+                              onClick={() => {
+                                onAdd(entry.schema.type as SectionType, entry.preset)
+                                setOpen(false)
+                              }}
+                            >
+                              <Box
+                                boxSize="9"
+                                rounded="md"
+                                bg={entry.preset ? 'brand.subtle' : 'bg.muted'}
+                                color={entry.preset ? 'brand.fg' : 'fg.muted'}
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                                flexShrink="0"
+                              >
+                                <Icon as={sectionIcon(entry.schema.icon)} boxSize="4.5" />
+                              </Box>
+                              <Stack gap="0.5" minW="0">
+                                <HStack gap="1.5">
+                                  <Text fontSize="sm" fontWeight="medium">
+                                    {entry.name}
+                                  </Text>
+                                  {entry.preset && (
+                                    <Badge size="xs" colorPalette="brand" variant="subtle">
+                                      {t('preset')}
+                                    </Badge>
+                                  )}
+                                </HStack>
+                                <Text fontSize="xs" color="fg.muted" fontWeight="normal" lineHeight="short">
+                                  {entry.description}
+                                </Text>
+                              </Stack>
+                            </Button>
+                          ))}
+                        </SimpleGrid>
                       </Stack>
-                    </Menu.Item>
-                  ))}
-                </ScrollArea.Content>
-              </ScrollArea.Viewport>
-              <ScrollArea.Scrollbar />
-            </ScrollArea.Root>
-          </Menu.Content>
-        </Menu.Positioner>
+                    )
+                  })}
+                </Stack>
+              )}
+            </Dialog.Body>
+            <Dialog.CloseTrigger asChild>
+              <CloseButton size="sm" />
+            </Dialog.CloseTrigger>
+          </Dialog.Content>
+        </Dialog.Positioner>
       </Portal>
-    </Menu.Root>
+    </Dialog.Root>
   )
 }
+
+/* -------------------------------------------------------------------------- */
+/* The list                                                                   */
+/* -------------------------------------------------------------------------- */
 
 export function SectionList({
   sections,
   onChange,
   selectedId,
   onSelect,
+  scope = 'home',
+  before,
+  after,
+  onNotice,
 }: {
   sections: SectionInstance[]
   onChange: (sections: SectionInstance[]) => void
   selectedId: string | null
   onSelect: (id: string) => void
+  /** Which page the list is for; decides which sections can be added. */
+  scope?: SectionScope
+  /** Pinned above the sections — a theme's header. */
+  before?: ReactNode
+  /** Pinned below them — a theme's footer. */
+  after?: ReactNode
+  /** Says something short to the seller, e.g. that a section was copied. */
+  onNotice?: (message: string) => void
 }) {
   const { t } = useEditorText()
   const sensors = useSensors(
@@ -211,6 +540,11 @@ export function SectionList({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const full = sections.length >= MAX_SECTIONS
+  const counts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const section of sections) map.set(section.type, (map.get(section.type) ?? 0) + 1)
+    return map
+  }, [sections])
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
@@ -220,8 +554,7 @@ export function SectionList({
     onChange(arrayMove(sections, from, to))
   }
 
-  function add(type: SectionType) {
-    const section = createSection(type)
+  function insert(section: SectionInstance) {
     const at = selectedId
       ? sections.findIndex((other) => other.id === selectedId) + 1
       : sections.length
@@ -233,6 +566,7 @@ export function SectionList({
 
   return (
     <Stack gap="3">
+      {before}
       {sections.length === 0 ? (
         <Text fontSize="sm" color="fg.muted">
           {t('noSections')}
@@ -270,6 +604,9 @@ export function SectionList({
                     next.splice(index + 1, 0, copy)
                     onChange(next)
                   }}
+                  onCopy={() => {
+                    if (writeClipboard(section)) onNotice?.(t('sectionCopied'))
+                  }}
                   onRemove={() => onChange(sections.filter((other) => other.id !== section.id))}
                 />
               ))}
@@ -277,7 +614,18 @@ export function SectionList({
           </SortableContext>
         </DndContext>
       )}
-      <AddSectionMenu onAdd={add} disabled={full} />
+      <AddSectionDialog
+        scope={scope}
+        counts={counts}
+        disabled={full}
+        onAdd={(type, preset) => insert(createSection(type, preset?.settings, preset?.style))}
+        onPaste={(section) => {
+          const schema = sectionSchema(section.type)
+          if (schema?.max !== undefined && (counts.get(section.type) ?? 0) >= schema.max) return
+          insert({ ...section, id: newId() })
+        }}
+      />
+      {after}
     </Stack>
   )
 }

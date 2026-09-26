@@ -8,6 +8,7 @@
  */
 
 import {
+  Badge,
   Box,
   Button,
   Collapsible,
@@ -20,6 +21,7 @@ import {
   IconButton,
   Image,
   Input,
+  Menu,
   NumberInput,
   parseColor,
   Portal,
@@ -43,17 +45,30 @@ import {
 } from 'react-icons/lu'
 
 import {
+  canAddBlock,
+  createBlock,
   defaultValues,
   isFieldShown,
   newId,
+  readPoint,
   readRichText,
+  readTable,
   readText,
+  type BlockValue,
+  type BlocksField,
   type Field as FieldSpec,
   type FieldValues,
   type JsonValue,
   type ListField,
 } from '../model/fields'
 import { NO_LINK, type Link, type LinkKind } from '../model/links'
+import {
+  DateTimeControl,
+  PointControl,
+  ProductControl,
+  TableControl,
+  VideoControl,
+} from './media-controls'
 import { RichTextControl } from './rich-text-control'
 import { useEditorText, type EditorMessage } from './messages'
 import type { EditorServices } from './services'
@@ -317,7 +332,7 @@ function emptyLink(kind: LinkKind): Link {
   }
 }
 
-function LinkControl({
+export function LinkControl({
   value,
   onChange,
   services,
@@ -403,11 +418,14 @@ function ListControl({
   value,
   onChange,
   services,
+  parent,
 }: {
   field: ListField
   value: unknown
   onChange: (items: FieldValues[]) => void
   services: EditorServices
+  /** The values the list sits in, for item fields that read a sibling of the list. */
+  parent: FieldValues
 }) {
   const { t, l } = useEditorText()
   const items = Array.isArray(value) ? (value as Array<FieldValues & { id: string }>) : []
@@ -473,6 +491,7 @@ function ListControl({
                     fields={field.fields}
                     values={item}
                     services={services}
+                    parent={parent}
                     onChange={(values) =>
                       onChange(
                         items.map((other) =>
@@ -558,11 +577,17 @@ function FieldControl({
   value,
   onChange,
   services,
+  values,
+  parent,
 }: {
   field: FieldSpec
   value: unknown
   onChange: (value: unknown) => void
   services: EditorServices
+  /** The field's siblings. */
+  values: FieldValues
+  /** The values the siblings sit in, when they are a list item. */
+  parent?: FieldValues
 }) {
   const { t, l } = useEditorText()
   const help = field.help ? l(field.help) : undefined
@@ -690,10 +715,228 @@ function FieldControl({
     case 'list':
       return (
         <Labeled label={label} help={help}>
-          <ListControl field={field} value={value} onChange={onChange} services={services} />
+          <ListControl
+            field={field}
+            value={value}
+            onChange={onChange}
+            services={services}
+            parent={values}
+          />
+        </Labeled>
+      )
+    case 'video':
+      return (
+        <Labeled label={label} help={help}>
+          <VideoControl
+            value={value}
+            onChange={onChange}
+            services={services}
+            uploadOnly={field.uploadOnly === true}
+          />
+        </Labeled>
+      )
+    case 'product':
+      return (
+        <Labeled label={label} help={help}>
+          <ProductControl
+            value={typeof value === 'string' ? value : ''}
+            onChange={onChange}
+            services={services}
+          />
+        </Labeled>
+      )
+    case 'datetime':
+      return (
+        <Labeled label={label} help={help}>
+          <DateTimeControl value={typeof value === 'string' ? value : ''} onChange={onChange} />
+        </Labeled>
+      )
+    case 'table':
+      return (
+        <Labeled label={label} help={help}>
+          <TableControl
+            value={readTable({ value: value as JsonValue }, 'value')}
+            onChange={onChange}
+            maxColumns={field.maxColumns}
+            maxRows={field.maxRows}
+          />
+        </Labeled>
+      )
+    case 'point':
+      return (
+        <Labeled label={label} help={help}>
+          <PointControl
+            value={readPoint({ value: value as JsonValue }, 'value')}
+            onChange={onChange}
+            imageId={readText(parent ?? values, field.imageKey)}
+            services={services}
+          />
+        </Labeled>
+      )
+    case 'blocks':
+      return (
+        <Labeled label={label} help={help}>
+          <BlocksControl field={field} value={value} onChange={onChange} services={services} />
         </Labeled>
       )
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Blocks                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The blocks inside a section: reorderable rows, each opening its own
+ * settings, and a menu of the block types that still fit.
+ */
+function BlocksControl({
+  field,
+  value,
+  onChange,
+  services,
+}: {
+  field: BlocksField
+  value: unknown
+  onChange: (blocks: BlockValue[]) => void
+  services: EditorServices
+}) {
+  const { t, l } = useEditorText()
+  const blocks = Array.isArray(value) ? (value as BlockValue[]) : []
+  const [open, setOpen] = useState<string | null>(null)
+
+  function move(index: number, by: number) {
+    const next = [...blocks]
+    const [block] = next.splice(index, 1)
+    next.splice(index + by, 0, block!)
+    onChange(next)
+  }
+
+  return (
+    <Stack gap="1.5">
+      {blocks.map((block, index) => {
+        const schema = field.blocks.find((candidate) => candidate.type === block.type)
+        if (!schema) return null
+        const hasFields = schema.fields.length > 0
+        const expanded = open === block.id && hasFields
+        return (
+          <Collapsible.Root
+            key={block.id}
+            open={expanded}
+            onOpenChange={({ open: next }) => setOpen(next ? block.id : null)}
+          >
+            <Box
+              borderWidth="1px"
+              borderColor={expanded ? 'brand.muted' : 'border.subtle'}
+              rounded="md"
+            >
+              <HStack gap="1" px="2" py="1">
+                {hasFields ? (
+                  <Collapsible.Trigger asChild>
+                    <Button variant="ghost" size="xs" flex="1" justifyContent="start" minW="0">
+                      <Icon as={expanded ? LuChevronDown : LuChevronRight} />
+                      <Text truncate>{l(schema.name)}</Text>
+                    </Button>
+                  </Collapsible.Trigger>
+                ) : (
+                  // Nothing to set: a label, not a button that opens nothing.
+                  <Text flex="1" minW="0" truncate fontSize="xs" fontWeight="medium" px="2.5">
+                    {l(schema.name)}
+                  </Text>
+                )}
+                <IconButton
+                  aria-label={t('moveUp')}
+                  size="2xs"
+                  variant="ghost"
+                  disabled={index === 0}
+                  onClick={() => move(index, -1)}
+                >
+                  <LuArrowUp />
+                </IconButton>
+                <IconButton
+                  aria-label={t('moveDown')}
+                  size="2xs"
+                  variant="ghost"
+                  disabled={index === blocks.length - 1}
+                  onClick={() => move(index, 1)}
+                >
+                  <LuArrowDown />
+                </IconButton>
+                <IconButton
+                  aria-label={t('remove')}
+                  size="2xs"
+                  variant="ghost"
+                  colorPalette="danger"
+                  onClick={() => onChange(blocks.filter((other) => other.id !== block.id))}
+                >
+                  <LuTrash2 />
+                </IconButton>
+              </HStack>
+              {hasFields && (
+                <Collapsible.Content>
+                  <Stack gap="3" px="3" pb="3">
+                    <FieldsForm
+                      fields={schema.fields}
+                      values={block.settings}
+                      services={services}
+                      onChange={(settings) =>
+                        onChange(
+                          blocks.map((other) =>
+                            other.id === block.id ? { ...other, settings } : other,
+                          ),
+                        )
+                      }
+                    />
+                  </Stack>
+                </Collapsible.Content>
+              )}
+            </Box>
+          </Collapsible.Root>
+        )
+      })}
+      <Menu.Root
+        onSelect={({ value: type }) => {
+          const block = createBlock(field, type)
+          if (!block) return
+          onChange([...blocks, block])
+          setOpen(block.id)
+        }}
+        positioning={{ placement: 'bottom-start' }}
+      >
+        <Menu.Trigger asChild>
+          <Button
+            size="xs"
+            variant="outline"
+            alignSelf="start"
+            disabled={blocks.length >= field.max}
+          >
+            <Icon as={LuPlus} />
+            {t('addBlock')}
+          </Button>
+        </Menu.Trigger>
+        <Portal>
+          <Menu.Positioner>
+            <Menu.Content>
+              {field.blocks.map((schema) => (
+                <Menu.Item
+                  key={schema.type}
+                  value={schema.type}
+                  disabled={!canAddBlock(field, blocks, schema.type)}
+                >
+                  {l(schema.name)}
+                  {schema.max === 1 && blocks.some((block) => block.type === schema.type) && (
+                    <Badge size="xs" ml="auto">
+                      ✓
+                    </Badge>
+                  )}
+                </Menu.Item>
+              ))}
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
+    </Stack>
+  )
 }
 
 export function FieldsForm({
@@ -701,11 +944,14 @@ export function FieldsForm({
   values,
   onChange,
   services,
+  parent,
 }: {
   fields: readonly FieldSpec[]
   values: FieldValues
   onChange: (values: FieldValues) => void
   services: EditorServices
+  /** The values these sit in, when they are a list item. */
+  parent?: FieldValues
 }) {
   return (
     <>
@@ -716,6 +962,8 @@ export function FieldsForm({
             key={field.key}
             field={field}
             value={values[field.key]}
+            values={values}
+            parent={parent}
             services={services}
             onChange={(value) => onChange({ ...values, [field.key]: value as JsonValue })}
           />

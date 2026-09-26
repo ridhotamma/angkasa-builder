@@ -79,9 +79,42 @@ export const RADIUS_OPTIONS = ['none', 'sm', 'md', 'lg'] as const
 export const BUTTON_STYLES = ['solid', 'outline', 'pill'] as const
 export const CARD_STYLES = ['border', 'shadow', 'flat'] as const
 
+export const ANIMATION_STYLES = ['none', 'subtle', 'expressive'] as const
+
+/**
+ * The colour schemes a section can wear besides the page's own. Four named
+ * roles rather than a free list: a seller picks "the dark band", and every
+ * template can rely on the same four existing.
+ */
+export const SCHEME_KEYS = ['subtle', 'inverse', 'brand', 'accent'] as const
+
 export type RadiusOption = (typeof RADIUS_OPTIONS)[number]
+export type AnimationStyle = (typeof ANIMATION_STYLES)[number]
+export type SchemeKey = (typeof SCHEME_KEYS)[number]
+
+export interface SchemeColors {
+  background: string
+  text: string
+  /** Solid buttons and links inside the scheme. */
+  button: string
+}
+
 export type ButtonStyle = (typeof BUTTON_STYLES)[number]
 export type CardStyle = (typeof CARD_STYLES)[number]
+
+export const SCHEME_LABELS: Record<'default' | SchemeKey, Localized> = {
+  default: { en: 'Page colours', id: 'Warna halaman' },
+  subtle: { en: 'Soft', id: 'Lembut' },
+  inverse: { en: 'Dark', id: 'Gelap' },
+  brand: { en: 'Brand', id: 'Brand' },
+  accent: { en: 'Accent', id: 'Aksen' },
+}
+
+export const ANIMATION_LABELS: Record<AnimationStyle, Localized> = {
+  none: { en: 'None', id: 'Tanpa animasi' },
+  subtle: { en: 'Subtle — fade in', id: 'Halus — muncul perlahan' },
+  expressive: { en: 'Expressive — rise and zoom', id: 'Ekspresif — naik dan membesar' },
+}
 
 export const OPTION_LABELS: Record<RadiusOption | ButtonStyle | CardStyle, Localized> = {
   none: { en: 'Square', id: 'Siku' },
@@ -111,6 +144,14 @@ export interface ThemeSettings {
   radius: RadiusOption
   buttonStyle: ButtonStyle
   cardStyle: CardStyle
+  /**
+   * The seller's own colours for a scheme. A scheme without one follows the
+   * theme's colours (see `resolveScheme`), so changing the brand colour
+   * recolours every section that uses it.
+   */
+  schemes: Partial<Record<SchemeKey, SchemeColors>>
+  /** How sections enter as the page scrolls. */
+  animation: AnimationStyle
 }
 
 /** Pesanle's own look, which is what an untouched storefront wears today. */
@@ -125,6 +166,10 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   radius: 'md',
   buttonStyle: 'solid',
   cardStyle: 'border',
+  schemes: {},
+  // Off for a theme that never chose: a storefront that did not move yesterday
+  // should not start moving after a deploy.
+  animation: 'none',
 }
 
 const HEX = /^#[0-9a-f]{6}$/i
@@ -156,6 +201,26 @@ const settingsSchema = z.object({
   radius: z.enum(RADIUS_OPTIONS).catch(DEFAULT_THEME_SETTINGS.radius),
   buttonStyle: z.enum(BUTTON_STYLES).catch(DEFAULT_THEME_SETTINGS.buttonStyle),
   cardStyle: z.enum(CARD_STYLES).catch(DEFAULT_THEME_SETTINGS.cardStyle),
+  schemes: z
+    .object(
+      Object.fromEntries(
+        SCHEME_KEYS.map((key) => [
+          key,
+          z
+            .object({ background: hexColor(''), text: hexColor(''), button: hexColor('') })
+            .transform((scheme) =>
+              scheme.background && scheme.text && scheme.button ? scheme : undefined,
+            )
+            .optional()
+            .catch(undefined),
+        ]),
+      ),
+    )
+    .transform((schemes) =>
+      Object.fromEntries(Object.entries(schemes).filter(([, scheme]) => scheme !== undefined)),
+    )
+    .catch({}),
+  animation: z.enum(ANIMATION_STYLES).catch(DEFAULT_THEME_SETTINGS.animation),
 })
 
 /**
@@ -342,6 +407,87 @@ export function themeCssVarGroups(settings: ThemeSettings): {
   }
 
   return { always, surfaces }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Colour schemes                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A scheme's colours: the seller's own when they set them, otherwise derived
+ * from the theme's colours so that every template gets four usable bands the
+ * moment it picks a brand colour. Derived schemes are readable by
+ * construction — their text is always `readableOn` their background.
+ */
+export function resolveScheme(settings: ThemeSettings, key: SchemeKey): SchemeColors {
+  const own = settings.schemes[key]
+  if (own) return own
+
+  const { brand, background, text, accent } = settings.colors
+  switch (key) {
+    case 'subtle':
+      return { background: mix(background, brand, 0.07), text, button: brand }
+    case 'inverse': {
+      // The page's text colour makes the dark band, when it is dark enough to
+      // be one; a light text colour (a dark theme) falls back to near-black.
+      const dark = contrastRatio(text, '#ffffff') >= 7 ? text : '#141414'
+      const button = contrastRatio(brand, dark) >= 3 ? brand : brandRamp(brand)[300]
+      return { background: dark, text: readableOn(dark) === '#ffffff' ? '#fafafa' : '#111111', button }
+    }
+    case 'brand': {
+      const label = readableOn(brand)
+      return { background: brand, text: label, button: label }
+    }
+    case 'accent': {
+      const label = readableOn(accent)
+      return { background: accent, text: label, button: label }
+    }
+  }
+}
+
+/**
+ * The Chakra variables a section band overrides to wear a scheme. The same
+ * semantic tokens as the page's (`bg`, `fg`, `border`, `brand.solid`), so
+ * every section — and every card, button and link inside it — follows the
+ * scheme without knowing it is in one.
+ */
+export function schemeCssVars(scheme: SchemeColors): Record<string, string> {
+  const { background, text, button } = scheme
+  return {
+    '--chakra-colors-bg': background,
+    '--chakra-colors-bg-subtle': mix(background, text, 0.05),
+    '--chakra-colors-bg-panel': mix(background, text, 0.03),
+    '--chakra-colors-bg-muted': mix(background, text, 0.1),
+    '--chakra-colors-fg': text,
+    '--chakra-colors-fg-muted': mix(text, background, 0.25),
+    '--chakra-colors-fg-subtle': mix(text, background, 0.45),
+    '--chakra-colors-fg-inverted': background,
+    '--chakra-colors-border': mix(text, background, 0.75),
+    '--chakra-colors-border-subtle': mix(text, background, 0.86),
+    '--chakra-colors-border-emphasized': mix(text, background, 0.6),
+    '--chakra-colors-brand-solid': button,
+    '--chakra-colors-brand-contrast': readableOn(button),
+    '--chakra-colors-brand-emphasized': mix(button, readableOn(button), 0.14),
+    '--chakra-colors-brand-fg': contrastRatio(button, background) >= 3 ? button : text,
+    '--chakra-colors-brand-muted': mix(button, background, 0.7),
+    '--chakra-colors-brand-subtle': mix(button, background, 0.85),
+    '--chakra-colors-brand-focus-ring': button,
+  }
+}
+
+/**
+ * The schemes whose text or buttons would be hard to read. Only a seller's
+ * own colours can fail: derived schemes are readable by construction.
+ */
+export function schemeContrastIssues(settings: ThemeSettings): SchemeKey[] {
+  return SCHEME_KEYS.filter((key) => {
+    const own = settings.schemes[key]
+    if (!own) return false
+    return (
+      contrastRatio(own.text, own.background) < MIN_CONTRAST ||
+      contrastRatio(own.button, readableOn(own.button)) < 3
+    )
+  })
 }
 
 function declarations(vars: Record<string, string>): string {

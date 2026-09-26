@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   Heading,
+  HStack,
   Link as ChakraLink,
   SimpleGrid,
   Stack,
@@ -19,10 +20,18 @@ import {
   type BoxProps,
   type LinkProps,
 } from '@chakra-ui/react'
-import type { MouseEvent, ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  type MouseEvent,
+  type ReactNode,
+} from 'react'
 
 import { ImageWithFallback } from '@repo/theme'
 
+import { readLink, readText, type FieldValues } from '../model/fields'
 import type { Link } from '../model/links'
 import type { ButtonStyle, CardStyle } from '../model/settings'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
@@ -98,23 +107,43 @@ export function cardFrame(style: CardStyle): BoxProps {
   }
 }
 
-export function ThemeButton({ label, link }: { label: string; link: Link }) {
+export function ThemeButton({
+  label,
+  link,
+  secondary = false,
+  onImage = false,
+}: {
+  label: string
+  link: Link
+  /** The second button beside a main one: outlined whatever the theme's style. */
+  secondary?: boolean
+  /** Over a photo, where the brand colour may not read: white instead. */
+  onImage?: boolean
+}) {
   const { settings } = useRenderEnvironment()
   const anchor = useAnchor(link)
   if (!label) return null
 
-  const { variant, rounded } = buttonLook(settings.buttonStyle)
+  const look = buttonLook(settings.buttonStyle)
+  const variant = secondary ? 'outline' : look.variant
+  const imageLook = onImage
+    ? secondary || variant === 'outline'
+      ? { color: 'white', borderColor: 'white', _hover: { bg: 'whiteAlpha.200' } }
+      : { bg: 'white', color: 'gray.900', _hover: { bg: 'whiteAlpha.900' } }
+    : {}
 
-  if (!anchor) {
-    return (
-      <Button colorPalette="brand" variant={variant} rounded={rounded} size="lg">
-        {label}
-      </Button>
-    )
-  }
+  const props = {
+    colorPalette: 'brand',
+    variant,
+    rounded: look.rounded,
+    size: 'lg',
+    ...imageLook,
+  } as const
+
+  if (!anchor) return <Button {...props}>{label}</Button>
 
   return (
-    <Button asChild colorPalette="brand" variant={variant} rounded={rounded} size="lg">
+    <Button asChild {...props}>
       <ChakraLink unstyled {...anchor}>
         {label}
       </ChakraLink>
@@ -122,17 +151,138 @@ export function ThemeButton({ label, link }: { label: string; link: Link }) {
   )
 }
 
+/** A section's main and second buttons, side by side, wrapping on a narrow screen. */
+export function ButtonRow({
+  settings,
+  align = 'left',
+  onImage = false,
+}: {
+  settings: FieldValues
+  align?: 'left' | 'center'
+  onImage?: boolean
+}) {
+  const primary = readText(settings, 'buttonLabel')
+  const secondary = readText(settings, 'secondaryButtonLabel')
+  if (!primary && !secondary) return null
+  return (
+    <HStack gap="3" wrap="wrap" justify={align === 'center' ? 'center' : 'start'}>
+      <ThemeButton label={primary} link={readLink(settings, 'buttonLink')} onImage={onImage} />
+      <ThemeButton
+        label={secondary}
+        link={readLink(settings, 'secondaryButtonLink')}
+        secondary
+        onImage={onImage}
+      />
+    </HStack>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Inline editing                                                             */
+/* -------------------------------------------------------------------------- */
+
+/** Which section a renderer is drawing, for text edited straight in the preview. */
+export const SectionIdContext = createContext<string | null>(null)
+
+/**
+ * A piece of a section's text that the seller can click and type into in the
+ * editor's preview. On the storefront it is plain text in `as`.
+ *
+ * Uncontrolled while focused — React re-rendering a contentEditable under the
+ * caret moves the caret — and committed on every input so the settings panel
+ * follows along. Plain text only: paste is reduced to text, Enter ends the
+ * edit, so no markup can get in.
+ */
+export function EditableText({
+  field,
+  value,
+  as = 'span',
+  ...props
+}: {
+  /** The section setting this text is. */
+  field: string
+  value: string
+  as?: 'span' | 'h1' | 'h2' | 'p' | 'div'
+} & Omit<BoxProps, 'as' | 'children'>) {
+  const { mode, editing } = useRenderEnvironment()
+  const sectionId = useContext(SectionIdContext)
+  const ref = useRef<HTMLElement>(null)
+  const focused = useRef(false)
+
+  // Keep the DOM in step with edits from the settings panel, except while the
+  // seller is typing here.
+  useEffect(() => {
+    const element = ref.current
+    if (element && !focused.current && element.textContent !== value) element.textContent = value
+  }, [value])
+
+  if (mode !== 'preview' || !editing || !sectionId) {
+    return value ? (
+      <Box as={as} {...props}>
+        {value}
+      </Box>
+    ) : null
+  }
+
+  return (
+    <Box
+      as={as}
+      ref={ref}
+      contentEditable="plaintext-only"
+      suppressContentEditableWarning
+      spellCheck
+      data-editable=""
+      cursor="text"
+      outline="none"
+      rounded="sm"
+      transition="box-shadow 120ms"
+      _hover={{ boxShadow: '0 0 0 1px var(--chakra-colors-brand-muted)' }}
+      _focus={{ boxShadow: '0 0 0 2px var(--chakra-colors-brand-solid)' }}
+      // An empty heading still needs somewhere to click.
+      minW="4ch"
+      css={{ '&:empty::before': { content: '"…"', opacity: 0.4 } }}
+      onFocus={() => (focused.current = true)}
+      onBlur={() => (focused.current = false)}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === 'Escape') {
+          event.preventDefault()
+          ;(event.currentTarget as HTMLElement).blur()
+        }
+      }}
+      onPaste={(event) => {
+        event.preventDefault()
+        const text = event.clipboardData.getData('text/plain').replace(/\s+/g, ' ')
+        event.currentTarget.ownerDocument.execCommand('insertText', false, text)
+      }}
+      onInput={(event) =>
+        editing.onEditText(sectionId, field, (event.currentTarget as HTMLElement).textContent ?? '')
+      }
+      {...props}
+    >
+      {value}
+    </Box>
+  )
+}
+
 export function SectionHeading({
   children,
   align = 'left',
+  field,
 }: {
   children: ReactNode
   align?: 'left' | 'center'
+  /** The setting the heading is, so the seller can type into it in the preview. */
+  field?: string
 }) {
   if (!children) return null
   return (
     <Heading as="h2" size={{ base: 'lg', md: 'xl' }} textAlign={align} letterSpacing="-0.01em">
-      {children}
+      {field && typeof children === 'string' ? (
+        <EditableText field={field} value={children} />
+      ) : (
+        children
+      )}
     </Heading>
   )
 }

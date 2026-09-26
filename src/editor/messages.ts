@@ -102,6 +102,112 @@ const MESSAGES = {
   applyLink: { en: 'Apply', id: 'Terapkan' },
   removeLink: { en: 'Remove link', id: 'Hapus tautan' },
   clearFormatting: { en: 'Clear formatting', id: 'Hapus format' },
+
+  // Media, products, tables
+  videoUpload: { en: 'Upload video', id: 'Unggah video' },
+  videoLink: { en: 'YouTube or Vimeo', id: 'YouTube atau Vimeo' },
+  videoFromUpload: { en: 'Uploaded video', id: 'Video unggahan' },
+  videoUploadUnavailable: {
+    en: 'Video uploads are not available here.',
+    id: 'Unggah video tidak tersedia di sini.',
+  },
+  videoLinkInvalid: {
+    en: 'That is not a YouTube or Vimeo link.',
+    id: 'Itu bukan tautan YouTube atau Vimeo.',
+  },
+  videoLinkHelp: {
+    en: 'Paste the address of the video page.',
+    id: 'Tempel alamat halaman videonya.',
+  },
+  productSearch: { en: 'Search your products…', id: 'Cari produk Anda…' },
+  productChange: { en: 'Pick another product…', id: 'Pilih produk lain…' },
+  productNone: { en: 'No products match.', id: 'Tidak ada produk yang cocok.' },
+  searching: { en: 'Searching…', id: 'Mencari…' },
+  pointNoImage: {
+    en: 'Add the section image first, then place the dot on it.',
+    id: 'Tambahkan gambar bagian dulu, lalu taruh titiknya.',
+  },
+  pointHint: { en: 'Click the photo to move the dot.', id: 'Klik foto untuk memindahkan titik.' },
+  clear: { en: 'Clear', id: 'Hapus' },
+  tableAddRow: { en: 'Row', id: 'Baris' },
+  tableAddColumn: { en: 'Column', id: 'Kolom' },
+  tableRemoveRow: { en: 'Remove row', id: 'Hapus baris' },
+  tableRemoveColumn: { en: 'Remove last column', id: 'Hapus kolom terakhir' },
+  tablePasteHint: {
+    en: 'Tip: copy cells from a spreadsheet and paste them into any cell.',
+    id: 'Tip: salin sel dari spreadsheet lalu tempel ke sel mana pun.',
+  },
+  addBlock: { en: 'Add block', id: 'Tambah blok' },
+
+  // Section settings groups
+  sectionContent: { en: 'Content', id: 'Isi' },
+  sectionStyle: { en: 'Style', id: 'Gaya' },
+  sectionVisibility: { en: 'Visibility', id: 'Visibilitas' },
+  required: { en: 'Required on this page', id: 'Wajib di halaman ini' },
+  onlyMobile: { en: 'Phones', id: 'Ponsel' },
+  onlyDesktop: { en: 'Desktop', id: 'Desktop' },
+
+  // Picker
+  searchSections: { en: 'Search sections…', id: 'Cari bagian…' },
+  noSectionsMatch: { en: 'No sections match.', id: 'Tidak ada bagian yang cocok.' },
+  pasteSection: { en: 'Paste copied section', id: 'Tempel bagian yang disalin' },
+  copySection: { en: 'Copy', id: 'Salin' },
+  sectionCopied: {
+    en: 'Section copied. Paste it from "Add section" on any page or theme.',
+    id: 'Bagian disalin. Tempel dari "Tambah bagian" di halaman atau tema mana pun.',
+  },
+  preset: { en: 'Ready-made', id: 'Siap pakai' },
+
+  // Editor chrome
+  undo: { en: 'Undo', id: 'Urungkan' },
+  redo: { en: 'Redo', id: 'Ulangi' },
+  deviceDesktop: { en: 'Desktop', id: 'Desktop' },
+  deviceTablet: { en: 'Tablet', id: 'Tablet' },
+  deviceMobile: { en: 'Phone', id: 'Ponsel' },
+  templateHome: { en: 'Home page', id: 'Beranda' },
+  templateProduct: { en: 'Product page', id: 'Halaman produk' },
+  editingTemplate: { en: 'Editing', id: 'Mengedit' },
+  inlineHint: {
+    en: 'Click a section to edit it; click a heading to type straight into it.',
+    id: 'Klik bagian untuk mengeditnya; klik judul untuk langsung mengetik.',
+  },
+
+  // Theme tab
+  colorSchemes: { en: 'Colour schemes', id: 'Skema warna' },
+  colorSchemesHelp: {
+    en: 'Sections can wear one of these instead of the page colours. Automatic schemes follow your brand colours.',
+    id: 'Bagian bisa memakai salah satu skema ini, bukan warna halaman. Skema otomatis mengikuti warna brand Anda.',
+  },
+  schemeAutomatic: { en: 'Automatic', id: 'Otomatis' },
+  schemeBackground: { en: 'Background', id: 'Latar' },
+  schemeText: { en: 'Text', id: 'Teks' },
+  schemeButton: { en: 'Buttons', id: 'Tombol' },
+  schemeContrast: {
+    en: 'Text or buttons in this scheme are hard to read.',
+    id: 'Teks atau tombol di skema ini sulit dibaca.',
+  },
+  motion: { en: 'Motion', id: 'Gerakan' },
+  animation: { en: 'Sections appearing on scroll', id: 'Bagian muncul saat digulir' },
+  animationHelp: {
+    en: 'Shoppers who ask their device for less motion never see it.',
+    id: 'Pembeli yang meminta perangkatnya mengurangi gerakan tidak akan melihatnya.',
+  },
+
+  // Preview chrome
+  footerInformation: { en: 'Information', id: 'Informasi' },
+  footerFollowUs: { en: 'Follow us', id: 'Ikuti kami' },
+  footerLinks: { en: 'Links', id: 'Tautan' },
+  poweredBy: { en: 'Powered by Pesanle', id: 'Didukung oleh Pesanle' },
+  standInSearch: { en: 'Search', id: 'Cari' },
+  standInCart: { en: 'Cart', id: 'Keranjang' },
+  standInAccount: { en: 'Account', id: 'Akun' },
+
+  // Menus
+  menuAddItem: { en: 'Add link', id: 'Tambah tautan' },
+  menuAddChild: { en: 'Add link under this one', id: 'Tambah tautan di bawahnya' },
+  menuLabel: { en: 'Label', id: 'Label' },
+  menuEmpty: { en: 'No links yet.', id: 'Belum ada tautan.' },
+  menuUntitled: { en: 'New link', id: 'Tautan baru' },
 } satisfies Record<string, Localized>
 
 export type EditorMessage = keyof typeof MESSAGES
