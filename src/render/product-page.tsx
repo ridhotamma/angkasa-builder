@@ -158,8 +158,10 @@ function Gallery({
 /* -------------------------------------------------------------------------- */
 
 function Stars({ rating }: { rating: number }) {
+  // Yellow like every other rating on the storefront (product cards,
+  // `RatingStars`), so one product never shows two star colours at once.
   return (
-    <HStack gap="0.5" color="orange.400" aria-hidden>
+    <HStack gap="0.5" color="yellow.solid" aria-hidden>
       {[1, 2, 3, 4, 5].map((n) => (
         <Icon
           key={n}
