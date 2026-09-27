@@ -7,9 +7,8 @@
  * to: a close button, the title, status badges and the save/publish actions.
  *
  * Closing — the X, Escape — never throws work away silently. With unsaved
- * changes it asks first: save and close, discard, or keep editing. Saving
- * that fails leaves the question open with the reason, rather than closing on
- * a save that did not happen.
+ * changes it asks first: keep editing, or discard. Saving lives in the
+ * header bar; this question deliberately offers no save shortcut.
  */
 
 import {
@@ -21,7 +20,6 @@ import {
   IconButton,
   Portal,
   ScrollArea,
-  Stack,
   Text,
 } from '@chakra-ui/react'
 import { useState, type ReactNode } from 'react'
@@ -37,9 +35,7 @@ export interface BuilderDialogProps {
   actions?: ReactNode
   /** The draft differs from what was last saved. */
   dirty: boolean
-  /** Persist the draft; throw with a message to keep the dialog open. */
-  onSave?: () => Promise<unknown>
-  /** Called once the editor may actually close — after saving or discarding. */
+  /** Called once the editor may actually close — after discarding. */
   onClose: () => void
   children: ReactNode
 }
@@ -49,36 +45,17 @@ export function BuilderDialog({
   meta,
   actions,
   dirty,
-  onSave,
   onClose,
   children,
 }: BuilderDialogProps) {
   const { t } = useEditorText()
   const [confirming, setConfirming] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   function requestClose() {
     if (dirty) {
-      setError(null)
       setConfirming(true)
     } else {
       onClose()
-    }
-  }
-
-  async function saveAndClose() {
-    if (!onSave) return
-    setSaving(true)
-    setError(null)
-    try {
-      await onSave()
-      setConfirming(false)
-      onClose()
-    } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : String(thrown))
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -147,48 +124,37 @@ export function BuilderDialog({
               role="alertdialog"
               placement="center"
               onOpenChange={({ open }) => {
-                if (!open && !saving) setConfirming(false)
+                if (!open) setConfirming(false)
               }}
             >
               <Portal>
                 <Dialog.Backdrop />
-                <Dialog.Positioner>
+                <Dialog.Positioner p={{ base: '3', sm: '4' }}>
                   <Dialog.Content>
                     <Dialog.Header>
                       <Dialog.Title fontSize="md">{t('unsavedTitle')}</Dialog.Title>
                       <Dialog.CloseTrigger asChild>
-                        <CloseButton size="sm" disabled={saving} />
+                        <CloseButton size="sm" />
                       </Dialog.CloseTrigger>
                     </Dialog.Header>
                     <Dialog.Body>
-                      <Stack gap="2">
-                        <Text fontSize="sm" color="fg.muted">
-                          {t('unsavedBody')}
-                        </Text>
-                        {error && (
-                          <Text fontSize="sm" color="danger.fg">
-                            {error}
-                          </Text>
-                        )}
-                      </Stack>
+                      <Text fontSize="sm" color="fg.muted">
+                        {t('unsavedBody')}
+                      </Text>
                     </Dialog.Body>
-                    {/* Three buttons do not fit one row on a phone: there they
-                        stack full width, the safe choice (save) on top. */}
+                    {/* Two buttons: side by side on a desktop, stacked full
+                        width on a phone. */}
                     <Dialog.Footer
-                      flexDirection={{ base: 'column-reverse', sm: 'row' }}
+                      flexDirection={{ base: 'column', sm: 'row' }}
                       alignItems={{ base: 'stretch', sm: 'center' }}
+                      justifyContent={{ sm: 'flex-end' }}
                     >
-                      <Button
-                        variant="ghost"
-                        disabled={saving}
-                        onClick={() => setConfirming(false)}
-                      >
+                      <Button variant="ghost" onClick={() => setConfirming(false)}>
                         {t('keepEditing')}
                       </Button>
                       <Button
                         variant="outline"
                         colorPalette="danger"
-                        disabled={saving}
                         onClick={() => {
                           setConfirming(false)
                           onClose()
@@ -196,15 +162,6 @@ export function BuilderDialog({
                       >
                         {t('discard')}
                       </Button>
-                      {onSave && (
-                        <Button
-                          colorPalette="brand"
-                          loading={saving}
-                          onClick={() => void saveAndClose()}
-                        >
-                          {t('saveAndClose')}
-                        </Button>
-                      )}
                     </Dialog.Footer>
                   </Dialog.Content>
                 </Dialog.Positioner>

@@ -40,8 +40,6 @@ import {
   LuTrash2,
 } from 'react-icons/lu'
 
-import { Tooltip } from '@repo/theme'
-
 import type { TableValue } from '../model/fields'
 import { useEditorText, type EditorMessage } from './messages'
 
@@ -464,7 +462,6 @@ function GripMenu({
   onEmphasis: (emphasis: Emphasis) => void
 }) {
   const removing: Emphasis = kind === 'column' ? 'remove-column' : 'remove-row'
-  // Shared by the menu and its tooltip, which wrap the same button.
   const triggerId = useId()
   return (
     <Menu.Root
@@ -478,27 +475,25 @@ function GripMenu({
       }
       onSelect={({ value }) => actions.find((action) => action.value === value)?.onSelect()}
     >
-      <Tooltip content={label} triggerId={triggerId}>
-        <Menu.Trigger asChild>
-          <IconButton
-            aria-label={label}
-            size="2xs"
-            variant="subtle"
-            colorPalette="brand"
-            h={kind === 'column' ? '4' : '6'}
-            minW={kind === 'column' ? '6' : '4'}
-            px="0"
-            rounded="sm"
-            opacity={shown ? 1 : 0}
-            pointerEvents={shown ? 'auto' : 'none'}
-            tabIndex={shown ? 0 : -1}
-            aria-hidden={shown ? undefined : true}
-            transition="opacity 120ms"
-          >
-            {kind === 'column' ? <LuGripHorizontal /> : <LuGripVertical />}
-          </IconButton>
-        </Menu.Trigger>
-      </Tooltip>
+      <Menu.Trigger asChild>
+        <IconButton
+          aria-label={label}
+          size="2xs"
+          variant="subtle"
+          colorPalette="brand"
+          h={kind === 'column' ? '4' : '6'}
+          minW={kind === 'column' ? '6' : '4'}
+          px="0"
+          rounded="sm"
+          opacity={shown ? 1 : 0}
+          pointerEvents={shown ? 'auto' : 'none'}
+          tabIndex={shown ? 0 : -1}
+          aria-hidden={shown ? undefined : true}
+          transition="opacity 120ms"
+        >
+          {kind === 'column' ? <LuGripHorizontal /> : <LuGripVertical />}
+        </IconButton>
+      </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
           <Menu.Content minW="10rem">
