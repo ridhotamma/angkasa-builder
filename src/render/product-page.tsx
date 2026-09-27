@@ -31,7 +31,7 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useState, type UIEvent } from 'react'
 import { LuChevronLeft, LuChevronRight, LuRuler, LuStar } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
@@ -213,7 +213,14 @@ function MosaicGallery({
 }) {
   const text = useRenderText()
   const overlay = useOverlayProps()
-  const [viewing, setViewing] = useState<number | null>(null)
+  // Open and start photo are separate so closing only flips `open`: the photo
+  // stays on screen through the exit animation instead of vanishing first.
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewing, setViewingIndex] = useState(0)
+  const setViewing = (index: number) => {
+    setViewingIndex(index)
+    setViewerOpen(true)
+  }
   const shown = images.slice(0, MOSAIC_TILES)
   const hidden = images.length - shown.length
   const placement = MOSAIC_PLACEMENT[shown.length] ?? []
@@ -286,8 +293,12 @@ function MosaicGallery({
 
       <Dialog.Root
         {...overlay}
-        open={viewing !== null}
-        onOpenChange={({ open }) => !open && setViewing(null)}
+        open={viewerOpen}
+        onOpenChange={({ open }) => setViewerOpen(open)}
+        // Mounted on open and removed once the exit animation has finished,
+        // so each opening starts the carousel on the photo that was tapped.
+        lazyMount
+        unmountOnExit
         size="lg"
         placement="center"
       >
@@ -295,9 +306,7 @@ function MosaicGallery({
           <Dialog.Backdrop />
           <Dialog.Positioner>
             <Dialog.Content p={{ base: '3', md: '4' }} pt="12">
-              {viewing !== null && (
-                <PhotoCarousel images={images} name={product.name} start={viewing} zoom={zoom} arrows />
-              )}
+              <PhotoCarousel images={images} name={product.name} start={viewing} zoom={zoom} arrows />
               <Dialog.CloseTrigger asChild>
                 <CloseButton size="sm" top="2" right="2" aria-label={text('close')} />
               </Dialog.CloseTrigger>
@@ -343,6 +352,22 @@ function PhotoCarousel({
   onOpen?: (index: number) => void
 }) {
   const text = useRenderText()
+  // The slide nearest the scroll position, updated while the finger is still
+  // moving. The carousel's own page only changes once a swipe's momentum and
+  // snap have fully settled, which leaves the dots most of a second behind.
+  const [live, setLive] = useState(start)
+  const trackScroll = (event: UIEvent<HTMLElement>) => {
+    const el = event.currentTarget
+    const items = Array.from(el.children) as HTMLElement[]
+    const origin = items[0]?.offsetLeft ?? 0
+    const distance = (item: HTMLElement) => Math.abs(item.offsetLeft - origin - el.scrollLeft)
+    let nearest = 0
+    items.forEach((item, index) => {
+      if (distance(item) < distance(items[nearest]!)) nearest = index
+    })
+    setLive(nearest)
+  }
+
   if (images.length === 1) {
     return (
       <Box onClick={onOpen && (() => onOpen(0))}>
@@ -353,7 +378,7 @@ function PhotoCarousel({
   return (
     <Carousel.Root slideCount={images.length} defaultPage={start} allowMouseDrag gap="3">
       <Box position="relative">
-        <Carousel.ItemGroup>
+        <Carousel.ItemGroup onScroll={trackScroll}>
           {images.map((image, index) => (
             <Carousel.Item key={`${image.url}-${index}`} index={index}>
               <Box onClick={onOpen && (() => onOpen(index))}>
@@ -377,7 +402,23 @@ function PhotoCarousel({
           </>
         )}
       </Box>
-      <Carousel.Indicators justifyContent="center" />
+      {/* The carousel's own indicators, for their click and a11y wiring, but
+          lit from `live`: `_current` is overridden too, since it would
+          otherwise keep the stale page lit alongside. */}
+      <Carousel.IndicatorGroup justifyContent="center">
+        {images.map((image, index) => {
+          const bg = index === live ? 'colorPalette.solid' : 'colorPalette.subtle'
+          return (
+            <Carousel.Indicator
+              key={`${image.url}-${index}`}
+              index={index}
+              bg={bg}
+              _current={{ bg }}
+              transition="background-color 0.15s"
+            />
+          )
+        })}
+      </Carousel.IndicatorGroup>
     </Carousel.Root>
   )
 }
