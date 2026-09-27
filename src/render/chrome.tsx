@@ -324,8 +324,30 @@ export interface StoreHeaderProps {
  * Over a photo: white text, and every surface the slots draw on (the search
  * box, the cart badge's ring) a translucent white instead of the page's
  * light grey — a grey pill with white text in it cannot be read.
+ *
+ * The palette variables matter for the storefront's own controls: a `ghost`
+ * IconButton (its cart and account buttons) is coloured `colorPalette.fg`, not
+ * `fg`. The root already resolved `--chakra-colors-color-palette-*` to gray on
+ * `<html>`, so overriding `fg` here never reached them and they stayed dark.
+ * The editor's stand-ins inherit `color`, which is why only the preview
+ * showed white icons. The `gray-*` ones cover a control that sets
+ * `colorPalette="gray"` on itself, which re-reads gray from here.
  */
+const CLEAR_PALETTE = {
+  fg: '#ffffff',
+  subtle: 'rgba(255, 255, 255, 0.16)',
+  muted: 'rgba(255, 255, 255, 0.24)',
+  emphasized: 'rgba(255, 255, 255, 0.32)',
+  border: 'rgba(255, 255, 255, 0.35)',
+}
+
 const CLEAR_VARS = {
+  ...Object.fromEntries(
+    Object.entries(CLEAR_PALETTE).flatMap(([token, value]) => [
+      [`--chakra-colors-color-palette-${token}`, value],
+      [`--chakra-colors-gray-${token}`, value],
+    ]),
+  ),
   '--chakra-colors-fg': '#ffffff',
   '--chakra-colors-fg-muted': 'rgba(255, 255, 255, 0.85)',
   '--chakra-colors-fg-subtle': 'rgba(255, 255, 255, 0.7)',
