@@ -1776,6 +1776,7 @@ export const SECTION_SCHEMAS = [
       en: 'Voucher codes shoppers copy with one tap.',
       id: 'Kode voucher yang bisa disalin pembeli dengan sekali ketuk.',
     },
+    usesCatalogue: true,
     fields: [
       heading('Vouchers for you'),
       {
@@ -1783,24 +1784,31 @@ export const SECTION_SCHEMAS = [
         key: 'items',
         label: { en: 'Vouchers', id: 'Voucher' },
         help: {
-          en: 'Type codes that exist in Vouchers. A code shown here is public — anyone can copy it.',
-          id: 'Ketik kode yang ada di menu Voucher. Kode di sini bersifat publik — siapa pun bisa menyalinnya.',
+          en: 'Pick vouchers from your shop, or type custom codes.',
+          id: 'Pilih voucher dari toko Anda, atau ketik kode khusus.',
         },
         itemLabel: { en: 'Voucher', id: 'Voucher' },
         titleKey: 'code',
         max: 6,
         fields: [
           {
+            kind: 'voucher',
+            key: 'voucherId',
+            label: { en: 'Voucher', id: 'Voucher' },
+            emptyLabel: { en: 'Custom / manual code', id: 'Kode khusus / manual' },
+          },
+          {
             kind: 'text',
             key: 'code',
-            label: { en: 'Code', id: 'Kode' },
+            label: { en: 'Code override', id: 'Kode khusus' },
+            placeholder: { en: 'Leave empty to use code from voucher', id: 'Kosongkan untuk memakai kode dari voucher' },
             max: 40,
             default: '',
           },
           {
             kind: 'text',
             key: 'title',
-            label: { en: 'Title', id: 'Judul' },
+            label: { en: 'Title override', id: 'Judul khusus' },
             placeholder: { en: 'e.g. 10% off your first order', id: 'mis. Diskon 10% pesanan pertama' },
             max: 80,
             default: '',
@@ -1808,7 +1816,7 @@ export const SECTION_SCHEMAS = [
           {
             kind: 'text',
             key: 'terms',
-            label: { en: 'Terms', id: 'Syarat' },
+            label: { en: 'Terms override', id: 'Syarat khusus' },
             placeholder: { en: 'e.g. Min. spend Rp 150.000', id: 'mis. Min. belanja Rp 150.000' },
             max: 120,
             default: '',

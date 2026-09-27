@@ -6,7 +6,7 @@
  * Those arrive here, so the editor never imports a server function.
  */
 
-import type { StorefrontProductCard } from '../render/context'
+import type { StorefrontProductCard, StorefrontVoucherData } from '../render/context'
 
 export interface EditorOption {
   value: string
@@ -41,4 +41,5 @@ export interface EditorServices {
   categories: readonly CatalogueOption[]
   /** The shop's custom pages, for page links. */
   pages: readonly CatalogueOption[]
+  vouchers?: readonly StorefrontVoucherData[]
 }

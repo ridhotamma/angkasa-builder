@@ -14,6 +14,7 @@ export {
   type StorefrontRenderData,
   type StorefrontShelfData,
   type StorefrontSizeGuide,
+  type StorefrontVoucherData,
 } from './context'
 export {
   isHeaderTransparent,

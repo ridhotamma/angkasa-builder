@@ -20,6 +20,7 @@ import {
   type MenuItem,
   DEFAULT_THEME_SETTINGS,
   imageFileIds,
+  voucherIds,
   parseThemeContent,
   remapImageFileIds,
   sanitizeLink,
@@ -133,6 +134,18 @@ describe('sections', () => {
     expect(remapped[0]!.settings.image).toBe('new_a')
     const items = remapped[1]!.settings.items as Array<Record<string, unknown>>
     expect(items.map((item) => item.image)).toEqual(['new_b', ''])
+  })
+
+  test('voucher ids are found in promo-codes section', () => {
+    const sections = [
+      createSection('promo-codes', {
+        items: [
+          { voucherId: 'v_1', code: '' },
+          { voucherId: 'v_2', code: 'OVERRIDE' },
+        ],
+      }),
+    ]
+    expect(voucherIds(sections).sort()).toEqual(['v_1', 'v_2'])
   })
 })
 

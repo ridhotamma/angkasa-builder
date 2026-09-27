@@ -302,22 +302,73 @@ export function Countdown({ settings }: SectionProps) {
 /* -------------------------------------------------------------------------- */
 
 export function PromoCodes({ settings }: SectionProps) {
+  const { data, formatPrice } = useRenderEnvironment()
   const empty = useEmptyText()
-  const items = readList(settings, 'items').filter((item) => readText(item, 'code'))
+  const items = readList(settings, 'items')
+
+  const resolved = items
+    .map((item) => {
+      const voucherId = readText(item, 'voucherId')
+      const voucher = voucherId ? data.vouchers?.find((v) => v.id === voucherId) : undefined
+      const code = readText(item, 'code') || voucher?.code || ''
+      if (!code) return null
+
+      const title =
+        readText(item, 'title') ||
+        voucher?.name ||
+        (voucher
+          ? voucher.discountType === 'percentage'
+            ? `${voucher.discountValue}% off`
+            : formatPrice(voucher.discountValue, data.shop.currency)
+          : '')
+
+      const terms =
+        readText(item, 'terms') ||
+        voucher?.description ||
+        (voucher?.minOrderAmount
+          ? `Min. spend ${formatPrice(voucher.minOrderAmount, data.shop.currency)}`
+          : '')
+
+      return {
+        id: item.id,
+        code,
+        title,
+        terms,
+      }
+    })
+    .filter((v): v is NonNullable<typeof v> => v !== null)
+
+  const shown =
+    resolved.length > 0
+      ? resolved
+      : (data.vouchers ?? []).slice(0, 3).map((v) => ({
+          id: v.id,
+          code: v.code,
+          title:
+            v.name ||
+            (v.discountType === 'percentage'
+              ? `${v.discountValue}% off`
+              : formatPrice(v.discountValue, data.shop.currency)),
+          terms:
+            v.description ||
+            (v.minOrderAmount
+              ? `Min. spend ${formatPrice(v.minOrderAmount, data.shop.currency)}`
+              : ''),
+        }))
 
   return (
     <Stack as="section" gap="4">
       <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-      {items.length === 0 ? (
+      {shown.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <SimpleGrid columns={{ base: 1, sm: 2, lg: Math.min(3, items.length) }} gap="3">
-          {items.map((item) => (
+        <SimpleGrid columns={{ base: 1, sm: 2, lg: Math.min(3, shown.length) }} gap="3">
+          {shown.map((item) => (
             <VoucherCard
               key={item.id}
-              code={readText(item, 'code')}
-              title={readText(item, 'title')}
-              terms={readText(item, 'terms')}
+              code={item.code}
+              title={item.title}
+              terms={item.terms}
             />
           ))}
         </SimpleGrid>

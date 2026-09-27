@@ -93,9 +93,9 @@ export interface ImageField extends BaseField {
   kind: 'image'
 }
 
-/** A reference to one of the shop's collections or categories, by id. */
+/** A reference to one of the shop's collections, categories or vouchers, by id. */
 export interface ReferenceField extends BaseField {
-  kind: 'collection' | 'category'
+  kind: 'collection' | 'category' | 'voucher'
   /** Shown when nothing is picked, e.g. "first collection". */
   emptyLabel?: Localized
 }
@@ -395,6 +395,7 @@ function sanitizeField(field: Field, value: unknown): JsonValue {
     case 'image':
     case 'collection':
     case 'category':
+    case 'voucher':
     case 'product':
       return typeof value === 'string' && ID.test(value) ? value : ''
     case 'link':
@@ -524,7 +525,8 @@ export function collectFieldValues(
     if (kinds.includes(field.kind)) out.push(value)
     if (field.kind === 'list' && Array.isArray(value)) {
       for (const item of value) {
-        if (isRecord(item)) out.push(...collectFieldValues(field.fields, item as FieldValues, kinds))
+        if (isRecord(item))
+          out.push(...collectFieldValues(field.fields, item as FieldValues, kinds))
       }
     }
     if (field.kind === 'blocks' && Array.isArray(value)) {

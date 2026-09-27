@@ -441,7 +441,12 @@ function ListControl({
   return (
     <Stack gap="2">
       {items.map((item, index) => {
-        const title = readText(item, field.titleKey) || `${l(field.itemLabel)} ${index + 1}`
+        const voucherId = readText(item, 'voucherId')
+        const itemVoucher = voucherId ? services.vouchers?.find((v) => v.id === voucherId) : undefined
+        const title =
+          readText(item, field.titleKey) ||
+          (itemVoucher ? `${itemVoucher.code} — ${itemVoucher.name}` : '') ||
+          `${l(field.itemLabel)} ${index + 1}`
         const expanded = open === item.id
         return (
           <Collapsible.Root
@@ -692,8 +697,14 @@ function FieldControl({
         </Labeled>
       )
     case 'collection':
-    case 'category': {
-      const options = field.kind === 'collection' ? services.collections : services.categories
+    case 'category':
+    case 'voucher': {
+      const options =
+        field.kind === 'collection'
+          ? services.collections
+          : field.kind === 'category'
+            ? services.categories
+            : (services.vouchers ?? []).map((v) => ({ id: v.id, name: `${v.code} — ${v.name}` }))
       return (
         <Labeled label={label} help={help}>
           <SelectInput

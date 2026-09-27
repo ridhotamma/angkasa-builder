@@ -89,7 +89,11 @@ export function createSection(
 /* Editing a list of sections — shared by the editor's list and its preview toolbar. */
 
 /** `sections` with the one `id` moved `by` places; unchanged when it would leave the list. */
-export function moveSection(sections: SectionInstance[], id: string, by: number): SectionInstance[] {
+export function moveSection(
+  sections: SectionInstance[],
+  id: string,
+  by: number,
+): SectionInstance[] {
   const from = sections.findIndex((section) => section.id === id)
   const to = from + by
   if (from < 0 || to < 0 || to >= sections.length) return sections
@@ -286,6 +290,15 @@ export function videoFileIds(sections: readonly SectionInstance[]): string[] {
 export function productIds(sections: readonly SectionInstance[]): string[] {
   const ids = new Set<string>()
   for (const value of sectionValues(sections, ['product'])) {
+    if (typeof value === 'string' && value) ids.add(value)
+  }
+  return [...ids]
+}
+
+/** Every voucher a layout picks by id, so the storefront can read them alongside the page. */
+export function voucherIds(sections: readonly SectionInstance[]): string[] {
+  const ids = new Set<string>()
+  for (const value of sectionValues(sections, ['voucher'])) {
     if (typeof value === 'string' && value) ids.add(value)
   }
   return [...ids]

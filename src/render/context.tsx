@@ -81,6 +81,18 @@ export interface StorefrontCategoryData {
   imageUrl: string | null
 }
 
+export interface StorefrontVoucherData {
+  id: string
+  code: string
+  name: string
+  description?: string | null
+  discountType: 'percentage' | 'fixed_amount'
+  discountValue: number
+  maxDiscount?: number | null
+  minOrderAmount?: number | null
+  expiresAt?: string | null
+}
+
 export interface StorefrontRenderData {
   shop: {
     name: string
@@ -99,6 +111,7 @@ export interface StorefrontRenderData {
   products?: StorefrontProductCard[]
   /** Only on the product page. */
   product?: StorefrontProductDetail
+  vouchers?: StorefrontVoucherData[]
 }
 
 export interface RenderEnvironment {
@@ -221,6 +234,36 @@ export function sampleStorefrontData(shopName = 'Your shop'): StorefrontRenderDa
       },
     ],
     latest: products(6, 24),
+    vouchers: [
+      {
+        id: 'sample-voucher-1',
+        name: 'Welcome 10%',
+        code: 'WELCOME10',
+        description: '10% off your first order',
+        discountType: 'percentage',
+        discountValue: 10,
+        minOrderAmount: 100000,
+      },
+      {
+        id: 'sample-voucher-2',
+        name: 'Flash Sale Rp 50.000',
+        code: 'FLASHSALE',
+        description: 'Rp 50.000 off orders over Rp 250.000',
+        discountType: 'fixed_amount',
+        discountValue: 50000,
+        minOrderAmount: 250000,
+      },
+      {
+        id: 'sample-voucher-3',
+        name: 'Weekend Special 20%',
+        code: 'WEEKEND20',
+        description: '20% off all collections',
+        discountType: 'percentage',
+        discountValue: 20,
+        maxDiscount: 100000,
+        minOrderAmount: 150000,
+      },
+    ],
   }
 }
 
