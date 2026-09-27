@@ -41,7 +41,7 @@ import { findProductCard, useRenderEnvironment, type StorefrontProductCard } fro
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
 import { AmbientVideo, VideoFrame } from './media'
-import { EditableText, EmptyNotice, SectionHeading, SmartLink } from './primitives'
+import { EditableText, EmptyNotice, SectionHeading, SmartLink, useOverlayProps } from './primitives'
 import { RichTextView } from './rich-text'
 import { alignOf, useEmptyText, type SectionProps } from './sections'
 
@@ -161,6 +161,7 @@ export function VideoReels({ settings }: SectionProps) {
   )
   const perPage = Math.min(useResponsive({ base: 2, md: 3, lg: 5 }), Math.max(1, items.length))
   const [open, setOpen] = useState<string | null>(null)
+  const overlay = useOverlayProps()
   const active = items.find((item) => item.id === open) ?? null
 
   const poster = (item: FieldValues) => {
@@ -277,6 +278,7 @@ export function VideoReels({ settings }: SectionProps) {
       )}
 
       <Dialog.Root
+        {...overlay}
         open={active !== null}
         onOpenChange={({ open: next }) => !next && setOpen(null)}
         size="sm"

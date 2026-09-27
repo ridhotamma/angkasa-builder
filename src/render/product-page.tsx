@@ -53,7 +53,7 @@ import {
 import { useRenderText } from './copy'
 import { DataTable } from './content-sections'
 import { featureIcon } from './icons'
-import { EmptyNotice, Paragraphs, ProductGrid, SectionHeading, SmartLink } from './primitives'
+import { EmptyNotice, Paragraphs, ProductGrid, SectionHeading, SmartLink, useOverlayProps } from './primitives'
 import { RichTextView } from './rich-text'
 import type { SectionProps } from './sections'
 
@@ -212,6 +212,7 @@ function MosaicGallery({
   zoom: boolean
 }) {
   const text = useRenderText()
+  const overlay = useOverlayProps()
   const [viewing, setViewing] = useState<number | null>(null)
   const shown = images.slice(0, MOSAIC_TILES)
   const hidden = images.length - shown.length
@@ -284,6 +285,7 @@ function MosaicGallery({
       </Box>
 
       <Dialog.Root
+        {...overlay}
         open={viewing !== null}
         onOpenChange={({ open }) => !open && setViewing(null)}
         size="lg"
@@ -406,10 +408,11 @@ function SizeGuideDrawer({ product, label }: { product: StorefrontProductDetail;
   const text = useRenderText()
   const guide = product.sizeGuide
   const { mode } = useRenderEnvironment()
+  const overlay = useOverlayProps()
   if (!guide) return mode === 'preview' ? <EmptyNotice>{text('sizeGuideMissing')}</EmptyNotice> : null
 
   return (
-    <Drawer.Root size={{ base: 'full', sm: 'md' }} placement="end">
+    <Drawer.Root {...overlay} size={{ base: 'full', sm: 'md' }} placement="end">
       <Drawer.Trigger asChild>
         <Button variant="plain" size="sm" px="0" alignSelf="start" color="fg" textDecoration="underline" textUnderlineOffset="3px">
           <LuRuler />

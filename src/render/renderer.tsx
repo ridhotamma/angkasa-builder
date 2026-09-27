@@ -8,7 +8,7 @@
  */
 
 import { Badge, Box, Stack, type BoxProps } from '@chakra-ui/react'
-import { type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useLocale } from '@repo/i18n'
 
@@ -152,22 +152,15 @@ export function SectionsRenderer({
             )
           }
 
-          const selected = section.id === selectedId
           return (
-            <Box
+            <PickableSection
               key={section.id}
               mt={mt}
-              data-section-id={section.id}
-              position="relative"
-              cursor="pointer"
-              rounded="md"
-              outline="2px solid"
-              outlineColor={selected ? 'brand.solid' : 'transparent'}
-              // Inside the section when it touches the page edges, where an
-              // outline outside it would be cut off.
-              outlineOffset={bleed ? '-2px' : '6px'}
-              transition="outline-color 120ms"
-              _hover={{ outlineColor: selected ? 'brand.solid' : 'brand.muted' }}
+              id={section.id}
+              selected={section.id === selectedId}
+              first={index === 0}
+              toolbar={section.id === selectedId && toolbar ? toolbar(section) : null}
+              badge={<ScheduleBadge section={section} now={now} />}
               onClickCapture={(event) => {
                 // Every click also picks the section. A link must not be
                 // followed out of the editor; anything else — a tab, a
@@ -180,10 +173,8 @@ export function SectionsRenderer({
                 onSelect(section.id)
               }}
             >
-              <ScheduleBadge section={section} now={now} />
-              {selected && toolbar && <ToolbarSlot inside={bleed || index === 0}>{toolbar(section)}</ToolbarSlot>}
               {rendered}
-            </Box>
+            </PickableSection>
           )
         })}
       </Stack>
@@ -191,22 +182,144 @@ export function SectionsRenderer({
   )
 }
 
+/** How far the outline stands off a section, and how far in it sits where the section meets the page edge. */
+const OUTLINE_GAP = 6
+const OUTLINE_INSET = 2
+
+/** The outline's box, in the wrapper's coordinates. */
+interface OutlineBox {
+  top: number
+  left: number
+  width: number
+  height: number
+  /** The section runs across the page, edge to edge. */
+  band: boolean
+}
+
 /**
- * Where the selected section's toolbar sits: on the outline's top-right
- * corner, just above the section. It tucks inside the corner instead on a
- * full-bleed section, whose outline is drawn inside it and would cut it off at
- * the page edge, and on the first section, where above is the store header.
+ * Where the outline goes: around the box the section is actually drawn in.
+ *
+ * That is not the wrapper. A full-width or edge-to-edge section breaks out of
+ * the page column, so an outline on the column's wrapper cut through it. The
+ * frame's offset box is measured instead, which the scroll-reveal transform
+ * does not skew. The outline stands off the section, but is kept inside the
+ * page so the frame's edges never cut it off. A section that spans the page
+ * gets its outline just inside its own edges.
  */
-function ToolbarSlot({ inside, children }: { inside: boolean; children: ReactNode }) {
+function measureOutline(wrapper: HTMLElement): OutlineBox | null {
+  const frame = wrapper.firstElementChild as HTMLElement | null
+  // A section hidden on this device has no box to outline.
+  if (!frame || frame.offsetWidth === 0) return null
+  const page = wrapper.ownerDocument.documentElement.clientWidth
+  const origin = wrapper.getBoundingClientRect().left
+  const start = frame.offsetLeft
+  const end = start + frame.offsetWidth
+  const band = origin + start <= OUTLINE_GAP && origin + end >= page - OUTLINE_GAP
+  const gap = band ? -OUTLINE_INSET : OUTLINE_GAP
+  const left = Math.max(start - gap, OUTLINE_INSET - origin)
+  const right = Math.min(end + gap, page - OUTLINE_INSET - origin)
+  return {
+    top: frame.offsetTop - gap,
+    left,
+    width: right - left,
+    height: frame.offsetHeight + 2 * gap,
+    band,
+  }
+}
+
+function sameBox(a: OutlineBox | null, b: OutlineBox | null) {
+  if (!a || !b) return a === b
+  return a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height && a.band === b.band
+}
+
+/**
+ * A section in the editor: clickable, outlined when hovered or selected, with
+ * the selected one's toolbar on the outline's top-right corner. The toolbar
+ * tucks inside the corner on a section that spans the page, where above is
+ * the section before it, and on the first section, where above is the store
+ * header.
+ */
+function PickableSection({
+  id,
+  selected,
+  first,
+  toolbar,
+  badge,
+  children,
+  ...props
+}: {
+  id: string
+  selected: boolean
+  first: boolean
+  toolbar: ReactNode
+  badge: ReactNode
+  children: ReactNode
+} & BoxProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState<OutlineBox | null>(null)
+
+  const update = () => {
+    const wrapper = ref.current
+    if (!wrapper) return
+    const next = measureOutline(wrapper)
+    setBox((previous) => (sameBox(previous, next) ? previous : next))
+  }
+
+  // Every render: a style change can swap the frame for a wider one without
+  // resizing the wrapper.
+  useLayoutEffect(update)
+
+  // And whenever the section or the page changes size on its own: images
+  // loading, the device switched, a scrollbar appearing.
+  useLayoutEffect(() => {
+    const wrapper = ref.current
+    const view = wrapper?.ownerDocument.defaultView
+    if (!wrapper || !view) return
+    const observer = new view.ResizeObserver(update)
+    observer.observe(wrapper)
+    observer.observe(wrapper.ownerDocument.documentElement)
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const inside = first || !!box?.band
   return (
     <Box
-      position="absolute"
-      right={inside ? '2' : '-6px'}
-      top={inside ? '2' : '-6px'}
-      transform={inside ? undefined : 'translateY(calc(-100% - 4px))'}
-      zIndex="3"
+      ref={ref}
+      data-section-id={id}
+      position="relative"
+      cursor="pointer"
+      css={{ '&:hover > [data-section-outline]': { borderColor: selected ? 'brand.solid' : 'brand.muted' } }}
+      {...props}
     >
       {children}
+      {badge}
+      {box && (
+        <Box
+          data-section-outline=""
+          position="absolute"
+          zIndex="3"
+          pointerEvents="none"
+          rounded="md"
+          borderWidth="2px"
+          borderColor={selected ? 'brand.solid' : 'transparent'}
+          transition="border-color 120ms"
+          style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
+        >
+          {toolbar && (
+            <Box
+              position="absolute"
+              pointerEvents="auto"
+              // The border is inside the box: -2px lines the toolbar up with its outer edge.
+              right={inside ? '2' : '-2px'}
+              top={inside ? '2' : '-2px'}
+              transform={inside ? undefined : 'translateY(calc(-100% - 4px))'}
+            >
+              {toolbar}
+            </Box>
+          )}
+        </Box>
+      )}
     </Box>
   )
 }

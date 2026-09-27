@@ -36,6 +36,26 @@ import type { Link } from '../model/links'
 import type { ButtonStyle, CardStyle } from '../model/settings'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 
+/**
+ * Props for every dialog and drawer a section opens (photo viewer, size
+ * guide, mobile menu).
+ *
+ * In the editor they must not be modal. A modal overlay sets
+ * `pointer-events: none` on its document's body and restores it on close,
+ * except while any other modal is still open. Zag keeps one layer stack for
+ * every document, so the editor's own full-screen dialog counts. The preview
+ * iframe's body was never restored, and after closing a photo the whole
+ * preview stopped taking clicks. The backdrop still covers the page, so
+ * non-modal with the focus trap, scroll lock and outside-click close turned
+ * back on looks and behaves the same. The storefront keeps the real modal.
+ */
+export function useOverlayProps() {
+  const { mode } = useRenderEnvironment()
+  return mode === 'preview'
+    ? ({ modal: false, trapFocus: true, preventScroll: true, closeOnInteractOutside: true } as const)
+    : {}
+}
+
 /** The anchor props a link needs: where it goes, and whether it opens a new tab. */
 function useAnchor(link: Link) {
   const { href, mode, navigate } = useRenderEnvironment()

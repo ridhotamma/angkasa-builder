@@ -39,7 +39,7 @@ import { isMegaMenu, type MenuItem } from '../model/menus'
 import { resolveScheme, schemeCssVars, SCHEME_KEYS, type SchemeKey } from '../model/settings'
 import { useRenderEnvironment } from './context'
 import { schemeCss } from './frame'
-import { SmartLink } from './primitives'
+import { SmartLink, useOverlayProps } from './primitives'
 import type { PageEdges } from './renderer'
 
 export type SocialPlatform = 'instagram' | 'tiktok' | 'facebook' | 'youtube' | 'twitter' | 'website'
@@ -198,6 +198,7 @@ function DesktopMenu({ items, justify }: { items: MenuItem[]; justify: 'start' |
 /** The whole main menu in a drawer on a phone, nested levels as accordions. */
 function MobileMenu({ items, shop }: { items: MenuItem[]; shop: ChromeShop }) {
   const [open, setOpen] = useState(false)
+  const overlay = useOverlayProps()
   if (items.length === 0) return null
 
   const entry = (item: MenuItem, depth: number): ReactNode =>
@@ -223,7 +224,7 @@ function MobileMenu({ items, shop }: { items: MenuItem[]; shop: ChromeShop }) {
     )
 
   return (
-    <Drawer.Root open={open} onOpenChange={({ open: next }) => setOpen(next)} placement="start" size="xs">
+    <Drawer.Root {...overlay} open={open} onOpenChange={({ open: next }) => setOpen(next)} placement="start" size="xs">
       <Drawer.Trigger asChild>
         <IconButton aria-label="Menu" variant="ghost" size="sm" rounded="full" hideFrom="md" color="inherit">
           <LuMenu />
