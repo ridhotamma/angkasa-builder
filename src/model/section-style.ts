@@ -76,7 +76,10 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     options: [
       { value: 'all', label: { en: 'All devices', id: 'Semua perangkat' } },
       { value: 'mobile', label: { en: 'Phones only', id: 'Hanya ponsel' } },
-      { value: 'desktop', label: { en: 'Tablets and desktops only', id: 'Hanya tablet & desktop' } },
+      {
+        value: 'desktop',
+        label: { en: 'Tablets and desktops only', id: 'Hanya tablet & desktop' },
+      },
     ],
     default: 'all',
   },

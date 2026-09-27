@@ -52,7 +52,8 @@ export function ParallaxBanner({ settings }: SectionProps) {
   const layer = useRef<HTMLDivElement>(null)
   const fileId = readText(settings, 'image')
   const src = fileId ? imageUrl(fileId, { width: 1920, height: 1280 }) : null
-  const intensity = PARALLAX[readText(settings, 'intensity') as keyof typeof PARALLAX] ?? PARALLAX.soft
+  const intensity =
+    PARALLAX[readText(settings, 'intensity') as keyof typeof PARALLAX] ?? PARALLAX.soft
 
   useEffect(() => {
     const element = frame.current

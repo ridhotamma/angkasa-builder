@@ -37,7 +37,10 @@ const TEXT = {
     en: 'Add a tab with a collection in the section settings.',
     id: 'Tambahkan tab berisi koleksi di pengaturan bagian.',
   },
-  ended: { en: 'Countdown ended — hidden on the storefront.', id: 'Hitung mundur selesai — tersembunyi di etalase.' },
+  ended: {
+    en: 'Countdown ended — hidden on the storefront.',
+    id: 'Hitung mundur selesai — tersembunyi di etalase.',
+  },
   contactMissing: {
     en: 'Add a WhatsApp number or an email address in the section settings.',
     id: 'Tambahkan nomor WhatsApp atau alamat email di pengaturan bagian.',

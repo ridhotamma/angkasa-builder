@@ -432,7 +432,11 @@ export function resolveScheme(settings: ThemeSettings, key: SchemeKey): SchemeCo
       // be one; a light text colour (a dark theme) falls back to near-black.
       const dark = contrastRatio(text, '#ffffff') >= 7 ? text : '#141414'
       const button = contrastRatio(brand, dark) >= 3 ? brand : brandRamp(brand)[300]
-      return { background: dark, text: readableOn(dark) === '#ffffff' ? '#fafafa' : '#111111', button }
+      return {
+        background: dark,
+        text: readableOn(dark) === '#ffffff' ? '#fafafa' : '#111111',
+        button,
+      }
     }
     case 'brand': {
       const label = readableOn(brand)

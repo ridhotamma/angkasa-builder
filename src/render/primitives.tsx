@@ -52,7 +52,12 @@ import { useRenderEnvironment, type StorefrontProductCard } from './context'
 export function useOverlayProps() {
   const { mode } = useRenderEnvironment()
   return mode === 'preview'
-    ? ({ modal: false, trapFocus: true, preventScroll: true, closeOnInteractOutside: true } as const)
+    ? ({
+        modal: false,
+        trapFocus: true,
+        preventScroll: true,
+        closeOnInteractOutside: true,
+      } as const)
     : {}
 }
 

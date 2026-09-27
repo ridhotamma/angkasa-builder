@@ -42,8 +42,4 @@ export {
 } from './renderer'
 export { SECTION_RENDERERS } from './registry'
 export type { SectionProps } from './sections'
-export {
-  SNAPSHOT_WIDTH,
-  TemplateSnapshotPage,
-  type SnapshotPageProps,
-} from './theme-preview'
+export { SNAPSHOT_WIDTH, TemplateSnapshotPage, type SnapshotPageProps } from './theme-preview'

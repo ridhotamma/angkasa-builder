@@ -63,7 +63,11 @@ function useSchemeCss(value: string): BoxProps {
   const { settings } = useRenderEnvironment()
   if (!isScheme(value)) return {}
   // Same scoping as a section band: soft schemes step aside in dark mode.
-  return { css: schemeCss(value, schemeCssVars(resolveScheme(settings, value))), bg: 'bg', color: 'fg' }
+  return {
+    css: schemeCss(value, schemeCssVars(resolveScheme(settings, value))),
+    bg: 'bg',
+    color: 'fg',
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -140,9 +144,22 @@ function DesktopMenuItem({ item }: { item: MenuItem }) {
 
   const mega = isMegaMenu(item)
   return (
-    <HoverCard.Root openDelay={80} closeDelay={150} positioning={{ placement: 'bottom', gutter: 6 }} lazyMount>
+    <HoverCard.Root
+      openDelay={80}
+      closeDelay={150}
+      positioning={{ placement: 'bottom', gutter: 6 }}
+      lazyMount
+    >
       <HoverCard.Trigger asChild>
-        <HStack as="span" gap="1" py="2" cursor="pointer" fontSize="sm" fontWeight="medium" _hover={{ color: 'brand.fg' }}>
+        <HStack
+          as="span"
+          gap="1"
+          py="2"
+          cursor="pointer"
+          fontSize="sm"
+          fontWeight="medium"
+          _hover={{ color: 'brand.fg' }}
+        >
           <SmartLink link={item.link} color="inherit">
             {item.label}
           </SmartLink>
@@ -173,7 +190,14 @@ function DesktopMenuItem({ item }: { item: MenuItem }) {
             ) : (
               <Stack gap="0">
                 {item.children.map((child) => (
-                  <NavLink key={child.id} item={child} px="3" py="2" rounded="l2" _hover={{ bg: 'bg.muted', color: 'fg' }} />
+                  <NavLink
+                    key={child.id}
+                    item={child}
+                    px="3"
+                    py="2"
+                    rounded="l2"
+                    _hover={{ bg: 'bg.muted', color: 'fg' }}
+                  />
                 ))}
               </Stack>
             )}
@@ -224,9 +248,22 @@ function MobileMenu({ items, shop }: { items: MenuItem[]; shop: ChromeShop }) {
     )
 
   return (
-    <Drawer.Root {...overlay} open={open} onOpenChange={({ open: next }) => setOpen(next)} placement="start" size="xs">
+    <Drawer.Root
+      {...overlay}
+      open={open}
+      onOpenChange={({ open: next }) => setOpen(next)}
+      placement="start"
+      size="xs"
+    >
       <Drawer.Trigger asChild>
-        <IconButton aria-label="Menu" variant="ghost" size="sm" rounded="full" hideFrom="md" color="inherit">
+        <IconButton
+          aria-label="Menu"
+          variant="ghost"
+          size="sm"
+          rounded="full"
+          hideFrom="md"
+          color="inherit"
+        >
           <LuMenu />
         </IconButton>
       </Drawer.Trigger>
@@ -396,13 +433,7 @@ export function StoreHeader({
   const clear = transparent && !scrolled
   // Out of the flow when see-through: fixed if it should stay on screen,
   // absolute if it should scroll away with the banner.
-  const position = transparent
-    ? sticky
-      ? 'fixed'
-      : 'absolute'
-    : sticky
-      ? 'sticky'
-      : 'relative'
+  const position = transparent ? (sticky ? 'fixed' : 'absolute') : sticky ? 'sticky' : 'relative'
   const search = showSearch ? searchButton : null
   const right = (
     <HStack gap="0.5" justifySelf="end" flexShrink="0">
@@ -416,7 +447,11 @@ export function StoreHeader({
       <Stack gap="2">
         {/* The middle track may shrink, so a long shop name truncates rather
             than running under the icons beside it. */}
-        <Grid templateColumns="minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr)" alignItems="center" gap="3">
+        <Grid
+          templateColumns="minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr)"
+          alignItems="center"
+          gap="3"
+        >
           <HStack>
             <MobileMenu items={menu} shop={shop} />
           </HStack>
@@ -439,7 +474,10 @@ export function StoreHeader({
     ) : (
       <Stack gap="2">
         <Grid
-          templateColumns={{ base: 'auto minmax(0, 1fr) auto', md: 'minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)' }}
+          templateColumns={{
+            base: 'auto minmax(0, 1fr) auto',
+            md: 'minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)',
+          }}
           alignItems="center"
           gap={{ base: '2', md: '4' }}
         >
@@ -494,13 +532,27 @@ const SOCIAL_ICONS: Record<SocialPlatform, { icon: ComponentType; label: string 
 
 function ColumnHeading({ children }: { children: ReactNode }) {
   return (
-    <Text fontSize="xs" fontWeight="semibold" color="fg.subtle" textTransform="uppercase" letterSpacing="0.06em">
+    <Text
+      fontSize="xs"
+      fontWeight="semibold"
+      color="fg.subtle"
+      textTransform="uppercase"
+      letterSpacing="0.06em"
+    >
       {children}
     </Text>
   )
 }
 
-function ContactLine({ icon, href, children }: { icon: ComponentType; href?: string; children: ReactNode }) {
+function ContactLine({
+  icon,
+  href,
+  children,
+}: {
+  icon: ComponentType
+  href?: string
+  children: ReactNode
+}) {
   const content = (
     <HStack gap="2" align="flex-start">
       <Icon as={icon} boxSize="4" mt="0.5" flexShrink="0" color="fg.subtle" />
@@ -559,7 +611,10 @@ export function StoreFooter({
       <Container maxW="6xl" px={{ base: '4', md: '6' }} py={{ base: '10', md: '14' }}>
         <Stack gap="10">
           <Grid
-            templateColumns={{ base: '1fr', md: `minmax(0, 1.4fr) repeat(${Math.max(1, columns.length + (loose.length ? 1 : 0) + (showPages ? 1 : 0))}, minmax(0, 1fr))` }}
+            templateColumns={{
+              base: '1fr',
+              md: `minmax(0, 1.4fr) repeat(${Math.max(1, columns.length + (loose.length ? 1 : 0) + (showPages ? 1 : 0))}, minmax(0, 1fr))`,
+            }}
             gap={{ base: '8', md: '10' }}
           >
             <Stack gap="4" maxW="sm">
@@ -590,7 +645,13 @@ export function StoreFooter({
                     const { icon, label } = SOCIAL_ICONS[link.platform]
                     return (
                       <Tooltip key={link.platform} content={label}>
-                        <IconButton asChild aria-label={label} variant="outline" size="sm" rounded="full">
+                        <IconButton
+                          asChild
+                          aria-label={label}
+                          variant="outline"
+                          size="sm"
+                          rounded="full"
+                        >
                           <ChakraLink href={link.url} target="_blank" rel="noopener noreferrer">
                             <Icon as={icon} boxSize="4" />
                           </ChakraLink>
@@ -607,7 +668,12 @@ export function StoreFooter({
                 <ColumnHeading>{column.label}</ColumnHeading>
                 <Stack gap="2" fontSize="sm" color="fg.muted">
                   {column.children.map((child) => (
-                    <NavLink key={child.id} item={child} fontWeight="normal" _hover={{ color: 'fg' }} />
+                    <NavLink
+                      key={child.id}
+                      item={child}
+                      fontWeight="normal"
+                      _hover={{ color: 'fg' }}
+                    />
                   ))}
                 </Stack>
               </Stack>
@@ -617,7 +683,12 @@ export function StoreFooter({
                 <ColumnHeading>{labels.links}</ColumnHeading>
                 <Stack gap="2" fontSize="sm" color="fg.muted">
                   {loose.map((item) => (
-                    <NavLink key={item.id} item={item} fontWeight="normal" _hover={{ color: 'fg' }} />
+                    <NavLink
+                      key={item.id}
+                      item={item}
+                      fontWeight="normal"
+                      _hover={{ color: 'fg' }}
+                    />
                   ))}
                 </Stack>
               </Stack>
@@ -627,7 +698,11 @@ export function StoreFooter({
                 <ColumnHeading>{labels.information}</ColumnHeading>
                 <Stack gap="2" fontSize="sm" color="fg.muted">
                   {pages.map((page) => (
-                    <SmartLink key={page.slug} link={{ kind: 'page', slug: page.slug }} _hover={{ color: 'fg' }}>
+                    <SmartLink
+                      key={page.slug}
+                      link={{ kind: 'page', slug: page.slug }}
+                      _hover={{ color: 'fg' }}
+                    >
                       {page.title}
                     </SmartLink>
                   ))}

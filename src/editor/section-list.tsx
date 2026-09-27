@@ -174,7 +174,11 @@ function RowBadges({ section }: { section: SectionInstance }) {
         />
       )}
       {schedule !== 'always' && (
-        <Badge size="xs" variant="subtle" colorPalette={schedule === 'live' ? 'green' : schedule === 'scheduled' ? 'blue' : 'gray'}>
+        <Badge
+          size="xs"
+          variant="subtle"
+          colorPalette={schedule === 'live' ? 'green' : schedule === 'scheduled' ? 'blue' : 'gray'}
+        >
           {localize(SCHEDULE_LABELS[schedule], locale)}
         </Badge>
       )}
@@ -270,7 +274,12 @@ function Row({
         {section.hidden ? <LuEyeOff /> : <LuEye />}
       </IconButton>
       {/* The rarer actions appear on hover or focus, so the list stays calm. */}
-      <HStack gap="0" opacity={{ base: 1, lg: 0 }} _groupHover={{ opacity: 1 }} _groupFocusWithin={{ opacity: 1 }}>
+      <HStack
+        gap="0"
+        opacity={{ base: 1, lg: 0 }}
+        _groupHover={{ opacity: 1 }}
+        _groupFocusWithin={{ opacity: 1 }}
+      >
         <IconButton aria-label={t('copySection')} size="2xs" variant="ghost" onClick={onCopy}>
           <LuClipboardCopy />
         </IconButton>
@@ -387,7 +396,13 @@ function AddSectionDialog({
     const out: PickerEntry[] = []
     for (const schema of SECTION_SCHEMAS as readonly SectionSchema[]) {
       if (!isSectionAllowed(schema, scope)) continue
-      out.push({ key: schema.type, schema, preset: null, name: l(schema.name), description: l(schema.description) })
+      out.push({
+        key: schema.type,
+        schema,
+        preset: null,
+        name: l(schema.name),
+        description: l(schema.description),
+      })
       for (const preset of schema.presets ?? []) {
         out.push({
           key: `${schema.type}:${preset.key}`,
@@ -537,7 +552,12 @@ function AddSectionDialog({
                                 <Text fontSize="sm" fontWeight="medium">
                                   {entry.name}
                                 </Text>
-                                <Text fontSize="xs" color="fg.muted" fontWeight="normal" lineHeight="short">
+                                <Text
+                                  fontSize="xs"
+                                  color="fg.muted"
+                                  fontWeight="normal"
+                                  lineHeight="short"
+                                >
                                   {entry.description}
                                 </Text>
                                 {entry.preset && (

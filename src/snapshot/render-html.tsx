@@ -25,7 +25,11 @@ import { system } from '@repo/theme'
 
 import type { ThemeContent } from '../model/content'
 import { googleFontsHref } from '../model/settings'
-import { RenderProvider, type RenderEnvironment, type StorefrontRenderData } from '../render/context'
+import {
+  RenderProvider,
+  type RenderEnvironment,
+  type StorefrontRenderData,
+} from '../render/context'
 import { SNAPSHOT_WIDTH, TemplateSnapshotPage } from '../render/theme-preview'
 
 export interface SnapshotHtmlInput {

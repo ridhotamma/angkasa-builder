@@ -181,7 +181,10 @@ const secondaryButtonLabel: ItemField = {
   kind: 'text',
   key: 'secondaryButtonLabel',
   label: { en: 'Second button label', id: 'Teks tombol kedua' },
-  help: { en: 'Optional, shown as an outline button.', id: 'Opsional, tampil sebagai tombol garis.' },
+  help: {
+    en: 'Optional, shown as an outline button.',
+    id: 'Opsional, tampil sebagai tombol garis.',
+  },
   max: 40,
   default: '',
 }
@@ -413,7 +416,7 @@ const PRODUCT_INFO_BLOCKS: readonly BlockSchema[] = [
         key: 'label',
         label: { en: 'Link text', id: 'Teks tautan' },
         help: {
-          en: "Shown only on products whose category or product settings have a size guide.",
+          en: 'Shown only on products whose category or product settings have a size guide.',
           id: 'Hanya tampil pada produk yang kategori atau pengaturannya punya panduan ukuran.',
         },
         max: 40,
@@ -476,7 +479,6 @@ const PRODUCT_INFO_BLOCKS: readonly BlockSchema[] = [
 /* -------------------------------------------------------------------------- */
 /* The library                                                                */
 /* -------------------------------------------------------------------------- */
-
 
 /* -------------------------------------------------------------------------- */
 /* The library                                                                */
@@ -1288,7 +1290,11 @@ export const SECTION_SCHEMAS = [
             max: 100,
             default: '',
           },
-          { kind: 'product', key: 'productId', label: { en: 'Product in the video', id: 'Produk di video' } },
+          {
+            kind: 'product',
+            key: 'productId',
+            label: { en: 'Product in the video', id: 'Produk di video' },
+          },
         ],
       },
     ],
@@ -1801,7 +1807,10 @@ export const SECTION_SCHEMAS = [
             kind: 'text',
             key: 'code',
             label: { en: 'Code override', id: 'Kode khusus' },
-            placeholder: { en: 'Leave empty to use code from voucher', id: 'Kosongkan untuk memakai kode dari voucher' },
+            placeholder: {
+              en: 'Leave empty to use code from voucher',
+              id: 'Kosongkan untuk memakai kode dari voucher',
+            },
             max: 40,
             default: '',
           },
@@ -1809,7 +1818,10 @@ export const SECTION_SCHEMAS = [
             kind: 'text',
             key: 'title',
             label: { en: 'Title override', id: 'Judul khusus' },
-            placeholder: { en: 'e.g. 10% off your first order', id: 'mis. Diskon 10% pesanan pertama' },
+            placeholder: {
+              en: 'e.g. 10% off your first order',
+              id: 'mis. Diskon 10% pesanan pertama',
+            },
             max: 80,
             default: '',
           },
@@ -2052,7 +2064,10 @@ export const SECTION_SCHEMAS = [
         key: 'gallery',
         label: { en: 'Photo layout', id: 'Tata letak foto' },
         options: [
-          { value: 'thumbnails', label: { en: 'Large photo and thumbnails', id: 'Foto besar dan thumbnail' } },
+          {
+            value: 'thumbnails',
+            label: { en: 'Large photo and thumbnails', id: 'Foto besar dan thumbnail' },
+          },
           { value: 'grid', label: { en: 'Grid of photos', id: 'Kisi foto' } },
           { value: 'stacked', label: { en: 'Photos stacked', id: 'Foto bertumpuk' } },
           { value: 'mosaic', label: { en: 'Photo mosaic', id: 'Mozaik foto' } },
@@ -2087,7 +2102,15 @@ export const SECTION_SCHEMAS = [
         label: { en: 'Beside the photos', id: 'Di samping foto' },
         max: 16,
         blocks: PRODUCT_INFO_BLOCKS,
-        defaultBlocks: ['title', 'rating', 'price', 'purchase', 'size-guide', 'badges', 'description'],
+        defaultBlocks: [
+          'title',
+          'rating',
+          'price',
+          'purchase',
+          'size-guide',
+          'badges',
+          'description',
+        ],
       },
     ],
   },

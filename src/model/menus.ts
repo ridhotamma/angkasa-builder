@@ -82,10 +82,12 @@ export function sanitizeMenuItems(value: unknown): MenuItem[] {
     for (const entry of raw.slice(0, MAX_MENU_ITEMS_PER_LEVEL)) {
       if (budget <= 0) break
       if (!isRecord(entry)) continue
-      const label = typeof entry.label === 'string' ? entry.label.trim().slice(0, MAX_MENU_LABEL) : ''
+      const label =
+        typeof entry.label === 'string' ? entry.label.trim().slice(0, MAX_MENU_LABEL) : ''
       if (!label) continue
       budget -= 1
-      let id = typeof entry.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(entry.id) ? entry.id : newId()
+      let id =
+        typeof entry.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(entry.id) ? entry.id : newId()
       if (seen.has(id)) id = newId()
       seen.add(id)
       out.push({

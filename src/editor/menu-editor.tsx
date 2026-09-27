@@ -82,10 +82,7 @@ function invalidIds(
   if (!labelError) return []
   return items.flatMap((item, index) => {
     const here = [...path, index]
-    return [
-      ...(labelError(here) ? [item.id] : []),
-      ...invalidIds(item.children, labelError, here),
-    ]
+    return [...(labelError(here) ? [item.id] : []), ...invalidIds(item.children, labelError, here)]
   })
 }
 
@@ -133,7 +130,9 @@ function Items({ items, onChange, path, services, open, setOpen, labelError }: I
                 rounded="md"
                 bg="bg.panel"
                 transition="border-color 120ms"
-                _hover={{ borderColor: error ? 'border.error' : expanded ? 'brand.muted' : 'border' }}
+                _hover={{
+                  borderColor: error ? 'border.error' : expanded ? 'brand.muted' : 'border',
+                }}
               >
                 <HStack gap="1" pl="1" pr="1.5" py="1">
                   <Collapsible.Trigger asChild>
@@ -211,7 +210,14 @@ function Items({ items, onChange, path, services, open, setOpen, labelError }: I
                   </Tooltip>
                 </HStack>
                 <Collapsible.Content>
-                  <Stack gap="4" px="3" pt="1" pb="3" borderTopWidth="1px" borderColor="border.subtle">
+                  <Stack
+                    gap="4"
+                    px="3"
+                    pt="1"
+                    pb="3"
+                    borderTopWidth="1px"
+                    borderColor="border.subtle"
+                  >
                     <SimpleGrid columns={{ base: 1, md: 2 }} gap="3" pt="2">
                       <Labeled label={t('menuLabel')} error={error}>
                         <Input
@@ -221,7 +227,9 @@ function Items({ items, onChange, path, services, open, setOpen, labelError }: I
                           placeholder={t('menuLabelPlaceholder')}
                           // A fresh link opens straight onto its label.
                           autoFocus={!item.label}
-                          onChange={(event) => update(item.id, { label: event.currentTarget.value })}
+                          onChange={(event) =>
+                            update(item.id, { label: event.currentTarget.value })
+                          }
                         />
                       </Labeled>
                       <Labeled label={t('linkKind')}>
@@ -319,7 +327,14 @@ export function MenuEditor({
         borderColor="border"
         textAlign="center"
       >
-        <Box boxSize="10" rounded="full" bg="bg.muted" color="fg.muted" display="grid" placeItems="center">
+        <Box
+          boxSize="10"
+          rounded="full"
+          bg="bg.muted"
+          color="fg.muted"
+          display="grid"
+          placeItems="center"
+        >
           <Icon as={LuLink} boxSize="5" />
         </Box>
         <Stack gap="0.5">

@@ -54,10 +54,7 @@ export interface SectionsRendererProps {
  * The editor draws everything that is not hidden, with a badge on sections
  * that are outside their dates.
  */
-export function liveSections(
-  sections: readonly SectionInstance[],
-  now: Date,
-): SectionInstance[] {
+export function liveSections(sections: readonly SectionInstance[], now: Date): SectionInstance[] {
   return sections.filter((section) => {
     if (section.hidden) return false
     const state = scheduleState(readSectionStyle(section.style), now)
@@ -74,7 +71,9 @@ export function drawnSections(
   mode: RenderEnvironment['mode'],
   now: Date,
 ): SectionInstance[] {
-  return mode === 'live' ? liveSections(sections, now) : sections.filter((section) => !section.hidden)
+  return mode === 'live'
+    ? liveSections(sections, now)
+    : sections.filter((section) => !section.hidden)
 }
 
 /** A section that runs past the page column — edge to edge, or on a full-width band. */
@@ -229,7 +228,13 @@ function measureOutline(wrapper: HTMLElement): OutlineBox | null {
 
 function sameBox(a: OutlineBox | null, b: OutlineBox | null) {
   if (!a || !b) return a === b
-  return a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height && a.band === b.band
+  return (
+    a.top === b.top &&
+    a.left === b.left &&
+    a.width === b.width &&
+    a.height === b.height &&
+    a.band === b.band
+  )
 }
 
 /**
@@ -289,7 +294,11 @@ function PickableSection({
       data-section-id={id}
       position="relative"
       cursor="pointer"
-      css={{ '&:hover > [data-section-outline]': { borderColor: selected ? 'brand.solid' : 'brand.muted' } }}
+      css={{
+        '&:hover > [data-section-outline]': {
+          borderColor: selected ? 'brand.solid' : 'brand.muted',
+        },
+      }}
       {...props}
     >
       {children}

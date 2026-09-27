@@ -120,7 +120,9 @@ async function waitForSnapshotReady(page: Page): Promise<void> {
               }),
         ),
       )
-      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      )
     })()
     const cap = new Promise<void>((resolve) => setTimeout(() => resolve(), 12_000))
     await Promise.race([settled, cap])

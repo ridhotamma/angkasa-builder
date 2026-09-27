@@ -153,13 +153,7 @@ export function overlayProps(
  * A banner's words and buttons, over whatever the banner shows behind them.
  * Shared by the image, video and parallax banners so all three read alike.
  */
-export function BannerCopy({
-  settings,
-  onImage,
-}: {
-  settings: FieldValues
-  onImage: boolean
-}) {
+export function BannerCopy({ settings, onImage }: { settings: FieldValues; onImage: boolean }) {
   const heading = readText(settings, 'heading')
   const subheading = readText(settings, 'subheading')
   const align = alignOf(settings)
@@ -215,9 +209,9 @@ function Hero({ settings }: SectionProps) {
 
   const hasCopy = Boolean(
     readText(settings, 'heading') ||
-      readText(settings, 'subheading') ||
-      readText(settings, 'buttonLabel') ||
-      readText(settings, 'secondaryButtonLabel'),
+    readText(settings, 'subheading') ||
+    readText(settings, 'buttonLabel') ||
+    readText(settings, 'secondaryButtonLabel'),
   )
   const height = heroHeight(settings)
 

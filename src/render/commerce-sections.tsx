@@ -79,7 +79,13 @@ export function FeaturedProduct({ settings }: SectionProps) {
                 onClick={() => setActive(index)}
                 aria-label={`${product.name} ${index + 1}`}
               >
-                <ImageWithFallback src={url ?? undefined} alt="" objectFit="cover" w="full" h="full" />
+                <ImageWithFallback
+                  src={url ?? undefined}
+                  alt=""
+                  objectFit="cover"
+                  w="full"
+                  h="full"
+                />
               </Box>
             ))}
           </HStack>
@@ -262,7 +268,12 @@ export function Countdown({ settings }: SectionProps) {
         <SectionHeading align={align} field="heading">
           {readText(settings, 'heading')}
         </SectionHeading>
-        <EditableText as="p" field="subheading" value={readText(settings, 'subheading')} color="fg.muted" />
+        <EditableText
+          as="p"
+          field="subheading"
+          value={readText(settings, 'subheading')}
+          color="fg.muted"
+        />
       </Stack>
       <HStack gap={{ base: '2', md: '3' }} role="timer" aria-live="off">
         {units.map((unit) => (
@@ -364,12 +375,7 @@ export function PromoCodes({ settings }: SectionProps) {
       ) : (
         <SimpleGrid columns={{ base: 1, sm: 2, lg: Math.min(3, shown.length) }} gap="3">
           {shown.map((item) => (
-            <VoucherCard
-              key={item.id}
-              code={item.code}
-              title={item.title}
-              terms={item.terms}
-            />
+            <VoucherCard key={item.id} code={item.code} title={item.title} terms={item.terms} />
           ))}
         </SimpleGrid>
       )}
@@ -420,11 +426,22 @@ function VoucherCard({ code, title, terms }: { code: string; title: string; term
             {terms}
           </Text>
         )}
-        <Text fontFamily="mono" fontWeight="bold" fontSize="lg" letterSpacing="0.08em" color="brand.fg">
+        <Text
+          fontFamily="mono"
+          fontWeight="bold"
+          fontSize="lg"
+          letterSpacing="0.08em"
+          color="brand.fg"
+        >
           {code}
         </Text>
       </Stack>
-      <Box borderLeftWidth="1px" borderStyle="dashed" borderColor="brand.muted" alignSelf="stretch" />
+      <Box
+        borderLeftWidth="1px"
+        borderStyle="dashed"
+        borderColor="brand.muted"
+        alignSelf="stretch"
+      />
       <Box p="4" pr="6">
         <Button
           size="sm"

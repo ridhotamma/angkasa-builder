@@ -166,7 +166,10 @@ export function ThemeSettingsPanel({
         <Labeled label={t('animation')} help={t('animationHelp')}>
           <SelectInput
             value={settings.animation}
-            options={ANIMATION_STYLES.map((value) => ({ value, label: l(ANIMATION_LABELS[value]) }))}
+            options={ANIMATION_STYLES.map((value) => ({
+              value,
+              label: l(ANIMATION_LABELS[value]),
+            }))}
             onChange={(animation) =>
               onChange({ ...settings, animation: animation as ThemeSettings['animation'] })
             }

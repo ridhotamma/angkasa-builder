@@ -45,15 +45,18 @@ import {
   readText,
   type BlockValue,
 } from '../model/fields'
-import {
-  previewProductDetail,
-  useRenderEnvironment,
-  type StorefrontProductDetail,
-} from './context'
+import { previewProductDetail, useRenderEnvironment, type StorefrontProductDetail } from './context'
 import { useRenderText } from './copy'
 import { DataTable } from './content-sections'
 import { featureIcon } from './icons'
-import { EmptyNotice, Paragraphs, ProductGrid, SectionHeading, SmartLink, useOverlayProps } from './primitives'
+import {
+  EmptyNotice,
+  Paragraphs,
+  ProductGrid,
+  SectionHeading,
+  SmartLink,
+  useOverlayProps,
+} from './primitives'
 import { RichTextView } from './rich-text'
 import type { SectionProps } from './sections'
 
@@ -106,7 +109,11 @@ function ZoomImage({ src, alt, zoom }: { src: string | null; alt: string; zoom: 
         transition="transform 0.12s ease-out"
         // Snaps instead for anyone who has asked their system for less motion.
         _motionReduce={{ transition: 'none' }}
-        style={zoom ? { transform: zoomed ? 'scale(1.8)' : 'scale(1)', transformOrigin: origin } : undefined}
+        style={
+          zoom
+            ? { transform: zoomed ? 'scale(1.8)' : 'scale(1)', transformOrigin: origin }
+            : undefined
+        }
       />
     </AspectRatio>
   )
@@ -128,7 +135,10 @@ function Gallery({
     return (
       <SimpleGrid columns={layout === 'grid' ? { base: 1, sm: 2 } : 1} gap="3">
         {images.map((image, index) => (
-          <Box key={`${image.url}-${index}`} gridColumn={layout === 'grid' && index === 0 ? { sm: 'span 2' } : undefined}>
+          <Box
+            key={`${image.url}-${index}`}
+            gridColumn={layout === 'grid' && index === 0 ? { sm: 'span 2' } : undefined}
+          >
             <ZoomImage src={image.url} alt={index === 0 ? product.name : ''} zoom={zoom} />
           </Box>
         ))}
@@ -155,7 +165,13 @@ function Gallery({
               cursor="pointer"
               onClick={() => setActive(index)}
             >
-              <ImageWithFallback src={image.thumbUrl ?? undefined} alt="" objectFit="cover" loading="lazy" fallbackIconSize="5" />
+              <ImageWithFallback
+                src={image.thumbUrl ?? undefined}
+                alt=""
+                objectFit="cover"
+                loading="lazy"
+                fallbackIconSize="5"
+              />
             </AspectRatio>
           ))}
         </SimpleGrid>
@@ -281,7 +297,13 @@ function MosaicGallery({
           {tile(shown[0]!, 0, 0)}
         </Box>
         {shown.slice(1).map((image, offset) => (
-          <Box key={`${image.url}-${offset}`} {...placement[offset]} display="grid" minW="0" minH="0">
+          <Box
+            key={`${image.url}-${offset}`}
+            {...placement[offset]}
+            display="grid"
+            minW="0"
+            minH="0"
+          >
             {tile(image, offset + 1, offset === shown.length - 2 ? hidden : 0)}
           </Box>
         ))}
@@ -306,7 +328,13 @@ function MosaicGallery({
           <Dialog.Backdrop />
           <Dialog.Positioner>
             <Dialog.Content p={{ base: '3', md: '4' }} pt="12">
-              <PhotoCarousel images={images} name={product.name} start={viewing} zoom={zoom} arrows />
+              <PhotoCarousel
+                images={images}
+                name={product.name}
+                start={viewing}
+                zoom={zoom}
+                arrows
+              />
               <Dialog.CloseTrigger asChild>
                 <CloseButton size="sm" top="2" right="2" aria-label={text('close')} />
               </Dialog.CloseTrigger>
@@ -450,12 +478,21 @@ function SizeGuideDrawer({ product, label }: { product: StorefrontProductDetail;
   const guide = product.sizeGuide
   const { mode } = useRenderEnvironment()
   const overlay = useOverlayProps()
-  if (!guide) return mode === 'preview' ? <EmptyNotice>{text('sizeGuideMissing')}</EmptyNotice> : null
+  if (!guide)
+    return mode === 'preview' ? <EmptyNotice>{text('sizeGuideMissing')}</EmptyNotice> : null
 
   return (
     <Drawer.Root {...overlay} size={{ base: 'full', sm: 'md' }} placement="end">
       <Drawer.Trigger asChild>
-        <Button variant="plain" size="sm" px="0" alignSelf="start" color="fg" textDecoration="underline" textUnderlineOffset="3px">
+        <Button
+          variant="plain"
+          size="sm"
+          px="0"
+          alignSelf="start"
+          color="fg"
+          textDecoration="underline"
+          textUnderlineOffset="3px"
+        >
           <LuRuler />
           {label || guide.name}
         </Button>
@@ -529,7 +566,11 @@ function Block({ block, product }: { block: BlockValue; product: StorefrontProdu
       return (
         <Heading
           as="h1"
-          size={readText(settings, 'size') === 'lg' ? { base: '2xl', md: '4xl' } : { base: 'xl', md: '2xl' }}
+          size={
+            readText(settings, 'size') === 'lg'
+              ? { base: '2xl', md: '4xl' }
+              : { base: 'xl', md: '2xl' }
+          }
           letterSpacing="-0.02em"
         >
           {product.name}
@@ -551,7 +592,11 @@ function Block({ block, product }: { block: BlockValue; product: StorefrontProdu
           : 0
       return (
         <HStack gap="3" align="baseline" wrap="wrap">
-          <Text fontSize={{ base: 'xl', md: '2xl' }} fontWeight="bold" fontVariantNumeric="tabular-nums">
+          <Text
+            fontSize={{ base: 'xl', md: '2xl' }}
+            fontWeight="bold"
+            fontVariantNumeric="tabular-nums"
+          >
             {formatPrice(product.price, data.shop.currency)}
           </Text>
           {saving > 0 && (
@@ -604,7 +649,12 @@ function Block({ block, product }: { block: BlockValue; product: StorefrontProdu
         <SimpleGrid columns={2} gap="2">
           {items.map((item) => (
             <HStack key={item.id} gap="2.5" p="2.5" rounded="l2" bg="bg.subtle" fontSize="sm">
-              <Icon as={featureIcon(readText(item, 'icon'))} boxSize="4.5" color="brand.fg" flexShrink="0" />
+              <Icon
+                as={featureIcon(readText(item, 'icon'))}
+                boxSize="4.5"
+                color="brand.fg"
+                flexShrink="0"
+              />
               <Text lineClamp={2}>{readText(item, 'text')}</Text>
             </HStack>
           ))}
@@ -620,14 +670,23 @@ function Block({ block, product }: { block: BlockValue; product: StorefrontProdu
 
 /** Whether a block is one of the folded tabs, drawn together as one accordion. */
 function isTab(block: BlockValue): boolean {
-  return block.type === 'collapsible' || (block.type === 'description' && readBoolean(block.settings, 'collapsible'))
+  return (
+    block.type === 'collapsible' ||
+    (block.type === 'description' && readBoolean(block.settings, 'collapsible'))
+  )
 }
 
 /**
  * The blocks in order, with every run of neighbouring tabs drawn as one
  * accordion — separate accordions would stack two borders between each tab.
  */
-function BlockList({ blocks, product }: { blocks: BlockValue[]; product: StorefrontProductDetail }) {
+function BlockList({
+  blocks,
+  product,
+}: {
+  blocks: BlockValue[]
+  product: StorefrontProductDetail
+}) {
   const text = useRenderText()
   const groups: Array<{ tabs: BlockValue[] } | { block: BlockValue }> = []
   for (const block of blocks) {
@@ -641,7 +700,8 @@ function BlockList({ blocks, product }: { blocks: BlockValue[]; product: Storefr
   return (
     <Stack gap="5">
       {groups.map((group, index) => {
-        if ('block' in group) return <Block key={group.block.id} block={group.block} product={product} />
+        if ('block' in group)
+          return <Block key={group.block.id} block={group.block} product={product} />
         // A folded description of a product with none would be an empty tab.
         const tabs = group.tabs.filter((tab) => tab.type !== 'description' || product.description)
         if (tabs.length === 0) return null
@@ -656,10 +716,17 @@ function BlockList({ blocks, product }: { blocks: BlockValue[]; product: Storefr
             borderColor="border"
           >
             {tabs.map((tab) => (
-              <Accordion.Item key={tab.id} value={tab.id} borderBottomWidth="1px" borderColor="border">
+              <Accordion.Item
+                key={tab.id}
+                value={tab.id}
+                borderBottomWidth="1px"
+                borderColor="border"
+              >
                 <Accordion.ItemTrigger fontWeight="medium" py="4">
                   <Box flex="1">
-                    {tab.type === 'description' ? text('description') : readText(tab.settings, 'heading')}
+                    {tab.type === 'description'
+                      ? text('description')
+                      : readText(tab.settings, 'heading')}
                   </Box>
                   <Accordion.ItemIndicator />
                 </Accordion.ItemTrigger>

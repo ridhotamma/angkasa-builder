@@ -33,7 +33,10 @@ describe('videos', () => {
       source: 'youtube',
       id: 'dQw4w9WgXcQ',
     })
-    expect(parseVideoUrl('https://youtu.be/dQw4w9WgXcQ')).toEqual({ source: 'youtube', id: 'dQw4w9WgXcQ' })
+    expect(parseVideoUrl('https://youtu.be/dQw4w9WgXcQ')).toEqual({
+      source: 'youtube',
+      id: 'dQw4w9WgXcQ',
+    })
     expect(parseVideoUrl('https://youtube.com/shorts/dQw4w9WgXcQ')).toEqual({
       source: 'youtube',
       id: 'dQw4w9WgXcQ',
@@ -48,12 +51,19 @@ describe('videos', () => {
     expect(parseVideoUrl('https://evil.example/watch?v=dQw4w9WgXcQ')).toBeNull()
     expect(parseVideoUrl('javascript:alert(1)')).toBeNull()
     expect(sanitizeVideo({ source: 'youtube', id: '"><script>' })).toBeNull()
-    expect(sanitizeVideo({ source: 'upload', id: 'abc123' })).toEqual({ source: 'upload', id: 'abc123' })
+    expect(sanitizeVideo({ source: 'upload', id: 'abc123' })).toEqual({
+      source: 'upload',
+      id: 'abc123',
+    })
   })
 
   test('a background video field accepts uploads only', () => {
     const [hero] = sanitizeSections([
-      { id: 'v', type: 'video-hero', settings: { video: { source: 'youtube', id: 'dQw4w9WgXcQ' } } },
+      {
+        id: 'v',
+        type: 'video-hero',
+        settings: { video: { source: 'youtube', id: 'dQw4w9WgXcQ' } },
+      },
     ])
     expect(hero!.settings.video).toBeNull()
   })
@@ -61,9 +71,22 @@ describe('videos', () => {
 
 describe('tables', () => {
   test('squares a ragged grid to the header and caps its size', () => {
-    const table = sanitizeTable({ columns: ['A', 'B'], rows: [['1'], ['1', '2', '3'], 'nope'] }, 5, 10)
-    expect(table).toEqual({ columns: ['A', 'B'], rows: [['1', ''], ['1', '2']] })
-    const guide = sanitizeSizeGuideTable({ columns: Array(50).fill('x'), rows: Array(99).fill(['a']) })
+    const table = sanitizeTable(
+      { columns: ['A', 'B'], rows: [['1'], ['1', '2', '3'], 'nope'] },
+      5,
+      10,
+    )
+    expect(table).toEqual({
+      columns: ['A', 'B'],
+      rows: [
+        ['1', ''],
+        ['1', '2'],
+      ],
+    })
+    const guide = sanitizeSizeGuideTable({
+      columns: Array(50).fill('x'),
+      rows: Array(99).fill(['a']),
+    })
     expect(guide.columns).toHaveLength(10)
     expect(guide.rows).toHaveLength(30)
   })
@@ -73,7 +96,15 @@ describe('blocks', () => {
   test('a new product page gets its default blocks, in order', () => {
     const info = createSection('product-info')
     const types = (info.settings.blocks as Array<{ type: string }>).map((block) => block.type)
-    expect(types).toEqual(['title', 'rating', 'price', 'purchase', 'size-guide', 'badges', 'description'])
+    expect(types).toEqual([
+      'title',
+      'rating',
+      'price',
+      'purchase',
+      'size-guide',
+      'badges',
+      'description',
+    ])
   })
 
   test('drops unknown block types and blocks beyond their limit', () => {
@@ -94,7 +125,10 @@ describe('blocks', () => {
       ],
       'product',
     )
-    const blocks = info!.settings.blocks as Array<{ type: string; settings: Record<string, unknown> }>
+    const blocks = info!.settings.blocks as Array<{
+      type: string
+      settings: Record<string, unknown>
+    }>
     expect(blocks.map((block) => block.type)).toEqual(['title', 'collapsible'])
     expect(blocks[1]!.settings.open).toBe(false)
   })
@@ -102,9 +136,15 @@ describe('blocks', () => {
 
 describe('scopes', () => {
   test('the product page cannot land on the home page, and vice versa', () => {
-    expect(sanitizeSections([{ id: 'a', type: 'product-info', settings: {} }], 'home')).toHaveLength(0)
-    expect(sanitizeSections([{ id: 'b', type: 'banner-slider', settings: {} }], 'product')).toHaveLength(0)
-    expect(sanitizePageContent({ sections: [{ id: 'c', type: 'product-reviews' }] }).sections).toHaveLength(0)
+    expect(
+      sanitizeSections([{ id: 'a', type: 'product-info', settings: {} }], 'home'),
+    ).toHaveLength(0)
+    expect(
+      sanitizeSections([{ id: 'b', type: 'banner-slider', settings: {} }], 'product'),
+    ).toHaveLength(0)
+    expect(
+      sanitizePageContent({ sections: [{ id: 'c', type: 'product-reviews' }] }).sections,
+    ).toHaveLength(0)
   })
 
   test('a theme without a product page gets the default one', () => {
@@ -205,12 +245,19 @@ describe('what a layout refers to', () => {
     {
       id: 'b',
       type: 'lookbook',
-      settings: { image: 'img1', hotspots: [{ id: 'h', productId: 'prod2', position: { x: 10, y: 20 } }] },
+      settings: {
+        image: 'img1',
+        hotspots: [{ id: 'h', productId: 'prod2', position: { x: 10, y: 20 } }],
+      },
     },
     {
       id: 'c',
       type: 'video-reels',
-      settings: { items: [{ id: 'r', video: { source: 'upload', id: 'vid1' }, poster: 'img2', productId: 'prod1' }] },
+      settings: {
+        items: [
+          { id: 'r', video: { source: 'upload', id: 'vid1' }, poster: 'img2', productId: 'prod1' },
+        ],
+      },
     },
   ])
 
@@ -222,7 +269,11 @@ describe('what a layout refers to', () => {
 
   test('copies swap images and videos, and clear what was not copied', () => {
     const theme = sanitizeThemeContent({ templates: { home: sections } })
-    const copied = remapThemeImages(theme, new Map([['img1', 'copy1']]), new Map([['vid1', 'vcopy']]))
+    const copied = remapThemeImages(
+      theme,
+      new Map([['img1', 'copy1']]),
+      new Map([['vid1', 'vcopy']]),
+    )
     expect(imageFileIds(copied.templates.home).sort()).toEqual(['copy1'])
     expect(videoFileIds(copied.templates.home)).toEqual(['vcopy'])
   })
@@ -234,7 +285,9 @@ describe('menus', () => {
       {
         label: 'Women',
         link: { kind: 'url', href: 'javascript:alert(1)' },
-        children: [{ label: 'Tops', children: [{ label: 'Tees', children: [{ label: 'Too deep' }] }] }],
+        children: [
+          { label: 'Tops', children: [{ label: 'Tees', children: [{ label: 'Too deep' }] }] },
+        ],
       },
       { label: '   ' },
     ])
@@ -260,7 +313,11 @@ describe('menus', () => {
 describe('layout', () => {
   test('header and footer default to the look the storefront had', () => {
     const layout = sanitizeLayout(null)
-    expect(layout.header).toMatchObject({ layout: 'classic', sticky: true, transparentOnHome: false })
+    expect(layout.header).toMatchObject({
+      layout: 'classic',
+      sticky: true,
+      transparentOnHome: false,
+    })
     expect(layout.footer).toMatchObject({ colorScheme: 'default', showPages: true })
   })
 })

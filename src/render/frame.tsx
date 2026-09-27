@@ -19,7 +19,12 @@ import {
   type SectionSpacing,
   type SectionWidth,
 } from '../model/section-style'
-import { resolveScheme, schemeCssVars, type AnimationStyle, type SchemeKey } from '../model/settings'
+import {
+  resolveScheme,
+  schemeCssVars,
+  type AnimationStyle,
+  type SchemeKey,
+} from '../model/settings'
 import { useRenderEnvironment } from './context'
 import { FullBleed } from './primitives'
 import type { FieldValues } from '../model/fields'
@@ -132,11 +137,7 @@ export function SectionFrame({
 
   // Page width: a band is a rounded panel in the column, padded on all sides.
   return (
-    <Box
-      {...display}
-      {...surface}
-      {...(banded && { rounded: 'l3', px: { base: '5', md: '10' } })}
-    >
+    <Box {...display} {...surface} {...(banded && { rounded: 'l3', px: { base: '5', md: '10' } })}>
       {content}
     </Box>
   )

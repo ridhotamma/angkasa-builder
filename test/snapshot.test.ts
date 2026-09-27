@@ -18,7 +18,10 @@ function content(): ThemeContent {
     templates: {
       home: [
         createSection('shop-intro', { showDescription: true }),
-        createSection('rich-text', { heading: 'Snapshot probe', body: 'A section that must appear.' }),
+        createSection('rich-text', {
+          heading: 'Snapshot probe',
+          body: 'A section that must appear.',
+        }),
       ],
       product: [],
     },

@@ -88,9 +88,17 @@ export function Multicolumn({ settings }: SectionProps) {
             return (
               <Card.Root key={item.id} bg="bg.panel" rounded="l3" overflow="hidden" {...frame}>
                 {image && (
-                  <AspectRatio ratio={ratio} bg="bg.subtle" rounded={flat ? 'l3' : undefined} overflow="hidden">
+                  <AspectRatio
+                    ratio={ratio}
+                    bg="bg.subtle"
+                    rounded={flat ? 'l3' : undefined}
+                    overflow="hidden"
+                  >
                     <ImageWithFallback
-                      src={imageUrl(image, { width: 800, height: Math.round(800 / ratio) }) ?? undefined}
+                      src={
+                        imageUrl(image, { width: 800, height: Math.round(800 / ratio) }) ??
+                        undefined
+                      }
                       alt=""
                       objectFit="cover"
                       loading="lazy"
@@ -209,10 +217,26 @@ export function ScrollingStory({ settings }: SectionProps) {
               opacity={{ base: 1, md: index === active ? 1 : 0.35 }}
               transition="opacity 400ms ease"
             >
-              <AspectRatio ratio={4 / 5} rounded="l3" overflow="hidden" bg="bg.subtle" hideFrom="md">
-                <ImageWithFallback src={src(step) ?? undefined} alt="" objectFit="cover" loading="lazy" />
+              <AspectRatio
+                ratio={4 / 5}
+                rounded="l3"
+                overflow="hidden"
+                bg="bg.subtle"
+                hideFrom="md"
+              >
+                <ImageWithFallback
+                  src={src(step) ?? undefined}
+                  alt=""
+                  objectFit="cover"
+                  loading="lazy"
+                />
               </AspectRatio>
-              <Text fontSize="sm" color="brand.fg" fontWeight="semibold" fontVariantNumeric="tabular-nums">
+              <Text
+                fontSize="sm"
+                color="brand.fg"
+                fontWeight="semibold"
+                fontVariantNumeric="tabular-nums"
+              >
                 {String(index + 1).padStart(2, '0')}
               </Text>
               {readText(step, 'heading') && (
@@ -271,7 +295,10 @@ export function Timeline({ settings }: SectionProps) {
                 // text | dot | — then — | dot | text, alternating.
                 <Grid
                   key={item.id}
-                  templateColumns={{ base: '1.5rem minmax(0, 1fr)', md: 'minmax(0, 1fr) 3rem minmax(0, 1fr)' }}
+                  templateColumns={{
+                    base: '1.5rem minmax(0, 1fr)',
+                    md: 'minmax(0, 1fr) 3rem minmax(0, 1fr)',
+                  }}
                   columnGap={{ base: '4', md: '0' }}
                   alignItems="start"
                 >
@@ -438,7 +465,10 @@ export function IconFeatures({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <SimpleGrid columns={{ ...gridColumns(readText(settings, 'columns')), base: 2 }} gap={{ base: '6', md: '8' }}>
+        <SimpleGrid
+          columns={{ ...gridColumns(readText(settings, 'columns')), base: 2 }}
+          gap={{ base: '6', md: '8' }}
+        >
           {items.map((item) => (
             <Stack
               key={item.id}
@@ -531,7 +561,13 @@ export function StoreLocations({ settings }: SectionProps) {
                   )}
                   <HStack gap="2" pt="1" wrap="wrap">
                     {map.kind !== 'none' && (
-                      <Button asChild size="sm" variant="outline" colorPalette="brand" rounded="full">
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        colorPalette="brand"
+                        rounded="full"
+                      >
                         <SmartLink link={map}>
                           <LuNavigation />
                           {text('directions')}
@@ -582,7 +618,8 @@ export function ContactCta({ settings }: SectionProps) {
   const wa = whatsappHref(readText(settings, 'whatsapp'), readText(settings, 'whatsappMessage'))
   const email = readText(settings, 'email') || data.shop.email || ''
   const mail = EMAIL.test(email) ? `mailto:${email}` : null
-  const stop = (event: { preventDefault: () => void }) => mode === 'preview' && event.preventDefault()
+  const stop = (event: { preventDefault: () => void }) =>
+    mode === 'preview' && event.preventDefault()
 
   return (
     <Stack
@@ -596,10 +633,23 @@ export function ContactCta({ settings }: SectionProps) {
       <SectionHeading align={align} field="heading">
         {readText(settings, 'heading')}
       </SectionHeading>
-      <EditableText as="p" field="subheading" value={readText(settings, 'subheading')} color="fg.muted" fontSize="lg" />
+      <EditableText
+        as="p"
+        field="subheading"
+        value={readText(settings, 'subheading')}
+        color="fg.muted"
+        fontSize="lg"
+      />
       <HStack gap="3" wrap="wrap" justify={align === 'center' ? 'center' : 'start'}>
         {wa && (
-          <Button asChild size="lg" rounded="full" bg="#25D366" color="white" _hover={{ bg: '#1ebe5b' }}>
+          <Button
+            asChild
+            size="lg"
+            rounded="full"
+            bg="#25D366"
+            color="white"
+            _hover={{ bg: '#1ebe5b' }}
+          >
             <ChakraLink href={wa} target="_blank" rel="noopener noreferrer" unstyled onClick={stop}>
               <FaWhatsapp />
               {readText(settings, 'whatsappLabel')}

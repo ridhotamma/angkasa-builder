@@ -36,7 +36,10 @@ export function useUndoableState<T>(initial: T) {
     setState((current) => {
       if (Object.is(next, current.present)) return current
       return {
-        past: continues && current.past.length > 0 ? current.past : [...current.past, current.present].slice(-LIMIT),
+        past:
+          continues && current.past.length > 0
+            ? current.past
+            : [...current.past, current.present].slice(-LIMIT),
         present: next,
         future: [],
       }
@@ -90,7 +93,10 @@ export function useUndoableState<T>(initial: T) {
  * Ctrl/⌘+Z and Ctrl/⌘+Shift+Z (or Ctrl+Y), except while typing in a field —
  * there the browser's own undo of the text is what the seller means.
  */
-export function useHistoryKeys(history: EditorHistory | undefined, documents: Array<Document | null>) {
+export function useHistoryKeys(
+  history: EditorHistory | undefined,
+  documents: Array<Document | null>,
+) {
   const ref = useRef(history)
   ref.current = history
 

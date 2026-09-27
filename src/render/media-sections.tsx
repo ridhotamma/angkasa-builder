@@ -358,7 +358,13 @@ export function Lookbook({ settings }: SectionProps) {
 
   const photo = (
     <Box position="relative" rounded="l3" overflow="hidden" bg="bg.subtle">
-      <Image src={src} alt={readText(settings, 'heading')} w="full" display="block" loading="lazy" />
+      <Image
+        src={src}
+        alt={readText(settings, 'heading')}
+        w="full"
+        display="block"
+        loading="lazy"
+      />
       {spots.map(({ spot, product }, index) => {
         const { x, y } = readPoint(spot, 'position')
         return (
@@ -610,7 +616,15 @@ export function LogoList({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : readText(settings, 'layout') === 'marquee' ? (
-        <Marquee.Root speed={speedOf(settings)} spacing="2rem" autoFill pauseOnInteraction w="full" minW="0" overflow="hidden">
+        <Marquee.Root
+          speed={speedOf(settings)}
+          spacing="2rem"
+          autoFill
+          pauseOnInteraction
+          w="full"
+          minW="0"
+          overflow="hidden"
+        >
           <Marquee.Edge side="start" />
           <Marquee.Viewport>
             <Marquee.Content>

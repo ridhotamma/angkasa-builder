@@ -289,24 +289,42 @@ describe('menu form', () => {
 })
 
 describe('table edits', () => {
-  const table = { columns: ['Size', 'Chest', 'Waist'], rows: [['S', '88', '72'], ['M', '96', '80']] }
+  const table = {
+    columns: ['Size', 'Chest', 'Waist'],
+    rows: [
+      ['S', '88', '72'],
+      ['M', '96', '80'],
+    ],
+  }
 
   test('moves a column with its cells, and not past either edge', () => {
     expect(moveTableColumn(table, 0, 1)).toEqual({
       columns: ['Chest', 'Size', 'Waist'],
-      rows: [['88', 'S', '72'], ['96', 'M', '80']],
+      rows: [
+        ['88', 'S', '72'],
+        ['96', 'M', '80'],
+      ],
     })
     expect(moveTableColumn(table, 2, 1)).toBe(table)
   })
 
   test('moves a body row, never the header', () => {
-    expect(moveTableRow(table, 1, -1).rows).toEqual([['M', '96', '80'], ['S', '88', '72']])
+    expect(moveTableRow(table, 1, -1).rows).toEqual([
+      ['M', '96', '80'],
+      ['S', '88', '72'],
+    ])
     expect(moveTableRow(table, -1, 1)).toBe(table)
     expect(moveTableRow(table, 0, -1)).toBe(table)
   })
 
   test('deletes a column with its cells, but never the last one', () => {
-    expect(removeTableColumn(table, 1)).toEqual({ columns: ['Size', 'Waist'], rows: [['S', '72'], ['M', '80']] })
+    expect(removeTableColumn(table, 1)).toEqual({
+      columns: ['Size', 'Waist'],
+      rows: [
+        ['S', '72'],
+        ['M', '80'],
+      ],
+    })
     const single = { columns: ['Size'], rows: [['S']] }
     expect(removeTableColumn(single, 0)).toBe(single)
   })

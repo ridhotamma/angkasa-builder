@@ -220,11 +220,25 @@ function UploadedVideo({ fileId, poster }: { fileId: string; poster: string | nu
 }
 
 /** Behind a banner's text: an upload, looped silently, or the cover when motion is unwelcome. */
-export function BackgroundVideo({ video, poster }: { video: VideoRef | null; poster: string | null }) {
+export function BackgroundVideo({
+  video,
+  poster,
+}: {
+  video: VideoRef | null
+  poster: string | null
+}) {
   const reduced = usePrefersReducedMotion()
   if (!video || video.source !== 'upload' || reduced) {
     return poster ? (
-      <chakra.img src={poster} alt="" position="absolute" inset="0" w="full" h="full" objectFit="cover" />
+      <chakra.img
+        src={poster}
+        alt=""
+        position="absolute"
+        inset="0"
+        w="full"
+        h="full"
+        objectFit="cover"
+      />
     ) : null
   }
   return <AmbientVideo fileId={video.id} poster={poster} position="absolute" inset="0" />

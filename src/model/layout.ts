@@ -83,9 +83,10 @@ export const HEADER_FIELDS: readonly Field[] = [
     kind: 'select',
     key: 'announcementScheme',
     label: { en: 'Announcement colours', id: 'Warna pengumuman' },
-    options: (['brand', ...SCHEME_KEYS.filter((key) => key !== 'brand')] as const).map(
-      (value) => ({ value, label: SCHEME_LABELS[value] }),
-    ),
+    options: (['brand', ...SCHEME_KEYS.filter((key) => key !== 'brand')] as const).map((value) => ({
+      value,
+      label: SCHEME_LABELS[value],
+    })),
     default: 'brand',
   },
 ]
@@ -143,7 +144,8 @@ export interface ThemeLayout {
 }
 
 export function sanitizeLayout(value: unknown): ThemeLayout {
-  const source = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+  const source =
+    typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
   return {
     header: sanitizeValues(HEADER_FIELDS, source.header),
     footer: sanitizeValues(FOOTER_FIELDS, source.footer),

@@ -26,12 +26,7 @@ import { LuFilm, LuMove, LuUpload, LuX } from 'react-icons/lu'
 
 import { InstantPicker } from '@repo/theme'
 
-import {
-  parseVideoUrl,
-  sanitizeVideo,
-  type PointValue,
-  type VideoRef,
-} from '../model/fields'
+import { parseVideoUrl, sanitizeVideo, type PointValue, type VideoRef } from '../model/fields'
 import type { StorefrontProductCard } from '../render/context'
 import { useCatalogue } from './catalogue'
 import { useEditorText } from './messages'
@@ -81,16 +76,17 @@ export function VideoControl({
   const src = video?.source === 'upload' ? (services.videoUrl?.(video.id) ?? null) : null
 
   const current = video ? (
-    <HStack
-      gap="2"
-      p="2"
-      rounded="md"
-      borderWidth="1px"
-      borderColor="border.subtle"
-      bg="bg.subtle"
-    >
+    <HStack gap="2" p="2" rounded="md" borderWidth="1px" borderColor="border.subtle" bg="bg.subtle">
       {src ? (
-        <Box as="video" boxSize="12" rounded="sm" objectFit="cover" flexShrink="0" bg="black" {...{ src, muted: true, preload: 'metadata' }} />
+        <Box
+          as="video"
+          boxSize="12"
+          rounded="sm"
+          objectFit="cover"
+          flexShrink="0"
+          bg="black"
+          {...{ src, muted: true, preload: 'metadata' }}
+        />
       ) : (
         <Icon as={LuFilm} boxSize="5" color="fg.muted" />
       )}
@@ -101,7 +97,13 @@ export function VideoControl({
             ? `YouTube · ${video.id}`
             : `Vimeo · ${video.id}`}
       </Text>
-      <IconButton aria-label={t('remove')} size="2xs" variant="ghost" colorPalette="danger" onClick={() => onChange(null)}>
+      <IconButton
+        aria-label={t('remove')}
+        size="2xs"
+        variant="ghost"
+        colorPalette="danger"
+        onClick={() => onChange(null)}
+      >
         <LuX />
       </IconButton>
     </HStack>
@@ -176,7 +178,12 @@ export function VideoControl({
       {uploadOnly ? (
         uploader
       ) : (
-        <Tabs.Root value={tab} onValueChange={({ value: next }) => setTab(next as 'upload' | 'link')} size="sm" variant="subtle">
+        <Tabs.Root
+          value={tab}
+          onValueChange={({ value: next }) => setTab(next as 'upload' | 'link')}
+          size="sm"
+          variant="subtle"
+        >
           <Tabs.List>
             <Tabs.Trigger value="upload" disabled={!canUpload}>
               {t('videoUpload')}
@@ -255,14 +262,29 @@ export function ProductControl({
   return (
     <Stack gap="2">
       {selected && (
-        <HStack gap="2.5" p="2" rounded="md" borderWidth="1px" borderColor="border.subtle" bg="bg.subtle">
+        <HStack
+          gap="2.5"
+          p="2"
+          rounded="md"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          bg="bg.subtle"
+        >
           <Box boxSize="10" rounded="sm" overflow="hidden" bg="bg.muted" flexShrink="0">
-            {selected.imageUrl && <Image src={selected.imageUrl} alt="" w="full" h="full" objectFit="cover" />}
+            {selected.imageUrl && (
+              <Image src={selected.imageUrl} alt="" w="full" h="full" objectFit="cover" />
+            )}
           </Box>
           <Text fontSize="sm" flex="1" minW="0" truncate>
             {selected.name}
           </Text>
-          <IconButton aria-label={t('remove')} size="2xs" variant="ghost" colorPalette="danger" onClick={() => onChange('')}>
+          <IconButton
+            aria-label={t('remove')}
+            size="2xs"
+            variant="ghost"
+            colorPalette="danger"
+            onClick={() => onChange('')}
+          >
             <LuX />
           </IconButton>
         </HStack>
@@ -305,8 +327,22 @@ export function ProductControl({
                     {collection.items.map((item) => (
                       <Combobox.Item item={item} key={item.id}>
                         <HStack gap="2" minW="0">
-                          <Box boxSize="7" rounded="sm" overflow="hidden" bg="bg.muted" flexShrink="0">
-                            {item.imageUrl && <Image src={item.imageUrl} alt="" w="full" h="full" objectFit="cover" />}
+                          <Box
+                            boxSize="7"
+                            rounded="sm"
+                            overflow="hidden"
+                            bg="bg.muted"
+                            flexShrink="0"
+                          >
+                            {item.imageUrl && (
+                              <Image
+                                src={item.imageUrl}
+                                alt=""
+                                w="full"
+                                h="full"
+                                objectFit="cover"
+                              />
+                            )}
                           </Box>
                           <Text truncate>{item.name}</Text>
                         </HStack>
@@ -477,12 +513,7 @@ export function PointControl({
             ring. The ring is the disc's padded wrapper, not a layer laid over
             it, so the two stay concentric at any sub-pixel position. It grows
             while held and settles with a small bounce when let go. */}
-        <Box
-          position="absolute"
-          transform="translate(-50%, -50%)"
-          pointerEvents="none"
-          style={at}
-        >
+        <Box position="absolute" transform="translate(-50%, -50%)" pointerEvents="none" style={at}>
           <Box
             key={`dot-${drops}`}
             display="flex"
@@ -562,7 +593,13 @@ export function PointControl({
  * `datetime-local`. The picker joins the day and time in the seller's own
  * time zone — the zone they think of the sale in.
  */
-export function DateTimeControl({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
+export function DateTimeControl({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (iso: string) => void
+}) {
   const { locale } = useEditorText()
   return (
     <InstantPicker

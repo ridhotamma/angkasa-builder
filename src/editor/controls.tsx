@@ -442,7 +442,9 @@ function ListControl({
     <Stack gap="2">
       {items.map((item, index) => {
         const voucherId = readText(item, 'voucherId')
-        const itemVoucher = voucherId ? services.vouchers?.find((v) => v.id === voucherId) : undefined
+        const itemVoucher = voucherId
+          ? services.vouchers?.find((v) => v.id === voucherId)
+          : undefined
         const title =
           readText(item, field.titleKey) ||
           (itemVoucher ? `${itemVoucher.code} — ${itemVoucher.name}` : '') ||

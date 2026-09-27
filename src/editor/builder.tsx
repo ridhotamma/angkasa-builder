@@ -160,7 +160,10 @@ function Builder({
   const selected = sections.find((section) => section.id === selectedId) ?? null
   const schema = selected ? sectionSchema(selected.type) : null
 
-  useHistoryKeys(history, useMemo(() => [globalThis.document ?? null, previewDoc], [previewDoc]))
+  useHistoryKeys(
+    history,
+    useMemo(() => [globalThis.document ?? null, previewDoc], [previewDoc]),
+  )
 
   useEffect(() => {
     if (!notice) return
@@ -223,7 +226,8 @@ function Builder({
     </Button>
   )
 
-  const layoutPart = selectedId === HEADER_ID ? 'header' : selectedId === FOOTER_ID ? 'footer' : null
+  const layoutPart =
+    selectedId === HEADER_ID ? 'header' : selectedId === FOOTER_ID ? 'footer' : null
 
   const panel =
     layoutPart && layout && onLayoutChange ? (
@@ -274,7 +278,9 @@ function Builder({
                   fields={schema.fields}
                   values={selected.settings}
                   services={services}
-                  onChange={(values) => updateSection(selected.id, (section) => ({ ...section, settings: values }))}
+                  onChange={(values) =>
+                    updateSection(selected.id, (section) => ({ ...section, settings: values }))
+                  }
                 />
               )}
             </Stack>
@@ -285,7 +291,9 @@ function Builder({
                 fields={STYLE_FIELDS}
                 values={selected.style}
                 services={services}
-                onChange={(style) => updateSection(selected.id, (section) => ({ ...section, style }))}
+                onChange={(style) =>
+                  updateSection(selected.id, (section) => ({ ...section, style }))
+                }
               />
             </Stack>
           </Tabs.Content>
@@ -295,7 +303,9 @@ function Builder({
                 fields={VISIBILITY_FIELDS}
                 values={selected.style}
                 services={services}
-                onChange={(style) => updateSection(selected.id, (section) => ({ ...section, style }))}
+                onChange={(style) =>
+                  updateSection(selected.id, (section) => ({ ...section, style }))
+                }
               />
             </Stack>
           </Tabs.Content>
@@ -629,7 +639,11 @@ function Builder({
           borderColor="border.subtle"
           overflow="hidden"
         >
-          <PreviewFrame device={device} fontHref={googleFontsHref(settings)} onDocument={setPreviewDoc}>
+          <PreviewFrame
+            device={device}
+            fontHref={googleFontsHref(settings)}
+            onDocument={setPreviewDoc}
+          >
             {preview}
           </PreviewFrame>
         </Box>
