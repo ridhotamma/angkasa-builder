@@ -352,6 +352,11 @@ const CLEAR_VARS = {
   '--chakra-colors-fg': '#ffffff',
   '--chakra-colors-fg-muted': 'rgba(255, 255, 255, 0.85)',
   '--chakra-colors-fg-subtle': 'rgba(255, 255, 255, 0.7)',
+  // `bg` itself must also go translucent: slotted controls (the storefront
+  // search field's `_focusVisible`, the cart badge's ring) read it, and the
+  // page's solid `bg` under a white header colour is what turned a focused
+  // search box into a blank white pill.
+  '--chakra-colors-bg': 'rgba(255, 255, 255, 0.18)',
   '--chakra-colors-bg-subtle': 'rgba(255, 255, 255, 0.16)',
   '--chakra-colors-bg-muted': 'rgba(255, 255, 255, 0.24)',
   '--chakra-colors-border': 'rgba(255, 255, 255, 0.35)',
