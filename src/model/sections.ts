@@ -2047,6 +2047,7 @@ export const SECTION_SCHEMAS = [
           { value: 'thumbnails', label: { en: 'Large photo and thumbnails', id: 'Foto besar dan thumbnail' } },
           { value: 'grid', label: { en: 'Grid of photos', id: 'Kisi foto' } },
           { value: 'stacked', label: { en: 'Photos stacked', id: 'Foto bertumpuk' } },
+          { value: 'mosaic', label: { en: 'Photo mosaic', id: 'Mozaik foto' } },
         ],
         default: 'thumbnails',
       },

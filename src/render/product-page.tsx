@@ -17,19 +17,22 @@ import {
   Box,
   Breadcrumb,
   Button,
+  Carousel,
   CloseButton,
+  Dialog,
   Drawer,
   Grid,
   Heading,
   HStack,
   Icon,
+  IconButton,
   Portal,
   SimpleGrid,
   Stack,
   Text,
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import { LuRuler, LuStar } from 'react-icons/lu'
+import { LuChevronLeft, LuChevronRight, LuRuler, LuStar } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -67,11 +70,17 @@ function useProduct(): StorefrontProductDetail | null {
 /**
  * A photo that magnifies under the pointer on a desktop: the image scales up
  * with its origin following the cursor, so the part being pointed at is the
- * part that grows. It switches instantly, with no easing. Touch screens pinch
- * instead, and keep the plain photo.
+ * part that grows. Touch screens pinch instead, and keep the plain photo.
+ *
+ * The scale eases in and out, but the origin never does. It stays where the
+ * pointer last was after the pointer leaves, so the photo shrinks back toward
+ * the spot that was magnified. When the origin fell back to the centre on
+ * exit, the photo lurched sideways mid-shrink. The origin is not eased either,
+ * so while zoomed the photo pans with the pointer instead of trailing it.
  */
 function ZoomImage({ src, alt, zoom }: { src: string | null; alt: string; zoom: boolean }) {
-  const [origin, setOrigin] = useState<string | null>(null)
+  const [origin, setOrigin] = useState('50% 50%')
+  const [zoomed, setZoomed] = useState(false)
   return (
     <AspectRatio
       ratio={1}
@@ -85,19 +94,19 @@ function ZoomImage({ src, alt, zoom }: { src: string | null; alt: string; zoom: 
         const x = ((event.clientX - rect.left) / rect.width) * 100
         const y = ((event.clientY - rect.top) / rect.height) * 100
         setOrigin(`${x}% ${y}%`)
+        setZoomed(true)
       }}
-      onPointerLeave={() => setOrigin(null)}
+      onPointerLeave={() => setZoomed(false)}
     >
       <ImageWithFallback
         src={src ?? undefined}
         alt={alt}
         objectFit="cover"
         fallbackIconSize="12"
-        // No transition: zoom snaps in and out, as on most stores. Eased, the
-        // photo swelled and shrank on every entry and exit — and on exit it
-        // also lurched, the origin snapping back to the centre mid-shrink —
-        // which reads as motion and can make people queasy.
-        style={origin ? { transform: 'scale(1.8)', transformOrigin: origin } : undefined}
+        transition="transform 0.12s ease-out"
+        // Snaps instead for anyone who has asked their system for less motion.
+        _motionReduce={{ transition: 'none' }}
+        style={zoom ? { transform: zoomed ? 'scale(1.8)' : 'scale(1)', transformOrigin: origin } : undefined}
       />
     </AspectRatio>
   )
@@ -127,6 +136,8 @@ function Gallery({
     )
   }
 
+  if (layout === 'mosaic') return <MosaicGallery product={product} images={images} zoom={zoom} />
+
   const cover = images[Math.min(active, images.length - 1)]!
   return (
     <Stack gap="3">
@@ -150,6 +161,222 @@ function Gallery({
         </SimpleGrid>
       )}
     </Stack>
+  )
+}
+
+type GalleryImage = StorefrontProductDetail['images'][number]
+
+/** How many photos the mosaic shows before its last tile turns into "+N". */
+const MOSAIC_TILES = 5
+
+/**
+ * Where each photo after the cover sits in the mosaic's grid (three columns,
+ * `2fr 1fr 1fr`, by two rows), keyed by how many photos show. The cover always
+ * fills the wide left column; the rest share the right half, so three photos
+ * stack two wide tiles and four put one wide tile over two small ones.
+ */
+const MOSAIC_PLACEMENT: Record<number, Array<{ gridColumn: string; gridRow: string }>> = {
+  2: [{ gridColumn: '2 / 4', gridRow: '1 / 3' }],
+  3: [
+    { gridColumn: '2 / 4', gridRow: '1' },
+    { gridColumn: '2 / 4', gridRow: '2' },
+  ],
+  4: [
+    { gridColumn: '2 / 4', gridRow: '1' },
+    { gridColumn: '2', gridRow: '2' },
+    { gridColumn: '3', gridRow: '2' },
+  ],
+  5: [
+    { gridColumn: '2', gridRow: '1' },
+    { gridColumn: '3', gridRow: '1' },
+    { gridColumn: '2', gridRow: '2' },
+    { gridColumn: '3', gridRow: '2' },
+  ],
+}
+
+/**
+ * A large cover beside a block of smaller photos, like a marketplace listing:
+ * several photos in view at once, and a "+N" on the last tile when there are
+ * more than fit. Any tile opens the whole set in a viewer at that photo, where
+ * hover zoom applies. A phone is too narrow for the tiles to show anything, so
+ * there it swipes one photo at a time. Both are in the markup and CSS picks
+ * one, so the server render already matches the screen.
+ */
+function MosaicGallery({
+  product,
+  images,
+  zoom,
+}: {
+  product: StorefrontProductDetail
+  images: GalleryImage[]
+  zoom: boolean
+}) {
+  const text = useRenderText()
+  const [viewing, setViewing] = useState<number | null>(null)
+  const shown = images.slice(0, MOSAIC_TILES)
+  const hidden = images.length - shown.length
+  const placement = MOSAIC_PLACEMENT[shown.length] ?? []
+
+  const tile = (image: GalleryImage, index: number, overflow: number) => (
+    <Box
+      as="button"
+      position="relative"
+      overflow="hidden"
+      bg="bg.subtle"
+      cursor="zoom-in"
+      aria-label={overflow > 0 ? text('viewAllPhotos') : undefined}
+      onClick={() => setViewing(index)}
+      css={{ '& img': { transition: 'opacity 0.15s' }, '&:hover img': { opacity: 0.9 } }}
+    >
+      <ImageWithFallback
+        src={image.url ?? undefined}
+        alt={index === 0 ? product.name : ''}
+        objectFit="cover"
+        w="full"
+        h="full"
+        loading={index === 0 ? undefined : 'lazy'}
+        fallbackIconSize={index === 0 ? '12' : '6'}
+      />
+      {overflow > 0 && (
+        <Box
+          position="absolute"
+          inset="0"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          bg="blackAlpha.500"
+          color="white"
+          fontSize="2xl"
+          fontWeight="semibold"
+          fontVariantNumeric="tabular-nums"
+        >
+          +{overflow}
+        </Box>
+      )}
+    </Box>
+  )
+
+  return (
+    <>
+      {/* A CSS aspect ratio, not `AspectRatio`: that one makes its child a
+          flex box, which would undo the grid. */}
+      <Grid
+        hideBelow="md"
+        aspectRatio="3 / 2"
+        templateColumns={shown.length === 1 ? '1fr' : '2fr 1fr 1fr'}
+        templateRows="repeat(2, minmax(0, 1fr))"
+        gap="1"
+        rounded="l3"
+        overflow="hidden"
+      >
+        <Box gridColumn="1" gridRow="1 / 3" display="grid" minW="0" minH="0">
+          {tile(shown[0]!, 0, 0)}
+        </Box>
+        {shown.slice(1).map((image, offset) => (
+          <Box key={`${image.url}-${offset}`} {...placement[offset]} display="grid" minW="0" minH="0">
+            {tile(image, offset + 1, offset === shown.length - 2 ? hidden : 0)}
+          </Box>
+        ))}
+      </Grid>
+
+      <Box hideFrom="md">
+        <PhotoCarousel images={images} name={product.name} onOpen={setViewing} />
+      </Box>
+
+      <Dialog.Root
+        open={viewing !== null}
+        onOpenChange={({ open }) => !open && setViewing(null)}
+        size="lg"
+        placement="center"
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content p={{ base: '3', md: '4' }} pt="12">
+              {viewing !== null && (
+                <PhotoCarousel images={images} name={product.name} start={viewing} zoom={zoom} arrows />
+              )}
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" top="2" right="2" aria-label={text('close')} />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+    </>
+  )
+}
+
+const PHOTO_ARROW = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: '1',
+  rounded: 'full',
+  size: 'sm',
+  variant: 'subtle',
+  bg: 'bg/85',
+  shadow: 'md',
+  _hover: { bg: 'bg' },
+  hideBelow: 'md',
+} as const
+
+/**
+ * Every photo, one per page, on the same default `Carousel` setup as the
+ * banner slider. `onOpen` makes a tap on a photo open the viewer.
+ */
+function PhotoCarousel({
+  images,
+  name,
+  start = 0,
+  zoom = false,
+  arrows = false,
+  onOpen,
+}: {
+  images: GalleryImage[]
+  name: string
+  start?: number
+  zoom?: boolean
+  arrows?: boolean
+  onOpen?: (index: number) => void
+}) {
+  const text = useRenderText()
+  if (images.length === 1) {
+    return (
+      <Box onClick={onOpen && (() => onOpen(0))}>
+        <ZoomImage src={images[0]!.url} alt={name} zoom={zoom} />
+      </Box>
+    )
+  }
+  return (
+    <Carousel.Root slideCount={images.length} defaultPage={start} allowMouseDrag gap="3">
+      <Box position="relative">
+        <Carousel.ItemGroup>
+          {images.map((image, index) => (
+            <Carousel.Item key={`${image.url}-${index}`} index={index}>
+              <Box onClick={onOpen && (() => onOpen(index))}>
+                <ZoomImage src={image.url} alt={index === 0 ? name : ''} zoom={zoom} />
+              </Box>
+            </Carousel.Item>
+          ))}
+        </Carousel.ItemGroup>
+        {arrows && (
+          <>
+            <Carousel.PrevTrigger asChild>
+              <IconButton {...PHOTO_ARROW} left="3" aria-label={text('previousPhoto')}>
+                <LuChevronLeft />
+              </IconButton>
+            </Carousel.PrevTrigger>
+            <Carousel.NextTrigger asChild>
+              <IconButton {...PHOTO_ARROW} right="3" aria-label={text('nextPhoto')}>
+                <LuChevronRight />
+              </IconButton>
+            </Carousel.NextTrigger>
+          </>
+        )}
+      </Box>
+      <Carousel.Indicators justifyContent="center" />
+    </Carousel.Root>
   )
 }
 
@@ -420,6 +647,7 @@ export function ProductInfo({ settings }: SectionProps) {
   if (!product) return null
 
   const sticky = readBoolean(settings, 'stickyInfo')
+  const gallery = readText(settings, 'gallery')
 
   return (
     <Stack as="section" gap="6">
@@ -450,8 +678,19 @@ export function ProductInfo({ settings }: SectionProps) {
           </Breadcrumb.List>
         </Breadcrumb.Root>
       )}
-      <Grid templateColumns={{ base: '1fr', lg: '1.1fr 1fr' }} gap={{ base: '8', lg: '12' }} alignItems="start">
-        <Gallery product={product} layout={readText(settings, 'gallery')} zoom={readBoolean(settings, 'zoom')} />
+      <Grid
+        // The mosaic packs up to five photos into its column, so it gets a
+        // wider share of the row; at the usual width its small tiles are
+        // thumbnails. Not two thirds: that squeezed the buy buttons until
+        // "Add to cart" clipped.
+        templateColumns={{
+          base: '1fr',
+          lg: gallery === 'mosaic' ? 'minmax(0, 3fr) minmax(0, 2fr)' : '1.1fr 1fr',
+        }}
+        gap={{ base: '8', lg: '12' }}
+        alignItems="start"
+      >
+        <Gallery product={product} layout={gallery} zoom={readBoolean(settings, 'zoom')} />
         <Box position={{ lg: sticky ? 'sticky' : 'static' }} top={{ lg: '24' }}>
           <BlockList blocks={readBlocks(settings, 'blocks')} product={product} />
         </Box>
