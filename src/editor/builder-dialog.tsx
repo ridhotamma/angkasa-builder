@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   CloseButton,
   Dialog,
@@ -22,10 +23,23 @@ import {
   ScrollArea,
   Text,
 } from '@chakra-ui/react'
-import { useState, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 import { LuX } from 'react-icons/lu'
 
+import { EditorMenu, type EditorMenuItem } from './actions'
 import { useEditorText } from './messages'
+
+/**
+ * The strip under the dialog's scrolling body, for what must stay on screen
+ * while the editor scrolls — the phone's "view preview" button. It lives
+ * outside the scroll area rather than sticking inside it, so nothing scrolls
+ * under it. `null` outside a `BuilderDialog`, or before the strip mounts.
+ */
+const FooterSlot = createContext<HTMLElement | null>(null)
+
+export function useBuilderDialogFooter(): HTMLElement | null {
+  return useContext(FooterSlot)
+}
 
 export interface BuilderDialogProps {
   title: ReactNode
@@ -33,6 +47,11 @@ export interface BuilderDialogProps {
   meta?: ReactNode
   /** Right of the header bar: save, publish, view storefront. */
   actions?: ReactNode
+  /**
+   * The same actions as a phone's "⋯" menu. Given, the bar shows `actions` from
+   * `md` up and only this menu below it, so the title keeps the whole bar.
+   */
+  menu?: EditorMenuItem[]
   /** The draft differs from what was last saved. */
   dirty: boolean
   /** Called once the editor may actually close — after discarding. */
@@ -44,12 +63,14 @@ export function BuilderDialog({
   title,
   meta,
   actions,
+  menu,
   dirty,
   onClose,
   children,
 }: BuilderDialogProps) {
   const { t } = useEditorText()
   const [confirming, setConfirming] = useState(false)
+  const [footer, setFooter] = useState<HTMLDivElement | null>(null)
 
   function requestClose() {
     if (dirty) {
@@ -82,18 +103,44 @@ export function BuilderDialog({
               py="2.5"
               borderBottomWidth="1px"
               borderColor="border.subtle"
-              wrap="wrap"
             >
-              <IconButton aria-label={t('close')} variant="ghost" size="sm" onClick={requestClose}>
+              <IconButton
+                aria-label={t('close')}
+                variant="ghost"
+                size="sm"
+                flexShrink="0"
+                onClick={requestClose}
+              >
                 <LuX />
               </IconButton>
-              <HStack gap="3" flex="1" minW="0" wrap="wrap">
-                <Dialog.Title fontSize="md" truncate>
+              {/* One row that never wraps: the title, then its badge beside it, then
+                  the actions. The title is the last thing to give way, and the
+                  badge is clipped before it is. */}
+              <Flex flex="1" minW="0" align="center" gap="2">
+                <Dialog.Title
+                  fontSize="md"
+                  truncate
+                  flexShrink="0"
+                  maxW={{ base: '60%', md: 'full' }}
+                >
                   {title}
                 </Dialog.Title>
-                {meta}
-              </HStack>
-              {actions}
+                <HStack gap="2" minW="0" overflow="hidden">
+                  {meta}
+                </HStack>
+              </Flex>
+              {menu ? (
+                <>
+                  <Box flexShrink="0" hideBelow="md">
+                    {actions}
+                  </Box>
+                  <Box flexShrink="0" hideFrom="md">
+                    <EditorMenu items={menu} />
+                  </Box>
+                </>
+              ) : (
+                <Box flexShrink="0">{actions}</Box>
+              )}
             </Flex>
 
             <Dialog.Body flex="1" minH="0" p="0" display="flex">
@@ -112,12 +159,25 @@ export function BuilderDialog({
                     // Vertical scrolling only — see the panel in `builder.tsx`.
                     style={{ minWidth: 0 }}
                   >
-                    {children}
+                    <FooterSlot.Provider value={footer}>{children}</FooterSlot.Provider>
                   </ScrollArea.Content>
                 </ScrollArea.Viewport>
                 <ScrollArea.Scrollbar />
               </ScrollArea.Root>
             </Dialog.Body>
+
+            {/* Empty — and so out of the layout — until something is portalled in. */}
+            <Box
+              ref={setFooter}
+              flexShrink="0"
+              px={{ base: '3', md: '5' }}
+              pt="3"
+              pb="calc(var(--chakra-spacing-3) + env(safe-area-inset-bottom))"
+              borderTopWidth="1px"
+              borderColor="border.subtle"
+              bg="bg.panel"
+              _empty={{ display: 'none' }}
+            />
 
             <Dialog.Root
               open={confirming}

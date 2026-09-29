@@ -2,7 +2,7 @@
 
 export { PageBuilder, type PageBuilderProps } from './builder'
 export { BuilderDialog, type BuilderDialogProps } from './builder-dialog'
-export { EditorMenu, UnsavedIndicator, type EditorMenuItem } from './actions'
+export { EditorMenu, EditorSettings, UnsavedIndicator, type EditorMenuItem } from './actions'
 export { FieldsForm, LinkControl, NumberControl, SelectInput } from './controls'
 export { useHistoryKeys, useUndoableState, type EditorHistory } from './history'
 export { TableControl } from './media-controls'

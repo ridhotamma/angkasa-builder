@@ -19,21 +19,27 @@ import {
   Alert,
   Box,
   Button,
+  CloseButton,
   Container,
+  Dialog,
   Flex,
   Grid,
   HStack,
   Icon,
   IconButton,
+  Portal,
   ScrollArea,
   SegmentGroup,
   Stack,
   Tabs,
   Text,
+  useBreakpointValue,
 } from '@chakra-ui/react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import {
   LuChevronLeft,
+  LuEye,
   LuMonitor,
   LuRedo2,
   LuShoppingBag,
@@ -67,6 +73,7 @@ import {
 } from '../render/context'
 import { PAGE_WIDTH_CONTAINER } from '../render/primitives'
 import { drawnSections, pageEdges, SectionsRenderer, ThemeScope } from '../render/renderer'
+import { useBuilderDialogFooter } from './builder-dialog'
 import { CatalogueProvider } from './catalogue'
 import { FieldsForm, SelectInput } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
@@ -155,6 +162,11 @@ function Builder({
   const [device, setDevice] = useState<PreviewDevice>('desktop')
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // Below `lg` the panel takes the whole width, and the preview opens as a
+  // full-screen sheet from a button pinned to the bottom instead.
+  const compact = useBreakpointValue({ base: true, lg: false }, { ssr: false }) ?? false
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const footerSlot = useBuilderDialogFooter()
 
   const editableLayout = Boolean(layout && onLayoutChange)
   const selected = sections.find((section) => section.id === selectedId) ?? null
@@ -164,6 +176,12 @@ function Builder({
     history,
     useMemo(() => [globalThis.document ?? null, previewDoc], [previewDoc]),
   )
+
+  // On a phone the sheet opens on the phone layout; a desktop one would be
+  // shrunk to a third of its size.
+  useEffect(() => {
+    if (compact) setDevice('mobile')
+  }, [compact])
 
   useEffect(() => {
     if (!notice) return
@@ -542,6 +560,82 @@ function Builder({
     </RenderProvider>
   )
 
+  // The device switch, undo and redo, and the screen's own buttons: above the
+  // preview beside the panel, or in the preview sheet on a narrow screen.
+  const previewBar = (
+    <Flex justify="space-between" align="center" gap="3" wrap="wrap">
+      <HStack gap="2" wrap="wrap">
+        <SegmentGroup.Root
+          size="xs"
+          value={device}
+          onValueChange={({ value }) => value && setDevice(value as PreviewDevice)}
+        >
+          <SegmentGroup.Indicator />
+          {(
+            [
+              ['desktop', LuMonitor, 'deviceDesktop'],
+              ['tablet', LuTablet, 'deviceTablet'],
+              ['mobile', LuSmartphone, 'deviceMobile'],
+            ] as const
+          ).map(([value, glyph, label]) => (
+            <Tooltip key={value} content={t(label)}>
+              <SegmentGroup.Item value={value} aria-label={t(label)}>
+                <SegmentGroup.ItemText>
+                  <Icon as={glyph} boxSize="3.5" />
+                </SegmentGroup.ItemText>
+                <SegmentGroup.ItemHiddenInput />
+              </SegmentGroup.Item>
+            </Tooltip>
+          ))}
+        </SegmentGroup.Root>
+        {history && (
+          <HStack gap="0.5">
+            <Tooltip content={`${t('undo')} (Ctrl+Z)`} wrap>
+              <IconButton
+                aria-label={t('undo')}
+                size="xs"
+                variant="ghost"
+                disabled={!history.canUndo}
+                onClick={history.undo}
+              >
+                <LuUndo2 />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={`${t('redo')} (Ctrl+Shift+Z)`} wrap>
+              <IconButton
+                aria-label={t('redo')}
+                size="xs"
+                variant="ghost"
+                disabled={!history.canRedo}
+                onClick={history.redo}
+              >
+                <LuRedo2 />
+              </IconButton>
+            </Tooltip>
+          </HStack>
+        )}
+        <Text fontSize="xs" color="fg.muted" hideBelow="xl">
+          {previewNote ? `${previewNote} ` : ''}
+          {t('inlineHint')}
+        </Text>
+      </HStack>
+      {toolbar}
+    </Flex>
+  )
+
+  const previewButton = (
+    <Button w="full" size="lg" colorPalette="brand" onClick={() => setPreviewOpen(true)}>
+      <LuEye />
+      {t('showPreview')}
+    </Button>
+  )
+
+  const previewFrame = (
+    <PreviewFrame device={device} fontHref={googleFontsHref(settings)} onDocument={setPreviewDoc}>
+      {preview}
+    </PreviewFrame>
+  )
+
   return (
     <Grid
       templateColumns={{ base: '1fr', lg: '20rem 1fr', '2xl': '24rem 1fr' }}
@@ -564,90 +658,78 @@ function Builder({
               lets one long line — a help text, a long caption typed into an
               input — push the whole panel wider than its column and clip the
               controls. The panel only ever scrolls vertically. */}
-          <ScrollArea.Content p="4" style={{ minWidth: 0 }}>
+          <ScrollArea.Content px="4" pb="4" style={{ minWidth: 0 }}>
             {panel}
           </ScrollArea.Content>
         </ScrollArea.Viewport>
         <ScrollArea.Scrollbar />
       </ScrollArea.Root>
 
-      <Flex direction="column" gap="3" minH="0" minW="0">
-        <Flex justify="space-between" align="center" gap="3" wrap="wrap">
-          <HStack gap="2" wrap="wrap">
-            <SegmentGroup.Root
-              size="xs"
-              value={device}
-              onValueChange={({ value }) => value && setDevice(value as PreviewDevice)}
-            >
-              <SegmentGroup.Indicator />
-              {(
-                [
-                  ['desktop', LuMonitor, 'deviceDesktop'],
-                  ['tablet', LuTablet, 'deviceTablet'],
-                  ['mobile', LuSmartphone, 'deviceMobile'],
-                ] as const
-              ).map(([value, glyph, label]) => (
-                <Tooltip key={value} content={t(label)}>
-                  <SegmentGroup.Item value={value} aria-label={t(label)}>
-                    <SegmentGroup.ItemText>
-                      <Icon as={glyph} boxSize="3.5" />
-                    </SegmentGroup.ItemText>
-                    <SegmentGroup.ItemHiddenInput />
-                  </SegmentGroup.Item>
-                </Tooltip>
-              ))}
-            </SegmentGroup.Root>
-            {history && (
-              <HStack gap="0.5">
-                <Tooltip content={`${t('undo')} (Ctrl+Z)`} wrap>
-                  <IconButton
-                    aria-label={t('undo')}
-                    size="xs"
-                    variant="ghost"
-                    disabled={!history.canUndo}
-                    onClick={history.undo}
-                  >
-                    <LuUndo2 />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip content={`${t('redo')} (Ctrl+Shift+Z)`} wrap>
-                  <IconButton
-                    aria-label={t('redo')}
-                    size="xs"
-                    variant="ghost"
-                    disabled={!history.canRedo}
-                    onClick={history.redo}
-                  >
-                    <LuRedo2 />
-                  </IconButton>
-                </Tooltip>
-              </HStack>
-            )}
-            <Text fontSize="xs" color="fg.muted" hideBelow="xl">
-              {previewNote ? `${previewNote} ` : ''}
-              {t('inlineHint')}
-            </Text>
-          </HStack>
-          {toolbar}
-        </Flex>
-        <Box
-          flex="1"
-          h={{ base: '36rem', lg: 'auto' }}
-          minH="0"
-          rounded="lg"
-          borderWidth="1px"
-          borderColor="border.subtle"
-          overflow="hidden"
-        >
-          <PreviewFrame
-            device={device}
-            fontHref={googleFontsHref(settings)}
-            onDocument={setPreviewDoc}
+      {compact ? (
+        // In the dialog's footer strip, outside the scroll area, when there is
+        // one; stuck to the bottom of the scrolling body otherwise.
+        footerSlot ? (
+          createPortal(previewButton, footerSlot)
+        ) : (
+          <Box position="sticky" bottom="0" zIndex="1" pt="2" pb="3" mt="-4" bg="bg.panel">
+            {previewButton}
+          </Box>
+        )
+      ) : (
+        <Flex direction="column" gap="3" minH="0" minW="0">
+          {previewBar}
+          <Box
+            flex="1"
+            minH="0"
+            rounded="lg"
+            borderWidth="1px"
+            borderColor="border.subtle"
+            overflow="hidden"
           >
-            {preview}
-          </PreviewFrame>
-        </Box>
-      </Flex>
+            {previewFrame}
+          </Box>
+        </Flex>
+      )}
+
+      {/* Only one preview is ever mounted: the frame is a portal into its own
+          iframe, and a second one would fight the first over `previewDoc`. */}
+      {compact && (
+        <Dialog.Root
+          open={previewOpen}
+          size="full"
+          motionPreset="slide-in-bottom"
+          onOpenChange={({ open }) => setPreviewOpen(open)}
+        >
+          <Portal>
+            <Dialog.Backdrop />
+            <Dialog.Positioner>
+              <Dialog.Content rounded="none" display="flex" flexDirection="column" h="100dvh">
+                <Dialog.Header px="3" py="2.5" gap="3" borderBottomWidth="1px">
+                  <Dialog.Title fontSize="md" flex="1">
+                    {t('preview')}
+                  </Dialog.Title>
+                  <Dialog.CloseTrigger asChild position="static">
+                    <CloseButton size="sm" aria-label={t('closePreview')} />
+                  </Dialog.CloseTrigger>
+                </Dialog.Header>
+                <Dialog.Body flex="1" minH="0" p="3" display="flex" flexDirection="column" gap="3">
+                  {previewBar}
+                  <Box
+                    flex="1"
+                    minH="0"
+                    rounded="lg"
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                    overflow="hidden"
+                  >
+                    {previewOpen && previewFrame}
+                  </Box>
+                </Dialog.Body>
+              </Dialog.Content>
+            </Dialog.Positioner>
+          </Portal>
+        </Dialog.Root>
+      )}
     </Grid>
   )
 }

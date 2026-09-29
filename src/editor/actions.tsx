@@ -10,9 +10,23 @@
  * a button of its own.
  */
 
-import { Box, HStack, IconButton, Link as ChakraLink, Menu, Portal, Text } from '@chakra-ui/react'
-import type { ReactNode } from 'react'
-import { LuEllipsis } from 'react-icons/lu'
+import {
+  Box,
+  CloseButton,
+  Dialog,
+  HStack,
+  IconButton,
+  Link as ChakraLink,
+  Menu,
+  Popover,
+  Portal,
+  Text,
+  useBreakpointValue,
+} from '@chakra-ui/react'
+import { useId, type ReactNode } from 'react'
+import { LuEllipsis, LuSettings2 } from 'react-icons/lu'
+
+import { Tooltip } from '@repo/theme'
 
 import { useEditorText } from './messages'
 
@@ -37,6 +51,7 @@ export interface EditorMenuItem {
   onSelect?: () => void
   danger?: boolean
   hidden?: boolean
+  disabled?: boolean
 }
 
 /** The header's "⋯" menu. Renders nothing when every item is hidden. */
@@ -70,6 +85,7 @@ export function EditorMenu({ items }: { items: EditorMenuItem[] }) {
                 <Menu.Item
                   key={item.value}
                   value={item.value}
+                  disabled={item.disabled}
                   color={item.danger ? 'danger.fg' : undefined}
                   _hover={item.danger ? { bg: 'danger.subtle', color: 'danger.fg' } : undefined}
                 >
@@ -82,5 +98,77 @@ export function EditorMenu({ items }: { items: EditorMenuItem[] }) {
         </Menu.Positioner>
       </Portal>
     </Menu.Root>
+  )
+}
+
+/**
+ * The header's settings (page details, theme name and status): a popover under
+ * a gear button on a wide screen, and a dialog on a phone, where the buttons
+ * fold into the "⋯" menu and there is no gear to anchor a popover to. Both are
+ * driven by `open`, so a menu item can open it.
+ */
+export function EditorSettings({
+  label,
+  open,
+  onOpenChange,
+  children,
+}: {
+  label: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  children: ReactNode
+}) {
+  const triggerId = useId()
+  const phone = useBreakpointValue({ base: true, md: false }, { ssr: false }) ?? false
+
+  if (phone) {
+    return (
+      <Dialog.Root
+        open={open}
+        onOpenChange={({ open: next }) => onOpenChange(next)}
+        placement="center"
+        scrollBehavior="inside"
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner p="3">
+            <Dialog.Content>
+              <Dialog.Header>
+                <Dialog.Title fontSize="md">{label}</Dialog.Title>
+                <Dialog.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Dialog.CloseTrigger>
+              </Dialog.Header>
+              <Dialog.Body pb="5">{children}</Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+    )
+  }
+
+  return (
+    <Popover.Root
+      ids={{ trigger: triggerId }}
+      positioning={{ placement: 'bottom-end' }}
+      open={open}
+      onOpenChange={({ open: next }) => onOpenChange(next)}
+    >
+      <Tooltip content={label} triggerId={triggerId}>
+        <Popover.Trigger asChild>
+          <IconButton aria-label={label} size="sm" variant="ghost">
+            <LuSettings2 />
+          </IconButton>
+        </Popover.Trigger>
+      </Tooltip>
+      <Portal>
+        <Popover.Positioner>
+          <Popover.Content w="md">
+            <Popover.Arrow />
+            <Popover.Body>{children}</Popover.Body>
+          </Popover.Content>
+        </Popover.Positioner>
+      </Portal>
+    </Popover.Root>
   )
 }
