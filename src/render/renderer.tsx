@@ -352,7 +352,10 @@ function PickableSection({
         <Box
           data-section-outline=""
           position="absolute"
-          zIndex="3"
+          // Over the store header (`docked`, 10), so the selected section's
+          // toolbar is never under a sticky or see-through header — and below
+          // dropdowns (1000), so the header's own menus still open over it.
+          zIndex="11"
           pointerEvents="none"
           rounded="md"
           borderWidth="2px"
