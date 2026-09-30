@@ -236,18 +236,43 @@ function revealSection(doc: Document, id: string, how: 'start' | 'nearest') {
 }
 
 /**
- * How much of the preview's top a header covers once the page scrolls: a
- * sticky or fixed one — see-through or not — stays over whatever passes under
- * it, and covers its own height. Measured from the page as drawn, so an
- * announcement strip, a two-row layout or a phone-width menu all count.
+ * How much of the preview's top the store header covers once the page
+ * scrolls: a sticky or fixed one — see-through or not — stays over whatever
+ * passes under it, and covers its own height. Measured from the page as
+ * drawn, so an announcement strip, a two-row layout or a phone-width menu
+ * all count.
+ *
+ * Only the store header counts: article and section bodies also render
+ * `<header>` elements (e.g. `article-header`), deeper in the page, and those
+ * must never offset the reveal. The store header is the preview's top-level
+ * one — the `[data-section-id]` wrapper when the layout is editable, or a
+ * bare `<header>` straight under the preview root in a read-only preview.
  */
 function stickyHeaderHeight(doc: Document): number {
   const view = doc.defaultView
   if (!view) return 0
+  const root = doc.body.firstElementChild as HTMLElement | null
+  const framed =
+    root?.querySelector<HTMLElement>(`:scope > [data-section-id="${HEADER_ID}"]`) ??
+    doc.querySelector<HTMLElement>(`[data-section-id="${HEADER_ID}"]`)
+  const candidates: HTMLElement[] = []
+  if (framed) {
+    candidates.push(framed)
+    const inner = framed.querySelector<HTMLElement>('header')
+    if (inner) candidates.push(inner)
+  } else if (root) {
+    for (const child of root.children) {
+      if (child instanceof HTMLElement && child.tagName.toLowerCase() === 'header') {
+        candidates.push(child)
+      }
+    }
+    if (candidates.length === 0) {
+      const top = root.querySelector<HTMLElement>(':scope > header')
+      if (top) candidates.push(top)
+    }
+  }
   let height = 0
-  for (const element of doc.querySelectorAll<HTMLElement>(
-    `header, [data-section-id="${HEADER_ID}"]`,
-  )) {
+  for (const element of candidates) {
     const { position } = view.getComputedStyle(element)
     if (position === 'sticky' || position === 'fixed') {
       height = Math.max(height, element.getBoundingClientRect().height)
@@ -1050,16 +1075,6 @@ const PANEL_WIDTH_KEY = 'pesanle:page-builder:panel-width'
  */
 function usePanelSplitter() {
   const fallback = useBreakpointValue({ base: '20rem', '2xl': '24rem' }, { ssr: false }) ?? '20rem'
-  // Read after mount: the server has no storage, and the first render must match it.
-  const [stored, setStored] = useState<number | null>(null)
-  useEffect(() => {
-    try {
-      const value = Number(globalThis.localStorage?.getItem(PANEL_WIDTH_KEY))
-      if (Number.isFinite(value) && value > 0) setStored(value)
-    } catch {
-      // Storage refused (a private window, blocked site data): the default it is.
-    }
-  }, [])
 
   const root = useRef<HTMLDivElement | null>(null)
   // A reset resizes too; that resize is the default, not a width to remember.
@@ -1069,7 +1084,11 @@ function usePanelSplitter() {
       { id: 'panel', minSize: '18rem', maxSize: '40rem', resizeBehavior: 'preserve-pixel-size' },
       { id: 'preview', minSize: '50%' },
     ],
-    defaultSize: [stored ? `${stored}px` : fallback],
+    // Initial only: the persisted width is applied after mount (see below),
+    // since storage cannot be read on the first render. One entry is enough —
+    // the preview takes the remainder. A css length (`rem`/`px`) is a valid
+    // `PanelSize`; `onResizeEnd` reports `%`, converted back to px for storage.
+    defaultSize: [fallback],
     onResizeEnd: ({ size }) => {
       if (resetting.current) {
         resetting.current = false
@@ -1086,15 +1105,43 @@ function usePanelSplitter() {
     },
   })
 
+  // The persisted width cannot drive `defaultSize`: storage is read after
+  // mount, and zag only takes `defaultSize` on init. Apply it once via
+  // `setSizes`, which takes the same `PanelSize` strings. In a frame so the
+  // splitter root has a width — `px` resolves against it, and a 0-width root
+  // would drop the size. Re-saving the same value in `onResizeEnd` is harmless.
+  const applied = useRef(false)
+  useEffect(() => {
+    if (applied.current) return
+    applied.current = true
+    let stored: number | null = null
+    try {
+      const value = Number(globalThis.localStorage?.getItem(PANEL_WIDTH_KEY))
+      if (Number.isFinite(value) && value > 0) stored = value
+    } catch {
+      // Storage refused (a private window, blocked site data): the default it is.
+    }
+    if (stored == null) return
+    const size = `${stored}px`
+    requestAnimationFrame(() => splitter.setSizes([size]))
+  }, [splitter])
+
   const reset = useCallback(() => {
     try {
       globalThis.localStorage?.removeItem(PANEL_WIDTH_KEY)
     } catch {
       // Nothing was stored to clear.
     }
-    setStored(null)
     resetting.current = true
+    // Same units as `defaultSize`: a css length is valid here, and the preview
+    // again takes the remainder.
     splitter.setSizes([fallback])
+    // A programmatic set fires `onResizeEnd` (swallowed above) — unless the
+    // size is already the default, in which case nothing fires. Clear anyway
+    // so the next drag is still remembered.
+    queueMicrotask(() => {
+      resetting.current = false
+    })
   }, [splitter, fallback])
 
   return { splitter, root, reset }
