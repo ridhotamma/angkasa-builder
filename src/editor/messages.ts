@@ -75,6 +75,10 @@ const MESSAGES = {
   preview: { en: 'Preview', id: 'Pratinjau' },
   close: { en: 'Close editor', id: 'Tutup editor' },
   done: { en: 'Done', id: 'Selesai' },
+  resizePanel: {
+    en: 'Drag to resize the panel; double-click to reset',
+    id: 'Seret untuk mengubah lebar panel; klik dua kali untuk mengembalikan',
+  },
   unsaved: { en: 'Unsaved changes', id: 'Belum disimpan' },
   moreActions: { en: 'More actions', id: 'Aksi lainnya' },
   unsavedTitle: { en: 'Save your changes?', id: 'Simpan perubahan Anda?' },

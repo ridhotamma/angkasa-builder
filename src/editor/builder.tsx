@@ -37,17 +37,18 @@ import {
   Container,
   Dialog,
   Flex,
-  Grid,
   HStack,
   Icon,
   IconButton,
   Portal,
   ScrollArea,
   SegmentGroup,
+  Splitter,
   Stack,
   Tabs,
   Text,
   useBreakpointValue,
+  useSplitter,
 } from '@chakra-ui/react'
 import {
   createContext,
@@ -249,6 +250,7 @@ function Builder({
   // Below `lg` the panel takes the whole width, and the preview opens as a
   // full-screen sheet from a button pinned to the bottom instead.
   const compact = useBreakpointValue({ base: true, lg: false }, { ssr: false }) ?? false
+  const { splitter, root: splitterRoot, reset: resetPanel } = usePanelSplitter()
   const [previewOpen, setPreviewOpen] = useState(false)
   const footerSlot = useBuilderDialogFooter()
 
@@ -870,100 +872,186 @@ function Builder({
     </PreviewFrame>
   )
 
-  return (
-    <Grid
-      templateColumns={{ base: '1fr', lg: '20rem 1fr', '2xl': '24rem 1fr' }}
-      gap="4"
-      h={{ lg: height }}
+  const panelBox = (
+    <ScrollArea.Root
+      size="xs"
+      h={{ lg: 'full' }}
       minH="0"
+      minW="0"
+      borderWidth="1px"
+      borderColor="border.subtle"
+      rounded="lg"
+      bg="bg.panel"
     >
-      <ScrollArea.Root
-        size="xs"
-        h={{ lg: 'full' }}
-        minH="0"
-        minW="0"
-        borderWidth="1px"
-        borderColor="border.subtle"
-        rounded="lg"
-        bg="bg.panel"
-      >
-        <ScrollArea.Viewport>
-          {/* Zag gives the content an inline `min-width: fit-content`, which
-              lets one long line — a help text, a long caption typed into an
-              input — push the whole panel wider than its column and clip the
-              controls. The panel only ever scrolls vertically. */}
-          <ScrollArea.Content px="4" pb="4" style={{ minWidth: 0 }}>
-            {panel}
-          </ScrollArea.Content>
-        </ScrollArea.Viewport>
-        <ScrollArea.Scrollbar />
-      </ScrollArea.Root>
+      <ScrollArea.Viewport>
+        {/* Zag gives the content an inline `min-width: fit-content`, which
+            lets one long line — a help text, a long caption typed into an
+            input — push the whole panel wider than its column and clip the
+            controls. The panel only ever scrolls vertically. */}
+        <ScrollArea.Content px="4" pb="4" style={{ minWidth: 0 }}>
+          {panel}
+        </ScrollArea.Content>
+      </ScrollArea.Viewport>
+      <ScrollArea.Scrollbar />
+    </ScrollArea.Root>
+  )
 
-      {compact ? (
-        // In the dialog's footer strip, outside the scroll area, when there is
-        // one; stuck to the bottom of the scrolling body otherwise.
-        footerSlot ? (
-          createPortal(previewButton, footerSlot)
-        ) : (
-          <Box position="sticky" bottom="0" zIndex="1" pt="2" pb="3" mt="-4" bg="bg.panel">
-            {previewButton}
-          </Box>
-        )
-      ) : (
-        <Flex direction="column" gap="3" minH="0" minW="0">
-          {previewBar}
-          <Box
-            flex="1"
-            minH="0"
-            rounded="lg"
-            borderWidth="1px"
-            borderColor="border.subtle"
-            overflow="hidden"
+  if (!compact) {
+    // Side by side, with the line between them draggable (see `usePanelSplitter`).
+    return (
+      // The height is on a box around the splitter: zag writes `height: 100%`
+      // inline on its root, which beats a style prop there.
+      <Box h={height} minH="0">
+        <Splitter.RootProvider ref={splitterRoot} value={splitter}>
+          <Splitter.Panel id="panel" pe="2" minW="0">
+            {panelBox}
+          </Splitter.Panel>
+          <Splitter.ResizeTrigger
+            id="panel:preview"
+            // Here, not on the root: a palette cascades, and on the root it
+            // turned every button and tab in the panel brand-coloured.
+            colorPalette="brand"
+            aria-label={t('resizePanel')}
+            title={t('resizePanel')}
+            onDoubleClick={resetPanel}
           >
-            {previewFrame}
-          </Box>
-        </Flex>
+            <Splitter.ResizeTriggerSeparator />
+            <Splitter.ResizeTriggerIndicator />
+          </Splitter.ResizeTrigger>
+          <Splitter.Panel id="preview" ps="2" minW="0" display="flex">
+            <Flex direction="column" gap="3" minH="0" minW="0" flex="1">
+              {previewBar}
+              <Box
+                flex="1"
+                minH="0"
+                rounded="lg"
+                borderWidth="1px"
+                borderColor="border.subtle"
+                overflow="hidden"
+              >
+                {previewFrame}
+              </Box>
+            </Flex>
+          </Splitter.Panel>
+        </Splitter.RootProvider>
+      </Box>
+    )
+  }
+
+  return (
+    <Stack gap="4" minH="0">
+      {panelBox}
+
+      {/* In the dialog's footer strip, outside the scroll area, when there is
+          one; stuck to the bottom of the scrolling body otherwise. */}
+      {footerSlot ? (
+        createPortal(previewButton, footerSlot)
+      ) : (
+        <Box position="sticky" bottom="0" zIndex="1" pt="2" pb="3" mt="-4" bg="bg.panel">
+          {previewButton}
+        </Box>
       )}
 
       {/* Only one preview is ever mounted: the frame is a portal into its own
           iframe, and a second one would fight the first over `previewDoc`. */}
-      {compact && (
-        <Dialog.Root
-          open={previewOpen}
-          size="full"
-          motionPreset="slide-in-bottom"
-          onOpenChange={({ open }) => setPreviewOpen(open)}
-        >
-          <Portal>
-            <Dialog.Backdrop />
-            <Dialog.Positioner>
-              <Dialog.Content rounded="none" display="flex" flexDirection="column" h="100dvh">
-                <Dialog.Header px="3" py="2.5" gap="3" borderBottomWidth="1px">
-                  <Dialog.Title fontSize="md" flex="1">
-                    {t('preview')}
-                  </Dialog.Title>
-                  <Dialog.CloseTrigger asChild position="static">
-                    <CloseButton size="sm" aria-label={t('closePreview')} />
-                  </Dialog.CloseTrigger>
-                </Dialog.Header>
-                <Dialog.Body flex="1" minH="0" p="3" display="flex" flexDirection="column" gap="3">
-                  {previewBar}
-                  <Box
-                    flex="1"
-                    minH="0"
-                    rounded="lg"
-                    borderWidth="1px"
-                    borderColor="border.subtle"
-                    overflow="hidden"
-                  >
-                    {previewOpen && previewFrame}
-                  </Box>
-                </Dialog.Body>
-              </Dialog.Content>
-            </Dialog.Positioner>
-          </Portal>
-        </Dialog.Root>
-      )}
-    </Grid>
+      <Dialog.Root
+        open={previewOpen}
+        size="full"
+        motionPreset="slide-in-bottom"
+        onOpenChange={({ open }) => setPreviewOpen(open)}
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content rounded="none" display="flex" flexDirection="column" h="100dvh">
+              <Dialog.Header px="3" py="2.5" gap="3" borderBottomWidth="1px">
+                <Dialog.Title fontSize="md" flex="1">
+                  {t('preview')}
+                </Dialog.Title>
+                <Dialog.CloseTrigger asChild position="static">
+                  <CloseButton size="sm" aria-label={t('closePreview')} />
+                </Dialog.CloseTrigger>
+              </Dialog.Header>
+              <Dialog.Body flex="1" minH="0" p="3" display="flex" flexDirection="column" gap="3">
+                {previewBar}
+                <Box
+                  flex="1"
+                  minH="0"
+                  rounded="lg"
+                  borderWidth="1px"
+                  borderColor="border.subtle"
+                  overflow="hidden"
+                >
+                  {previewOpen && previewFrame}
+                </Box>
+              </Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+    </Stack>
   )
+}
+
+/** Where the seller's panel width is kept: this browser only, a matter of taste. */
+const PANEL_WIDTH_KEY = 'pesanle:page-builder:panel-width'
+
+/**
+ * The line between the panel and the preview, draggable (Chakra's `Splitter`).
+ *
+ * The panel keeps its width in pixels when the window changes, and is held
+ * between 18rem — what its controls need — and 40rem; the preview never gets
+ * less than half the editor, so it stays a preview. The width a seller drags
+ * to is remembered in this browser; a double-click puts back the default.
+ */
+function usePanelSplitter() {
+  const fallback = useBreakpointValue({ base: '20rem', '2xl': '24rem' }, { ssr: false }) ?? '20rem'
+  // Read after mount: the server has no storage, and the first render must match it.
+  const [stored, setStored] = useState<number | null>(null)
+  useEffect(() => {
+    try {
+      const value = Number(globalThis.localStorage?.getItem(PANEL_WIDTH_KEY))
+      if (Number.isFinite(value) && value > 0) setStored(value)
+    } catch {
+      // Storage refused (a private window, blocked site data): the default it is.
+    }
+  }, [])
+
+  const root = useRef<HTMLDivElement | null>(null)
+  // A reset resizes too; that resize is the default, not a width to remember.
+  const resetting = useRef(false)
+  const splitter = useSplitter({
+    panels: [
+      { id: 'panel', minSize: '18rem', maxSize: '40rem', resizeBehavior: 'preserve-pixel-size' },
+      { id: 'preview', minSize: '50%' },
+    ],
+    defaultSize: [stored ? `${stored}px` : fallback],
+    onResizeEnd: ({ size }) => {
+      if (resetting.current) {
+        resetting.current = false
+        return
+      }
+      const width = root.current?.getBoundingClientRect().width
+      const share = size[0]
+      if (!width || share == null) return
+      try {
+        globalThis.localStorage?.setItem(PANEL_WIDTH_KEY, String(Math.round((share / 100) * width)))
+      } catch {
+        // As above: the width just is not remembered.
+      }
+    },
+  })
+
+  const reset = useCallback(() => {
+    try {
+      globalThis.localStorage?.removeItem(PANEL_WIDTH_KEY)
+    } catch {
+      // Nothing was stored to clear.
+    }
+    setStored(null)
+    resetting.current = true
+    splitter.setSizes([fallback])
+  }, [splitter, fallback])
+
+  return { splitter, root, reset }
 }
