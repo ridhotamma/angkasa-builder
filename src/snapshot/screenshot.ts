@@ -30,13 +30,15 @@ export const SNAPSHOT_VIEWPORT = { width: 1280, height: 800 } as const
 async function launchBrowser(): Promise<Browser> {
   const ignoreCertificateErrors = ['--ignore-certificate-errors']
   // Vercel sets `VERCEL=1` itself; `scripts/appwrite-build.sh` sets
-  // `APPWRITE_BUILD=1` and Sites injects `APPWRITE_SITE_ID` at build/run time.
+  // `APPWRITE_BUILD=1`, our root Dockerfile sets `COOLIFY_BUILD=1`, and
+  // Sites injects `APPWRITE_SITE_ID` at build/run time.
   // NOTE: that `APPWRITE_SITE_ID` is Appwrite's own injected variable (this
   // Site's own ID) — unrelated to our custom `STOREFRONT_SITE_ID` (the web
   // Site's ID, used for custom domains).
   const usePackagedChromium =
     process.env.VERCEL === '1' ||
     process.env.APPWRITE_BUILD === '1' ||
+    process.env.COOLIFY_BUILD === '1' ||
     !!process.env.APPWRITE_SITE_ID
   if (usePackagedChromium) {
     const [{ default: chromium }, { default: puppeteerCore }] = await Promise.all([
