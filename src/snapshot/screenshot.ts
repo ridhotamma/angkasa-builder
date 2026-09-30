@@ -2,12 +2,14 @@
  * Screenshotting the snapshot document with a real browser engine.
  *
  * Same two-Chromium arrangement as the shipping-label PDF renderer in
- * `apps/admin` (`VITE` comment there explains why each branch exists the way
+ * `apps/admin` (the comment there explains why each branch exists the way
  * it does):
- *  - **Vercel** (`process.env.VERCEL === '1'`): `puppeteer-core` driving the
- *    serverless-packaged `@sparticuz/chromium` binary. Both are real
- *    dependencies here (not dev), because unlike local `puppeteer` they are
- *    needed inside the deployed function.
+ *  - **A deploy host** (`process.env.VERCEL === '1'` on Vercel,
+ *    `APPWRITE_BUILD=1` / `APPWRITE_SITE_ID` on Appwrite Sites):
+ *    `puppeteer-core` driving the serverless-packaged `@sparticuz/chromium`
+ *    binary. Both are real dependencies here (not dev), because unlike local
+ *    `puppeteer` they are needed inside the deployed output. Sites support is
+ *    best-effort — retest snapshots there before promising them.
  *  - **Everywhere else** (local dev, VPS): full `puppeteer`, managing its own
  *    matching local browser. Imported through a non-literal specifier so a
  *    bundler never sees a static `import('puppeteer')` to trace into a deploy
@@ -27,7 +29,13 @@ export const SNAPSHOT_VIEWPORT = { width: 1280, height: 800 } as const
 
 async function launchBrowser(): Promise<Browser> {
   const ignoreCertificateErrors = ['--ignore-certificate-errors']
-  if (process.env.VERCEL === '1') {
+  // Vercel sets `VERCEL=1` itself; `scripts/appwrite-build.sh` sets
+  // `APPWRITE_BUILD=1` and Sites injects `APPWRITE_SITE_ID` at build/run time.
+  const usePackagedChromium =
+    process.env.VERCEL === '1' ||
+    process.env.APPWRITE_BUILD === '1' ||
+    !!process.env.APPWRITE_SITE_ID
+  if (usePackagedChromium) {
     const [{ default: chromium }, { default: puppeteerCore }] = await Promise.all([
       import('@sparticuz/chromium'),
       import('puppeteer-core'),
