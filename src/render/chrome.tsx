@@ -400,6 +400,9 @@ const CLEAR_VARS = {
   '--chakra-colors-border-emphasized': 'rgba(255, 255, 255, 0.6)',
 } as const
 
+/** The header's height as the page sees it; `StoreHeader` keeps it current. */
+export const HEADER_HEIGHT_VAR = '--store-header-height'
+
 /**
  * The header as the theme lays it out. Sticky unless the seller turned that
  * off; see-through over a home banner when the host says so, turning solid
@@ -428,6 +431,30 @@ export function StoreHeader({
     read()
     view.addEventListener('scroll', read, { passive: true })
     return () => view.removeEventListener('scroll', read)
+  }, [transparent])
+
+  // How much of the screen the header takes from the page, for a full-screen
+  // banner (`HERO_HEIGHT.screen`): its real height — the layout, the menu row
+  // and the announcement strip all change it — or nothing when it floats over
+  // the banner. On the document root, since the banner is not inside the
+  // header; in the editor that is the preview's own document.
+  useEffect(() => {
+    const element = ref.current
+    const view = element?.ownerDocument.defaultView
+    if (!element || !view) return
+    const root = element.ownerDocument.documentElement
+    const write = () =>
+      root.style.setProperty(
+        HEADER_HEIGHT_VAR,
+        transparent ? '0px' : `${element.getBoundingClientRect().height}px`,
+      )
+    write()
+    const observer = new view.ResizeObserver(write)
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty(HEADER_HEIGHT_VAR)
+    }
   }, [transparent])
 
   const clear = transparent && !scrolled
@@ -509,6 +536,9 @@ export function StoreHeader({
       data-transparent={clear ? '' : undefined}
       css={clear ? CLEAR_VARS : undefined}
     >
+      {/* Before the measurement above can run — the server's HTML — a
+          see-through header is already known to take no room. */}
+      {transparent && <style>{`:root{${HEADER_HEIGHT_VAR}:0px}`}</style>}
       <AnnouncementStrip header={header} />
       <Container maxW="6xl" px={{ base: '4', md: '6' }} py="3">
         {bar}

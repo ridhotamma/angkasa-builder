@@ -338,6 +338,24 @@ function emptyLink(kind: LinkKind): Link {
   }
 }
 
+/**
+ * A control that needs its own field context.
+ *
+ * A link is edited with more than one control — the kind select, then a
+ * product, collection or blog picker — and sits in one `Labeled` field. Ark
+ * hands the field's ids to every control inside it, so two pickers in one
+ * field shared ids, and each found the other's elements under its own: the
+ * product combobox took a click on its own input for a click outside and
+ * closed as it opened. Each extra control gets a field of its own.
+ */
+function OwnField({ children }: { children: ReactNode }) {
+  return (
+    <Field.Root alignItems="stretch" gap="0">
+      {children}
+    </Field.Root>
+  )
+}
+
 export function LinkControl({
   value,
   onChange,
@@ -373,80 +391,99 @@ export function LinkControl({
         }))}
       />
       {slugOptions && 'slug' in link && (
-        <SelectInput
-          value={link.slug}
-          placeholder={t('choose')}
-          clearable
-          onChange={(slug) => onChange({ ...link, slug })}
-          options={slugOptions.map((option) => ({ value: option.slug, label: option.name }))}
-        />
+        <OwnField>
+          <SelectInput
+            value={link.slug}
+            placeholder={t('choose')}
+            clearable
+            onChange={(slug) => onChange({ ...link, slug })}
+            options={slugOptions.map((option) => ({ value: option.slug, label: option.name }))}
+          />
+        </OwnField>
       )}
       {link.kind === 'blog' && (
         <>
-          <SelectInput
-            value={link.blogHandle}
-            placeholder={t('choose')}
-            clearable
-            onChange={(blogHandle) => onChange({ ...link, blogHandle })}
-            options={(services.blogs ?? []).map((blog) => ({ value: blog.slug, label: blog.name }))}
-          />
-          <Input
-            size="sm"
-            placeholder={t('blogTag')}
-            value={link.tag ?? ''}
-            maxLength={30}
-            onChange={(event) =>
-              onChange({ ...link, tag: event.currentTarget.value.toLowerCase() || undefined })
-            }
-          />
+          <OwnField>
+            <SelectInput
+              value={link.blogHandle}
+              placeholder={t('choose')}
+              clearable
+              onChange={(blogHandle) => onChange({ ...link, blogHandle })}
+              options={(services.blogs ?? []).map((blog) => ({
+                value: blog.slug,
+                label: blog.name,
+              }))}
+            />
+          </OwnField>
+          <OwnField>
+            <Input
+              size="sm"
+              placeholder={t('blogTag')}
+              value={link.tag ?? ''}
+              maxLength={30}
+              onChange={(event) =>
+                onChange({ ...link, tag: event.currentTarget.value.toLowerCase() || undefined })
+              }
+            />
+          </OwnField>
         </>
       )}
       {link.kind === 'article' && (
-        <SelectInput
-          value={link.slug ? `${link.blogHandle}/${link.slug}` : ''}
-          placeholder={t('choose')}
-          clearable
-          onChange={(value) => {
-            const [blogHandle = '', slug = ''] = value.split('/')
-            onChange({ kind: 'article', blogHandle, slug })
-          }}
-          options={(services.articles ?? []).map((article) => ({
-            value: `${article.blogHandle}/${article.slug}`,
-            label: article.name,
-          }))}
-        />
+        <OwnField>
+          <SelectInput
+            value={link.slug ? `${link.blogHandle}/${link.slug}` : ''}
+            placeholder={t('choose')}
+            clearable
+            onChange={(value) => {
+              const [blogHandle = '', slug = ''] = value.split('/')
+              onChange({ kind: 'article', blogHandle, slug })
+            }}
+            options={(services.articles ?? []).map((article) => ({
+              value: `${article.blogHandle}/${article.slug}`,
+              label: article.name,
+            }))}
+          />
+        </OwnField>
       )}
       {link.kind === 'product' && (
         // Picked from the shop's own products, by name — never a slug typed by hand.
-        <ProductControl
-          by="slug"
-          value={link.slug}
-          onChange={(slug) => onChange({ kind: 'product', slug })}
-          services={services}
-        />
+        <OwnField>
+          <ProductControl
+            by="slug"
+            value={link.slug}
+            onChange={(slug) => onChange({ kind: 'product', slug })}
+            services={services}
+          />
+        </OwnField>
       )}
       {link.kind === 'search' && (
-        <Input
-          size="sm"
-          placeholder={t('searchQuery')}
-          value={link.query}
-          maxLength={120}
-          onChange={(event) => onChange({ kind: 'search', query: event.currentTarget.value })}
-        />
-      )}
-      {link.kind === 'url' && (
-        <Stack gap="1">
+        <OwnField>
           <Input
             size="sm"
-            type="url"
-            value={link.href}
-            maxLength={2000}
-            onChange={(event) => onChange({ kind: 'url', href: event.currentTarget.value.trim() })}
+            placeholder={t('searchQuery')}
+            value={link.query}
+            maxLength={120}
+            onChange={(event) => onChange({ kind: 'search', query: event.currentTarget.value })}
           />
-          <Text fontSize="xs" color="fg.muted">
-            {t('urlHelp')}
-          </Text>
-        </Stack>
+        </OwnField>
+      )}
+      {link.kind === 'url' && (
+        <OwnField>
+          <Stack gap="1">
+            <Input
+              size="sm"
+              type="url"
+              value={link.href}
+              maxLength={2000}
+              onChange={(event) =>
+                onChange({ kind: 'url', href: event.currentTarget.value.trim() })
+              }
+            />
+            <Text fontSize="xs" color="fg.muted">
+              {t('urlHelp')}
+            </Text>
+          </Stack>
+        </OwnField>
       )}
     </Stack>
   )

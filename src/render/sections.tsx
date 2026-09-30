@@ -45,6 +45,7 @@ import {
   type FieldValues,
 } from '../model/fields'
 import type { SectionType } from '../model/sections'
+import { HEADER_HEIGHT_VAR } from './chrome'
 import { useRenderEnvironment, type StorefrontCategoryData } from './context'
 import { useSectionLayout } from './frame'
 import { useResponsive } from './hooks'
@@ -124,8 +125,13 @@ export const HERO_HEIGHT = {
   lg: { base: '24rem', md: '34rem' },
   // Small-viewport units, so the address bar never hides the buttons; in the
   // editor's iframe that is one screen of the previewed device. The header's
-  // height comes off the top.
-  screen: { base: 'calc(100svh - 4rem)', md: 'calc(100svh - 4.5rem)' },
+  // height comes off the top: its measured height, or nothing when it floats
+  // over the banner (`StoreHeader` keeps the variable current). The fallbacks
+  // are the classic header's height, for the server's HTML.
+  screen: {
+    base: `calc(100svh - var(${HEADER_HEIGHT_VAR}, 4rem))`,
+    md: `calc(100svh - var(${HEADER_HEIGHT_VAR}, 4.5rem))`,
+  },
 } as const
 
 export function heroHeight(settings: FieldValues) {
