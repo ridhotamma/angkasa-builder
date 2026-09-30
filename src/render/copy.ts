@@ -92,8 +92,8 @@ const TEXT = {
     id: 'Tautan ke artikel sebelum dan sesudahnya di blog tampil di sini.',
   },
   noRelatedArticles: {
-    en: 'Other articles from the same blog appear here.',
-    id: 'Artikel lain dari blog yang sama tampil di sini.',
+    en: 'Your other published articles appear here.',
+    id: 'Artikel lain yang sudah terbit tampil di sini.',
   },
 } satisfies Record<string, Localized>
 

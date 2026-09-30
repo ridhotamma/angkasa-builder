@@ -2307,8 +2307,8 @@ export const SECTION_SCHEMAS = [
     icon: 'shelves',
     name: { en: 'Related articles', id: 'Artikel terkait' },
     description: {
-      en: 'More from the same blog — articles with the same tags first.',
-      id: 'Artikel lain dari blog yang sama — yang tagnya sama lebih dulu.',
+      en: 'More to read from your blogs — same tags first, then the same blog, then the newest.',
+      id: 'Bacaan lain dari blog Anda — tag yang sama lebih dulu, lalu blog yang sama, lalu yang terbaru.',
     },
     scopes: ARTICLE_ONLY,
     max: 1,

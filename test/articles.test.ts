@@ -164,6 +164,35 @@ describe('neighbours and related articles', () => {
   })
 })
 
+describe('related articles across blogs', () => {
+  const article = (id: string, blogId: string, day: number, tags: string[] = []) => ({
+    id,
+    blogId,
+    tags,
+    publishedAt: new Date(Date.UTC(2026, 0, day, 12)).toISOString(),
+  })
+
+  test('shared tags first from any blog, then the same blog, then the newest', () => {
+    const current = article('c', 'recipes', 10, ['kopi'])
+    const others = [
+      article('news-new', 'news', 30),
+      article('recipes-old', 'recipes', 1),
+      article('news-kopi', 'news', 2, ['kopi']),
+    ]
+    expect(relatedArticles(current, others, 3).map((a) => a.id)).toEqual([
+      'news-kopi',
+      'recipes-old',
+      'news-new',
+    ])
+  })
+
+  test('a blog with one article still gets articles from the other blogs', () => {
+    const current = article('only', 'recipes', 10)
+    const others = [article('n1', 'news', 5), article('n2', 'news', 8)]
+    expect(relatedArticles(current, others, 3).map((a) => a.id)).toEqual(['n2', 'n1'])
+  })
+})
+
 describe('article tags', () => {
   test('are trimmed, lowercased, deduplicated and capped', () => {
     const tags = normalizeArticleTags([' Kopi ', 'kopi', 'RESEP', 42, '', ...'abcdefghijkl'])

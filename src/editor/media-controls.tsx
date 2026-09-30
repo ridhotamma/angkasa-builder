@@ -216,19 +216,31 @@ export function VideoControl({
  * catalogue); without a search service it filters the products the preview
  * already has. The pick is remembered in the editor's catalogue, so the
  * preview can draw it before anything is saved.
+ *
+ * `by` says what the value is: a section picks a product by id, a link (a
+ * menu entry, a button) by slug — the key the storefront's product URL uses.
  */
 export function ProductControl({
   value,
   onChange,
   services,
+  by = 'id',
 }: {
   value: string
-  onChange: (id: string) => void
+  onChange: (value: string) => void
   services: EditorServices
+  by?: 'id' | 'slug'
 }) {
   const { t } = useEditorText()
   const { products, remember } = useCatalogue()
-  const selected = products.find((product) => product.id === value) ?? null
+  // The navigation screen has no catalogue behind it, so the last pick is
+  // also kept here, or it would vanish from the field the moment it was made.
+  const [picked, setPicked] = useState<StorefrontProductCard | null>(null)
+  const matches = (product: StorefrontProductCard) => product[by] === value
+  const known = products.find(matches) ?? (picked && matches(picked) ? picked : null) ?? null
+  // A link saved before this screen knew the product: its slug is all there is to show.
+  const selected: Pick<StorefrontProductCard, 'name' | 'imageUrl'> | null =
+    known ?? (by === 'slug' && value ? { name: value, imageUrl: null } : null)
   const { collection, set } = useListCollection<StorefrontProductCard>({
     initialItems: products.slice(0, 20),
     itemToString: (item) => item.name,
@@ -298,10 +310,11 @@ export function ProductControl({
         onInputValueChange={({ inputValue }) => search(inputValue)}
         onOpenChange={({ open }) => open && search('')}
         onValueChange={({ items }) => {
-          const [picked] = items as StorefrontProductCard[]
-          if (!picked) return
-          remember(picked)
-          onChange(picked.id)
+          const [choice] = items as StorefrontProductCard[]
+          if (!choice) return
+          remember(choice)
+          setPicked(choice)
+          onChange(choice[by])
         }}
         positioning={{ sameWidth: true }}
       >

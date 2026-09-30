@@ -33,7 +33,7 @@ import {
   Text,
   Textarea,
 } from '@chakra-ui/react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { memo, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   LuArrowDown,
   LuArrowUp,
@@ -417,13 +417,12 @@ export function LinkControl({
         />
       )}
       {link.kind === 'product' && (
-        <Input
-          size="sm"
-          placeholder={t('productSlug')}
+        // Picked from the shop's own products, by name — never a slug typed by hand.
+        <ProductControl
+          by="slug"
           value={link.slug}
-          onChange={(event) =>
-            onChange({ kind: 'product', slug: event.currentTarget.value.trim().toLowerCase() })
-          }
+          onChange={(slug) => onChange({ kind: 'product', slug })}
+          services={services}
         />
       )}
       {link.kind === 'search' && (
@@ -1010,21 +1009,61 @@ export function FieldsForm({
   /** The values these sit in, when they are a list item. */
   parent?: FieldValues
 }) {
+  // One handler per field for the form's life, reading the latest values
+  // through a ref — so a keystroke in one field leaves every other field's
+  // props as they were, and `MemoFieldControl` skips them.
+  const latest = useRef({ values, onChange })
+  latest.current = { values, onChange }
+  const handlers = useRef(new Map<string, (value: unknown) => void>())
+  const handlerFor = (key: string) => {
+    let handler = handlers.current.get(key)
+    if (!handler) {
+      handler = (value) => {
+        const { values: current, onChange: change } = latest.current
+        change({ ...current, [key]: value as JsonValue })
+      }
+      handlers.current.set(key, handler)
+    }
+    return handler
+  }
+
   return (
     <>
       {fields
         .filter((field) => isFieldShown(field, values))
         .map((field) => (
-          <FieldControl
+          <MemoFieldControl
             key={field.key}
             field={field}
             value={values[field.key]}
             values={values}
             parent={parent}
             services={services}
-            onChange={(value) => onChange({ ...values, [field.key]: value as JsonValue })}
+            onChange={handlerFor(field.key)}
           />
         ))}
     </>
   )
 }
+
+/** Whether a control reads its siblings: a list (as their parent), or a field that reads a sibling image. */
+function readsSiblings(field: FieldSpec): boolean {
+  return field.kind === 'list' || 'imageKey' in field
+}
+
+/**
+ * A field's control, drawn again only when its own value changes. The
+ * settings panel holds a dozen of these — selects, switches, a rich-text
+ * editor — and re-drawing all of them on every keystroke in one was what
+ * made typing in the builder lag.
+ */
+const MemoFieldControl = memo(
+  FieldControl,
+  (before, after) =>
+    before.field === after.field &&
+    before.value === after.value &&
+    before.onChange === after.onChange &&
+    before.services === after.services &&
+    before.parent === after.parent &&
+    (!readsSiblings(after.field) || before.values === after.values),
+)

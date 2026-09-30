@@ -113,19 +113,14 @@ export function BuilderDialog({
               >
                 <LuX />
               </IconButton>
-              {/* One row that never wraps: the title, then its badge beside it, then
-                  the actions. The title is the last thing to give way, and the
-                  badge is clipped before it is. */}
+              {/* One row that never wraps: the title, then its status badge right
+                  beside it, then the actions. The title takes what room there is
+                  and truncates; the badge keeps its size. */}
               <Flex flex="1" minW="0" align="center" gap="2">
-                <Dialog.Title
-                  fontSize="md"
-                  truncate
-                  flexShrink="0"
-                  maxW={{ base: '60%', md: 'full' }}
-                >
+                <Dialog.Title fontSize="md" truncate minW="0">
                   {title}
                 </Dialog.Title>
-                <HStack gap="2" minW="0" overflow="hidden">
+                <HStack gap="2" flexShrink="0">
                   {meta}
                 </HStack>
               </Flex>

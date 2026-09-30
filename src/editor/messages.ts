@@ -6,6 +6,8 @@
  * two copies of every string.
  */
 
+import { useMemo } from 'react'
+
 import { useLocale } from '@repo/i18n'
 
 import { localize, type Localized } from '../model/localized'
@@ -67,7 +69,6 @@ const MESSAGES = {
   blogTag: { en: 'Only articles tagged (optional)', id: 'Hanya artikel dengan tag (opsional)' },
   linkSearch: { en: 'Search results', id: 'Hasil pencarian' },
   linkUrl: { en: 'Web address', id: 'Alamat web' },
-  productSlug: { en: 'Product URL name (slug)', id: 'Nama URL produk (slug)' },
   searchQuery: { en: 'Search for', id: 'Cari' },
   urlHelp: { en: 'Must start with https://', id: 'Harus diawali https://' },
   choose: { en: 'Choose…', id: 'Pilih…' },
@@ -238,9 +239,14 @@ export type EditorMessage = keyof typeof MESSAGES
 
 export function useEditorText() {
   const { locale } = useLocale()
-  return {
-    locale,
-    t: (key: EditorMessage) => localize(MESSAGES[key], locale),
-    l: (text: Localized) => localize(text, locale),
-  }
+  // The same functions until the locale changes, so the editor can memoize
+  // what it draws with them.
+  return useMemo(
+    () => ({
+      locale,
+      t: (key: EditorMessage) => localize(MESSAGES[key], locale),
+      l: (text: Localized) => localize(text, locale),
+    }),
+    [locale],
+  )
 }

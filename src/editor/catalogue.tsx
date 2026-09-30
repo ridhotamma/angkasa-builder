@@ -7,7 +7,15 @@
  * list into the preview's `data.products`.
  */
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 
 import type { StorefrontProductCard } from '../render/context'
 
@@ -31,11 +39,17 @@ export function CatalogueProvider({
       current.some((known) => known.id === product.id) ? current : [...current, product],
     )
   }, [])
+  // Keyed on which products there are, not on the array: screens pass
+  // `picked = []` and inline lists, and a new list on every render would
+  // redraw the whole preview on every keystroke.
+  const latestInitial = useRef(initial)
+  latestInitial.current = initial
+  const initialKey = initial.map((product) => product.id).join('|')
   const products = useMemo(() => {
     const byId = new Map<string, StorefrontProductCard>()
-    for (const product of [...initial, ...found]) byId.set(product.id, product)
+    for (const product of [...latestInitial.current, ...found]) byId.set(product.id, product)
     return [...byId.values()]
-  }, [initial, found])
+  }, [initialKey, found])
 
   return (
     <CatalogueContext.Provider value={{ products, remember }}>

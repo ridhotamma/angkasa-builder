@@ -16,6 +16,9 @@ import { collectFieldValues } from './fields'
 import { richDocText, sanitizeRichDoc } from './rich-text'
 import { sectionSchema } from './sections'
 
+/** A shop with more blogs than this wants tags, not blogs. */
+export const MAX_BLOGS = 10
+
 /** Articles on one page of a blog's index. */
 export const ARTICLES_PER_PAGE = 12
 
@@ -88,6 +91,8 @@ export interface RankableArticle {
   id: string
   tags: readonly string[]
   publishedAt: string | null
+  /** Which blog it is in; related articles prefer the same one. */
+  blogId?: string
 }
 
 const time = (article: RankableArticle) => Date.parse(article.publishedAt ?? '') || 0
@@ -110,8 +115,10 @@ export function articleNeighbours<T extends RankableArticle>(
 }
 
 /**
- * Up to `limit` articles to read next: those sharing the most tags with
- * `current` first, then the newest.
+ * Up to `limit` articles to read next, from any of the shop's blogs: those
+ * sharing the most tags with `current` first, then ones from its own blog,
+ * then the newest. So a blog with one article still gets a row to read on,
+ * and a tag shared across blogs ("kopi" in both News and Recipes) links them.
  */
 export function relatedArticles<T extends RankableArticle>(
   current: RankableArticle,
@@ -120,10 +127,12 @@ export function relatedArticles<T extends RankableArticle>(
 ): T[] {
   const shared = (other: RankableArticle) =>
     other.tags.filter((tag) => current.tags.includes(tag)).length
+  const sameBlog = (other: RankableArticle) =>
+    current.blogId !== undefined && other.blogId === current.blogId ? 1 : 0
   return others
     .filter((other) => other.id !== current.id)
-    .map((other) => ({ other, shared: shared(other) }))
-    .sort((a, b) => b.shared - a.shared || time(b.other) - time(a.other))
+    .map((other) => ({ other, shared: shared(other), same: sameBlog(other) }))
+    .sort((a, b) => b.shared - a.shared || b.same - a.same || time(b.other) - time(a.other))
     .slice(0, limit)
     .map(({ other }) => other)
 }

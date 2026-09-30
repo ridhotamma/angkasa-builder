@@ -7,7 +7,7 @@
  * is one step — so undo takes back a word or a change, not a letter.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 /** Edits closer together than this are one step. */
 const COALESCE_MS = 600
@@ -79,12 +79,14 @@ export function useUndoableState<T>(initial: T) {
     })
   }, [])
 
-  const history: EditorHistory = {
-    canUndo: state.past.length > 0,
-    canRedo: state.future.length > 0,
-    undo,
-    redo,
-  }
+  // The same object until undo or redo becomes (un)available, so the editor
+  // can memoize the bar that draws the buttons.
+  const canUndo = state.past.length > 0
+  const canRedo = state.future.length > 0
+  const history = useMemo<EditorHistory>(
+    () => ({ canUndo, canRedo, undo, redo }),
+    [canUndo, canRedo, undo, redo],
+  )
 
   return { value: state.present, set, reset, replace, history }
 }

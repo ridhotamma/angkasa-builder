@@ -14,6 +14,15 @@
  * seller writes in the frame shoppers will see. The frame is read-only here:
  * it is the theme's, and the theme editor is where it changes.
  *
+ * Typing stays light however long the page is. The panel follows every
+ * keystroke; the preview follows a deferred copy of the sections
+ * (`useDeferredValue`), so React draws it in an interruptible pass after the
+ * input has updated, and the preview element is memoized on that copy so a
+ * keystroke's own render skips it entirely. Inside it, the render environment
+ * stays the same object between keystrokes and every section is memoized (see
+ * `SectionsRenderer`), so only the section being edited is drawn again — not
+ * the header, the footer, a template's frame or the other sections.
+ *
  * Fully controlled: the screen owns the document and decides when to save.
  * This component only ever calls `onSectionsChange` / `onSettingsChange` /
  * `onLayoutChange` with a new value; undo and redo are the screen's too
@@ -40,7 +49,17 @@ import {
   Text,
   useBreakpointValue,
 } from '@chakra-ui/react'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import {
   LuChevronLeft,
@@ -95,6 +114,21 @@ const STYLE_FIELDS = SECTION_STYLE_FIELDS.filter(
 const VISIBILITY_FIELDS = SECTION_STYLE_FIELDS.filter((field) =>
   (VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key),
 )
+
+/** No menus yet: one object, so a default does not look like a change on every render. */
+const NO_MENUS: { main: MenuItem[]; footer: MenuItem[] } = { main: [], footer: [] }
+const NO_PAGES: Array<{ title: string; slug: string }> = []
+
+/**
+ * The edited sections, for a frame's slot. The frame's environment holds a
+ * stable `<EditedOutlet />` rather than the sections themselves, so a keystroke
+ * re-draws the outlet and not the frame around it.
+ */
+const EditedContext = createContext<ReactNode>(null)
+
+function EditedOutlet() {
+  return <>{useContext(EditedContext)}</>
+}
 
 const HEADER_ID = 'layout:header'
 const FOOTER_ID = 'layout:footer'
@@ -169,8 +203,8 @@ function Builder({
   template,
   layout,
   onLayoutChange,
-  menus = { main: [], footer: [] },
-  footerPages = [],
+  menus = NO_MENUS,
+  footerPages: footerPagesProp = NO_PAGES,
   history,
   toolbar,
   previewNote,
@@ -221,44 +255,89 @@ function Builder({
     [sections, onSectionsChange],
   )
 
-  const env: RenderEnvironment = {
-    data: { ...data, products },
-    settings,
-    mode: 'preview',
-    imageUrl: services.imageUrl,
-    videoUrl: services.videoUrl,
-    formatPrice,
-    getWindow: previewDoc?.defaultView ? () => previewDoc.defaultView! : undefined,
-    editing: {
-      onEditText: (sectionId, key, value) =>
-        updateSection(sectionId, (section) => ({
-          ...section,
-          settings: { ...section.settings, [key]: value },
-        })),
-    },
-  }
+  // What the preview draws: a deferred copy, drawn after the input updates.
+  const previewSections = useDeferredValue(sections)
 
-  function select(id: string, fromPreview = false) {
-    setSelectedId(id)
-    setTab('sections')
-    if (!fromPreview) {
-      // Picked from the list: bring it into view in the preview.
-      previewDoc
-        ?.querySelector(`[data-section-id="${id}"]`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
+  // Text typed into the preview edits the latest sections, read through refs
+  // so the environment below does not change with every keystroke.
+  const latest = useRef({ sections, onSectionsChange })
+  latest.current = { sections, onSectionsChange }
+  const onEditText = useCallback((sectionId: string, key: string, value: string) => {
+    const { sections: current, onSectionsChange: change } = latest.current
+    change(
+      current.map((section) =>
+        section.id === sectionId
+          ? { ...section, settings: { ...section.settings, [key]: value } }
+          : section,
+      ),
+    )
+  }, [])
+
+  // Callers build `data` inline (`{ ...context.data, products }`); its parts
+  // are what stay the same between renders, so they are what is compared.
+  const envData = useMemo<StorefrontRenderData>(
+    () => ({ ...data, products }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      data.shop,
+      data.categories,
+      data.collections,
+      data.latest,
+      data.vouchers,
+      data.product,
+      data.article,
+      products,
+    ],
+  )
+
+  const env = useMemo<RenderEnvironment>(
+    () => ({
+      data: envData,
+      settings,
+      mode: 'preview',
+      imageUrl: services.imageUrl,
+      videoUrl: services.videoUrl,
+      formatPrice,
+      getWindow: previewDoc?.defaultView ? () => previewDoc.defaultView! : undefined,
+      editing: { onEditText },
+    }),
+    [envData, settings, services.imageUrl, services.videoUrl, formatPrice, previewDoc, onEditText],
+  )
+
+  // The footer's page list, compared by what it says: callers map it inline.
+  const footerKey = JSON.stringify(footerPagesProp)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const footerPages = useMemo(() => footerPagesProp, [footerKey])
+
+  const select = useCallback(
+    (id: string, fromPreview = false) => {
+      setSelectedId(id)
+      setTab('sections')
+      if (!fromPreview) {
+        // Picked from the list: bring it into view in the preview.
+        previewDoc
+          ?.querySelector(`[data-section-id="${id}"]`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    },
+    [previewDoc],
+  )
 
   /**
    * After the preview re-renders — a section moved or was copied — keep it in
    * view. `nearest` and no smooth scroll: a nudge only when it went off-screen.
    */
-  function revealSoon(id: string) {
-    const view = previewDoc?.defaultView
-    view?.requestAnimationFrame(() =>
-      previewDoc?.querySelector(`[data-section-id="${id}"]`)?.scrollIntoView({ block: 'nearest' }),
-    )
-  }
+  const revealSoon = useCallback(
+    (id: string) => {
+      const view = previewDoc?.defaultView
+      view?.requestAnimationFrame(() =>
+        previewDoc
+          ?.querySelector(`[data-section-id="${id}"]`)
+          ?.scrollIntoView({ block: 'nearest' }),
+      )
+    },
+    [previewDoc],
+  )
 
   const back = (
     <Button size="xs" variant="ghost" alignSelf="start" ml="-2" onClick={() => setSelectedId(null)}>
@@ -433,46 +512,22 @@ function Builder({
     )
   }
 
-  const shop = {
-    name: data.shop.name,
-    logoUrl: data.shop.logoUrl,
-    description: data.shop.description,
-    email: data.shop.email ?? null,
-  }
-
-  /** Stand-ins for the storefront's own search, cart and account controls. */
-  const standIn = (icon: typeof LuSearch, label: string) => (
-    <IconButton aria-label={label} variant="ghost" size="sm" rounded="full" color="inherit">
-      <Icon as={icon} boxSize="4.5" />
-    </IconButton>
+  const shop = useMemo(
+    () => ({
+      name: data.shop.name,
+      logoUrl: data.shop.logoUrl,
+      description: data.shop.description,
+      email: data.shop.email ?? null,
+    }),
+    [data.shop],
   )
-
-  const pickable = (id: string, content: ReactNode, sticky = false) =>
-    editableLayout ? (
-      <Box
-        data-section-id={id}
-        // A sticky header can only stick inside its parent: the wrapper sticks instead.
-        {...(sticky && { position: 'sticky', top: '0', zIndex: 'docked' })}
-        cursor="pointer"
-        outline="2px solid"
-        outlineColor={selectedId === id ? 'brand.solid' : 'transparent'}
-        outlineOffset="-2px"
-        _hover={{ outlineColor: selectedId === id ? 'brand.solid' : 'brand.muted' }}
-        onClickCapture={(event) => {
-          event.preventDefault()
-          select(id, true)
-        }}
-      >
-        {content}
-      </Box>
-    ) : (
-      content
-    )
 
   // The same rules the storefront applies, from the same helpers, so the
   // preview's banner meets the header exactly as the live one does.
-  const drawn = drawnSections(frame?.template ?? sections, 'preview', new Date())
-  const edges = pageEdges(drawn)
+  const edges = useMemo(
+    () => pageEdges(drawnSections(frame?.template ?? previewSections, 'preview', new Date())),
+    [frame?.template, previewSections],
+  )
   const transparent = scope === 'home' && !!layout && isHeaderTransparent(layout.header, edges)
 
   /**
@@ -481,102 +536,87 @@ function Builder({
    * Bubble phase, so a click on a section reaches that section's own
    * capture-phase picker first and is left alone here.
    */
-  const clickAway = (event: { target: EventTarget | null }) => {
+  const clickAway = useCallback((event: { target: EventTarget | null }) => {
     const target = event.target as HTMLElement | null
     if (typeof target?.closest !== 'function' || target.closest('[data-section-id]')) return
     setSelectedId(null)
-  }
+  }, [])
 
-  const edited = (
-    <SectionsRenderer
-      sections={sections}
-      env={env}
-      selectedId={selectedId}
-      onSelect={(id) => select(id, true)}
-      toolbar={(section) => (
-        <SectionToolbar
-          section={section}
-          sections={sections}
-          onChange={onSectionsChange}
-          onSelect={(id) => {
+  const pickable = useCallback(
+    (id: string, content: ReactNode, sticky = false) =>
+      editableLayout ? (
+        <Box
+          data-section-id={id}
+          // A sticky header can only stick inside its parent: the wrapper sticks instead.
+          {...(sticky && { position: 'sticky', top: '0', zIndex: 'docked' })}
+          cursor="pointer"
+          outline="2px solid"
+          outlineColor={selectedId === id ? 'brand.solid' : 'transparent'}
+          outlineOffset="-2px"
+          _hover={{ outlineColor: selectedId === id ? 'brand.solid' : 'brand.muted' }}
+          onClickCapture={(event) => {
+            event.preventDefault()
             select(id, true)
-            revealSoon(id)
           }}
-          onMoved={revealSoon}
-          onRemoved={() => setSelectedId(null)}
-        />
-      )}
-    />
+        >
+          {content}
+        </Box>
+      ) : (
+        content
+      ),
+    [editableLayout, selectedId, select],
   )
 
-  const preview = (
-    <RenderProvider value={env}>
-      {/* No size container here: it would become the containing block of the
-          see-through header, which is `position: fixed` to the preview's own
-          window. The page's width container is the box around the sections. */}
-      <ThemeScope
-        settings={settings}
-        minH="100dvh"
-        display="flex"
-        flexDirection="column"
-        onClick={clickAway}
-      >
-        {layout &&
-          pickable(
-            HEADER_ID,
-            <StoreHeader
-              header={layout.header}
-              shop={shop}
-              menu={menus.main}
-              searchField={
-                <Box
-                  h="8"
-                  rounded="full"
-                  bg="bg.subtle"
-                  display="flex"
-                  alignItems="center"
-                  gap="2"
-                  px="3"
-                  color="fg.subtle"
-                  fontSize="sm"
-                >
-                  <Icon as={LuSearch} boxSize="4" />
-                </Box>
-              }
-              searchButton={standIn(LuSearch, t('standInSearch'))}
-              actions={
-                <>
-                  {standIn(LuShoppingBag, t('standInCart'))}
-                  {standIn(LuUser, t('standInAccount'))}
-                </>
-              }
-              transparent={transparent}
-            />,
-            // A see-through header is fixed itself; only an in-flow one needs
-            // its wrapper to stick.
-            Boolean(layout.header.sticky) && !transparent,
-          )}
-        <Box flex="1" {...PAGE_WIDTH_CONTAINER}>
-          <Container
-            maxW="6xl"
-            px={{ base: '4', md: '6' }}
-            pt={edges.flushTop ? '0' : { base: '6', md: '10' }}
-            pb={edges.flushBottom ? '0' : { base: '6', md: '10' }}
+  // The header and footer, drawn again only when they change — never for a
+  // keystroke in a section.
+  const header = useMemo(() => {
+    if (!layout) return null
+    /** Stand-ins for the storefront's own search, cart and account controls. */
+    const standIn = (icon: typeof LuSearch, label: string) => (
+      <IconButton aria-label={label} variant="ghost" size="sm" rounded="full" color="inherit">
+        <Icon as={icon} boxSize="4.5" />
+      </IconButton>
+    )
+    return pickable(
+      HEADER_ID,
+      <StoreHeader
+        header={layout.header}
+        shop={shop}
+        menu={menus.main}
+        searchField={
+          <Box
+            h="8"
+            rounded="full"
+            bg="bg.subtle"
+            display="flex"
+            alignItems="center"
+            gap="2"
+            px="3"
+            color="fg.subtle"
+            fontSize="sm"
           >
-            {frame ? (
-              // The frame gets no `editing`: its headings are the theme's, and
-              // typing into one here would edit nothing.
-              <SectionsRenderer
-                sections={frame.template}
-                env={{ ...env, editing: undefined, slots: { ...env.slots, [frame.slot]: edited } }}
-              />
-            ) : (
-              edited
-            )}
-          </Container>
-        </Box>
-        {layout &&
-          pickable(
+            <Icon as={LuSearch} boxSize="4" />
+          </Box>
+        }
+        searchButton={standIn(LuSearch, t('standInSearch'))}
+        actions={
+          <>
+            {standIn(LuShoppingBag, t('standInCart'))}
+            {standIn(LuUser, t('standInAccount'))}
+          </>
+        }
+        transparent={transparent}
+      />,
+      // A see-through header is fixed itself; only an in-flow one needs its
+      // wrapper to stick.
+      Boolean(layout.header.sticky) && !transparent,
+    )
+  }, [layout, shop, menus.main, transparent, pickable, t])
+
+  const footer = useMemo(
+    () =>
+      layout
+        ? pickable(
             FOOTER_ID,
             <StoreFooter
               footer={layout.footer}
@@ -591,72 +631,156 @@ function Builder({
               bottom={t('poweredBy')}
               flush={edges.flushBottom}
             />,
-          )}
-      </ThemeScope>
-    </RenderProvider>
+          )
+        : null,
+    [layout, shop, menus.footer, footerPages, edges.flushBottom, pickable, t],
+  )
+
+  const edited = useMemo(
+    () => (
+      <SectionsRenderer
+        sections={previewSections}
+        env={env}
+        selectedId={selectedId}
+        onSelect={(id) => select(id, true)}
+        toolbar={(section) => (
+          <SectionToolbar
+            section={section}
+            sections={latest.current.sections}
+            onChange={onSectionsChange}
+            onSelect={(id) => {
+              select(id, true)
+              revealSoon(id)
+            }}
+            onMoved={revealSoon}
+            onRemoved={() => setSelectedId(null)}
+          />
+        )}
+      />
+    ),
+    [previewSections, env, selectedId, select, revealSoon, onSectionsChange],
+  )
+
+  // The frame gets no `editing` — its headings are the theme's, and typing
+  // into one here would edit nothing — and its slot is the stable outlet.
+  // Keyed on the frame's parts: callers pass `frame` as an inline object.
+  const frameTemplate = frame?.template
+  const frameSlot = frame?.slot
+  const frameEnv = useMemo<RenderEnvironment | null>(
+    () =>
+      frameSlot
+        ? { ...env, editing: undefined, slots: { ...env.slots, [frameSlot]: <EditedOutlet /> } }
+        : null,
+    [env, frameSlot],
+  )
+  const framed = useMemo(
+    () =>
+      frameTemplate && frameEnv ? (
+        <SectionsRenderer sections={frameTemplate} env={frameEnv} />
+      ) : null,
+    [frameTemplate, frameEnv],
+  )
+
+  const preview = useMemo(
+    () => (
+      <RenderProvider value={env}>
+        {/* No size container here: it would become the containing block of the
+            see-through header, which is `position: fixed` to the preview's own
+            window. The page's width container is the box around the sections. */}
+        <ThemeScope
+          settings={settings}
+          minH="100dvh"
+          display="flex"
+          flexDirection="column"
+          onClick={clickAway}
+        >
+          {header}
+          <Box flex="1" {...PAGE_WIDTH_CONTAINER}>
+            <Container
+              maxW="6xl"
+              px={{ base: '4', md: '6' }}
+              pt={edges.flushTop ? '0' : { base: '6', md: '10' }}
+              pb={edges.flushBottom ? '0' : { base: '6', md: '10' }}
+            >
+              {framed ? (
+                <EditedContext.Provider value={edited}>{framed}</EditedContext.Provider>
+              ) : (
+                edited
+              )}
+            </Container>
+          </Box>
+          {footer}
+        </ThemeScope>
+      </RenderProvider>
+    ),
+    [env, settings, clickAway, header, edges.flushTop, edges.flushBottom, framed, edited, footer],
   )
 
   // The device switch, undo and redo, and the screen's own buttons: above the
   // preview beside the panel, or in the preview sheet on a narrow screen.
-  const previewBar = (
-    <Flex justify="space-between" align="center" gap="3" wrap="wrap">
-      <HStack gap="2" wrap="wrap">
-        <SegmentGroup.Root
-          size="xs"
-          value={device}
-          onValueChange={({ value }) => value && setDevice(value as PreviewDevice)}
-        >
-          <SegmentGroup.Indicator />
-          {(
-            [
-              ['desktop', LuMonitor, 'deviceDesktop'],
-              ['tablet', LuTablet, 'deviceTablet'],
-              ['mobile', LuSmartphone, 'deviceMobile'],
-            ] as const
-          ).map(([value, glyph, label]) => (
-            <Tooltip key={value} content={t(label)}>
-              <SegmentGroup.Item value={value} aria-label={t(label)}>
-                <SegmentGroup.ItemText>
-                  <Icon as={glyph} boxSize="3.5" />
-                </SegmentGroup.ItemText>
-                <SegmentGroup.ItemHiddenInput />
-              </SegmentGroup.Item>
-            </Tooltip>
-          ))}
-        </SegmentGroup.Root>
-        {history && (
-          <HStack gap="0.5">
-            <Tooltip content={`${t('undo')} (Ctrl+Z)`} wrap>
-              <IconButton
-                aria-label={t('undo')}
-                size="xs"
-                variant="ghost"
-                disabled={!history.canUndo}
-                onClick={history.undo}
-              >
-                <LuUndo2 />
-              </IconButton>
-            </Tooltip>
-            <Tooltip content={`${t('redo')} (Ctrl+Shift+Z)`} wrap>
-              <IconButton
-                aria-label={t('redo')}
-                size="xs"
-                variant="ghost"
-                disabled={!history.canRedo}
-                onClick={history.redo}
-              >
-                <LuRedo2 />
-              </IconButton>
-            </Tooltip>
-          </HStack>
-        )}
-        <Text fontSize="xs" color="fg.muted" hideBelow="xl">
-          {previewNote ? `${previewNote} ` : ''}
-          {t('inlineHint')}
-        </Text>
-      </HStack>
-      {toolbar}
-    </Flex>
+  // Its tooltips and segment group are not cheap; nothing in it changes as a section is typed into.
+  const previewBar = useMemo(
+    () => (
+      <Flex justify="space-between" align="center" gap="3" wrap="wrap">
+        <HStack gap="2" wrap="wrap">
+          <SegmentGroup.Root
+            size="xs"
+            value={device}
+            onValueChange={({ value }) => value && setDevice(value as PreviewDevice)}
+          >
+            <SegmentGroup.Indicator />
+            {(
+              [
+                ['desktop', LuMonitor, 'deviceDesktop'],
+                ['tablet', LuTablet, 'deviceTablet'],
+                ['mobile', LuSmartphone, 'deviceMobile'],
+              ] as const
+            ).map(([value, glyph, label]) => (
+              <Tooltip key={value} content={t(label)}>
+                <SegmentGroup.Item value={value} aria-label={t(label)}>
+                  <SegmentGroup.ItemText>
+                    <Icon as={glyph} boxSize="3.5" />
+                  </SegmentGroup.ItemText>
+                  <SegmentGroup.ItemHiddenInput />
+                </SegmentGroup.Item>
+              </Tooltip>
+            ))}
+          </SegmentGroup.Root>
+          {history && (
+            <HStack gap="0.5">
+              <Tooltip content={`${t('undo')} (Ctrl+Z)`} wrap>
+                <IconButton
+                  aria-label={t('undo')}
+                  size="xs"
+                  variant="ghost"
+                  disabled={!history.canUndo}
+                  onClick={history.undo}
+                >
+                  <LuUndo2 />
+                </IconButton>
+              </Tooltip>
+              <Tooltip content={`${t('redo')} (Ctrl+Shift+Z)`} wrap>
+                <IconButton
+                  aria-label={t('redo')}
+                  size="xs"
+                  variant="ghost"
+                  disabled={!history.canRedo}
+                  onClick={history.redo}
+                >
+                  <LuRedo2 />
+                </IconButton>
+              </Tooltip>
+            </HStack>
+          )}
+          <Text fontSize="xs" color="fg.muted" hideBelow="xl">
+            {previewNote ? `${previewNote} ` : ''}
+            {t('inlineHint')}
+          </Text>
+        </HStack>
+        {toolbar}
+      </Flex>
+    ),
+    [device, history, previewNote, toolbar, t],
   )
 
   const previewButton = (

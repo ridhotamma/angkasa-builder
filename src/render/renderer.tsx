@@ -8,7 +8,7 @@
  */
 
 import { Badge, Box, Stack, type BoxProps } from '@chakra-ui/react'
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useLocale } from '@repo/i18n'
 
@@ -16,7 +16,7 @@ import type { SectionInstance } from '../model/content'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
 import { themeCssVars, type ThemeSettings } from '../model/settings'
-import { RenderProvider, type RenderEnvironment } from './context'
+import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
 import { SectionFrame } from './frame'
 import { SectionIdContext } from './primitives'
 import { SECTION_RENDERERS } from './registry'
@@ -124,62 +124,101 @@ export function SectionsRenderer({
   const now = env.now ?? new Date()
   const visible = drawnSections(sections, env.mode, now)
 
+  // Read through a ref, so every item gets the same function and a memoized
+  // item is not re-drawn just because the editor rendered again.
+  const onSelectRef = useRef(onSelect)
+  onSelectRef.current = onSelect
+  const pick = useCallback((id: string) => onSelectRef.current?.(id), [])
+
   return (
     <RenderProvider value={env}>
       <Stack gap="0">
         {visible.map((section, index) => {
-          const Section = SECTION_RENDERERS[section.type]
-          if (!Section) return null
           // Two full-bleed sections in a row touch, like bands on a poster:
           // the page gap between them would be a strip of page background.
           // Their own "space above/below" is what separates them.
           const previous = visible[index - 1]
           const bleed = isFullBleed(section)
-          const mt = !previous || (bleed && isFullBleed(previous)) ? '0' : SECTION_GAP
-          const rendered = (
-            <SectionIdContext.Provider value={section.id}>
-              <SectionFrame style={section.style}>
-                <Section settings={section.settings} />
-              </SectionFrame>
-            </SectionIdContext.Provider>
-          )
-          if (!onSelect) {
-            return (
-              <Box key={section.id} mt={mt}>
-                {rendered}
-              </Box>
-            )
-          }
-
+          const flush = !previous || (bleed && isFullBleed(previous))
+          const selected = section.id === selectedId
           return (
-            <PickableSection
+            <SectionItem
               key={section.id}
-              mt={mt}
-              id={section.id}
-              selected={section.id === selectedId}
+              section={section}
+              flush={flush}
+              pickable={Boolean(onSelect)}
+              selected={selected}
               first={index === 0}
-              toolbar={section.id === selectedId && toolbar ? toolbar(section) : null}
-              badge={<ScheduleBadge section={section} now={now} />}
-              onClickCapture={(event) => {
-                // Every click also picks the section. A link must not be
-                // followed out of the editor; anything else — a tab, a
-                // slider arrow, the size guide drawer — still works, so the
-                // seller can try the section out.
-                const target = event.target as HTMLElement
-                if (target.closest('a[href]') && !target.closest('[data-editable]')) {
-                  event.preventDefault()
-                }
-                onSelect(section.id)
-              }}
-            >
-              {rendered}
-            </PickableSection>
+              toolbar={selected && toolbar ? toolbar(section) : null}
+              onSelect={pick}
+            />
           )
         })}
       </Stack>
     </RenderProvider>
   )
 }
+
+/**
+ * One drawn section. Memoized: typing into one section's settings changes that
+ * section's object and no other, so every other section — and its outline,
+ * measured against the layout on each of its renders — is left alone. That is
+ * what keeps a keystroke from re-drawing, and re-measuring, the whole page.
+ */
+const SectionItem = memo(function SectionItem({
+  section,
+  flush,
+  pickable,
+  selected,
+  first,
+  toolbar,
+  onSelect,
+}: {
+  section: SectionInstance
+  flush: boolean
+  pickable: boolean
+  selected: boolean
+  first: boolean
+  toolbar: ReactNode
+  onSelect: (id: string) => void
+}) {
+  const Section = SECTION_RENDERERS[section.type]
+  const { now } = useRenderEnvironment()
+  if (!Section) return null
+  const mt = flush ? '0' : SECTION_GAP
+
+  const rendered = (
+    <SectionIdContext.Provider value={section.id}>
+      <SectionFrame style={section.style}>
+        <Section settings={section.settings} />
+      </SectionFrame>
+    </SectionIdContext.Provider>
+  )
+  if (!pickable) return <Box mt={mt}>{rendered}</Box>
+
+  return (
+    <PickableSection
+      mt={mt}
+      id={section.id}
+      selected={selected}
+      first={first}
+      toolbar={toolbar}
+      badge={<ScheduleBadge section={section} now={now ?? new Date()} />}
+      onClickCapture={(event) => {
+        // Every click also picks the section. A link must not be followed out
+        // of the editor; anything else — a tab, a slider arrow, the size
+        // guide drawer — still works, so the seller can try the section out.
+        const target = event.target as HTMLElement
+        if (target.closest('a[href]') && !target.closest('[data-editable]')) {
+          event.preventDefault()
+        }
+        onSelect(section.id)
+      }}
+    >
+      {rendered}
+    </PickableSection>
+  )
+})
 
 /** How far the outline stands off a section, and how far in it sits where the section meets the page edge. */
 const OUTLINE_GAP = 6
