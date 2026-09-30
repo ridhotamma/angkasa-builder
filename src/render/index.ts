@@ -2,11 +2,14 @@
 
 export {
   findProductCard,
+  previewArticleDetail,
   previewProductDetail,
   RenderProvider,
   sampleStorefrontData,
   useRenderEnvironment,
   type RenderEnvironment,
+  type StorefrontArticleCard,
+  type StorefrontArticleDetail,
   type StorefrontCategoryData,
   type StorefrontGalleryImage,
   type StorefrontProductCard,
@@ -25,6 +28,7 @@ export {
   type StoreFooterProps,
   type StoreHeaderProps,
 } from './chrome'
+export { ArticleCard, ArticleGrid, formatArticleDate } from './article-page'
 export { DataTable, whatsappHref } from './content-sections'
 export { embedUrl } from './media'
 export { buttonLook, cardFrame, FullBleed, PAGE_WIDTH_CONTAINER } from './primitives'

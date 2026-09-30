@@ -14,8 +14,12 @@
 import type { BlockSchema, Field, ItemField, ListField, RichTextField } from './fields'
 import type { Localized } from './localized'
 
-/** Where a template can use a section. Omitted means everywhere but the product page. */
-export type SectionScope = 'home' | 'page' | 'product'
+/**
+ * Where a template can use a section. Omitted means everywhere but the product
+ * page. An article's own body is a page (`page`); `article` is the theme's
+ * article template, the frame around every body.
+ */
+export type SectionScope = 'home' | 'page' | 'product' | 'article'
 
 /** How the "Add section" picker groups sections. */
 export const SECTION_CATEGORIES = [
@@ -27,6 +31,7 @@ export const SECTION_CATEGORIES = [
   'trust',
   'store',
   'product-page',
+  'article-page',
 ] as const
 
 export type SectionCategory = (typeof SECTION_CATEGORIES)[number]
@@ -40,6 +45,7 @@ export const SECTION_CATEGORY_LABELS: Record<SectionCategory, Localized> = {
   trust: { en: 'Reviews and trust', id: 'Ulasan dan kepercayaan' },
   store: { en: 'Shop information', id: 'Informasi toko' },
   'product-page': { en: 'Product page', id: 'Halaman produk' },
+  'article-page': { en: 'Article page', id: 'Halaman artikel' },
 }
 
 /**
@@ -76,9 +82,15 @@ export interface SectionSchema {
   fields: readonly Field[]
 }
 
-const EVERYWHERE_BUT_PRODUCT: readonly SectionScope[] = ['home', 'page']
-const EVERYWHERE: readonly SectionScope[] = ['home', 'page', 'product']
+// The article template takes the general sections too — a newsletter or a
+// banner under every article — so both "everywhere" sets include it.
+const EVERYWHERE_BUT_PRODUCT: readonly SectionScope[] = ['home', 'page', 'article']
+const EVERYWHERE: readonly SectionScope[] = ['home', 'page', 'product', 'article']
 const PRODUCT_ONLY: readonly SectionScope[] = ['product']
+const ARTICLE_ONLY: readonly SectionScope[] = ['article']
+
+/** The most related articles an article page draws; the storefront reads this many. */
+export const MAX_RELATED_ARTICLES = 6
 
 export function sectionScopes(schema: SectionSchema): readonly SectionScope[] {
   return schema.scopes ?? EVERYWHERE_BUT_PRODUCT
@@ -2140,6 +2152,177 @@ export const SECTION_SCHEMAS = [
     max: 1,
     usesCatalogue: true,
     fields: [heading('You may also like'), limit(4, 12), columns(4)],
+  },
+
+  /* ---------------------------------------------------------------------- */
+  /* Article page — the theme's frame around every article's own body       */
+  /* ---------------------------------------------------------------------- */
+
+  {
+    type: 'article-header',
+    category: 'article-page',
+    icon: 'article',
+    name: { en: 'Article header', id: 'Kepala artikel' },
+    description: {
+      en: "The article's cover, title, date, author, reading time and tags.",
+      id: 'Sampul, judul, tanggal, penulis, waktu baca, dan tag artikel.',
+    },
+    scopes: ARTICLE_ONLY,
+    max: 1,
+    required: true,
+    fields: [
+      {
+        kind: 'select',
+        key: 'coverPosition',
+        label: { en: 'Cover image', id: 'Gambar sampul' },
+        options: [
+          { value: 'below', label: { en: 'Below the title', id: 'Di bawah judul' } },
+          { value: 'above', label: { en: 'Above the title', id: 'Di atas judul' } },
+          { value: 'none', label: { en: 'Hidden', id: 'Disembunyikan' } },
+        ],
+        default: 'below',
+      },
+      {
+        kind: 'select',
+        key: 'metaPosition',
+        label: { en: 'Date and author', id: 'Tanggal dan penulis' },
+        options: [
+          { value: 'below', label: { en: 'Below the title', id: 'Di bawah judul' } },
+          { value: 'above', label: { en: 'Above the title', id: 'Di atas judul' } },
+        ],
+        default: 'below',
+      },
+      { ...align, default: 'center' },
+      {
+        kind: 'boolean',
+        key: 'showBlog',
+        label: { en: 'Show the blog name', id: 'Tampilkan nama blog' },
+        help: {
+          en: 'A link back to the blog, e.g. "News".',
+          id: 'Tautan kembali ke blog, mis. "Berita".',
+        },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'showDate',
+        label: { en: 'Show the date', id: 'Tampilkan tanggal' },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'showAuthor',
+        label: { en: 'Show the author', id: 'Tampilkan penulis' },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'showReadingTime',
+        label: { en: 'Show the reading time', id: 'Tampilkan waktu baca' },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'showTags',
+        label: { en: 'Show the tags', id: 'Tampilkan tag' },
+        default: true,
+      },
+    ],
+  },
+  {
+    type: 'article-content',
+    category: 'article-page',
+    icon: 'text',
+    name: { en: 'Article content', id: 'Isi artikel' },
+    description: {
+      en: 'Where each article’s own text, photos and videos go. Written in the article editor.',
+      id: 'Tempat teks, foto, dan video tiap artikel. Ditulis di editor artikel.',
+    },
+    scopes: ARTICLE_ONLY,
+    max: 1,
+    required: true,
+    fields: [
+      {
+        ...width,
+        help: {
+          en: 'A narrow column is easier to read for long text.',
+          id: 'Kolom sempit lebih nyaman untuk teks panjang.',
+        },
+      },
+    ],
+  },
+  {
+    type: 'article-share',
+    category: 'article-page',
+    icon: 'share',
+    name: { en: 'Share buttons', id: 'Tombol bagikan' },
+    description: {
+      en: 'Let readers copy the link or send the article on WhatsApp.',
+      id: 'Pembaca bisa menyalin tautan atau mengirim artikel lewat WhatsApp.',
+    },
+    scopes: ARTICLE_ONLY,
+    max: 1,
+    fields: [
+      {
+        kind: 'text',
+        key: 'label',
+        label: { en: 'Label', id: 'Label' },
+        max: 60,
+        default: 'Share this article',
+      },
+      { ...align, default: 'center' },
+    ],
+  },
+  {
+    type: 'article-pagination',
+    category: 'article-page',
+    icon: 'arrows',
+    name: { en: 'Previous and next', id: 'Sebelumnya dan berikutnya' },
+    description: {
+      en: 'Links to the article before and after this one in the same blog.',
+      id: 'Tautan ke artikel sebelum dan sesudah ini di blog yang sama.',
+    },
+    scopes: ARTICLE_ONLY,
+    max: 1,
+    fields: [
+      {
+        kind: 'text',
+        key: 'previousLabel',
+        label: { en: 'Previous label', id: 'Label sebelumnya' },
+        max: 40,
+        default: 'Previous article',
+      },
+      {
+        kind: 'text',
+        key: 'nextLabel',
+        label: { en: 'Next label', id: 'Label berikutnya' },
+        max: 40,
+        default: 'Next article',
+      },
+    ],
+  },
+  {
+    type: 'related-articles',
+    category: 'article-page',
+    icon: 'shelves',
+    name: { en: 'Related articles', id: 'Artikel terkait' },
+    description: {
+      en: 'More from the same blog — articles with the same tags first.',
+      id: 'Artikel lain dari blog yang sama — yang tagnya sama lebih dulu.',
+    },
+    scopes: ARTICLE_ONLY,
+    max: 1,
+    fields: [
+      heading('More articles'),
+      {
+        kind: 'number',
+        key: 'limit',
+        label: { en: 'Articles to show', id: 'Jumlah artikel' },
+        min: 1,
+        max: MAX_RELATED_ARTICLES,
+        default: 3,
+      },
+    ],
   },
 ] as const satisfies readonly SectionSchema[]
 

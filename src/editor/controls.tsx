@@ -311,6 +311,8 @@ export const LINK_KIND_LABELS: Record<LinkKind, EditorMessage> = {
   product: 'linkProduct',
   collection: 'linkCollection',
   category: 'linkCategory',
+  blog: 'linkBlog',
+  article: 'linkArticle',
   search: 'linkSearch',
   url: 'linkUrl',
 }
@@ -325,6 +327,10 @@ function emptyLink(kind: LinkKind): Link {
     case 'collection':
     case 'category':
       return { kind, slug: '' }
+    case 'blog':
+      return { kind, blogHandle: '' }
+    case 'article':
+      return { kind, blogHandle: '', slug: '' }
     case 'search':
       return { kind, query: '' }
     case 'url':
@@ -345,13 +351,16 @@ export function LinkControl({
   const link = value ?? NO_LINK
 
   const slugOptions =
-    link.kind === 'collection'
-      ? services.collections
-      : link.kind === 'category'
-        ? services.categories
-        : link.kind === 'page'
-          ? services.pages
-          : null
+    // An article is picked from its own list below: its slug alone is not unique.
+    link.kind === 'article'
+      ? null
+      : link.kind === 'collection'
+        ? services.collections
+        : link.kind === 'category'
+          ? services.categories
+          : link.kind === 'page'
+            ? services.pages
+            : null
 
   return (
     <Stack gap="2">
@@ -370,6 +379,41 @@ export function LinkControl({
           clearable
           onChange={(slug) => onChange({ ...link, slug })}
           options={slugOptions.map((option) => ({ value: option.slug, label: option.name }))}
+        />
+      )}
+      {link.kind === 'blog' && (
+        <>
+          <SelectInput
+            value={link.blogHandle}
+            placeholder={t('choose')}
+            clearable
+            onChange={(blogHandle) => onChange({ ...link, blogHandle })}
+            options={(services.blogs ?? []).map((blog) => ({ value: blog.slug, label: blog.name }))}
+          />
+          <Input
+            size="sm"
+            placeholder={t('blogTag')}
+            value={link.tag ?? ''}
+            maxLength={30}
+            onChange={(event) =>
+              onChange({ ...link, tag: event.currentTarget.value.toLowerCase() || undefined })
+            }
+          />
+        </>
+      )}
+      {link.kind === 'article' && (
+        <SelectInput
+          value={link.slug ? `${link.blogHandle}/${link.slug}` : ''}
+          placeholder={t('choose')}
+          clearable
+          onChange={(value) => {
+            const [blogHandle = '', slug = ''] = value.split('/')
+            onChange({ kind: 'article', blogHandle, slug })
+          }}
+          options={(services.articles ?? []).map((article) => ({
+            value: `${article.blogHandle}/${article.slug}`,
+            label: article.name,
+          }))}
         />
       )}
       {link.kind === 'product' && (

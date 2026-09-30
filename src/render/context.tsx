@@ -66,6 +66,35 @@ export interface StorefrontProductDetail {
   related: StorefrontProductCard[]
 }
 
+/** An article as a listing or a "related" card draws it: metadata only, never its body. */
+export interface StorefrontArticleCard {
+  id: string
+  title: string
+  slug: string
+  blogHandle: string
+  /** The seller's excerpt, or the opening of the body — stored at publish. */
+  summary: string | null
+  coverUrl: string | null
+  /** ISO instant; `null` only for a draft in the editor. */
+  publishedAt: string | null
+  authorName: string | null
+  tags: string[]
+}
+
+/**
+ * The article an article page is about, as the article template draws it
+ * around the body. The body itself is not here: it is sections, drawn by the
+ * host into `env.slots.articleBody`.
+ */
+export interface StorefrontArticleDetail extends StorefrontArticleCard {
+  readingMinutes: number
+  blog: { handle: string; title: string }
+  /** The next older and next newer article in the same blog. */
+  previous: { title: string; slug: string } | null
+  next: { title: string; slug: string } | null
+  related: StorefrontArticleCard[]
+}
+
 export interface StorefrontShelfData {
   id: string
   name: string
@@ -111,6 +140,8 @@ export interface StorefrontRenderData {
   products?: StorefrontProductCard[]
   /** Only on the product page. */
   product?: StorefrontProductDetail
+  /** Only on an article page — or, in the editor, the article being written. */
+  article?: StorefrontArticleDetail
   vouchers?: StorefrontVoucherData[]
 }
 
@@ -150,6 +181,12 @@ export interface RenderEnvironment {
   slots?: {
     productPurchase?: ReactNode
     productReviews?: ReactNode
+    /**
+     * The article's own sections, drawn where the template's
+     * `article-content` section sits. The theme editor has no article and
+     * gets a stand-in body.
+     */
+    articleBody?: ReactNode
   }
   /**
    * The window media queries run against. The editor renders its preview in
@@ -308,6 +345,38 @@ export function previewProductDetail(data: StorefrontRenderData): StorefrontProd
       note: 'Measured flat, across the chest from armpit to armpit.',
     },
     related,
+  }
+}
+
+/**
+ * The article an article-template preview shows: the one being written, or
+ * the shop's newest one, when the editor has them — otherwise a sample, so
+ * every section of the template has something to draw.
+ */
+export function previewArticleDetail(data: StorefrontRenderData): StorefrontArticleDetail {
+  if (data.article) return data.article
+  const sample = (n: number, title: string, tags: string[]): StorefrontArticleCard => ({
+    id: `sample-article-${n}`,
+    title,
+    slug: `sample-article-${n}`,
+    blogHandle: 'news',
+    summary: 'A short summary of the article, as the blog’s listing shows it.',
+    coverUrl: null,
+    publishedAt: new Date(Date.UTC(2026, 0, 12 - n, 12)).toISOString(),
+    authorName: data.shop.name,
+    tags,
+  })
+  return {
+    ...sample(0, 'Behind the scenes of our new collection', ['news', 'behind the scenes']),
+    readingMinutes: 4,
+    blog: { handle: 'news', title: 'News' },
+    previous: { title: 'How we choose our fabrics', slug: 'sample-article-1' },
+    next: null,
+    related: [
+      sample(1, 'How we choose our fabrics', ['behind the scenes']),
+      sample(2, 'Five ways to wear a linen shirt', ['style']),
+      sample(3, 'Caring for your favourite pieces', ['care']),
+    ],
   }
 }
 

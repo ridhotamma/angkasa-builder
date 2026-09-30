@@ -23,6 +23,8 @@ export const LINK_KINDS = [
   'product',
   'collection',
   'category',
+  'blog',
+  'article',
   'search',
   'url',
 ] as const
@@ -36,6 +38,10 @@ export type Link =
   | { kind: 'product'; slug: string }
   | { kind: 'collection'; slug: string }
   | { kind: 'category'; slug: string }
+  /** A blog's index, `/blogs/<blogHandle>` — narrowed to one tag when `tag` is set. */
+  | { kind: 'blog'; blogHandle: string; tag?: string }
+  /** One article, `/blogs/<blogHandle>/<slug>` — slugs are unique per blog, not per shop. */
+  | { kind: 'article'; blogHandle: string; slug: string }
   | { kind: 'search'; query: string }
   | { kind: 'url'; href: string }
 
@@ -64,6 +70,19 @@ const linkSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('product'), slug }),
   z.object({ kind: z.literal('collection'), slug }),
   z.object({ kind: z.literal('category'), slug }),
+  z.object({
+    kind: z.literal('blog'),
+    blogHandle: slug,
+    // An empty tag is no tag, not a broken link.
+    tag: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(30)
+      .optional()
+      .transform((tag) => tag || undefined),
+  }),
+  z.object({ kind: z.literal('article'), blogHandle: slug, slug }),
   z.object({ kind: z.literal('search'), query: z.string().trim().min(1).max(120) }),
   z.object({
     kind: z.literal('url'),
@@ -97,6 +116,12 @@ export function storefrontHref(link: Link): string | null {
       return `/k/${link.slug}`
     case 'category':
       return `/c/${link.slug}`
+    case 'blog':
+      return link.tag
+        ? `/blogs/${link.blogHandle}?tag=${encodeURIComponent(link.tag)}`
+        : `/blogs/${link.blogHandle}`
+    case 'article':
+      return `/blogs/${link.blogHandle}/${link.slug}`
     case 'search':
       return `/search?q=${encodeURIComponent(link.query)}`
     case 'url':

@@ -2,9 +2,9 @@
  * What a theme and a page actually store.
  *
  * A theme is its settings, its header and footer (`layout`), and one ordered
- * list of sections per page type it designs — the home page and the product
- * page. `templates` is a map so collection and search templates can be more
- * keys later.
+ * list of sections per page type it designs — the home page, the product page
+ * and the article page. `templates` is a map so collection and search
+ * templates can be more keys later.
  *
  * Both are stored as JSON strings (`contentJson`, `draftJson`,
  * `publishedJson`) and every path in or out goes through `sanitize*` below:
@@ -51,12 +51,13 @@ export interface SectionInstance {
   style: FieldValues
 }
 
-export const TEMPLATE_KEYS = ['home', 'product'] as const
+export const TEMPLATE_KEYS = ['home', 'product', 'article'] as const
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number]
 
 export const TEMPLATE_SCOPES: Record<TemplateKey, SectionScope> = {
   home: 'home',
   product: 'product',
+  article: 'article',
 }
 
 export interface ThemeContent {
@@ -185,6 +186,40 @@ export function sanitizeProductTemplate(value: unknown): SectionInstance[] {
   return [createSection('product-info'), ...sections].slice(0, MAX_SECTIONS)
 }
 
+/** The article page every theme starts with — and the one a theme without its own gets. */
+export function defaultArticleTemplate(): SectionInstance[] {
+  return [
+    createSection('article-header'),
+    createSection('article-content'),
+    createSection('article-share'),
+    createSection('article-pagination'),
+    createSection('related-articles'),
+  ]
+}
+
+/**
+ * The article page template, cleaned. Its header and its content slot are
+ * required, like the product page's buy box: a theme saved before article
+ * templates existed gets the default page, and one missing either section by
+ * hand gets it back — the header at the top, the content right after it.
+ */
+export function sanitizeArticleTemplate(value: unknown): SectionInstance[] {
+  if (!Array.isArray(value) || value.length === 0) return defaultArticleTemplate()
+  let sections = sanitizeSections(value, 'article')
+  const has = (type: SectionType) => sections.some((section) => section.type === type)
+  if (!has('article-header')) sections = [createSection('article-header'), ...sections]
+  if (!has('article-content')) {
+    const at = sections.findIndex((section) => section.type === 'article-header') + 1
+    sections = [...sections.slice(0, at), createSection('article-content'), ...sections.slice(at)]
+  }
+  if (sections.length <= MAX_SECTIONS) return sections
+  // Over the cap after the repair: drop from the end, never a required section.
+  const required = new Set<string>(['article-header', 'article-content'])
+  const optional = sections.filter((section) => !required.has(section.type))
+  const keep = new Set(optional.slice(0, MAX_SECTIONS - 2).map((section) => section.id))
+  return sections.filter((section) => required.has(section.type) || keep.has(section.id))
+}
+
 export function sanitizeThemeContent(value: unknown): ThemeContent {
   const source = isRecord(value) ? value : {}
   const templates = isRecord(source.templates) ? source.templates : {}
@@ -195,6 +230,7 @@ export function sanitizeThemeContent(value: unknown): ThemeContent {
     templates: {
       home: sanitizeSections(templates.home, 'home'),
       product: sanitizeProductTemplate(templates.product),
+      article: sanitizeArticleTemplate(templates.article),
     },
   }
 }
@@ -240,7 +276,7 @@ export const EMPTY_THEME_CONTENT: ThemeContent = {
   version: CONTENT_VERSION,
   settings: DEFAULT_THEME_SETTINGS,
   layout: sanitizeLayout(null),
-  templates: { home: [], product: [] },
+  templates: { home: [], product: [], article: [] },
 }
 
 /* -------------------------------------------------------------------------- */
@@ -359,6 +395,7 @@ export function remapThemeImages(
     templates: {
       home: remapSections(content.templates.home, images, videoMap),
       product: remapSections(content.templates.product, images, videoMap),
+      article: remapSections(content.templates.article, images, videoMap),
     },
   }
 }

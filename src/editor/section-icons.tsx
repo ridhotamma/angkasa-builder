@@ -36,7 +36,10 @@ import {
   LuFolderKanban,
   LuMapPin,
   LuAppWindow,
+  LuArrowLeftRight,
   LuBadgeCheck,
+  LuNewspaper,
+  LuShare2,
 } from 'react-icons/lu'
 
 const ICONS: Record<string, IconType> = {
@@ -75,6 +78,9 @@ const ICONS: Record<string, IconType> = {
   bag: LuShoppingBag,
   header: LuPanelTop,
   footer: LuPanelBottom,
+  article: LuNewspaper,
+  share: LuShare2,
+  arrows: LuArrowLeftRight,
 }
 
 export function sectionIcon(key: string): IconType {

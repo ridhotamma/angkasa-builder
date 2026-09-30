@@ -6,6 +6,7 @@
  * editor is `./editor`. See docs/PAGE-BUILDER.md.
  */
 
+export * from './model/articles'
 export * from './model/content'
 export * from './model/fields'
 export * from './model/layout'

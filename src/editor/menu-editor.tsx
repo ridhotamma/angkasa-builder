@@ -66,9 +66,13 @@ function useLinkSummary() {
         ? link.href
         : link.kind === 'search'
           ? link.query
-          : 'slug' in link
-            ? link.slug
-            : ''
+          : link.kind === 'blog'
+            ? link.blogHandle + (link.tag ? ` #${link.tag}` : '')
+            : link.kind === 'article'
+              ? `${link.blogHandle}/${link.slug}`
+              : 'slug' in link
+                ? link.slug
+                : ''
     return detail ? `${kind} · ${detail}` : kind
   }
 }

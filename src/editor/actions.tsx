@@ -2,7 +2,7 @@
  * The pieces every editor's header bar is built from, so the theme, page and
  * template editors read the same way:
  *
- *     ● Unsaved changes   [⚙]  [⋯]   Save   [Publish]
+ *     ● Unsaved changes   [⚙ Settings]   Save   [Publish]   [⋯]
  *
  * Only what needs attention is shown: the unsaved dot appears when there is
  * something unsaved, and anything used now and then (view the storefront,
@@ -12,18 +12,18 @@
 
 import {
   Box,
+  Button,
   CloseButton,
-  Dialog,
+  Drawer,
   HStack,
   IconButton,
   Link as ChakraLink,
   Menu,
-  Popover,
   Portal,
   Text,
   useBreakpointValue,
 } from '@chakra-ui/react'
-import { useId, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { LuEllipsis, LuSettings2 } from 'react-icons/lu'
 
 import { Tooltip } from '@repo/theme'
@@ -102,10 +102,17 @@ export function EditorMenu({ items }: { items: EditorMenuItem[] }) {
 }
 
 /**
- * The header's settings (page details, theme name and status): a popover under
- * a gear button on a wide screen, and a dialog on a phone, where the buttons
- * fold into the "⋯" menu and there is no gear to anchor a popover to. Both are
- * driven by `open`, so a menu item can open it.
+ * The header's settings (page or article details, theme name and status), in a
+ * drawer: from the side on a wide screen, from the bottom on a phone, where the
+ * header's buttons fold into the "⋯" menu and a menu item opens it instead.
+ * Driven by `open` either way.
+ *
+ * A drawer and not a popover. The editor is a modal dialog, and a popover
+ * portalled out of it sits outside the dialog's focus trap: every field in it
+ * gave its focus straight back, so nothing could be typed. A drawer is a dialog
+ * of its own, which the trap hands over to, like the unsaved-changes question.
+ * It also scrolls, so a long form (an article's nine fields) fits a short
+ * screen.
  */
 export function EditorSettings({
   label,
@@ -118,57 +125,55 @@ export function EditorSettings({
   onOpenChange: (open: boolean) => void
   children: ReactNode
 }) {
-  const triggerId = useId()
+  const { t } = useEditorText()
   const phone = useBreakpointValue({ base: true, md: false }, { ssr: false }) ?? false
 
-  if (phone) {
-    return (
-      <Dialog.Root
+  return (
+    <>
+      <Tooltip content={label}>
+        <Button
+          aria-label={label}
+          size="sm"
+          variant="ghost"
+          hideBelow="md"
+          onClick={() => onOpenChange(true)}
+        >
+          <LuSettings2 />
+          <Box as="span" hideBelow="xl">
+            {label}
+          </Box>
+        </Button>
+      </Tooltip>
+      <Drawer.Root
         open={open}
         onOpenChange={({ open: next }) => onOpenChange(next)}
-        placement="center"
-        scrollBehavior="inside"
+        placement={phone ? 'bottom' : 'end'}
+        size={phone ? 'full' : 'md'}
       >
         <Portal>
-          <Dialog.Backdrop />
-          <Dialog.Positioner p="3">
-            <Dialog.Content>
-              <Dialog.Header>
-                <Dialog.Title fontSize="md">{label}</Dialog.Title>
-                <Dialog.CloseTrigger asChild>
-                  <CloseButton size="sm" />
-                </Dialog.CloseTrigger>
-              </Dialog.Header>
-              <Dialog.Body pb="5">{children}</Dialog.Body>
-            </Dialog.Content>
-          </Dialog.Positioner>
+          <Drawer.Backdrop />
+          <Drawer.Positioner>
+            <Drawer.Content {...(phone && { roundedTop: 'l3', maxH: '90dvh', h: 'auto' })}>
+              <Drawer.Header borderBottomWidth="1px" borderColor="border.subtle">
+                <Drawer.Title fontSize="md">{label}</Drawer.Title>
+              </Drawer.Header>
+              <Drawer.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Drawer.CloseTrigger>
+              <Drawer.Body py="5">{children}</Drawer.Body>
+              <Drawer.Footer borderTopWidth="1px" borderColor="border.subtle">
+                <Button
+                  colorPalette="brand"
+                  w={{ base: 'full', md: 'auto' }}
+                  onClick={() => onOpenChange(false)}
+                >
+                  {t('done')}
+                </Button>
+              </Drawer.Footer>
+            </Drawer.Content>
+          </Drawer.Positioner>
         </Portal>
-      </Dialog.Root>
-    )
-  }
-
-  return (
-    <Popover.Root
-      ids={{ trigger: triggerId }}
-      positioning={{ placement: 'bottom-end' }}
-      open={open}
-      onOpenChange={({ open: next }) => onOpenChange(next)}
-    >
-      <Tooltip content={label} triggerId={triggerId}>
-        <Popover.Trigger asChild>
-          <IconButton aria-label={label} size="sm" variant="ghost">
-            <LuSettings2 />
-          </IconButton>
-        </Popover.Trigger>
-      </Tooltip>
-      <Portal>
-        <Popover.Positioner>
-          <Popover.Content w="md">
-            <Popover.Arrow />
-            <Popover.Body>{children}</Popover.Body>
-          </Popover.Content>
-        </Popover.Positioner>
-      </Portal>
-    </Popover.Root>
+      </Drawer.Root>
+    </>
   )
 }

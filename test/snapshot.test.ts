@@ -24,6 +24,7 @@ function content(): ThemeContent {
         }),
       ],
       product: [],
+      article: [],
     },
   }
 }

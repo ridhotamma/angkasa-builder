@@ -20,6 +20,11 @@ export interface CatalogueOption {
   name: string
 }
 
+/** An article to link to: slugs are unique per blog, so the blog comes along. */
+export interface ArticleOption extends CatalogueOption {
+  blogHandle: string
+}
+
 export interface EditorServices {
   /** Store an image and return its media file id. Throw with a message to show. */
   uploadImage: (file: File) => Promise<string>
@@ -41,5 +46,9 @@ export interface EditorServices {
   categories: readonly CatalogueOption[]
   /** The shop's custom pages, for page links. */
   pages: readonly CatalogueOption[]
+  /** The shop's blogs, for blog links; `slug` is the blog's handle. Omitted where there are none. */
+  blogs?: readonly CatalogueOption[]
+  /** The shop's articles, for article links, each with the handle of the blog it is in. */
+  articles?: readonly ArticleOption[]
   vouchers?: readonly StorefrontVoucherData[]
 }

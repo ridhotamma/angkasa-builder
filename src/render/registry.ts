@@ -25,6 +25,13 @@ import {
   VideoReels,
   VideoSection,
 } from './media-sections'
+import {
+  ArticleContent,
+  ArticleHeader,
+  ArticlePagination,
+  ArticleShare,
+  RelatedArticles,
+} from './article-page'
 import { ProductInfo, ProductReviews, RelatedProducts } from './product-page'
 import { BASE_SECTION_RENDERERS, type SectionProps } from './sections'
 
@@ -52,4 +59,9 @@ export const SECTION_RENDERERS = {
   'product-info': ProductInfo,
   'product-reviews': ProductReviews,
   'related-products': RelatedProducts,
+  'article-header': ArticleHeader,
+  'article-content': ArticleContent,
+  'article-share': ArticleShare,
+  'article-pagination': ArticlePagination,
+  'related-articles': RelatedArticles,
 } satisfies Record<SectionType, ComponentType<SectionProps>>

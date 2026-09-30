@@ -9,6 +9,11 @@
  * The preview is an iframe the width of the chosen device (see
  * `PreviewFrame`), so a phone preview is laid out as a phone.
  *
+ * With `frame`, the sections being edited are drawn inside a template's
+ * sections — an article's body inside the theme's article template — so the
+ * seller writes in the frame shoppers will see. The frame is read-only here:
+ * it is the theme's, and the theme editor is where it changes.
+ *
  * Fully controlled: the screen owns the document and decides when to save.
  * This component only ever calls `onSectionsChange` / `onSettingsChange` /
  * `onLayoutChange` with a new value; undo and redo are the screen's too
@@ -52,7 +57,7 @@ import {
 
 import { Tooltip } from '@repo/theme'
 
-import type { SectionInstance, TemplateKey } from '../model/content'
+import { TEMPLATE_KEYS, type SectionInstance, type TemplateKey } from '../model/content'
 import type { FieldValues } from '../model/fields'
 import {
   FOOTER_FIELDS,
@@ -125,7 +130,24 @@ export interface PageBuilderProps {
   previewNote?: string
   /** The height the editor fills (a length or `100%`); panels scroll inside it. */
   height?: string
+  /**
+   * Draw the sections inside a template's own, read-only: the template's
+   * sections render around them, and the edited sections go into the
+   * template's `slot` — for an article, the `article-content` section's
+   * `articleBody`. Page edges are then the template's.
+   */
+  frame?: {
+    template: readonly SectionInstance[]
+    slot: keyof NonNullable<RenderEnvironment['slots']>
+  }
 }
+
+/** The template switcher's label for each template a theme designs. */
+const TEMPLATE_LABELS = {
+  home: 'templateHome',
+  product: 'templateProduct',
+  article: 'templateArticle',
+} as const satisfies Record<TemplateKey, string>
 
 export function PageBuilder(props: PageBuilderProps) {
   return (
@@ -153,6 +175,7 @@ function Builder({
   toolbar,
   previewNote,
   height = 'calc(100dvh - 9rem)',
+  frame,
   products,
 }: PageBuilderProps & { products: StorefrontRenderData['latest'] }) {
   const { t, l } = useEditorText()
@@ -339,10 +362,10 @@ function Builder({
             <SelectInput
               value={template.value}
               onChange={(value) => value && template.onChange(value as TemplateKey)}
-              options={[
-                { value: 'home', label: t('templateHome') },
-                { value: 'product', label: t('templateProduct') },
-              ]}
+              options={TEMPLATE_KEYS.map((key) => ({
+                value: key,
+                label: t(TEMPLATE_LABELS[key]),
+              }))}
             />
           </HStack>
         )}
@@ -448,7 +471,7 @@ function Builder({
 
   // The same rules the storefront applies, from the same helpers, so the
   // preview's banner meets the header exactly as the live one does.
-  const drawn = drawnSections(sections, 'preview', new Date())
+  const drawn = drawnSections(frame?.template ?? sections, 'preview', new Date())
   const edges = pageEdges(drawn)
   const transparent = scope === 'home' && !!layout && isHeaderTransparent(layout.header, edges)
 
@@ -463,6 +486,28 @@ function Builder({
     if (typeof target?.closest !== 'function' || target.closest('[data-section-id]')) return
     setSelectedId(null)
   }
+
+  const edited = (
+    <SectionsRenderer
+      sections={sections}
+      env={env}
+      selectedId={selectedId}
+      onSelect={(id) => select(id, true)}
+      toolbar={(section) => (
+        <SectionToolbar
+          section={section}
+          sections={sections}
+          onChange={onSectionsChange}
+          onSelect={(id) => {
+            select(id, true)
+            revealSoon(id)
+          }}
+          onMoved={revealSoon}
+          onRemoved={() => setSelectedId(null)}
+        />
+      )}
+    />
+  )
 
   const preview = (
     <RenderProvider value={env}>
@@ -518,25 +563,16 @@ function Builder({
             pt={edges.flushTop ? '0' : { base: '6', md: '10' }}
             pb={edges.flushBottom ? '0' : { base: '6', md: '10' }}
           >
-            <SectionsRenderer
-              sections={sections}
-              env={env}
-              selectedId={selectedId}
-              onSelect={(id) => select(id, true)}
-              toolbar={(section) => (
-                <SectionToolbar
-                  section={section}
-                  sections={sections}
-                  onChange={onSectionsChange}
-                  onSelect={(id) => {
-                    select(id, true)
-                    revealSoon(id)
-                  }}
-                  onMoved={revealSoon}
-                  onRemoved={() => setSelectedId(null)}
-                />
-              )}
-            />
+            {frame ? (
+              // The frame gets no `editing`: its headings are the theme's, and
+              // typing into one here would edit nothing.
+              <SectionsRenderer
+                sections={frame.template}
+                env={{ ...env, editing: undefined, slots: { ...env.slots, [frame.slot]: edited } }}
+              />
+            ) : (
+              edited
+            )}
           </Container>
         </Box>
         {layout &&

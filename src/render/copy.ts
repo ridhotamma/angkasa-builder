@@ -79,6 +79,22 @@ const TEXT = {
   unmute: { en: 'Unmute', id: 'Nyalakan suara' },
   compareSlider: { en: 'Drag to compare', id: 'Geser untuk membandingkan' },
   home: { en: 'Home', id: 'Beranda' },
+  readingTime: { en: '{n} min read', id: '{n} menit baca' },
+  copyLink: { en: 'Copy link', id: 'Salin tautan' },
+  linkCopied: { en: 'Link copied', id: 'Tautan tersalin' },
+  whatsapp: { en: 'WhatsApp', id: 'WhatsApp' },
+  articleBodyPreview: {
+    en: 'Each article’s own text, photos and videos appear here — written in the article editor.',
+    id: 'Teks, foto, dan video tiap artikel tampil di sini — ditulis di editor artikel.',
+  },
+  noPagination: {
+    en: 'Links to the previous and next article in the blog appear here.',
+    id: 'Tautan ke artikel sebelum dan sesudahnya di blog tampil di sini.',
+  },
+  noRelatedArticles: {
+    en: 'Other articles from the same blog appear here.',
+    id: 'Artikel lain dari blog yang sama tampil di sini.',
+  },
 } satisfies Record<string, Localized>
 
 export type RenderText = keyof typeof TEXT
