@@ -131,6 +131,8 @@ function EditedOutlet() {
 }
 
 const HEADER_ID = 'layout:header'
+/** The frame's details (`frame.details`), picked like a section. */
+const DETAILS_ID = 'frame:details'
 const FOOTER_ID = 'layout:footer'
 
 export interface PageBuilderProps {
@@ -173,7 +175,32 @@ export interface PageBuilderProps {
   frame?: {
     template: readonly SectionInstance[]
     slot: keyof NonNullable<RenderEnvironment['slots']>
+    /**
+     * What the frame draws from the thing being edited — an article's cover,
+     * title, date and tags — as something the seller picks like a section:
+     * a pinned row at the top of the list, and the frame sections of
+     * `sectionTypes` clickable in the preview. Either opens `content` (the
+     * screen's own form) in the panel.
+     */
+    details?: FrameDetails
   }
+}
+
+export interface FrameDetails {
+  /** Frame section types that stand for the details, e.g. `['article-header']`. */
+  sectionTypes: readonly string[]
+  label: string
+  /** Under the label in the panel. */
+  description?: string
+  /** Under the label in the list, e.g. the article's title. */
+  detail?: string
+  /** The form, drawn in the panel while the details are picked. */
+  content: ReactNode
+  /**
+   * Bumped by the screen to open the details from outside the builder — a
+   * header button, a save refused over one of their fields.
+   */
+  openRequest?: number
 }
 
 /** The template switcher's label for each template a theme designs. */
@@ -248,6 +275,17 @@ function Builder({
 
   // A template switch starts on its list, not on a section of the other one.
   useEffect(() => setSelectedId(null), [template?.value])
+
+  // Opened from outside the builder. A count, so the same request twice opens
+  // twice; the first render's value is where it starts, not a request.
+  const openRequest = frame?.details?.openRequest ?? 0
+  const lastOpenRequest = useRef(openRequest)
+  useEffect(() => {
+    if (openRequest === lastOpenRequest.current) return
+    lastOpenRequest.current = openRequest
+    setSelectedId(DETAILS_ID)
+    setTab('sections')
+  }, [openRequest])
 
   const updateSection = useCallback(
     (id: string, change: (section: SectionInstance) => SectionInstance) =>
@@ -349,8 +387,22 @@ function Builder({
   const layoutPart =
     selectedId === HEADER_ID ? 'header' : selectedId === FOOTER_ID ? 'footer' : null
 
+  const details = frame?.details
   const panel =
-    layoutPart && layout && onLayoutChange ? (
+    selectedId === DETAILS_ID && details ? (
+      <Stack gap="4">
+        {back}
+        <Stack gap="1">
+          <Text fontWeight="semibold">{details.label}</Text>
+          {details.description && (
+            <Text fontSize="xs" color="fg.muted">
+              {details.description}
+            </Text>
+          )}
+        </Stack>
+        {details.content}
+      </Stack>
+    ) : layoutPart && layout && onLayoutChange ? (
       <Stack gap="4">
         {back}
         <Stack gap="1">
@@ -489,14 +541,25 @@ function Builder({
         scope={scope}
         onNotice={setNotice}
         before={
-          editableLayout ? (
-            <PinnedRow
-              icon="header"
-              label={l(LAYOUT_PART_NAMES.header)}
-              selected={selectedId === HEADER_ID}
-              onSelect={() => select(HEADER_ID)}
-            />
-          ) : null
+          <>
+            {details && (
+              <PinnedRow
+                icon="header"
+                label={details.label}
+                detail={details.detail}
+                selected={selectedId === DETAILS_ID}
+                onSelect={() => select(DETAILS_ID)}
+              />
+            )}
+            {editableLayout && (
+              <PinnedRow
+                icon="header"
+                label={l(LAYOUT_PART_NAMES.header)}
+                selected={selectedId === HEADER_ID}
+                onSelect={() => select(HEADER_ID)}
+              />
+            )}
+          </>
         }
         after={
           editableLayout ? (
@@ -673,13 +736,24 @@ function Builder({
         : null,
     [env, frameSlot],
   )
-  const framed = useMemo(
-    () =>
-      frameTemplate && frameEnv ? (
-        <SectionsRenderer sections={frameTemplate} env={frameEnv} />
-      ) : null,
-    [frameTemplate, frameEnv],
-  )
+  // The frame sections that stand for the details, picked as the details.
+  const detailTypes = frame?.details?.sectionTypes.join('|') ?? ''
+  const detailsSelected = selectedId === DETAILS_ID
+  const framed = useMemo(() => {
+    if (!frameTemplate || !frameEnv) return null
+    if (!detailTypes) return <SectionsRenderer sections={frameTemplate} env={frameEnv} />
+    const types = detailTypes.split('|')
+    const stands = frameTemplate.find((section) => types.includes(section.type))
+    return (
+      <SectionsRenderer
+        sections={frameTemplate}
+        env={frameEnv}
+        pickable={(section) => types.includes(section.type)}
+        selectedId={detailsSelected ? (stands?.id ?? null) : null}
+        onSelect={() => select(DETAILS_ID, true)}
+      />
+    )
+  }, [frameTemplate, frameEnv, detailTypes, detailsSelected, select])
 
   const preview = useMemo(
     () => (

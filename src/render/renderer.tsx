@@ -45,6 +45,11 @@ export interface SectionsRendererProps {
    * needs to know nothing about editing.
    */
   toolbar?: (section: SectionInstance) => ReactNode
+  /**
+   * Editor only: which sections `onSelect` applies to — all of them when
+   * omitted. A frame around an article makes only its header pickable.
+   */
+  pickable?: (section: SectionInstance) => boolean
 }
 
 /**
@@ -120,6 +125,7 @@ export function SectionsRenderer({
   selectedId,
   onSelect,
   toolbar,
+  pickable,
 }: SectionsRendererProps) {
   const now = env.now ?? new Date()
   const visible = drawnSections(sections, env.mode, now)
@@ -146,7 +152,7 @@ export function SectionsRenderer({
               key={section.id}
               section={section}
               flush={flush}
-              pickable={Boolean(onSelect)}
+              pickable={Boolean(onSelect) && (pickable?.(section) ?? true)}
               selected={selected}
               first={index === 0}
               toolbar={selected && toolbar ? toolbar(section) : null}

@@ -79,6 +79,7 @@ const TEXT = {
   unmute: { en: 'Unmute', id: 'Nyalakan suara' },
   compareSlider: { en: 'Drag to compare', id: 'Geser untuk membandingkan' },
   home: { en: 'Home', id: 'Beranda' },
+  textPlaceholder: { en: 'Write your text here…', id: 'Tulis teks Anda di sini…' },
   readingTime: { en: '{n} min read', id: '{n} menit baca' },
   copyLink: { en: 'Copy link', id: 'Salin tautan' },
   linkCopied: { en: 'Link copied', id: 'Tautan tersalin' },

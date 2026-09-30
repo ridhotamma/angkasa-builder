@@ -44,9 +44,11 @@ import {
   readText,
   type FieldValues,
 } from '../model/fields'
+import { isRichDocEmpty } from '../model/rich-text'
 import type { SectionType } from '../model/sections'
 import { HEADER_HEIGHT_VAR } from './chrome'
 import { useRenderEnvironment, type StorefrontCategoryData } from './context'
+import { useRenderText } from './copy'
 import { useSectionLayout } from './frame'
 import { useResponsive } from './hooks'
 import { isPatternKey, patternStyle } from './patterns'
@@ -824,13 +826,26 @@ function TextColumn({
 }
 
 function RichText({ settings }: SectionProps) {
+  const { mode } = useRenderEnvironment()
+  const text = useRenderText()
   const align = alignOf(settings)
+  const heading = readText(settings, 'heading')
+  const body = readRichText(settings, 'body')
+  // An empty text block draws nothing on the storefront — and in the editor
+  // that left nothing to click. There it says what goes here instead.
+  const empty = !heading && isRichDocEmpty(body)
   return (
     <TextColumn settings={settings} narrow="2xl" wide="5xl">
       <SectionHeading align={align} field="heading">
-        {readText(settings, 'heading')}
+        {heading}
       </SectionHeading>
-      <RichTextView doc={readRichText(settings, 'body')} align={align} />
+      {empty && mode === 'preview' ? (
+        <Text color="fg.subtle" fontStyle="italic" textAlign={align} py="2">
+          {text('textPlaceholder')}
+        </Text>
+      ) : (
+        <RichTextView doc={body} align={align} />
+      )}
     </TextColumn>
   )
 }
