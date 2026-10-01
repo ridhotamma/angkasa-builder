@@ -11,3 +11,9 @@
 
 export { renderTemplateSnapshotHtml, type SnapshotHtmlInput } from './render-html'
 export { screenshotHtml, SNAPSHOT_VIEWPORT } from './screenshot'
+export {
+  renderFunctionConfig,
+  renderViaFunction,
+  type RenderFunctionRequest,
+  type RenderFunctionResult,
+} from './remote'
