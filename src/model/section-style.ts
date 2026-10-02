@@ -14,7 +14,7 @@
  * default below is "exactly as before".
  */
 
-import { readDate, readText, type Field, type FieldValues } from './fields'
+import { readBoolean, readDate, readText, type Field, type FieldValues } from './fields'
 import type { Localized } from './localized'
 import { SCHEME_KEYS, SCHEME_LABELS, type SchemeKey } from './settings'
 
@@ -66,6 +66,12 @@ export const MOTION_OVERRIDES = [
   { value: 'expressive', label: { en: 'Expressive zoom', id: 'Zoom ekspresif' } },
 ] as const
 export type SectionMotion = (typeof MOTION_OVERRIDES)[number]['value']
+
+export const HEADLINE_ANIMATIONS = [
+  { value: 'none', label: { en: 'None', id: 'Tidak ada' } },
+  { value: 'rise', label: { en: 'Words rise', id: 'Kata muncul' } },
+] as const
+export type SectionHeadline = (typeof HEADLINE_ANIMATIONS)[number]['value']
 
 export const SECTION_STYLE_FIELDS: readonly Field[] = [
   {
@@ -127,6 +133,27 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     label: { en: 'Section motion', id: 'Animasi bagian' },
     options: MOTION_OVERRIDES,
     default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'headline',
+    label: { en: 'Heading animation', id: 'Animasi judul' },
+    help: {
+      en: 'The section heading rises word by word. The preview shows the final text.',
+      id: 'Judul bagian muncul kata per kata. Pratinjau menampilkan teks akhir.',
+    },
+    options: HEADLINE_ANIMATIONS,
+    default: 'none',
+  },
+  {
+    kind: 'boolean',
+    key: 'stagger',
+    label: { en: 'Stagger entrance', id: 'Muncul berurutan' },
+    help: {
+      en: 'Blocks enter one after another instead of all at once. Needs motion on.',
+      id: 'Blok-blok muncul satu per satu. Perlu animasi menyala.',
+    },
+    default: false,
   },
   {
     kind: 'select',
@@ -209,6 +236,8 @@ export interface ResolvedSectionStyle {
   dividerTop: DividerShape
   dividerBottom: DividerShape
   motion: SectionMotion
+  headline: SectionHeadline
+  stagger: boolean
   width: SectionWidth
   paddingTop: SectionSpacing
   paddingBottom: SectionSpacing
@@ -265,6 +294,13 @@ export function readSectionStyle(style: FieldValues): ResolvedSectionStyle {
       'none',
     ),
     motion: readOption(style, 'motion', MOTION_OVERRIDES.map((motion) => motion.value), 'default'),
+    headline: readOption(
+      style,
+      'headline',
+      HEADLINE_ANIMATIONS.map((animation) => animation.value),
+      'none',
+    ),
+    stagger: readBoolean(style, 'stagger'),
     width: width === 'full' || width === 'edge' ? width : 'contained',
     paddingTop: readOption(style, 'paddingTop', SPACING.map((option) => option.value), 'auto'),
     paddingBottom: readOption(

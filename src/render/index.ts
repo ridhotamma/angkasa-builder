@@ -47,5 +47,6 @@ export {
 export { SECTION_RENDERERS } from './registry'
 export { SectionDivider } from './dividers'
 export type { DividerShape } from '../model/section-style'
+export { CountUp, Magnetic, SplitText, useEnterState } from './motion'
 export type { SectionProps } from './sections'
 export { SNAPSHOT_WIDTH, TemplateSnapshotPage, type SnapshotPageProps } from './theme-preview'

@@ -11,7 +11,14 @@
  * rules" in docs/POSITIONING.md.
  */
 
-import type { BlockSchema, Field, ItemField, ListField, RichTextField } from './fields'
+import type {
+  BlockSchema,
+  Field,
+  ItemField,
+  ListField,
+  RichTextField,
+  TextField,
+} from './fields'
 import type { Localized } from './localized'
 
 /**
@@ -104,7 +111,7 @@ export function isSectionAllowed(schema: SectionSchema, scope: SectionScope): bo
 /* Field builders                                                             */
 /* -------------------------------------------------------------------------- */
 
-const heading = (fallback = ''): Field => ({
+const heading = (fallback = ''): TextField => ({
   kind: 'text',
   key: 'heading',
   label: { en: 'Heading', id: 'Judul' },
@@ -1416,6 +1423,47 @@ export const SECTION_SCHEMAS = [
     ],
   },
   {
+    type: 'scroll-rail',
+    scopes: EVERYWHERE,
+    category: 'media',
+    icon: 'marquee',
+    name: { en: 'Scroll rail', id: 'Rel gulir' },
+    description: {
+      en: 'A horizontal gallery driven by vertical scrolling.',
+      id: 'Galeri horizontal yang bergerak saat halaman digulir.',
+    },
+    fields: [
+      heading(''),
+      {
+        kind: 'list',
+        key: 'items',
+        label: { en: 'Cards', id: 'Kartu' },
+        itemLabel: { en: 'Card', id: 'Kartu' },
+        titleKey: 'title',
+        max: 10,
+        fields: [
+          { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+          {
+            kind: 'text',
+            key: 'title',
+            label: { en: 'Title', id: 'Judul' },
+            max: 80,
+            default: '',
+          },
+          {
+            kind: 'textarea',
+            key: 'text',
+            label: { en: 'Text', id: 'Teks' },
+            max: 200,
+            default: '',
+            rows: 2,
+          },
+          { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
+        ],
+      },
+    ],
+  },
+  {
     type: 'logo-list',
     scopes: EVERYWHERE,
     category: 'trust',
@@ -1586,6 +1634,45 @@ export const SECTION_SCHEMAS = [
             default: '',
           },
           { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'pinned-scroll',
+    category: 'text',
+    icon: 'layers',
+    name: { en: 'Pinned story', id: 'Cerita menempel' },
+    description: {
+      en: 'A full-screen stage pinned while scrolling through feature panels.',
+      id: 'Panggung selayar penuh yang menempel saat menggulir panel fitur.',
+    },
+    fields: [
+      heading(''),
+      {
+        kind: 'list',
+        key: 'panels',
+        label: { en: 'Panels', id: 'Panel' },
+        itemLabel: { en: 'Panel', id: 'Panel' },
+        titleKey: 'heading',
+        max: 6,
+        fields: [
+          heading(''),
+          body(),
+          { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+          buttonLabel,
+          buttonLink,
+          {
+            kind: 'select',
+            key: 'tone',
+            label: { en: 'Panel style', id: 'Gaya panel' },
+            options: [
+              { value: 'page', label: { en: 'Page', id: 'Halaman' } },
+              { value: 'dark', label: { en: 'Dark', id: 'Gelap' } },
+              { value: 'brand', label: { en: 'Brand', id: 'Brand' } },
+            ],
+            default: 'page',
+          },
         ],
       },
     ],
@@ -1922,6 +2009,71 @@ export const SECTION_SCHEMAS = [
           ],
         },
         style: { colorScheme: 'subtle' },
+      },
+    ],
+  },
+
+  {
+    type: 'stats',
+    scopes: EVERYWHERE,
+    category: 'trust',
+    icon: 'gauge',
+    name: { en: 'Stats', id: 'Statistik' },
+    description: {
+      en: 'Animated numbers — customers served, rating, years running.',
+      id: 'Angka yang berhitung naik — pelanggan, rating, tahun berjalan.',
+    },
+    fields: [
+      heading(''),
+      align,
+      columns(4),
+      {
+        kind: 'list',
+        key: 'items',
+        label: { en: 'Stats', id: 'Statistik' },
+        itemLabel: { en: 'Stat', id: 'Statistik' },
+        titleKey: 'label',
+        max: 8,
+        fields: [
+          {
+            kind: 'number',
+            key: 'value',
+            label: { en: 'Number', id: 'Angka' },
+            min: 0,
+            max: 1000000000,
+            step: 0.1,
+            default: 100,
+          },
+          {
+            kind: 'number',
+            key: 'decimals',
+            label: { en: 'Decimals', id: 'Desimal' },
+            min: 0,
+            max: 2,
+            default: 0,
+          },
+          {
+            kind: 'text',
+            key: 'prefix',
+            label: { en: 'Before the number', id: 'Sebelum angka' },
+            max: 8,
+            default: '',
+          },
+          {
+            kind: 'text',
+            key: 'suffix',
+            label: { en: 'After the number', id: 'Sesudah angka' },
+            max: 12,
+            default: '',
+          },
+          {
+            kind: 'text',
+            key: 'label',
+            label: { en: 'Label', id: 'Keterangan' },
+            max: 60,
+            default: '',
+          },
+        ],
       },
     ],
   },

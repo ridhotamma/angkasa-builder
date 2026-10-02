@@ -34,7 +34,9 @@ import { ImageWithFallback } from '@repo/theme'
 import { readLink, readText, type FieldValues } from '../model/fields'
 import type { Link } from '../model/links'
 import type { ButtonStyle, CardStyle } from '../model/settings'
+import type { SectionHeadline } from '../model/section-style'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
+import { Magnetic, SplitText } from './motion'
 
 /**
  * Props for every dialog and drawer a section opens (photo viewer, size
@@ -137,6 +139,7 @@ export function ThemeButton({
   link,
   secondary = false,
   onImage = false,
+  magnetic = false,
 }: {
   label: string
   link: Link
@@ -144,6 +147,8 @@ export function ThemeButton({
   secondary?: boolean
   /** Over a photo, where the brand colour may not read: white instead. */
   onImage?: boolean
+  /** Lean toward the pointer on banners; pointers only, harmless elsewhere. */
+  magnetic?: boolean
 }) {
   const { settings } = useRenderEnvironment()
   const anchor = useAnchor(link)
@@ -162,18 +167,22 @@ export function ThemeButton({
     variant,
     rounded: look.rounded,
     size: 'lg',
+    transition: 'transform 180ms ease, background-color 150ms ease',
+    _hover: { transform: 'translateY(-1px)' },
+    _active: { transform: 'translateY(0) scale(0.98)' },
     ...imageLook,
   } as const
 
-  if (!anchor) return <Button {...props}>{label}</Button>
-
-  return (
+  const button = !anchor ? (
+    <Button {...props}>{label}</Button>
+  ) : (
     <Button asChild {...props}>
       <ChakraLink unstyled {...anchor}>
         {label}
       </ChakraLink>
     </Button>
   )
+  return magnetic ? <Magnetic>{button}</Magnetic> : button
 }
 
 /** A section's main and second buttons, side by side, wrapping on a narrow screen. */
@@ -181,22 +190,30 @@ export function ButtonRow({
   settings,
   align = 'left',
   onImage = false,
+  magnetic = false,
 }: {
   settings: FieldValues
   align?: 'left' | 'center'
   onImage?: boolean
+  magnetic?: boolean
 }) {
   const primary = readText(settings, 'buttonLabel')
   const secondary = readText(settings, 'secondaryButtonLabel')
   if (!primary && !secondary) return null
   return (
     <HStack gap="3" wrap="wrap" justify={align === 'center' ? 'center' : 'start'}>
-      <ThemeButton label={primary} link={readLink(settings, 'buttonLink')} onImage={onImage} />
+      <ThemeButton
+        label={primary}
+        link={readLink(settings, 'buttonLink')}
+        onImage={onImage}
+        magnetic={magnetic}
+      />
       <ThemeButton
         label={secondary}
         link={readLink(settings, 'secondaryButtonLink')}
         secondary
         onImage={onImage}
+        magnetic={magnetic}
       />
     </HStack>
   )
@@ -208,6 +225,13 @@ export function ButtonRow({
 
 /** Which section a renderer is drawing, for text edited straight in the preview. */
 export const SectionIdContext = createContext<string | null>(null)
+
+/**
+ * The section's heading animation, set by the frame around it. Lives here —
+ * not on the frame's layout context — so this module stays importable from
+ * the frame without a cycle.
+ */
+export const HeadlineContext = createContext<SectionHeadline>('none')
 
 /**
  * A piece of a section's text that the seller can click and type into in the
@@ -300,10 +324,19 @@ export function SectionHeading({
   /** The setting the heading is, so the seller can type into it in the preview. */
   field?: string
 }) {
+  const { mode } = useRenderEnvironment()
+  const headline = useContext(HeadlineContext)
   if (!children) return null
+  // Split words animate on the storefront; the preview keeps editable text,
+  // so the seller can still click and type. A section without a field — a
+  // status line, not a setting — animates in both.
+  const animated =
+    headline === 'rise' && typeof children === 'string' && (mode === 'live' || !field)
   return (
     <Heading as="h2" size={{ base: 'lg', md: 'xl' }} textAlign={align} letterSpacing="-0.01em">
-      {field && typeof children === 'string' ? (
+      {animated ? (
+        <SplitText text={children} />
+      ) : field && typeof children === 'string' ? (
         <EditableText field={field} value={children} />
       ) : (
         children
@@ -385,6 +418,12 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
       overflow="hidden"
       transition="border-color 150ms"
       _hover={{ borderColor: 'brand.emphasized' }}
+      css={{
+        '&:hover img': { transform: 'scale(1.05)' },
+        '@media (prefers-reduced-motion: reduce)': {
+          '&:hover img': { transform: 'none' },
+        },
+      }}
       {...frame}
     >
       <SmartLink
@@ -405,6 +444,7 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
             alt={product.name}
             objectFit="cover"
             loading="lazy"
+            transition="transform 600ms ease"
           />
         </AspectRatio>
         <Stack gap="1.5" p={flat ? '2' : { base: '3', sm: '3.5' }} flex="1">

@@ -51,6 +51,7 @@ import { useRenderEnvironment, type StorefrontCategoryData } from './context'
 import { useRenderText } from './copy'
 import { useSectionLayout } from './frame'
 import { useResponsive } from './hooks'
+import { SplitText } from './motion'
 import { isPatternKey, patternStyle } from './patterns'
 import { RichTextView } from './rich-text'
 import {
@@ -162,11 +163,15 @@ export function overlayProps(
  * Shared by the image, video and parallax banners so all three read alike.
  */
 export function BannerCopy({ settings, onImage }: { settings: FieldValues; onImage: boolean }) {
+  const { mode } = useRenderEnvironment()
+  const { headline } = useSectionLayout()
   const heading = readText(settings, 'heading')
   const subheading = readText(settings, 'subheading')
   const align = alignOf(settings)
   const middle = readText(settings, 'contentPosition') === 'middle'
   const height = heroHeight(settings)
+  // The hero's words rise on the storefront; the preview keeps editable text.
+  const animatedHeading = headline === 'rise' && mode === 'live'
 
   return (
     <Flex
@@ -192,7 +197,11 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
             lineHeight="1.05"
             textWrap="balance"
           >
-            <EditableText field="heading" value={heading} />
+            {animatedHeading ? (
+              <SplitText text={heading} />
+            ) : (
+              <EditableText field="heading" value={heading} />
+            )}
           </Heading>
         )}
         {subheading && (
@@ -200,7 +209,7 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
             <EditableText field="subheading" value={subheading} />
           </Text>
         )}
-        <ButtonRow settings={settings} align={align} onImage={onImage} />
+        <ButtonRow settings={settings} align={align} onImage={onImage} magnetic />
       </Stack>
     </Flex>
   )
