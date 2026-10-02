@@ -1,6 +1,19 @@
 /** The theme tab: colours, fonts and shape, with the contrast check live. */
 
-import { Alert, Box, HStack, Stack, Switch, Text } from '@chakra-ui/react'
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Flex,
+  HStack,
+  Icon,
+  Stack,
+  Switch,
+  Text,
+} from '@chakra-ui/react'
+import { useState } from 'react'
+import { LuSparkles } from 'react-icons/lu'
 
 import {
   ANIMATION_LABELS,
@@ -20,7 +33,9 @@ import {
   type ThemeSettings,
 } from '../model/settings'
 import { ColorInput, Labeled, SelectInput } from './controls'
+import { LookPickerDialog } from './look-picker-dialog'
 import { useEditorText, type EditorMessage } from './messages'
+import { PaletteStrip } from './palette-swatch'
 
 function Heading({ children }: { children: string }) {
   return (
@@ -39,11 +54,18 @@ function Heading({ children }: { children: string }) {
 export function ThemeSettingsPanel({
   settings,
   onChange,
+  defaultLookPickerOpen = false,
+  priorityLookKeys = [],
 }: {
   settings: ThemeSettings
   onChange: (settings: ThemeSettings) => void
+  /** Open the look picker on mount — a fresh theme or a fresh install. */
+  defaultLookPickerOpen?: boolean
+  /** Look keys a freshly installed template suggests, shown first. */
+  priorityLookKeys?: readonly string[]
 }) {
   const { t, l } = useEditorText()
+  const [pickerOpen, setPickerOpen] = useState(defaultLookPickerOpen)
   const issues = contrastIssues(settings)
   const schemeIssues = schemeContrastIssues(settings)
 
@@ -59,6 +81,53 @@ export function ThemeSettingsPanel({
 
   return (
     <Stack gap="6">
+      {/* Curated Looks & Palettes Quick Selector */}
+      <Box
+        borderWidth="1px"
+        borderColor="border.subtle"
+        rounded="lg"
+        p="3.5"
+        bg="bg.subtle"
+      >
+        <Flex justify="space-between" align="center" mb="2">
+          <Heading>{t('looksAndPalettes')}</Heading>
+          <Badge size="xs" variant="surface">
+            {settings.fonts.heading} / {settings.fonts.body}
+          </Badge>
+        </Flex>
+
+        <HStack
+          gap="0"
+          h="4"
+          rounded="sm"
+          overflow="hidden"
+          mb="3"
+          borderWidth="1px"
+          borderColor="border.subtle"
+        >
+          <PaletteStrip colors={settings.colors} />
+        </HStack>
+
+        <Button
+          size="sm"
+          variant="outline"
+          w="100%"
+          colorPalette="brand"
+          onClick={() => setPickerOpen(true)}
+        >
+          <Icon as={LuSparkles} />
+          <span>{t('browseLooks')}</span>
+        </Button>
+      </Box>
+
+      <LookPickerDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        settings={settings}
+        onApply={onChange}
+        priorityKeys={priorityLookKeys}
+      />
+
       <Stack gap="3">
         <Heading>{t('colors')}</Heading>
         {color('brand', 'brandColor')}

@@ -31,6 +31,7 @@ import {
   type SectionScope,
   type SectionType,
 } from './sections'
+import { isLookKey } from './looks'
 import { DEFAULT_THEME_SETTINGS, sanitizeThemeSettings, type ThemeSettings } from './settings'
 
 /** Bumped when the stored shape changes in a way a reader must know about. */
@@ -38,6 +39,27 @@ export const CONTENT_VERSION = 1
 
 /** Enough for a long landing page; a hundred sections is a mistake, not a design. */
 export const MAX_SECTIONS = 40
+
+/** A template suggests at most a few starting looks; more is a catalogue, not a suggestion. */
+export const MAX_RECOMMENDED_LOOKS = 6
+
+/**
+ * A template's suggested starting looks, as LOOKS keys. Unknown keys are
+ * dropped rather than rejected, like unknown sections: a layout saved by a
+ * newer release, read by an older one mid-deploy, keeps what it recognises.
+ */
+export function sanitizeRecommendedLooks(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const key of value) {
+    if (out.length >= MAX_RECOMMENDED_LOOKS) break
+    if (!isLookKey(key) || seen.has(key)) continue
+    seen.add(key)
+    out.push(key)
+  }
+  return out
+}
 
 /** The ceiling the schema's string columns are sized for. */
 export const MAX_CONTENT_BYTES = 200_000
@@ -65,6 +87,12 @@ export interface ThemeContent {
   settings: ThemeSettings
   layout: ThemeLayout
   templates: Record<TemplateKey, SectionInstance[]>
+  /**
+   * Template metadata, not shop data: the looks a template suggests a new
+   * shop starts from. An installed shop theme inherits its template's
+   * suggestions; applying a look never touches them.
+   */
+  recommendedLooks: string[]
 }
 
 export interface PageContent {
@@ -232,6 +260,21 @@ export function sanitizeThemeContent(value: unknown): ThemeContent {
       product: sanitizeProductTemplate(templates.product),
       article: sanitizeArticleTemplate(templates.article),
     },
+    recommendedLooks: sanitizeRecommendedLooks(source.recommendedLooks),
+  }
+}
+
+/**
+ * A stored theme's recommended looks without the cost of a full sanitize —
+ * for list screens that draw the summary, not the layout.
+ */
+export function peekRecommendedLooks(json: string | null | undefined): string[] {
+  if (!json) return []
+  try {
+    const value: unknown = JSON.parse(json)
+    return sanitizeRecommendedLooks(isRecord(value) ? value.recommendedLooks : [])
+  } catch {
+    return []
   }
 }
 
@@ -277,6 +320,7 @@ export const EMPTY_THEME_CONTENT: ThemeContent = {
   settings: DEFAULT_THEME_SETTINGS,
   layout: sanitizeLayout(null),
   templates: { home: [], product: [], article: [] },
+  recommendedLooks: [],
 }
 
 /* -------------------------------------------------------------------------- */

@@ -26,6 +26,7 @@ function content(): ThemeContent {
       product: [],
       article: [],
     },
+    recommendedLooks: [],
   }
 }
 

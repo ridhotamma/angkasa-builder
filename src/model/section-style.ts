@@ -3,6 +3,11 @@
  * wears, how much room it takes, how wide it runs, on which devices it
  * appears, and between which dates.
  *
+ * Extended with premium visuals (docs/PREMIUM-VISUALS.md):
+ * - Surface textures: background gradients and patterns
+ * - Section dividers: top/bottom wave, slant, curve, arc, zigzag
+ * - Motion overrides: per-section animation
+ *
  * Kept apart from a section's own fields (`SectionInstance.style`, not
  * `.settings`) so that no section schema has to repeat them, and so that a
  * layout saved before they existed reads as the look it always had: every
@@ -22,6 +27,46 @@ const SPACING = [
   { value: 'xl', label: { en: 'Extra large', id: 'Sangat besar' } },
 ] as const
 
+export const BACKGROUND_TYPES = ['default', 'gradient', 'pattern'] as const
+export type BackgroundType = (typeof BACKGROUND_TYPES)[number]
+
+export const BACKGROUND_GRADIENTS = [
+  { value: 'subtle-warm', label: { en: 'Subtle Warm', id: 'Hangat Lembut' } },
+  { value: 'subtle-cool', label: { en: 'Subtle Cool', id: 'Sejuk Lembut' } },
+  { value: 'sunset', label: { en: 'Sunset Glow', id: 'Senja Bercahaya' } },
+  { value: 'ocean', label: { en: 'Ocean Breeze', id: 'Semilir Samudra' } },
+  { value: 'radial-glow', label: { en: 'Radial Glow', id: 'Pendar Memusat' } },
+  { value: 'mesh', label: { en: 'Aurora Mesh', id: 'Aurora Mesh' } },
+] as const
+export type BackgroundGradient = (typeof BACKGROUND_GRADIENTS)[number]['value']
+
+export const BACKGROUND_PATTERNS = [
+  { value: 'none', label: { en: 'None', id: 'Tanpa pola' } },
+  { value: 'dots', label: { en: 'Subtle Dots', id: 'Titik-titik Halus' } },
+  { value: 'grid', label: { en: 'Blueprint Grid', id: 'Garis Kisi' } },
+  { value: 'stripes', label: { en: 'Diagonal Stripes', id: 'Garis Diagonal' } },
+] as const
+export type BackgroundPattern = (typeof BACKGROUND_PATTERNS)[number]['value']
+
+export const DIVIDER_SHAPES = [
+  { value: 'none', label: { en: 'None', id: 'Tanpa pembatas' } },
+  { value: 'wave', label: { en: 'Gentle Wave', id: 'Gelombang Halus' } },
+  { value: 'slant', label: { en: 'Modern Slant', id: 'Garis Miring' } },
+  { value: 'curve', label: { en: 'Smooth Curve', id: 'Lengkung Halus' } },
+  { value: 'arc', label: { en: 'Inverted Arc', id: 'Busur Melengkung' } },
+  { value: 'zigzag', label: { en: 'Dynamic Zigzag', id: 'Gerigi Zigzag' } },
+] as const
+export type DividerShape = (typeof DIVIDER_SHAPES)[number]['value']
+
+export const MOTION_OVERRIDES = [
+  { value: 'default', label: { en: 'Theme default', id: 'Ikuti tema' } },
+  { value: 'none', label: { en: 'None (static)', id: 'Tanpa animasi' } },
+  { value: 'subtle', label: { en: 'Subtle fade in', id: 'Muncul perlahan' } },
+  { value: 'slide-up', label: { en: 'Rise & settle', id: 'Naik & menetap' } },
+  { value: 'expressive', label: { en: 'Expressive zoom', id: 'Zoom ekspresif' } },
+] as const
+export type SectionMotion = (typeof MOTION_OVERRIDES)[number]['value']
+
 export const SECTION_STYLE_FIELDS: readonly Field[] = [
   {
     kind: 'select',
@@ -35,6 +80,52 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
       value,
       label: SCHEME_LABELS[value],
     })),
+    default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'backgroundType',
+    label: { en: 'Surface texture', id: 'Tekstur latar' },
+    options: [
+      { value: 'default', label: { en: 'Solid / Scheme', id: 'Warna polos / skema' } },
+      { value: 'gradient', label: { en: 'Gradient', id: 'Gradasi' } },
+      { value: 'pattern', label: { en: 'Pattern texture', id: 'Tekstur pola' } },
+    ],
+    default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'backgroundGradient',
+    label: { en: 'Gradient style', id: 'Gaya gradasi' },
+    options: BACKGROUND_GRADIENTS,
+    default: 'subtle-warm',
+  },
+  {
+    kind: 'select',
+    key: 'backgroundPattern',
+    label: { en: 'Pattern overlay', id: 'Lapisan pola' },
+    options: BACKGROUND_PATTERNS,
+    default: 'none',
+  },
+  {
+    kind: 'select',
+    key: 'dividerTop',
+    label: { en: 'Top divider', id: 'Pembatas atas' },
+    options: DIVIDER_SHAPES,
+    default: 'none',
+  },
+  {
+    kind: 'select',
+    key: 'dividerBottom',
+    label: { en: 'Bottom divider', id: 'Pembatas bawah' },
+    options: DIVIDER_SHAPES,
+    default: 'none',
+  },
+  {
+    kind: 'select',
+    key: 'motion',
+    label: { en: 'Section motion', id: 'Animasi bagian' },
+    options: MOTION_OVERRIDES,
     default: 'default',
   },
   {
@@ -112,6 +203,12 @@ export type SectionVisibility = 'all' | 'mobile' | 'desktop'
 
 export interface ResolvedSectionStyle {
   scheme: SchemeKey | null
+  backgroundType: BackgroundType
+  backgroundGradient: BackgroundGradient
+  backgroundPattern: BackgroundPattern
+  dividerTop: DividerShape
+  dividerBottom: DividerShape
+  motion: SectionMotion
   width: SectionWidth
   paddingTop: SectionSpacing
   paddingBottom: SectionSpacing
@@ -120,19 +217,62 @@ export interface ResolvedSectionStyle {
   showUntil: Date | null
 }
 
+/**
+ * A stored select value, or `fallback` when it is missing or not one of the
+ * allowed options. Every style option reads through this, so a value saved by
+ * an older or newer release degrades to "exactly as before".
+ */
+function readOption<T extends string>(
+  style: FieldValues,
+  key: string,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  const value = readText(style, key)
+  return (allowed as readonly string[]).includes(value) ? (value as T) : fallback
+}
+
 export function readSectionStyle(style: FieldValues): ResolvedSectionStyle {
   const scheme = readText(style, 'colorScheme')
   const width = readText(style, 'width')
   const visibility = readText(style, 'visibility')
-  const spacing = (key: string): SectionSpacing => {
-    const value = readText(style, key)
-    return SPACING.some((option) => option.value === value) ? (value as SectionSpacing) : 'auto'
-  }
+
   return {
     scheme: (SCHEME_KEYS as readonly string[]).includes(scheme) ? (scheme as SchemeKey) : null,
+    backgroundType: readOption(style, 'backgroundType', BACKGROUND_TYPES, 'default'),
+    backgroundGradient: readOption(
+      style,
+      'backgroundGradient',
+      BACKGROUND_GRADIENTS.map((gradient) => gradient.value),
+      'subtle-warm',
+    ),
+    backgroundPattern: readOption(
+      style,
+      'backgroundPattern',
+      BACKGROUND_PATTERNS.map((pattern) => pattern.value),
+      'none',
+    ),
+    dividerTop: readOption(
+      style,
+      'dividerTop',
+      DIVIDER_SHAPES.map((divider) => divider.value),
+      'none',
+    ),
+    dividerBottom: readOption(
+      style,
+      'dividerBottom',
+      DIVIDER_SHAPES.map((divider) => divider.value),
+      'none',
+    ),
+    motion: readOption(style, 'motion', MOTION_OVERRIDES.map((motion) => motion.value), 'default'),
     width: width === 'full' || width === 'edge' ? width : 'contained',
-    paddingTop: spacing('paddingTop'),
-    paddingBottom: spacing('paddingBottom'),
+    paddingTop: readOption(style, 'paddingTop', SPACING.map((option) => option.value), 'auto'),
+    paddingBottom: readOption(
+      style,
+      'paddingBottom',
+      SPACING.map((option) => option.value),
+      'auto',
+    ),
     visibility: visibility === 'mobile' || visibility === 'desktop' ? visibility : 'all',
     showFrom: readDate(style, 'showFrom'),
     showUntil: readDate(style, 'showUntil'),

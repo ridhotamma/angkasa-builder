@@ -225,6 +225,23 @@ const MESSAGES = {
   standInCart: { en: 'Cart', id: 'Keranjang' },
   standInAccount: { en: 'Account', id: 'Akun' },
 
+  // Looks and palettes
+  looksAndPalettes: { en: 'Looks & Palettes', id: 'Tampilan & Palet' },
+  looksAndPalettesHelp: {
+    en: 'Start from a curated look or palette, then make it yours.',
+    id: 'Mulai dari tampilan atau palet pilihan, lalu sesuaikan.',
+  },
+  browseLooks: { en: 'Browse curated looks…', id: 'Jelajahi pilihan tampilan…' },
+  curatedLooks: { en: 'Curated looks', id: 'Pilihan tampilan' },
+  colorPalettes: { en: 'Color palettes', id: 'Palet warna' },
+  recommendedLooks: { en: 'Recommended for this template', id: 'Disarankan untuk template ini' },
+  searchMoodPlaceholder: {
+    en: 'Search mood: warm, luxury, bold…',
+    id: 'Cari mood: hangat, mewah, berani…',
+  },
+  applyLook: { en: 'Apply look', id: 'Terapkan tampilan' },
+  applyPalette: { en: 'Apply palette', id: 'Terapkan palet' },
+
   // Menus
   menuAddItem: { en: 'Add link', id: 'Tambah tautan' },
   menuAddChild: { en: 'Add link under this one', id: 'Tambah tautan di bawahnya' },

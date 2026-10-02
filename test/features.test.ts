@@ -195,6 +195,40 @@ describe('section style', () => {
     expect(section!.style.showFrom).toBe('')
     expect(section!.style.colorScheme).toBe('default')
   })
+
+  test('resolves background textures, gradients, dividers and motion overrides', () => {
+    const style = readSectionStyle({
+      backgroundType: 'gradient',
+      backgroundGradient: 'sunset',
+      backgroundPattern: 'dots',
+      dividerTop: 'wave',
+      dividerBottom: 'slant',
+      motion: 'expressive',
+    })
+    expect(style.backgroundType).toBe('gradient')
+    expect(style.backgroundGradient).toBe('sunset')
+    expect(style.backgroundPattern).toBe('dots')
+    expect(style.dividerTop).toBe('wave')
+    expect(style.dividerBottom).toBe('slant')
+    expect(style.motion).toBe('expressive')
+  })
+
+  test('unknown visual style options fall back safely to defaults', () => {
+    const style = readSectionStyle({
+      backgroundType: 'psychedelic',
+      backgroundGradient: 'rainbow',
+      backgroundPattern: 'triangles',
+      dividerTop: 'explosions',
+      dividerBottom: 'craters',
+      motion: 'super-hyper-warp',
+    })
+    expect(style.backgroundType).toBe('default')
+    expect(style.backgroundGradient).toBe('subtle-warm')
+    expect(style.backgroundPattern).toBe('none')
+    expect(style.dividerTop).toBe('none')
+    expect(style.dividerBottom).toBe('none')
+    expect(style.motion).toBe('default')
+  })
 })
 
 describe('colour schemes', () => {

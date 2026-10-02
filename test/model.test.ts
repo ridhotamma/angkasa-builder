@@ -14,6 +14,8 @@ import {
   canDuplicateSection,
   createSection,
   duplicateSection,
+  isLookKey,
+  MAX_RECOMMENDED_LOOKS,
   MAX_SECTIONS,
   menuFormSchema,
   moveSection,
@@ -22,8 +24,10 @@ import {
   imageFileIds,
   voucherIds,
   parseThemeContent,
+  peekRecommendedLooks,
   remapImageFileIds,
   sanitizeLink,
+  sanitizeRecommendedLooks,
   sanitizeSections,
   sanitizeThemeContent,
   sanitizeThemeSettings,
@@ -170,6 +174,28 @@ describe('theme content', () => {
   test('the built-in library is empty — templates are designed from scratch', () => {
     expect(THEME_PRESETS).toEqual([])
     expect(findPreset('classic')).toBeNull()
+  })
+
+  test('recommended looks keep known keys, deduplicated and capped', () => {
+    expect(sanitizeRecommendedLooks(['warm-organic', 'nope', 'warm-organic'])).toEqual([
+      'warm-organic',
+    ])
+    expect(sanitizeRecommendedLooks('warm-organic')).toEqual([])
+    expect(sanitizeRecommendedLooks(undefined)).toEqual([])
+    const many = ['minimal', 'warm-organic', 'editorial-fashion', 'neo-brutalist', 'luxury-boutique', 'bold-maximal', 'retro-vintage', 'tech-futuristic']
+    expect(sanitizeRecommendedLooks(many)).toHaveLength(MAX_RECOMMENDED_LOOKS)
+    expect(isLookKey('warm-organic')).toBe(true)
+    expect(isLookKey('nope')).toBe(false)
+    expect(isLookKey(null)).toBe(false)
+  })
+
+  test('a theme carries its template’s suggestions; peeking never throws', () => {
+    const content = sanitizeThemeContent({ recommendedLooks: ['luxury-boutique', 'nope'] })
+    expect(content.recommendedLooks).toEqual(['luxury-boutique'])
+    expect(peekRecommendedLooks(serializeContent(content))).toEqual(['luxury-boutique'])
+    expect(peekRecommendedLooks('{not json')).toEqual([])
+    expect(peekRecommendedLooks(null)).toEqual([])
+    expect(peekRecommendedLooks('{"recommendedLooks":"luxury-boutique"}')).toEqual([])
   })
 
   test('refuses content past the column size', () => {

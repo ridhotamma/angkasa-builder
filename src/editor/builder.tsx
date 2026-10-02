@@ -161,6 +161,12 @@ export interface PageBuilderProps {
   footerPages?: Array<{ title: string; slug: string }>
   /** Undo and redo, from the screen's `useUndoableState`. */
   history?: EditorHistory
+  /**
+   * Open the look picker on mount, on the theme tab — a blank theme just
+   * created, or a template just installed. `priorityKeys` are the installed
+   * template's suggested looks, shown first.
+   */
+  startWithLooks?: { priorityKeys?: readonly string[] }
   /** Rendered above the preview, e.g. save and publish buttons. */
   toolbar?: ReactNode
   /** Said above the preview before the "click a section" hint, e.g. which theme it uses. */
@@ -315,11 +321,12 @@ function Builder({
   previewNote,
   height = 'calc(100dvh - 9rem)',
   frame,
+  startWithLooks,
   products,
 }: PageBuilderProps & { products: StorefrontRenderData['latest'] }) {
   const { t, l } = useEditorText()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [tab, setTab] = useState<'sections' | 'theme'>('sections')
+  const [tab, setTab] = useState<'sections' | 'theme'>(startWithLooks ? 'theme' : 'sections')
   const [sectionTab, setSectionTab] = useState<'content' | 'style' | 'visibility'>('content')
   const [device, setDevice] = useState<PreviewDevice>('desktop')
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null)
@@ -593,7 +600,12 @@ function Builder({
               {list()}
             </Tabs.Content>
             <Tabs.Content value="theme" p="0">
-              <ThemeSettingsPanel settings={settings} onChange={onSettingsChange} />
+              <ThemeSettingsPanel
+                settings={settings}
+                onChange={onSettingsChange}
+                defaultLookPickerOpen={Boolean(startWithLooks)}
+                priorityLookKeys={startWithLooks?.priorityKeys}
+              />
             </Tabs.Content>
           </Tabs.Root>
         ) : (

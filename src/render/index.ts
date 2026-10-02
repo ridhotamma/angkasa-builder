@@ -45,5 +45,7 @@ export {
   type SectionsRendererProps,
 } from './renderer'
 export { SECTION_RENDERERS } from './registry'
+export { SectionDivider } from './dividers'
+export type { DividerShape } from '../model/section-style'
 export type { SectionProps } from './sections'
 export { SNAPSHOT_WIDTH, TemplateSnapshotPage, type SnapshotPageProps } from './theme-preview'
