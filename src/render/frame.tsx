@@ -30,7 +30,7 @@ import {
 } from '../model/section-style'
 import { resolveScheme, schemeCssVars, type SchemeKey } from '../model/settings'
 import { useRenderEnvironment } from './context'
-import { PANEL_PX, PATTERNS, SectionDivider, surfacePaint } from './dividers'
+import { PANEL_PX, PATTERNS, SectionDivider, surfacePaint, surfaceShade } from './dividers'
 import { BackgroundVideo } from './media'
 import { revealRootMargin, useMotionEffect } from './motion/engine'
 import { FullBleed, HeadlineContext } from './primitives'
@@ -139,66 +139,78 @@ export function SectionFrame({
   }
 
   const pattern = paint.pattern
-  const shade =
-    paint.overlay === 'light'
-      ? 'blackAlpha.300'
-      : paint.overlay === 'dark'
-        ? 'blackAlpha.600'
-        : paint.overlay === 'strong'
-          ? 'blackAlpha.700'
-          : null
+  const shade = surfaceShade(paint.overlay)
+  // The divider insets to the panel only on a contained band; a plain
+  // contained section spans the whole page column.
+  const containedDivider = banded && style.width === 'contained'
 
-  const content = (
+  // Background layers sit on the section itself, so a full-width band's
+  // photo or video reaches both edges — not only the content column.
+  const layers = (
+    <>
+      {paint.media && (paint.media.video || poster) && (
+        <Box
+          position="absolute"
+          inset={0}
+          rounded="inherit"
+          overflow="hidden"
+          zIndex={0}
+          pointerEvents="none"
+        >
+          {paint.media.video ? (
+            <BackgroundVideo video={paint.media.video} poster={poster} />
+          ) : (
+            <ImageWithFallback
+              src={poster ?? undefined}
+              alt=""
+              w="full"
+              h="full"
+              objectFit="cover"
+              loading="lazy"
+            />
+          )}
+        </Box>
+      )}
+      {paint.media && shade && (
+        <Box position="absolute" inset={0} pointerEvents="none" zIndex={0} bg={shade} />
+      )}
+      {pattern !== 'none' && (
+        <Box
+          position="absolute"
+          inset={0}
+          pointerEvents="none"
+          zIndex={0}
+          css={PATTERNS[pattern]}
+        />
+      )}
+    </>
+  )
+
+  const dividerTop =
+    style.dividerTop !== 'none' ? (
+      <SectionDivider
+        shape={style.dividerTop}
+        position="top"
+        paint={paint}
+        contained={containedDivider}
+      />
+    ) : null
+  const dividerBottom =
+    style.dividerBottom !== 'none' ? (
+      <SectionDivider
+        shape={style.dividerBottom}
+        position="bottom"
+        paint={paint}
+        contained={containedDivider}
+      />
+    ) : null
+
+  const inner = (
     <SectionLayoutContext.Provider value={{ width: style.width, banded, headline: style.headline }}>
       <HeadlineContext.Provider value={style.headline}>
-        {/* The photo or video layer, under the shade, the pattern and the words. */}
-        {paint.media && (paint.media.video || poster) && (
-          <Box position="absolute" inset={0} overflow="hidden" zIndex={0} pointerEvents="none">
-            {paint.media.video ? (
-              <BackgroundVideo video={paint.media.video} poster={poster} />
-            ) : (
-              <ImageWithFallback
-                src={poster ?? undefined}
-                alt=""
-                w="full"
-                h="full"
-                objectFit="cover"
-                loading="lazy"
-              />
-            )}
-          </Box>
-        )}
-        {paint.media && shade && (
-          <Box position="absolute" inset={0} pointerEvents="none" zIndex={0} bg={shade} />
-        )}
-        {pattern !== 'none' && (
-          <Box
-            position="absolute"
-            inset={0}
-            pointerEvents="none"
-            zIndex={0}
-            css={PATTERNS[pattern]}
-          />
-        )}
-        {style.dividerTop !== 'none' && (
-          <SectionDivider
-            shape={style.dividerTop}
-            position="top"
-            paint={paint}
-            contained={style.width === 'contained'}
-          />
-        )}
         <Reveal entrance={entrance} stagger={style.stagger}>
           {children}
         </Reveal>
-        {style.dividerBottom !== 'none' && (
-          <SectionDivider
-            shape={style.dividerBottom}
-            position="bottom"
-            paint={paint}
-            contained={style.width === 'contained'}
-          />
-        )}
       </HeadlineContext.Provider>
     </SectionLayoutContext.Provider>
   )
@@ -206,7 +218,10 @@ export function SectionFrame({
   if (style.width === 'edge') {
     return (
       <FullBleed {...display} {...surface}>
-        {content}
+        {layers}
+        {dividerTop}
+        {inner}
+        {dividerBottom}
       </FullBleed>
     )
   }
@@ -214,12 +229,15 @@ export function SectionFrame({
   if (style.width === 'full') {
     return (
       <FullBleed {...display} {...surface}>
+        {layers}
+        {dividerTop}
         {/* The page's own column, inside a band that runs edge to edge. The
             padding matches the storefront shell's, so a band's content lines
             up with the sections around it. */}
         <Container maxW="6xl" px={{ base: '4', md: '6' }} position="relative">
-          {content}
+          {inner}
         </Container>
+        {dividerBottom}
       </FullBleed>
     )
   }
@@ -227,7 +245,10 @@ export function SectionFrame({
   // Page width: a band is a rounded panel in the column, padded on all sides.
   return (
     <Box {...display} {...surface} {...(banded && { rounded: 'l3', px: PANEL_PX })}>
-      {content}
+      {layers}
+      {dividerTop}
+      {inner}
+      {dividerBottom}
     </Box>
   )
 }

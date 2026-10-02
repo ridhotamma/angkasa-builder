@@ -21,8 +21,10 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { useEffect, useRef, useState, type ComponentType } from 'react'
-import { LuArrowUp, LuPlay } from 'react-icons/lu'
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react'
+import { createPortal } from 'react-dom'
+import { FaWhatsapp } from 'react-icons/fa6'
+import { LuArrowUp, LuMail, LuPlay } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -34,6 +36,7 @@ import {
   readText,
   readVideo,
   type FieldValues,
+  type VideoRef,
 } from '../model/fields'
 import type { SectionType } from '../model/sections'
 import { resolveScheme, schemeCssVars } from '../model/settings'
@@ -261,21 +264,34 @@ export function MasonryGallery({ settings }: SectionProps) {
 /* Video testimonials                                                         */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * A poster for a testimonial: the seller's own image, or the video's own
+ * still. YouTube exposes one at a stable, id-only URL; Vimeo's needs an API
+ * call, so an upload or a Vimeo clip without a poster shows the plain frame.
+ */
+function videoPoster(video: VideoRef | null, poster: string | null): string | null {
+  if (poster) return poster
+  return video?.source === 'youtube' ? `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg` : null
+}
+
 export function VideoTestimonials({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const overlay = useOverlayProps()
   const { frame } = useCardStyle()
   const items = readList(settings, 'items').filter(
-    (item) => readText(item, 'name') || readText(item, 'quote') || readText(item, 'video'),
+    (item) => readText(item, 'name') || readText(item, 'quote') || readVideo(item, 'video'),
   )
   const [active, setActive] = useState<FieldValues | null>(null)
   const video = active ? readVideo(active, 'video') : null
   const activePoster = active
-    ? (() => {
-        const id = readText(active, 'poster')
-        return id ? imageUrl(id, { width: 1280, height: 720 }) : null
-      })()
+    ? videoPoster(
+        video,
+        (() => {
+          const id = readText(active, 'poster')
+          return id ? imageUrl(id, { width: 1280, height: 720 }) : null
+        })(),
+      )
     : null
 
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
@@ -285,8 +301,12 @@ export function VideoTestimonials({ settings }: SectionProps) {
       <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       <SimpleGrid columns={{ base: 1, md: readColumns(settings, 3) }} gap="5">
         {items.map((item) => {
+          const itemVideo = readVideo(item, 'video')
           const posterId = readText(item, 'poster')
-          const poster = posterId ? imageUrl(posterId, { width: 800, height: 450 }) : null
+          const poster = videoPoster(
+            itemVideo,
+            posterId ? imageUrl(posterId, { width: 800, height: 450 }) : null,
+          )
           return (
             <Box key={item.id} bg="bg.panel" rounded="l3" overflow="hidden" {...frame}>
               <Stack gap="3">
@@ -298,7 +318,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
                       <Box />
                     )}
                   </AspectRatio>
-                  {readText(item, 'video') && (
+                  {itemVideo && (
                     <IconButton
                       aria-label="Play testimonial"
                       position="absolute"
@@ -665,27 +685,42 @@ export function SocialWall({ settings }: SectionProps) {
 /* Floating contact                                                           */
 /* -------------------------------------------------------------------------- */
 
+const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
+
 /**
- * A corner cluster that stays put while the page scrolls. In the flow it
- * takes no height, so it can sit anywhere in the layout.
+ * A corner cluster that stays put while the page scrolls.
+ *
+ * It must live outside the page's size container (`container-type` makes
+ * that element the containing block of a `position: fixed` descendant) and
+ * outside the section's GSAP entrance transform for the same reason, so
+ * after mount it is portalled to the document body — the storefront's, or the
+ * editor preview's iframe. The first render keeps it in place, matching the
+ * server HTML, and the layout effect moves it before the browser paints.
  */
 export function FloatingContact({ settings }: SectionProps) {
-  const root = useRef<HTMLDivElement>(null)
+  const { getWindow } = useRenderEnvironment()
   const reduced = usePrefersReducedMotion()
+  const [host, setHost] = useState<HTMLElement | null>(null)
   const wa = whatsappHref(readText(settings, 'whatsapp'), readText(settings, 'whatsappMessage'))
   const email = readText(settings, 'email')
   const mail = email.includes('@') ? `mailto:${email}` : null
   const showTop = readBoolean(settings, 'showTop')
   const side = readText(settings, 'position') === 'left' ? { left: '4' } : { right: '4' }
+
+  useIsoLayoutEffect(() => {
+    const view = getWindow?.() ?? globalThis.window
+    setHost(view?.document.body ?? null)
+  }, [getWindow])
+
   if (!wa && !mail && !showTop) return null
 
   const toTop = () => {
-    const view = root.current?.ownerDocument.defaultView
+    const view = host?.ownerDocument.defaultView ?? globalThis.window
     view?.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
   }
 
-  return (
-    <Box ref={root} position="fixed" bottom="4" zIndex="docked" {...side}>
+  const cluster = (
+    <Box data-floating-contact="" position="fixed" bottom="4" zIndex="docked" {...side}>
       <Stack gap="2" align="flex-end">
         {showTop && (
           <IconButton
@@ -700,18 +735,36 @@ export function FloatingContact({ settings }: SectionProps) {
           </IconButton>
         )}
         {wa && (
-          <IconButton aria-label="Chat on WhatsApp" rounded="full" colorPalette="brand" asChild>
-            <a href={wa} target="_blank" rel="noopener noreferrer" />
+          <IconButton
+            aria-label="Chat on WhatsApp"
+            rounded="full"
+            colorPalette="brand"
+            shadow="md"
+            asChild
+          >
+            <a href={wa} target="_blank" rel="noopener noreferrer">
+              <FaWhatsapp />
+            </a>
           </IconButton>
         )}
         {mail && (
-          <IconButton aria-label="Send an email" rounded="full" variant="surface" asChild>
-            <a href={mail} />
+          <IconButton
+            aria-label="Send an email"
+            rounded="full"
+            variant="surface"
+            shadow="md"
+            asChild
+          >
+            <a href={mail}>
+              <LuMail />
+            </a>
           </IconButton>
         )}
       </Stack>
     </Box>
   )
+
+  return host ? createPortal(cluster, host) : cluster
 }
 
 /* -------------------------------------------------------------------------- */

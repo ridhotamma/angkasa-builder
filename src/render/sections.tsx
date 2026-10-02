@@ -1136,7 +1136,22 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
           <HStack gap="3">
             <Avatar.Root size="md" flexShrink="0">
               <Avatar.Fallback name={author || undefined} />
-              {src && <Avatar.Image src={src} alt="" loading="lazy" />}
+              {/* A plain image over the initials rather than `Avatar.Image`,
+                  which stays hidden until its script runs — a cached photo
+                  would otherwise never appear. */}
+              {src && (
+                <ImageWithFallback
+                  src={src}
+                  alt=""
+                  fallback={false}
+                  position="absolute"
+                  inset="0"
+                  boxSize="full"
+                  objectFit="cover"
+                  rounded="inherit"
+                  loading="lazy"
+                />
+              )}
             </Avatar.Root>
             <Box minW="0">
               <Text fontWeight="semibold" truncate>

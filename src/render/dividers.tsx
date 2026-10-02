@@ -10,7 +10,10 @@
 
 import { Box, type BoxProps } from '@chakra-ui/react'
 
+import { ImageWithFallback } from '@repo/theme'
+
 import type { VideoRef } from '../model/fields'
+import { useRenderEnvironment } from './context'
 import type {
   BackgroundGradient,
   BackgroundPattern,
@@ -152,14 +155,16 @@ function maskProps(shape: Exclude<DividerShape, 'none'>): BoxProps['css'] {
 /**
  * Where the divider sits. A `scaleY` flip (not a rotation, so the
  * left-right phase is kept) turns a top path into a bottom one; the straight
- * edge stays flush with its own section either way.
+ * edge stays flush with its own section either way. The box needs a real
+ * height — an empty absolutely positioned element measures zero — and the
+ * translate leaves a sliver overlapping its own section so no seam shows.
  */
 export function dividerContainerStyle(position: 'top' | 'bottom', contained = false): BoxProps {
   return {
     position: 'absolute',
     left: contained ? PANEL_PX : 0,
     right: contained ? PANEL_PX : 0,
-    width: '100%',
+    h: { base: '56px', md: '96px' },
     overflow: 'hidden',
     lineHeight: 0,
     pointerEvents: 'none',
@@ -167,6 +172,20 @@ export function dividerContainerStyle(position: 'top' | 'bottom', contained = fa
     ...(position === 'top'
       ? { top: 0, transform: 'translateY(-98%)' }
       : { bottom: 0, transform: 'translateY(98%) scaleY(-1)' }),
+  }
+}
+
+/** The darkening a photo or video background wears; shared with the frame. */
+export function surfaceShade(overlay: SurfaceOverlay): string | null {
+  switch (overlay) {
+    case 'light':
+      return 'blackAlpha.300'
+    case 'dark':
+      return 'blackAlpha.600'
+    case 'strong':
+      return 'blackAlpha.700'
+    default:
+      return null
   }
 }
 
@@ -186,16 +205,37 @@ export function SectionDivider({
   contained = false,
   ...rest
 }: SectionDividerProps) {
+  const { imageUrl } = useRenderEnvironment()
   if (shape === 'none') return null
   const mask = maskProps(shape)
+  // A photo background carries into its divider, clipped by the same mask.
+  const media = paint.media?.imageId
+    ? imageUrl(paint.media.imageId, { width: 1920, height: 240 })
+    : null
+  const shade = media ? surfaceShade(paint.overlay) : null
+  // Nothing painted at all (a plain page section): the divider carves the
+  // page's own colour into the neighbouring section, so the shape is visible.
+  const bare = !paint.bg && !paint.backgroundImage && paint.pattern === 'none' && !media
   return (
     <Box
       {...dividerContainerStyle(position, contained)}
-      bg={paint.bg}
+      bg={bare ? 'bg' : paint.bg}
       backgroundImage={paint.backgroundImage}
       css={mask}
       {...rest}
     >
+      {media && (
+        <ImageWithFallback
+          src={media}
+          alt=""
+          position="absolute"
+          inset={0}
+          w="full"
+          h="full"
+          objectFit="cover"
+        />
+      )}
+      {shade && <Box position="absolute" inset={0} bg={shade} />}
       {paint.pattern !== 'none' && (
         <Box
           position="absolute"
