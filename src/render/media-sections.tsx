@@ -41,6 +41,7 @@ import { findProductCard, useRenderEnvironment, type StorefrontProductCard } fro
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
 import { AmbientVideo, VideoFrame } from './media'
+import { VelocityMarquee } from './motion'
 import { EditableText, EmptyNotice, SectionHeading, SmartLink, useOverlayProps } from './primitives'
 import { RichTextView } from './rich-text'
 import { alignOf, useEmptyText, type SectionProps } from './sections'
@@ -652,52 +653,82 @@ const TEXT_SIZES = {
   xl: { base: '4xl', md: '7xl' },
 } as const
 
+const CHIP_HEIGHTS = {
+  md: { base: '7', md: '8' },
+  lg: { base: '8', md: '10' },
+  xl: { base: '10', md: '12' },
+} as const
+
+/**
+ * Big words — and now image and product chips — running across the page. The
+ * loop quickens with the shopper's scroll velocity and eases back to its
+ * resting pace; reduced motion gets the same row standing still.
+ */
 export function ScrollingText({ settings }: SectionProps) {
+  const { data, imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
-  const items = readList(settings, 'items').filter((item) => readText(item, 'text'))
+  const items = readList(settings, 'items').filter(
+    (item) => readText(item, 'text') || readText(item, 'image') || readText(item, 'productId'),
+  )
   const separator = SEPARATORS[readText(settings, 'separator')] ?? ''
-  const size = TEXT_SIZES[readText(settings, 'size') as keyof typeof TEXT_SIZES] ?? TEXT_SIZES.lg
+  const sizeKey = readText(settings, 'size') as keyof typeof TEXT_SIZES
+  const size = TEXT_SIZES[sizeKey] ?? TEXT_SIZES.lg
+  const uppercase = readBoolean(settings, 'uppercase')
 
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
 
   return (
-    <Marquee.Root
-      side={readText(settings, 'direction') === 'right' ? 'end' : 'start'}
+    <VelocityMarquee
       speed={speedOf(settings)}
-      spacing="0"
-      autoFill
-      w="full"
-      minW="0"
-      overflow="hidden"
+      direction={readText(settings, 'direction') === 'right' ? 'right' : 'left'}
+      gap="0"
       py={{ base: '3', md: '5' }}
     >
-      <Marquee.Viewport>
-        <Marquee.Content>
-          {items.map((item) => (
-            <Marquee.Item key={item.id}>
-              <HStack gap={{ base: '4', md: '8' }} px={{ base: '2', md: '4' }}>
-                <Text
-                  fontFamily="heading"
-                  fontWeight="semibold"
-                  fontSize={size}
-                  lineHeight="1"
-                  whiteSpace="nowrap"
-                  letterSpacing={readBoolean(settings, 'uppercase') ? '0.02em' : '-0.02em'}
-                  textTransform={readBoolean(settings, 'uppercase') ? 'uppercase' : undefined}
-                >
-                  {readText(item, 'text')}
-                </Text>
-                {separator && (
-                  <Text fontSize={size} lineHeight="1" color="brand.fg" aria-hidden>
-                    {separator}
+      {items.map((item) => {
+        const product = findProductCard(data, readText(item, 'productId'))
+        const fileId = readText(item, 'image')
+        const text = readText(item, 'text')
+        return (
+          <HStack key={item.id} gap={{ base: '4', md: '8' }} px={{ base: '2', md: '4' }}>
+            {product ? (
+              <ProductChip product={product} />
+            ) : (
+              <>
+                {fileId && (
+                  <Image
+                    src={imageUrl(fileId, { width: 320, height: 320 }) ?? undefined}
+                    alt={text}
+                    h={CHIP_HEIGHTS[sizeKey] ?? CHIP_HEIGHTS.lg}
+                    w="auto"
+                    objectFit="contain"
+                    loading="lazy"
+                    flexShrink="0"
+                  />
+                )}
+                {text && (
+                  <Text
+                    fontFamily="heading"
+                    fontWeight="semibold"
+                    fontSize={size}
+                    lineHeight="1"
+                    whiteSpace="nowrap"
+                    letterSpacing={uppercase ? '0.02em' : '-0.02em'}
+                    textTransform={uppercase ? 'uppercase' : undefined}
+                  >
+                    {text}
                   </Text>
                 )}
-              </HStack>
-            </Marquee.Item>
-          ))}
-        </Marquee.Content>
-      </Marquee.Viewport>
-    </Marquee.Root>
+              </>
+            )}
+            {separator && (
+              <Text fontSize={size} lineHeight="1" color="brand.fg" aria-hidden>
+                {separator}
+              </Text>
+            )}
+          </HStack>
+        )
+      })}
+    </VelocityMarquee>
   )
 }
 

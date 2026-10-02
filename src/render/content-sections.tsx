@@ -38,6 +38,7 @@ import {
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { featureIcon } from './icons'
+import { Tilt } from './motion'
 import {
   EditableText,
   EmptyNotice,
@@ -86,45 +87,61 @@ export function Multicolumn({ settings }: SectionProps) {
             const image = readText(item, 'image')
             const linkLabel = readText(item, 'linkLabel')
             return (
-              <Card.Root key={item.id} bg="bg.panel" rounded="l3" overflow="hidden" {...frame}>
-                {image && (
-                  <AspectRatio
-                    ratio={ratio}
-                    bg="bg.subtle"
-                    rounded={flat ? 'l3' : undefined}
-                    overflow="hidden"
-                  >
-                    <ImageWithFallback
-                      src={
-                        imageUrl(image, { width: 800, height: Math.round(800 / ratio) }) ??
-                        undefined
-                      }
-                      alt=""
-                      objectFit="cover"
-                      loading="lazy"
-                    />
-                  </AspectRatio>
-                )}
-                <Card.Body gap="2" textAlign={align} p={flat ? '2' : '5'} pt={flat ? '4' : '5'}>
-                  {readText(item, 'title') && (
-                    <Heading as="h3" size="md">
-                      {readText(item, 'title')}
-                    </Heading>
-                  )}
-                  <Paragraphs text={readText(item, 'text')} align={align} />
-                  {linkLabel && (
-                    <SmartLink
-                      link={readLink(item, 'link')}
-                      color="brand.fg"
-                      fontWeight="semibold"
-                      fontSize="sm"
-                      mt="1"
+              <Tilt key={item.id}>
+                <Card.Root
+                  h="full"
+                  bg="bg.panel"
+                  rounded="l3"
+                  overflow="hidden"
+                  css={{
+                    '&:hover img': { transform: 'scale(1.05)' },
+                    '@media (prefers-reduced-motion: reduce)': {
+                      '&:hover img': { transform: 'none' },
+                    },
+                  }}
+                  {...frame}
+                >
+                  {image && (
+                    <AspectRatio
+                      ratio={ratio}
+                      bg="bg.subtle"
+                      rounded={flat ? 'l3' : undefined}
+                      overflow="hidden"
                     >
-                      {linkLabel} →
-                    </SmartLink>
+                      <ImageWithFallback
+                        src={
+                          imageUrl(image, { width: 800, height: Math.round(800 / ratio) }) ??
+                          undefined
+                        }
+                        alt=""
+                        objectFit="cover"
+                        loading="lazy"
+                        transition="transform 600ms ease"
+                      />
+                    </AspectRatio>
                   )}
-                </Card.Body>
-              </Card.Root>
+                  <Card.Body gap="2" textAlign={align} p={flat ? '2' : '5'} pt={flat ? '4' : '5'}>
+                    {readText(item, 'title') && (
+                      <Heading as="h3" size="md">
+                        {readText(item, 'title')}
+                      </Heading>
+                    )}
+                    <Paragraphs text={readText(item, 'text')} align={align} />
+                    {linkLabel && (
+                      <SmartLink
+                        link={readLink(item, 'link')}
+                        color="brand.fg"
+                        fontWeight="semibold"
+                        fontSize="sm"
+                        mt="1"
+                        data-sweep=""
+                      >
+                        {linkLabel} →
+                      </SmartLink>
+                    )}
+                  </Card.Body>
+                </Card.Root>
+              </Tilt>
             )
           })}
         </SimpleGrid>
@@ -148,25 +165,48 @@ export function ScrollingStory({ settings }: SectionProps) {
   const steps = readList(settings, 'steps')
   const [active, setActive] = useState(0)
   const refs = useRef<Array<HTMLDivElement | null>>([])
+  const trackRef = useRef<HTMLDivElement>(null)
   const imageRight = readText(settings, 'imagePosition') === 'right'
 
   useEffect(() => {
-    const first = refs.current.find(Boolean)
-    const view = first?.ownerDocument.defaultView
-    if (!first || !view || !('IntersectionObserver' in view)) return
-    const observer = new view.IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue
-          const index = refs.current.indexOf(entry.target as HTMLDivElement)
-          if (index >= 0) setActive(index)
+    const track = trackRef.current
+    const view = track?.ownerDocument.defaultView
+    if (!track || !view) return
+    let raf = 0
+    const update = () => {
+      raf = 0
+      // The chapter being read is the one whose middle sits closest to the
+      // middle of the screen. Unlike a threshold band, this is unambiguous
+      // at every scroll position — hovering on a boundary flips exactly once
+      // at the midpoint, scrolling either direction, with no flicker.
+      const trackRect = track.getBoundingClientRect()
+      if (trackRect.bottom < 0 || trackRect.top > view.innerHeight) return
+      const middle = view.innerHeight / 2
+      let best = 0
+      let nearest = Infinity
+      for (let index = 0; index < refs.current.length; index++) {
+        const element = refs.current[index]
+        if (!element) continue
+        const rect = element.getBoundingClientRect()
+        const distance = Math.abs(rect.top + rect.height / 2 - middle)
+        if (distance < nearest) {
+          nearest = distance
+          best = index
         }
-      },
-      // A chapter is "the one being read" while it crosses the middle of the screen.
-      { rootMargin: '-45% 0px -45% 0px' },
-    )
-    refs.current.forEach((element) => element && observer.observe(element))
-    return () => observer.disconnect()
+      }
+      setActive(best)
+    }
+    const kick = () => {
+      if (!raf) raf = view.requestAnimationFrame(update)
+    }
+    update()
+    view.addEventListener('scroll', kick, { passive: true })
+    view.addEventListener('resize', kick)
+    return () => {
+      view.removeEventListener('scroll', kick)
+      view.removeEventListener('resize', kick)
+      if (raf) view.cancelAnimationFrame(raf)
+    }
   }, [steps.length])
 
   if (steps.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
@@ -204,7 +244,7 @@ export function ScrollingStory({ settings }: SectionProps) {
             </AspectRatio>
           </Box>
         </Box>
-        <Stack gap={{ base: '10', md: '0' }}>
+        <Stack ref={trackRef} gap={{ base: '10', md: '0' }}>
           {steps.map((step, index) => (
             <Stack
               key={step.id}

@@ -9,14 +9,21 @@ import { system } from '@repo/theme'
 import {
   createSection,
   DEFAULT_THEME_SETTINGS,
+  effectCss,
+  isFieldShown,
   readSectionStyle,
+  SECTION_STYLE_FIELDS,
   type SectionInstance,
 } from '../src/index'
 import {
+  CursorFollower,
   sampleStorefrontData,
   SectionsRenderer,
+  Tilt,
   type RenderEnvironment,
 } from '../src/render/index'
+import { dividerContainerStyle, surfacePaint } from '../src/render/dividers'
+import { railProgress, scrollRoomHeight } from '../src/render/motion-sections'
 
 function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
   return {
@@ -68,26 +75,6 @@ describe('motion style options', () => {
   })
 })
 
-describe('stats section', () => {
-  test('renders final values with prefix, suffix and grouping', () => {
-    const html = page([
-      createSection('stats', {
-        heading: 'By the numbers',
-        columns: '3',
-        items: [
-          { label: 'Happy customers', value: 50000, decimals: 0, prefix: '', suffix: '+' },
-          { label: 'Average rating', value: 4.9, decimals: 1, prefix: '', suffix: '/5' },
-        ],
-      }),
-    ])
-    expect(html).toContain('By the numbers')
-    expect(html).toContain('Happy customers')
-    expect(html).toContain('50,000')
-    expect(html).toContain('+')
-    expect(html).toContain('4.9')
-  })
-})
-
 describe('pinned-scroll section', () => {
   test('renders every panel heading for readers and no-JS', () => {
     const html = page([
@@ -102,6 +89,19 @@ describe('pinned-scroll section', () => {
     expect(html).toContain('How it works')
     expect(html).toContain('First')
     expect(html).toContain('Second')
+  })
+
+  test('pins the stage before the scroll track, so sticky has room to travel', () => {
+    const html = page([
+      createSection('pinned-scroll', {
+        heading: '',
+        panels: [{ heading: 'Only', body: '', image: '', buttonLabel: '', tone: 'page' }],
+      }),
+    ])
+    const stage = html.indexOf('data-pinned="stage"')
+    const track = html.indexOf('data-pinned="track"')
+    expect(stage).toBeGreaterThan(-1)
+    expect(track).toBeGreaterThan(stage)
   })
 })
 
@@ -119,6 +119,144 @@ describe('scroll-rail section', () => {
     expect(html).toContain('The collection')
     expect(html).toContain('Card one')
     expect(html).toContain('Second card')
+  })
+})
+
+describe('stacked-cards section', () => {
+  test('renders every card with its step number', () => {
+    const html = page([
+      createSection('stacked-cards', {
+        heading: 'Why us',
+        items: [
+          { title: 'First card', text: 'One', image: '' },
+          { title: 'Second card', text: 'Two', image: '' },
+        ],
+      }),
+    ])
+    expect(html).toContain('Why us')
+    expect(html).toContain('First card')
+    expect(html).toContain('Second card')
+    expect(html).toContain('01')
+    expect(html).toContain('02')
+  })
+})
+
+describe('scrolling-text extras', () => {
+  test('mixes image chips and product chips into the row', () => {
+    const html = page([
+      createSection('scrolling-text', {
+        items: [
+          { text: 'Free shipping', image: '', productId: '' },
+          { text: '', image: '', productId: 'sample-0' },
+        ],
+      }),
+    ])
+    expect(html).toContain('Free shipping')
+    // The sample catalogue's first product, resolved by id.
+    expect(html).toContain('Signature tote')
+  })
+})
+
+describe('effect stylesheet', () => {
+  test('sweeps always ship; page transitions only with motion on', () => {
+    expect(effectCss(DEFAULT_THEME_SETTINGS)).toContain('a[data-sweep]')
+    expect(effectCss(DEFAULT_THEME_SETTINGS)).not.toContain('@view-transition')
+    const expressive = effectCss({ ...DEFAULT_THEME_SETTINGS, animation: 'expressive' })
+    expect(expressive).toContain('@view-transition')
+    expect(expressive).toContain('prefers-reduced-motion')
+  })
+})
+
+describe('pointer primitives', () => {
+  test('tilt and cursor render statically without JavaScript', () => {
+    const tilted = render(
+      <Tilt>
+        <span>Card</span>
+      </Tilt>,
+    )
+    expect(tilted).toContain('Card')
+    expect(tilted).not.toContain('rotateY')
+    // The follower mounts nothing until its effects confirm a fine pointer.
+    expect(render(<CursorFollower />)).not.toContain('aria-hidden="true"')
+  })
+})
+
+describe('style setting hierarchy', () => {
+  test('gradient and pattern children only show under their surface', () => {
+    const shown = (key: string, style: Record<string, string>) => {
+      const field = SECTION_STYLE_FIELDS.find((candidate) => candidate.key === key)
+      if (!field) throw new Error(`missing style field ${key}`)
+      return isFieldShown(field, style)
+    }
+    // Solid/scheme: neither child does anything, so neither shows.
+    expect(shown('backgroundGradient', { backgroundType: 'default' })).toBe(false)
+    expect(shown('backgroundPattern', { backgroundType: 'default' })).toBe(false)
+    // Each child shows only under its own surface.
+    expect(shown('backgroundGradient', { backgroundType: 'gradient' })).toBe(true)
+    expect(shown('backgroundPattern', { backgroundType: 'gradient' })).toBe(false)
+    expect(shown('backgroundGradient', { backgroundType: 'pattern' })).toBe(false)
+    expect(shown('backgroundPattern', { backgroundType: 'pattern' })).toBe(true)
+  })
+})
+
+describe('surface paint', () => {
+  test('mirrors the section background whatever kind it is', () => {
+    // A scheme band: token background for the divider to wear.
+    expect(surfacePaint(readSectionStyle({ colorScheme: 'brand' })).bg).toBe('bg')
+    // No scheme: transparent, the page shows through.
+    expect(surfacePaint(readSectionStyle({}))).toEqual({
+      bg: undefined,
+      backgroundImage: undefined,
+      pattern: 'none',
+    })
+    // A gradient wash rides along as a background image.
+    const gradient = surfacePaint(
+      readSectionStyle({ backgroundType: 'gradient', backgroundGradient: 'sunset' }),
+    )
+    expect(gradient.bg).toBeUndefined()
+    expect(gradient.backgroundImage).toContain('linear-gradient')
+    // A pattern rides along as an overlay, never as the fill.
+    const pattern = surfacePaint(
+      readSectionStyle({ backgroundType: 'pattern', backgroundPattern: 'dots' }),
+    )
+    expect(pattern.pattern).toBe('dots')
+    expect(pattern.backgroundImage).toBeUndefined()
+  })
+})
+
+describe('scroll rail progress', () => {
+  test('travels 0 to 1 across the scroll room, clamped', () => {
+    // A 1900px stage in a 900px viewport: 1000px of travel.
+    expect(railProgress(900, 1900, 900)).toBe(0)
+    expect(railProgress(400, 1900, 900)).toBe(0.5)
+    expect(railProgress(-100, 1900, 900)).toBe(1)
+    expect(railProgress(2000, 1900, 900)).toBe(0)
+    expect(railProgress(-2000, 1900, 900)).toBe(1)
+    // No room to travel reads as the start, never NaN.
+    expect(railProgress(0, 800, 900)).toBe(0)
+    expect(railProgress(0, 900, 900)).toBe(0)
+  })
+})
+
+describe('pinned scroll length', () => {
+  test('maps the setting to viewport heights, defaulting to comfortable', () => {
+    expect(scrollRoomHeight('compact')).toBe('60svh')
+    expect(scrollRoomHeight('comfortable')).toBe('80svh')
+    expect(scrollRoomHeight('roomy')).toBe('110svh')
+    expect(scrollRoomHeight('')).toBe('80svh')
+    expect(scrollRoomHeight('warp-speed')).toBe('80svh')
+  })
+})
+
+describe('section dividers', () => {
+  test('top rises unflipped, bottom flips vertically into the next section', () => {
+    // Paths are authored filled-below-a-shaped-top-edge: the top divider
+    // wears them as drawn, the bottom one mirrored so its straight edge
+    // stays flush with its own section.
+    expect(dividerContainerStyle('top')).toMatchObject({ top: 0 })
+    expect(String(dividerContainerStyle('top').transform)).not.toContain('scaleY')
+    expect(dividerContainerStyle('bottom')).toMatchObject({ bottom: 0 })
+    expect(String(dividerContainerStyle('bottom').transform)).toContain('scaleY(-1)')
   })
 })
 

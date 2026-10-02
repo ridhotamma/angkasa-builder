@@ -105,6 +105,7 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     label: { en: 'Gradient style', id: 'Gaya gradasi' },
     options: BACKGROUND_GRADIENTS,
     default: 'subtle-warm',
+    showWhen: { key: 'backgroundType', is: ['gradient'] },
   },
   {
     kind: 'select',
@@ -112,6 +113,7 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     label: { en: 'Pattern overlay', id: 'Lapisan pola' },
     options: BACKGROUND_PATTERNS,
     default: 'none',
+    showWhen: { key: 'backgroundType', is: ['pattern'] },
   },
   {
     kind: 'select',
@@ -150,8 +152,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'stagger',
     label: { en: 'Stagger entrance', id: 'Muncul berurutan' },
     help: {
-      en: 'Blocks enter one after another instead of all at once. Needs motion on.',
-      id: 'Blok-blok muncul satu per satu. Perlu animasi menyala.',
+      en: 'Blocks enter one after another instead of all at once. Switches the section to a subtle entrance when motion is off.',
+      id: 'Blok-blok muncul satu per satu. Mengalihkan bagian ke animasi halus saat animasi mati.',
     },
     default: false,
   },

@@ -1,14 +1,14 @@
 /**
- * Motion-led sections: animated stats, a pinned scroll stage and a
+ * Motion-led sections: stacking cards, a pinned scroll stage and a
  * scroll-driven horizontal rail.
  *
- * Like everything else, they render their final state as plain HTML: counts
- * show their value, panels stack, rails scroll natively. Effects enhance on
- * top — `IntersectionObserver` and `requestAnimationFrame` on the element's
- * own document — and stand down for reduced motion.
+ * Like everything else, they render their final state as plain HTML: panels
+ * stack, rails scroll natively. Effects enhance on top —
+ * `IntersectionObserver` and `requestAnimationFrame` on the element's own
+ * document — and stand down for reduced motion.
  */
 
-import { AspectRatio, Box, Flex, Heading, SimpleGrid, Stack, Text } from '@chakra-ui/react'
+import { AspectRatio, Box, Flex, Heading, Stack, Text } from '@chakra-ui/react'
 import { useEffect, useRef, useState } from 'react'
 
 import { ImageWithFallback } from '@repo/theme'
@@ -16,20 +16,19 @@ import { ImageWithFallback } from '@repo/theme'
 import {
   readLink,
   readList,
-  readNumber,
   readRichText,
   readText,
   type FieldValues,
 } from '../model/fields'
 import { isRichDocEmpty } from '../model/rich-text'
 import { resolveScheme, schemeCssVars } from '../model/settings'
+import { HEADER_HEIGHT_VAR } from './chrome'
 import { useRenderEnvironment } from './context'
 import { schemeCss } from './frame'
-import { CountUp } from './motion'
 import {
   ButtonRow,
   EmptyNotice,
-  gridColumns,
+  Paragraphs,
   SectionHeading,
   SmartLink,
   useCardStyle,
@@ -38,47 +37,118 @@ import { RichTextView } from './rich-text'
 import { alignOf, useEmptyText, type SectionProps } from './sections'
 
 /* -------------------------------------------------------------------------- */
-/* Stats                                                                      */
+/* Stacked cards                                                              */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Animated metrics — customers served, rating, years running. Each number
- * counts up as it enters; the final value is in the HTML either way.
+ * Cards pinning one over another as the page scrolls, each peeking from
+ * under the next and shrinking into the pile. Pinning is plain CSS sticky;
+ * the shrink is a scroll-driven animation where supported, stillness
+ * otherwise — and nothing anywhere without it.
  */
-export function Stats({ settings }: SectionProps) {
+export function StackedCards({ settings }: SectionProps) {
+  const { imageUrl } = useRenderEnvironment()
+  const { frame, flat } = useCardStyle()
   const empty = useEmptyText()
   const align = alignOf(settings)
   const items = readList(settings, 'items')
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
 
   return (
-    <Stack gap="6" textAlign={align}>
+    <Stack gap="6">
       <SectionHeading align={align} field="heading">
         {readText(settings, 'heading')}
       </SectionHeading>
-      <SimpleGrid columns={gridColumns(readText(settings, 'columns'))} gap={{ base: '6', md: '8' }}>
-        {items.map((item) => {
-          const label = readText(item, 'label')
+      <Stack gap="6">
+        {items.map((item, index) => {
+          const fileId = readText(item, 'image')
+          const src = fileId ? imageUrl(fileId, { width: 1000, height: 625 }) : null
+          const title = readText(item, 'title')
+          const linkLabel = readText(item, 'linkLabel')
           return (
-            <Stack key={item.id} gap="1" align={align === 'center' ? 'center' : 'start'}>
-              <CountUp
-                value={readNumber(item, 'value', 0)}
-                decimals={Math.min(2, Math.max(0, Math.round(readNumber(item, 'decimals', 0))))}
-                prefix={readText(item, 'prefix')}
-                suffix={readText(item, 'suffix')}
-                fontSize={{ base: '3xl', md: '4xl' }}
-                fontWeight="bold"
-                letterSpacing="tight"
-              />
-              {label && (
-                <Text color="fg.muted" textWrap="balance">
-                  {label}
-                </Text>
-              )}
-            </Stack>
+            <Box
+              key={item.id}
+              position="sticky"
+              // Below the store header, each card a thumb lower than the last.
+              top={`calc(var(${HEADER_HEIGHT_VAR}, 76px) + ${16 + index * 28}px)`}
+              css={{
+                '@supports (animation-timeline: view())': {
+                  '@media (prefers-reduced-motion: no-preference)': {
+                    animation: 'pb-stack-cover linear both',
+                    animationTimeline: 'view()',
+                    animationRange: 'exit 0% exit 100%',
+                  },
+                },
+                '@keyframes pb-stack-cover': {
+                  from: { transform: 'scale(1)', filter: 'brightness(1)' },
+                  to: { transform: 'scale(0.93)', filter: 'brightness(0.94)' },
+                },
+              }}
+            >
+              <Box
+                bg="bg.panel"
+                rounded="l3"
+                overflow="hidden"
+                p={{ base: '5', md: '8' }}
+                {...frame}
+              >
+                <Flex
+                  direction={{ base: 'column', md: src ? 'row' : 'column' }}
+                  gap={{ base: '5', md: '8' }}
+                  align="center"
+                >
+                  <Stack gap="2.5" flex="1" minW="0" textAlign={align}>
+                    <Text
+                      fontSize="sm"
+                      fontWeight="bold"
+                      color="brand.fg"
+                      fontVariantNumeric="tabular-nums"
+                    >
+                      {String(index + 1).padStart(2, '0')}
+                    </Text>
+                    {title && (
+                      <Heading as="h3" size={{ base: 'lg', md: 'xl' }} letterSpacing="-0.01em">
+                        {title}
+                      </Heading>
+                    )}
+                    <Paragraphs text={readText(item, 'text')} align={align} />
+                    {linkLabel && (
+                      <SmartLink
+                        link={readLink(item, 'link')}
+                        color="brand.fg"
+                        fontWeight="semibold"
+                        fontSize="sm"
+                        mt="1"
+                        data-sweep=""
+                      >
+                        {linkLabel} →
+                      </SmartLink>
+                    )}
+                  </Stack>
+                  {src && (
+                    <AspectRatio
+                      ratio={16 / 10}
+                      w="full"
+                      maxW={{ md: 'md' }}
+                      rounded="l2"
+                      overflow="hidden"
+                      bg="bg.subtle"
+                      flexShrink="0"
+                    >
+                      <ImageWithFallback
+                        src={src}
+                        alt={title}
+                        objectFit="cover"
+                        loading="lazy"
+                      />
+                    </AspectRatio>
+                  )}
+                </Flex>
+              </Box>
+            </Box>
           )
         })}
-      </SimpleGrid>
+      </Stack>
     </Stack>
   )
 }
@@ -90,6 +160,18 @@ export function Stats({ settings }: SectionProps) {
 /** A pinned panel's colours: the page, or one of the theme's dark/brand bands. */
 function panelTone(tone: string) {
   return tone === 'dark' ? 'inverse' : tone === 'brand' ? 'brand' : null
+}
+
+/** Scroll room per panel, as viewport heights. */
+export function scrollRoomHeight(value: string): string {
+  switch (value) {
+    case 'compact':
+      return '60svh'
+    case 'roomy':
+      return '110svh'
+    default:
+      return '80svh'
+  }
 }
 
 /** Whether a panel has anything to show; empties never take up scroll room. */
@@ -157,6 +239,7 @@ function PinnedPanel({ panel }: { panel: FieldValues }) {
 export function PinnedScroll({ settings }: SectionProps) {
   const empty = useEmptyText()
   const panels = readList(settings, 'panels').filter(hasPanel)
+  const room = scrollRoomHeight(readText(settings, 'scrollLength'))
   const [active, setActive] = useState(0)
   const sentinels = useRef<Array<HTMLDivElement | null>>([])
 
@@ -185,20 +268,11 @@ export function PinnedScroll({ settings }: SectionProps) {
     <Stack gap="6">
       <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       <Box position="relative">
-        {/* Scroll room: one screen per panel. The stage below pins through it. */}
-        <Box hideFrom="md" aria-hidden="true">
-          {panels.map((panel, index) => (
-            <Box
-              key={panel.id}
-              ref={(element: HTMLDivElement | null) => {
-                sentinels.current[index] = element
-              }}
-              h="100svh"
-            />
-          ))}
-        </Box>
-        {/* The pinned stage, desktop only: panels crossfade as each owns it. */}
+        {/* The pinned stage FIRST: it sticks at the top while the track below
+            scrolls past, giving it one screen of stick range per panel.
+            Desktop only. */}
         <Box
+          data-pinned="stage"
           hideBelow="md"
           position="sticky"
           top="0"
@@ -231,6 +305,19 @@ export function PinnedScroll({ settings }: SectionProps) {
             )
           })}
         </Box>
+        {/* Scroll room AFTER the stage: scroll room per panel, driving which
+            panel owns the stage. Desktop only. */}
+        <Box data-pinned="track" hideBelow="md" aria-hidden="true">
+          {panels.map((panel, index) => (
+            <Box
+              key={panel.id}
+              ref={(element: HTMLDivElement | null) => {
+                sentinels.current[index] = element
+              }}
+              h={room}
+            />
+          ))}
+        </Box>
         {/* Phones: the same panels as cards, no pinning and nothing hidden. */}
         <Stack hideFrom="md" gap="5" mt="2">
           {panels.map((panel) => (
@@ -247,6 +334,16 @@ export function PinnedScroll({ settings }: SectionProps) {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * How far the rail has travelled, 0 to 1: the stage enters with its top at
+ * the viewport's bottom edge and releases with its bottom there.
+ */
+export function railProgress(rectTop: number, outerHeight: number, viewHeight: number): number {
+  const total = outerHeight - viewHeight
+  if (!(total > 0)) return 0
+  return Math.min(1, Math.max(0, (viewHeight - rectTop) / total))
+}
+
+/**
  * A horizontal gallery the page's vertical scroll drives: the stage pins for
  * exactly the rail's overflow, then releases. Phones, reduced motion and
  * no-JS get the same cards as a native swipeable strip.
@@ -258,48 +355,100 @@ export function ScrollRail({ settings }: SectionProps) {
   const items = readList(settings, 'items')
   const outerRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
-  // Drive mode (pinned, translated) only once measured; otherwise native.
-  const [driveHeight, setDriveHeight] = useState<string | null>(null)
+  const [driving, setDriving] = useState(false)
 
   useEffect(() => {
     const outer = outerRef.current
     const track = trackRef.current
     const view = outer?.ownerDocument.defaultView
     if (!outer || !track || !view) return
-    if (view.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    if (view.innerWidth < 768) return
-    if (track.scrollWidth - outer.clientWidth <= 0) return
-
-    // Scroll room for exactly the overflow, plus most of a screen so the
-    // last card rests in view before the stage releases. Recomputed every
-    // frame, so a resize re-lays-out instead of mis-driving.
-    const layout = () => {
-      const overflow = track.scrollWidth - outer.clientWidth
-      if (overflow > 0) outer.style.height = `${overflow + view.innerHeight * 0.9}px`
-      return Math.max(0, overflow)
-    }
-    layout()
-    setDriveHeight(outer.style.height || null)
 
     let raf = 0
-    const update = () => {
+    let visible = false
+    let written = ''
+    let lastMeasure = 0
+    const motionQuery = view.matchMedia('(prefers-reduced-motion: reduce)')
+    // Re-evaluated, never decided once: a device switch, a resize, a
+    // reduced-motion toggle or a content edit engages or releases drive
+    // mode instead of stranding the last decision.
+    const measure = (): boolean => {
+      const ok =
+        !motionQuery.matches &&
+        view.innerWidth >= 768 &&
+        track.scrollWidth - outer.clientWidth > view.innerHeight * 0.1
+      setDriving((was) => {
+        if (was === ok) return was
+        if (!ok) {
+          outer.style.height = ''
+          track.style.transform = ''
+          written = ''
+        }
+        return ok
+      })
+      if (ok) {
+        // Scroll room for exactly the overflow, plus most of a screen so the
+        // last card rests in view before the stage releases.
+        const overflow = track.scrollWidth - outer.clientWidth
+        outer.style.height = `${overflow + view.innerHeight * 0.9}px`
+      }
+      return ok
+    }
+
+    const update = (now: number) => {
       raf = 0
-      const overflow = layout()
+      if (!visible) return
+      // Engagement is re-checked a few times a second; the transform itself
+      // follows every frame from the rect, so no scroll listener can go
+      // missing — the loop only needs animation frames.
+      if (now - lastMeasure > 500) {
+        lastMeasure = now
+        if (!measure()) return
+      }
       const rect = outer.getBoundingClientRect()
-      const total = outer.offsetHeight - view.innerHeight
-      const progress =
-        total > 0 ? Math.min(1, Math.max(0, (view.innerHeight - rect.top) / total)) : 0
-      track.style.transform = `translate3d(${(-progress * overflow).toFixed(1)}px, 0, 0)`
+      const progress = railProgress(rect.top, outer.offsetHeight, view.innerHeight)
+      const overflow = track.scrollWidth - outer.clientWidth
+      const next = `translate3d(${(-progress * overflow).toFixed(1)}px, 0, 0)`
+      // Unchanged transforms are not rewritten: without this the compositor
+      // never rests while the section is on screen.
+      if (next !== written) {
+        track.style.transform = next
+        written = next
+      }
+      raf = view.requestAnimationFrame(update)
     }
     const kick = () => {
       if (!raf) raf = view.requestAnimationFrame(update)
     }
-    update()
-    view.addEventListener('scroll', kick, { passive: true })
-    view.addEventListener('resize', kick)
+    const onResize = () => {
+      lastMeasure = view.performance.now()
+      measure()
+      kick()
+    }
+
+    const observer =
+      'IntersectionObserver' in view
+        ? new view.IntersectionObserver(
+            ([entry]) => {
+              visible = Boolean(entry?.isIntersecting)
+              kick()
+            },
+            // Any sliver on screen keeps the loop alive; the work itself is
+            // one rect read and, usually, no write at all.
+            { threshold: 0 },
+          )
+        : null
+    if (observer) observer.observe(outer)
+    else kick()
+    view.addEventListener('resize', onResize)
+    const onMotionChange = () => {
+      lastMeasure = 0
+      if (measure()) kick()
+    }
+    motionQuery.addEventListener('change', onMotionChange)
     return () => {
-      view.removeEventListener('scroll', kick)
-      view.removeEventListener('resize', kick)
+      view.removeEventListener('resize', onResize)
+      motionQuery.removeEventListener('change', onMotionChange)
+      observer?.disconnect()
       if (raf) view.cancelAnimationFrame(raf)
       outer.style.height = ''
       track.style.transform = ''
@@ -307,7 +456,6 @@ export function ScrollRail({ settings }: SectionProps) {
   }, [items.length])
 
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
-  const driving = driveHeight !== null
 
   return (
     <Box ref={outerRef}>

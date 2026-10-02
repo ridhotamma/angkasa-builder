@@ -19,8 +19,6 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import {
   isWithinSchedule,
   readSectionStyle,
-  type BackgroundGradient,
-  type BackgroundPattern,
   type ResolvedSectionStyle,
   type SectionHeadline,
   type SectionMotion,
@@ -34,7 +32,7 @@ import {
   type SchemeKey,
 } from '../model/settings'
 import { useRenderEnvironment } from './context'
-import { SectionDivider } from './dividers'
+import { PANEL_PX, PATTERNS, SectionDivider, surfacePaint } from './dividers'
 import { FullBleed, HeadlineContext } from './primitives'
 import type { FieldValues } from '../model/fields'
 
@@ -106,36 +104,6 @@ function resolveAnimation(theme: AnimationStyle, motion: SectionMotion): Animati
   return theme
 }
 
-/** A new gradient is one entry here; the type in `model/section-style` keeps it total. */
-const GRADIENTS: Record<BackgroundGradient, string> = {
-  'subtle-warm': 'linear-gradient(180deg, transparent 0%, rgba(251, 146, 60, 0.08) 100%)',
-  'subtle-cool': 'linear-gradient(180deg, transparent 0%, rgba(59, 130, 246, 0.08) 100%)',
-  sunset: 'linear-gradient(135deg, rgba(234, 88, 12, 0.12) 0%, rgba(219, 39, 119, 0.1) 100%)',
-  ocean: 'linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(20, 184, 166, 0.1) 100%)',
-  'radial-glow': 'radial-gradient(circle at 50% 50%, rgba(234, 88, 12, 0.1) 0%, transparent 70%)',
-  mesh: 'radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.12) 0px, transparent 50%)',
-}
-
-/** Patterns draw in the section's own text colour at a low opacity. */
-const PATTERNS: Record<Exclude<BackgroundPattern, 'none'>, BoxProps['css']> = {
-  dots: {
-    backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)',
-    backgroundSize: '16px 16px',
-    opacity: 0.12,
-  },
-  grid: {
-    backgroundImage:
-      'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)',
-    backgroundSize: '24px 24px',
-    opacity: 0.07,
-  },
-  stripes: {
-    backgroundImage:
-      'repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px)',
-    opacity: 0.06,
-  },
-}
-
 export function SectionFrame({
   style: stored,
   children,
@@ -148,10 +116,9 @@ export function SectionFrame({
   const banded = style.scheme !== null || style.backgroundType !== 'default'
   const scheme = style.scheme ? resolveScheme(settings, style.scheme) : null
   const vars = scheme ? schemeCssVars(scheme) : null
-  // A divider is filled with the section's own background, so it carves the
-  // transition out of the neighbouring section. Without a scheme that is the
-  // page background, the divider's default.
-  const dividerColor = scheme?.background
+  // The section's paint, mirrored by its dividers so they can never mismatch
+  // it — scheme, gradient, pattern or plain page alike.
+  const paint = surfacePaint(style)
 
   const display = {
     ...(style.visibility === 'mobile' && { hideFrom: 'md' }),
@@ -165,22 +132,21 @@ export function SectionFrame({
 
   const surface: BoxProps = {
     position: 'relative',
-    ...(style.scheme && vars && { css: schemeCss(style.scheme, vars), bg: 'bg', color: 'fg' }),
-    ...(style.backgroundType === 'gradient' && {
-      backgroundImage: GRADIENTS[style.backgroundGradient],
-    }),
+    ...(style.scheme && vars && { css: schemeCss(style.scheme, vars), color: 'fg' }),
+    ...(paint.bg && { bg: paint.bg }),
+    ...(paint.backgroundImage && { backgroundImage: paint.backgroundImage }),
     pt: padding(style.paddingTop, banded),
     pb: padding(style.paddingBottom, banded),
   }
 
-  const pattern = style.backgroundPattern
+  const pattern = paint.pattern
 
   const content = (
     <SectionLayoutContext.Provider
       value={{ width: style.width, banded, headline: style.headline }}
     >
       <HeadlineContext.Provider value={style.headline}>
-        {style.backgroundType === 'pattern' && pattern !== 'none' && (
+        {pattern !== 'none' && (
           <Box
             position="absolute"
             inset={0}
@@ -190,13 +156,23 @@ export function SectionFrame({
           />
         )}
         {style.dividerTop !== 'none' && (
-          <SectionDivider shape={style.dividerTop} position="top" color={dividerColor} />
+          <SectionDivider
+            shape={style.dividerTop}
+            position="top"
+            paint={paint}
+            contained={style.width === 'contained'}
+          />
         )}
         <Reveal animation={reveal} stagger={style.stagger}>
           {children}
         </Reveal>
         {style.dividerBottom !== 'none' && (
-          <SectionDivider shape={style.dividerBottom} position="bottom" color={dividerColor} />
+          <SectionDivider
+            shape={style.dividerBottom}
+            position="bottom"
+            paint={paint}
+            contained={style.width === 'contained'}
+          />
         )}
       </HeadlineContext.Provider>
     </SectionLayoutContext.Provider>
@@ -225,11 +201,7 @@ export function SectionFrame({
 
   // Page width: a band is a rounded panel in the column, padded on all sides.
   return (
-    <Box
-      {...display}
-      {...surface}
-      {...(banded && { rounded: 'l3', px: { base: '5', md: '10' } })}
-    >
+    <Box {...display} {...surface} {...(banded && { rounded: 'l3', px: PANEL_PX })}>
       {content}
     </Box>
   )

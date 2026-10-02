@@ -1,71 +1,156 @@
 /**
  * SVG Section Dividers: smooth transitions between page sections.
  *
- * Adds wave, slant, curve, arc, and zigzag transitions between sections
- * without loading external images or heavy assets. Pure SVG and CSS.
+ * A divider mirrors its own section's painted background — scheme colour,
+ * gradient, pattern or plain page — clipped to the shape with a mask, so it
+ * follows the section whatever the seller picks. No separate fill colour to
+ * drift out of sync. Marking (mask-image) needs the -webkit- prefix in
+ * Safari; both are emitted.
  */
 
 import { Box, type BoxProps } from '@chakra-ui/react'
 
-import type { DividerShape } from '../model/section-style'
+import type {
+  BackgroundGradient,
+  BackgroundPattern,
+  DividerShape,
+  ResolvedSectionStyle,
+} from '../model/section-style'
 
-interface SectionDividerProps extends BoxProps {
-  shape: DividerShape
-  position: 'top' | 'bottom'
-  color?: string
+/** A new gradient is one entry here; the type in `model/section-style` keeps it total. */
+const GRADIENTS: Record<BackgroundGradient, string> = {
+  'subtle-warm': 'linear-gradient(180deg, transparent 0%, rgba(251, 146, 60, 0.08) 100%)',
+  'subtle-cool': 'linear-gradient(180deg, transparent 0%, rgba(59, 130, 246, 0.08) 100%)',
+  sunset: 'linear-gradient(135deg, rgba(234, 88, 12, 0.12) 0%, rgba(219, 39, 119, 0.1) 100%)',
+  ocean: 'linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(20, 184, 166, 0.1) 100%)',
+  'radial-glow': 'radial-gradient(circle at 50% 50%, rgba(234, 88, 12, 0.1) 0%, transparent 70%)',
+  mesh: 'radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.12) 0px, transparent 50%)',
 }
 
-export function SectionDivider({ shape, position, color = 'var(--chakra-colors-bg)', ...rest }: SectionDividerProps) {
-  if (shape === 'none') return null
+/** Patterns draw in the section's own text colour at a low opacity. */
+export const PATTERNS: Record<Exclude<BackgroundPattern, 'none'>, BoxProps['css']> = {
+  dots: {
+    backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)',
+    backgroundSize: '16px 16px',
+    opacity: 0.12,
+  },
+  grid: {
+    backgroundImage:
+      'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)',
+    backgroundSize: '24px 24px',
+    opacity: 0.07,
+  },
+  stripes: {
+    backgroundImage:
+      'repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px)',
+    opacity: 0.06,
+  },
+}
 
-  const isTop = position === 'top'
+/** The panel padding a contained band wears; its dividers inset to match. */
+export const PANEL_PX: { base: string; md: string } = { base: '5', md: '10' }
 
-  // Height and positioning
-  const containerStyle: BoxProps = {
+export interface SurfacePaint {
+  /** Token background for scheme bands; unset when the page shows through. */
+  bg?: string
+  /** A gradient wash over the background, if any. */
+  backgroundImage?: string
+  /** Pattern texture over the background, if any. */
+  pattern: BackgroundPattern
+}
+
+/** A section's painted background, whatever kind it is — the frame and the divider share this. */
+export function surfacePaint(style: ResolvedSectionStyle): SurfacePaint {
+  return {
+    bg: style.scheme ? 'bg' : undefined,
+    backgroundImage:
+      style.backgroundType === 'gradient' ? GRADIENTS[style.backgroundGradient] : undefined,
+    pattern: style.backgroundType === 'pattern' ? style.backgroundPattern : 'none',
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shapes                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Every path is authored for the TOP position — filled below a shaped top
+ * edge, rising into the previous section with a straight edge flush against
+ * its own. The bottom reuses the same path flipped vertically, so its
+ * straight edge stays flush and the shape dissolves into the next section.
+ */
+const DIVIDER_PATHS: Record<Exclude<DividerShape, 'none'>, string> = {
+  wave: '<path d="M0,0 C150,90 400,100 600,40 C800,-20 1050,70 1200,30 L1200,120 L0,120 Z"/>',
+  slant: '<polygon points="0,0 1200,120 0,120"/>',
+  curve: '<path d="M0,120 Q600,-40 1200,120 Z"/>',
+  arc: '<path d="M0,0 Q600,120 1200,0 L1200,120 L0,120 Z"/>',
+  zigzag:
+    '<polygon points="0,120 0,30 100,90 200,30 300,90 400,30 500,90 600,30 700,90 800,30 900,90 1000,30 1100,90 1200,30 1200,120"/>',
+}
+
+function dividerMask(shape: Exclude<DividerShape, 'none'>): string {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" ` +
+    `preserveAspectRatio="none">${DIVIDER_PATHS[shape]}</svg>`
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+}
+
+function maskProps(shape: Exclude<DividerShape, 'none'>): BoxProps['css'] {
+  const mask = dividerMask(shape)
+  return {
+    maskImage: mask,
+    WebkitMaskImage: mask,
+    maskSize: '100% 100%',
+    WebkitMaskSize: '100% 100%',
+    maskRepeat: 'no-repeat',
+    WebkitMaskRepeat: 'no-repeat',
+  }
+}
+
+/**
+ * Where the divider sits. A `scaleY` flip (not a rotation, so the
+ * left-right phase is kept) turns a top path into a bottom one; the straight
+ * edge stays flush with its own section either way.
+ */
+export function dividerContainerStyle(position: 'top' | 'bottom', contained = false): BoxProps {
+  return {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: contained ? PANEL_PX : 0,
+    right: contained ? PANEL_PX : 0,
     width: '100%',
     overflow: 'hidden',
     lineHeight: 0,
     pointerEvents: 'none',
     zIndex: 1,
-    ...(isTop
-      ? { top: 0, transform: 'translateY(-98%) rotate(180deg)' }
-      : { bottom: 0, transform: 'translateY(98%)' }),
+    ...(position === 'top'
+      ? { top: 0, transform: 'translateY(-98%)' }
+      : { bottom: 0, transform: 'translateY(98%) scaleY(-1)' }),
   }
+}
 
-  const svgProps = {
-    viewBox: '0 0 1200 120',
-    preserveAspectRatio: 'none',
-    width: '100%',
-    height: '40px',
-    display: 'block',
-    style: { fill: color },
-  }
+interface SectionDividerProps extends BoxProps {
+  shape: DividerShape
+  position: 'top' | 'bottom'
+  /** The section's own paint, mirrored exactly. */
+  paint: SurfacePaint
+  /** Constrain to the content column on contained sections. */
+  contained?: boolean
+}
 
-  const renderPath = () => {
-    switch (shape) {
-      case 'wave':
-        return <path d="M0,0 C150,90 400,100 600,40 C800,-20 1050,70 1200,30 L1200,120 L0,120 Z" />
-      case 'slant':
-        return <polygon points="0,0 1200,120 0,120" />
-      case 'curve':
-        return <path d="M0,120 Q600,-40 1200,120 Z" />
-      case 'arc':
-        return <path d="M0,0 Q600,120 1200,0 L1200,120 L0,120 Z" />
-      case 'zigzag':
-        return (
-          <polygon points="0,120 0,30 100,90 200,30 300,90 400,30 500,90 600,30 700,90 800,30 900,90 1000,30 1100,90 1200,30 1200,120" />
-        )
-      default:
-        return null
-    }
-  }
-
+export function SectionDivider({ shape, position, paint, contained = false, ...rest }: SectionDividerProps) {
+  if (shape === 'none') return null
+  const mask = maskProps(shape)
   return (
-    <Box {...containerStyle} {...rest}>
-      <svg {...svgProps}>{renderPath()}</svg>
+    <Box
+      {...dividerContainerStyle(position, contained)}
+      bg={paint.bg}
+      backgroundImage={paint.backgroundImage}
+      css={mask}
+      {...rest}
+    >
+      {paint.pattern !== 'none' && (
+        <Box position="absolute" inset={0} pointerEvents="none" css={{ ...PATTERNS[paint.pattern], ...mask }} />
+      )}
     </Box>
   )
 }

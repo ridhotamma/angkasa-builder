@@ -913,12 +913,41 @@ function ImageGallery({ settings }: SectionProps) {
             return (
               <SmartLink key={item.id} link={readLink(item, 'link')} display="block">
                 <Stack gap="2">
-                  <AspectRatio ratio={1} rounded="l3" overflow="hidden" bg="bg.subtle">
+                  <AspectRatio
+                    ratio={1}
+                    rounded="l3"
+                    overflow="hidden"
+                    bg="bg.subtle"
+                    position="relative"
+                    css={{
+                      // A light wipe crossing the photo on hover; still image
+                      // and no transition at all for reduced motion.
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        inset: '0',
+                        background:
+                          'linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.35) 50%, transparent 60%)',
+                        transform: 'translateX(-101%)',
+                        pointerEvents: 'none',
+                      },
+                      '&:hover::after': {
+                        transform: 'translateX(101%)',
+                        transition: 'transform 700ms ease',
+                      },
+                      '&:hover img': { transform: 'scale(1.04)' },
+                      '@media (prefers-reduced-motion: reduce)': {
+                        '&:hover::after': { transform: 'none', transition: 'none' },
+                        '&:hover img': { transform: 'none' },
+                      },
+                    }}
+                  >
                     <ImageWithFallback
                       src={(fileId && imageUrl(fileId, { width: 600, height: 600 })) || undefined}
                       alt={caption}
                       objectFit="cover"
                       loading="lazy"
+                      transition="transform 600ms ease"
                     />
                   </AspectRatio>
                   {caption && (

@@ -134,6 +134,12 @@ export function ArticleCard({ article }: { article: StorefrontArticleCard }) {
       overflow="hidden"
       transition="border-color 150ms"
       _hover={{ borderColor: 'brand.emphasized' }}
+      css={{
+        '&:hover img': { transform: 'scale(1.05)' },
+        '@media (prefers-reduced-motion: reduce)': {
+          '&:hover img': { transform: 'none' },
+        },
+      }}
       {...frame}
     >
       <SmartLink
@@ -149,6 +155,7 @@ export function ArticleCard({ article }: { article: StorefrontArticleCard }) {
               alt={article.title}
               objectFit="cover"
               loading="lazy"
+              transition="transform 600ms ease"
             />
           </AspectRatio>
         )}

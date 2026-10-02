@@ -517,7 +517,37 @@ export function themeStylesheet(settings: ThemeSettings): string {
   return (
     `:root{${declarations(always)}}` +
     `html:not(.dark){${declarations(surfaces)}}` +
-    `html.dark{${declarations(dark)}}`
+    `html.dark{${declarations(dark)}}` +
+    effectCss(settings)
+  )
+}
+
+/**
+ * Storefront-only effect rules, as stylesheet text: underline sweeps for
+ * links that opt in with `data-sweep`, and page transitions between
+ * same-document navigations.
+ *
+ * Token-only and layout-free, like the variables above — and like them, safe
+ * to inline. Page transitions ride the theme's motion choice: a theme with
+ * motion off keeps instant navigations. Reduced motion always wins.
+ */
+export function effectCss(settings: ThemeSettings): string {
+  const sweep =
+    'a[data-sweep]{text-decoration:none;background-image:linear-gradient(currentColor,currentColor);' +
+    'background-size:0% 1px;background-repeat:no-repeat;background-position:left calc(100% - 1px);' +
+    'transition:background-size 260ms ease;}' +
+    'a[data-sweep]:hover{background-size:100% 1px;}' +
+    '@media (prefers-reduced-motion:reduce){a[data-sweep]{transition:none;}}'
+  if (settings.animation === 'none') return sweep
+  return (
+    sweep +
+    '@view-transition{navigation:auto;}' +
+    '::view-transition-old(root){animation:pb-page-out 220ms ease both;}' +
+    '::view-transition-new(root){animation:pb-page-in 300ms ease both;}' +
+    '@keyframes pb-page-out{to{opacity:0;transform:translateY(8px);}}' +
+    '@keyframes pb-page-in{from{opacity:0;transform:translateY(8px);}}' +
+    '@media (prefers-reduced-motion:reduce){' +
+    '::view-transition-old(root),::view-transition-new(root){animation:none;}}'
   )
 }
 

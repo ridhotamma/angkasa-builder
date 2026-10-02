@@ -32,7 +32,7 @@ import {
   ArticleShare,
   RelatedArticles,
 } from './article-page'
-import { PinnedScroll, ScrollRail, Stats } from './motion-sections'
+import { PinnedScroll, ScrollRail, StackedCards } from './motion-sections'
 import { ProductInfo, ProductReviews, RelatedProducts } from './product-page'
 import { BASE_SECTION_RENDERERS, type SectionProps } from './sections'
 
@@ -52,7 +52,7 @@ export const SECTION_RENDERERS = {
   'scrolling-story': ScrollingStory,
   'pinned-scroll': PinnedScroll,
   'scroll-rail': ScrollRail,
-  stats: Stats,
+  'stacked-cards': StackedCards,
   timeline: Timeline,
   table: TableSection,
   countdown: Countdown,

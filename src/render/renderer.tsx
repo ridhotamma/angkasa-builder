@@ -15,7 +15,7 @@ import { useLocale } from '@repo/i18n'
 import type { SectionInstance } from '../model/content'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
-import { themeCssVars, type ThemeSettings } from '../model/settings'
+import { effectCss, themeCssVars, type ThemeSettings } from '../model/settings'
 import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
 import { SectionFrame } from './frame'
 import { SectionIdContext } from './primitives'
@@ -28,6 +28,11 @@ export function ThemeScope({
 }: { settings: ThemeSettings; children: ReactNode } & BoxProps) {
   return (
     <Box css={themeCssVars(settings)} bg="bg" color="fg" fontFamily="body" {...props}>
+      {/* The same effect rules the storefront inlines, so the editor preview
+          and snapshots sweep and transition like the live page. Unlayered
+          like the variables; data-attribute scoped, so dashboard chrome
+          beside the preview is untouched. */}
+      <style>{effectCss(settings)}</style>
       {children}
     </Box>
   )
