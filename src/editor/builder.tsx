@@ -848,6 +848,7 @@ function Builder({
               <ThemeSettingsPanel
                 settings={settings}
                 onChange={onSettingsChange}
+                shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
                 defaultLookPickerOpen={Boolean(startWithLooks)}
                 priorityLookKeys={startWithLooks?.priorityKeys}
               />

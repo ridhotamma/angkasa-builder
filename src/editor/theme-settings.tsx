@@ -8,9 +8,12 @@ import {
   Flex,
   HStack,
   Icon,
+  Input,
+  Portal,
   Stack,
   Switch,
   Text,
+  Textarea,
 } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 import { LuSparkles } from 'react-icons/lu'
@@ -23,15 +26,26 @@ import {
   contrastIssues,
   FONT_OPTIONS,
   OPTION_LABELS,
+  POPUP_KIND_LABELS,
+  POPUP_KINDS,
   RADIUS_OPTIONS,
   resolveScheme,
   SCHEME_KEYS,
   SCHEME_LABELS,
   schemeContrastIssues,
+  SPLASH_STYLE_LABELS,
+  SPLASH_STYLES,
+  SPLASH_TONE_LABELS,
+  SPLASH_TONES,
   type FontFamily,
+  type PopupKind,
   type SchemeColors,
+  type SplashStyle,
+  type SplashTone,
   type ThemeSettings,
 } from '../model/settings'
+import { SitePopup } from '../render/popup'
+import { SplashScreen, type SplashShop } from '../render/splash'
 import { ColorInput, Labeled, SelectInput } from './controls'
 import { LookPickerDialog } from './look-picker-dialog'
 import { useEditorText, type EditorMessage } from './messages'
@@ -54,11 +68,14 @@ function Heading({ children }: { children: string }) {
 export function ThemeSettingsPanel({
   settings,
   onChange,
+  shop,
   defaultLookPickerOpen = false,
   priorityLookKeys = [],
 }: {
   settings: ThemeSettings
   onChange: (settings: ThemeSettings) => void
+  /** The shop's own name and logo, for the splash replay. */
+  shop?: SplashShop
   /** Open the look picker on mount — a fresh theme or a fresh install. */
   defaultLookPickerOpen?: boolean
   /** Look keys a freshly installed template suggests, shown first. */
@@ -66,6 +83,9 @@ export function ThemeSettingsPanel({
 }) {
   const { t, l } = useEditorText()
   const [pickerOpen, setPickerOpen] = useState(false)
+  // A count, so each press replays the intro; zero means it is not playing.
+  const [splashPreview, setSplashPreview] = useState(0)
+  const [popupPreview, setPopupPreview] = useState(0)
   // Opened after mount, not with it: two modal dialogs mounting open in the
   // same commit confuse the layer stack, and dismissing the picker can take
   // the editor down with it — back to the themes list with a clean draft.
@@ -81,6 +101,26 @@ export function ThemeSettingsPanel({
   const issues = contrastIssues(settings)
   const schemeIssues = schemeContrastIssues(settings)
 
+  const splashToggle = (
+    label: string,
+    key: 'enabled' | 'showLogo' | 'showName' | 'oncePerSession',
+  ) => (
+    <HStack key={key} justify="space-between" w="full" align="flex-start" gap="4">
+      <Text fontSize="sm">{label}</Text>
+      <Switch.Root
+        size="sm"
+        colorPalette="brand"
+        checked={settings.splash[key]}
+        onCheckedChange={({ checked }) =>
+          onChange({ ...settings, splash: { ...settings.splash, [key]: checked } })
+        }
+      >
+        <Switch.HiddenInput />
+        <Switch.Control />
+      </Switch.Root>
+    </HStack>
+  )
+
   const color = (key: keyof ThemeSettings['colors'], label: EditorMessage) => (
     <ColorInput
       label={t(label)}
@@ -94,13 +134,7 @@ export function ThemeSettingsPanel({
   return (
     <Stack gap="6">
       {/* Curated Looks & Palettes Quick Selector */}
-      <Box
-        borderWidth="1px"
-        borderColor="border.subtle"
-        rounded="lg"
-        p="3.5"
-        bg="bg.subtle"
-      >
+      <Box borderWidth="1px" borderColor="border.subtle" rounded="lg" p="3.5" bg="bg.subtle">
         <Flex justify="space-between" align="center" mb="2">
           <Heading>{t('looksAndPalettes')}</Heading>
           <Badge size="xs" variant="surface">
@@ -257,6 +291,182 @@ export function ThemeSettingsPanel({
           />
         </Labeled>
       </Stack>
+
+      <Stack gap="3">
+        <Heading>{t('splash')}</Heading>
+        <Text fontSize="xs" color="fg.muted">
+          {t('splashHelp')}
+        </Text>
+        {splashToggle(t('splashEnable'), 'enabled')}
+        <Labeled label={t('splashStyle')}>
+          <SelectInput
+            value={settings.splash.style}
+            options={SPLASH_STYLES.map((value) => ({
+              value,
+              label: l(SPLASH_STYLE_LABELS[value]),
+            }))}
+            onChange={(style) =>
+              onChange({ ...settings, splash: { ...settings.splash, style: style as SplashStyle } })
+            }
+          />
+        </Labeled>
+        <Labeled label={t('splashTone')}>
+          <SelectInput
+            value={settings.splash.tone}
+            options={SPLASH_TONES.map((value) => ({
+              value,
+              label: l(SPLASH_TONE_LABELS[value]),
+            }))}
+            onChange={(tone) =>
+              onChange({ ...settings, splash: { ...settings.splash, tone: tone as SplashTone } })
+            }
+          />
+        </Labeled>
+        {splashToggle(t('splashShowLogo'), 'showLogo')}
+        {splashToggle(t('splashShowName'), 'showName')}
+        {splashToggle(t('splashOncePerSession'), 'oncePerSession')}
+        {shop && (
+          <Button
+            size="xs"
+            variant="outline"
+            alignSelf="start"
+            onClick={() => setSplashPreview((count) => count + 1)}
+          >
+            {t('previewIntro')}
+          </Button>
+        )}
+      </Stack>
+
+      {shop && splashPreview > 0 && (
+        <Portal>
+          <SplashScreen
+            key={splashPreview}
+            settings={settings}
+            shop={shop}
+            replay
+            onDone={() => setSplashPreview(0)}
+          />
+        </Portal>
+      )}
+
+      <Stack gap="3">
+        <Heading>{t('popup')}</Heading>
+        <Text fontSize="xs" color="fg.muted">
+          {t('popupHelp')}
+        </Text>
+        <Labeled label={t('popupKind')}>
+          <SelectInput
+            value={settings.popup.kind}
+            options={POPUP_KINDS.map((value) => ({
+              value,
+              label: l(POPUP_KIND_LABELS[value]),
+            }))}
+            onChange={(kind) =>
+              onChange({ ...settings, popup: { ...settings.popup, kind: kind as PopupKind } })
+            }
+          />
+        </Labeled>
+        {settings.popup.kind !== 'none' && (
+          <>
+            <Labeled label={t('popupTitle')}>
+              <Input
+                size="sm"
+                value={settings.popup.title}
+                maxLength={120}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    popup: { ...settings.popup, title: event.currentTarget.value },
+                  })
+                }
+              />
+            </Labeled>
+            <Labeled label={t('popupBody')}>
+              <Textarea
+                size="sm"
+                rows={3}
+                value={settings.popup.body}
+                maxLength={400}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    popup: { ...settings.popup, body: event.currentTarget.value },
+                  })
+                }
+              />
+            </Labeled>
+            <Labeled label={t('popupButton')}>
+              <Input
+                size="sm"
+                value={settings.popup.buttonLabel}
+                maxLength={40}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    popup: { ...settings.popup, buttonLabel: event.currentTarget.value },
+                  })
+                }
+              />
+            </Labeled>
+            {(settings.popup.kind === 'welcome' || settings.popup.kind === 'exit') && (
+              <Labeled label={t('popupDelay')} help={t('popupDelayHelp')}>
+                <Input
+                  size="sm"
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={settings.popup.delaySeconds}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      popup: {
+                        ...settings.popup,
+                        delaySeconds: Number(event.currentTarget.value) || 4,
+                      },
+                    })
+                  }
+                />
+              </Labeled>
+            )}
+            <HStack justify="space-between" w="full" align="flex-start" gap="4">
+              <Text fontSize="sm">{t('popupOnce')}</Text>
+              <Switch.Root
+                size="sm"
+                colorPalette="brand"
+                checked={settings.popup.oncePerSession}
+                onCheckedChange={({ checked }) =>
+                  onChange({
+                    ...settings,
+                    popup: { ...settings.popup, oncePerSession: checked },
+                  })
+                }
+              >
+                <Switch.HiddenInput />
+                <Switch.Control />
+              </Switch.Root>
+            </HStack>
+            <Button
+              size="xs"
+              variant="outline"
+              alignSelf="start"
+              onClick={() => setPopupPreview((count) => count + 1)}
+            >
+              {t('previewPopup')}
+            </Button>
+          </>
+        )}
+      </Stack>
+
+      {popupPreview > 0 && (
+        <Portal>
+          <SitePopup
+            key={popupPreview}
+            settings={settings}
+            replay
+            onDone={() => setPopupPreview(0)}
+          />
+        </Portal>
+      )}
 
       <Stack gap="3">
         <Heading>{t('typography')}</Heading>

@@ -16,6 +16,8 @@
 import { Box, Container, type BoxProps } from '@chakra-ui/react'
 import { createContext, useContext, useRef, type ReactNode } from 'react'
 
+import { ImageWithFallback } from '@repo/theme'
+
 import {
   isWithinSchedule,
   readSectionStyle,
@@ -29,6 +31,7 @@ import {
 import { resolveScheme, schemeCssVars, type SchemeKey } from '../model/settings'
 import { useRenderEnvironment } from './context'
 import { PANEL_PX, PATTERNS, SectionDivider, surfacePaint } from './dividers'
+import { BackgroundVideo } from './media'
 import { revealRootMargin, useMotionEffect } from './motion/engine'
 import { FullBleed, HeadlineContext } from './primitives'
 import type { FieldValues } from '../model/fields'
@@ -96,7 +99,7 @@ export function SectionFrame({
   style: FieldValues
   children: ReactNode
 }) {
-  const { settings } = useRenderEnvironment()
+  const { settings, imageUrl } = useRenderEnvironment()
   const style = readSectionStyle(stored)
   const banded = style.scheme !== null || style.backgroundType !== 'default'
   const scheme = style.scheme ? resolveScheme(settings, style.scheme) : null
@@ -112,20 +115,62 @@ export function SectionFrame({
 
   const entrance = resolveEntrance(settings.animation, style)
 
+  // A photo background may also be a video's poster.
+  const poster =
+    paint.media?.imageId != null && paint.media.imageId !== ''
+      ? imageUrl(paint.media.imageId, { width: 1920, height: 1080 })
+      : null
+
   const surface: BoxProps = {
-    position: 'relative',
+    position: style.sticky ? 'sticky' : 'relative',
+    ...(style.sticky && { top: '0', zIndex: 1 }),
     ...(style.scheme && vars && { css: schemeCss(style.scheme, vars), color: 'fg' }),
     ...(paint.bg && { bg: paint.bg }),
     ...(paint.backgroundImage && { backgroundImage: paint.backgroundImage }),
+    ...(style.textShadow && {
+      css: {
+        ...(style.scheme && vars ? (schemeCss(style.scheme, vars) as object) : {}),
+        textShadow: '0 1px 14px rgba(0, 0, 0, 0.45)',
+      },
+      color: style.scheme ? 'fg' : undefined,
+    }),
     pt: padding(style.paddingTop, banded),
     pb: padding(style.paddingBottom, banded),
   }
 
   const pattern = paint.pattern
+  const shade =
+    paint.overlay === 'light'
+      ? 'blackAlpha.300'
+      : paint.overlay === 'dark'
+        ? 'blackAlpha.600'
+        : paint.overlay === 'strong'
+          ? 'blackAlpha.700'
+          : null
 
   const content = (
     <SectionLayoutContext.Provider value={{ width: style.width, banded, headline: style.headline }}>
       <HeadlineContext.Provider value={style.headline}>
+        {/* The photo or video layer, under the shade, the pattern and the words. */}
+        {paint.media && (paint.media.video || poster) && (
+          <Box position="absolute" inset={0} overflow="hidden" zIndex={0} pointerEvents="none">
+            {paint.media.video ? (
+              <BackgroundVideo video={paint.media.video} poster={poster} />
+            ) : (
+              <ImageWithFallback
+                src={poster ?? undefined}
+                alt=""
+                w="full"
+                h="full"
+                objectFit="cover"
+                loading="lazy"
+              />
+            )}
+          </Box>
+        )}
+        {paint.media && shade && (
+          <Box position="absolute" inset={0} pointerEvents="none" zIndex={0} bg={shade} />
+        )}
         {pattern !== 'none' && (
           <Box
             position="absolute"

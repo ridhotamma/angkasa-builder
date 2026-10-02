@@ -10,11 +10,13 @@
 
 import { Box, type BoxProps } from '@chakra-ui/react'
 
+import type { VideoRef } from '../model/fields'
 import type {
   BackgroundGradient,
   BackgroundPattern,
   DividerShape,
   ResolvedSectionStyle,
+  SurfaceOverlay,
 } from '../model/section-style'
 
 /** A new gradient is one entry here; the type in `model/section-style` keeps it total. */
@@ -28,6 +30,12 @@ const GRADIENTS: Record<BackgroundGradient, string> = {
 }
 
 /** Patterns draw in the section's own text colour at a low opacity. */
+const GRAIN = encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180">' +
+    '<filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="2" stitchTiles="stitch"/></filter>' +
+    '<rect width="180" height="180" filter="url(#n)"/></svg>',
+)
+
 export const PATTERNS: Record<Exclude<BackgroundPattern, 'none'>, BoxProps['css']> = {
   dots: {
     backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)',
@@ -45,6 +53,27 @@ export const PATTERNS: Record<Exclude<BackgroundPattern, 'none'>, BoxProps['css'
       'repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px)',
     opacity: 0.06,
   },
+  // Film grain: an SVG turbulence tile, no image file and no WebGL.
+  grain: {
+    backgroundImage: `url("data:image/svg+xml,${GRAIN}")`,
+    backgroundRepeat: 'repeat',
+    opacity: 0.14,
+    mixBlendMode: 'overlay',
+  },
+  // An aurora drift, approximated with an animated gradient; still under
+  // reduced motion.
+  aurora: {
+    backgroundImage:
+      'linear-gradient(120deg, transparent 0%, var(--chakra-colors-brand-muted) 28%, transparent 52%, var(--chakra-colors-brand-subtle) 78%, transparent 100%)',
+    backgroundSize: '220% 220%',
+    opacity: 0.85,
+    animation: 'pb-aurora 16s ease-in-out infinite alternate',
+    '@keyframes pb-aurora': {
+      from: { backgroundPosition: '0% 50%' },
+      to: { backgroundPosition: '100% 50%' },
+    },
+    '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+  },
 }
 
 /** The panel padding a contained band wears; its dividers inset to match. */
@@ -57,15 +86,28 @@ export interface SurfacePaint {
   backgroundImage?: string
   /** Pattern texture over the background, if any. */
   pattern: BackgroundPattern
+  /** A photo or video layer under the content, if the section asked for one. */
+  media: { imageId: string; video: VideoRef | null } | null
+  /** How dark that layer is, so text on it stays readable. */
+  overlay: SurfaceOverlay
 }
 
 /** A section's painted background, whatever kind it is — the frame and the divider share this. */
 export function surfacePaint(style: ResolvedSectionStyle): SurfacePaint {
+  const media =
+    style.backgroundType === 'image' || style.backgroundType === 'video'
+      ? {
+          imageId: style.backgroundImageId,
+          video: style.backgroundType === 'video' ? style.backgroundVideo : null,
+        }
+      : null
   return {
     bg: style.scheme ? 'bg' : undefined,
     backgroundImage:
       style.backgroundType === 'gradient' ? GRADIENTS[style.backgroundGradient] : undefined,
     pattern: style.backgroundType === 'pattern' ? style.backgroundPattern : 'none',
+    media,
+    overlay: style.backgroundOverlay,
   }
 }
 
@@ -137,7 +179,13 @@ interface SectionDividerProps extends BoxProps {
   contained?: boolean
 }
 
-export function SectionDivider({ shape, position, paint, contained = false, ...rest }: SectionDividerProps) {
+export function SectionDivider({
+  shape,
+  position,
+  paint,
+  contained = false,
+  ...rest
+}: SectionDividerProps) {
   if (shape === 'none') return null
   const mask = maskProps(shape)
   return (
@@ -149,7 +197,12 @@ export function SectionDivider({ shape, position, paint, contained = false, ...r
       {...rest}
     >
       {paint.pattern !== 'none' && (
-        <Box position="absolute" inset={0} pointerEvents="none" css={{ ...PATTERNS[paint.pattern], ...mask }} />
+        <Box
+          position="absolute"
+          inset={0}
+          pointerEvents="none"
+          css={{ ...PATTERNS[paint.pattern], ...mask }}
+        />
       )}
     </Box>
   )

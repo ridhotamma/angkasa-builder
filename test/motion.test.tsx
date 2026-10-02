@@ -202,10 +202,11 @@ describe('surface paint', () => {
     // A scheme band: token background for the divider to wear.
     expect(surfacePaint(readSectionStyle({ colorScheme: 'brand' })).bg).toBe('bg')
     // No scheme: transparent, the page shows through.
-    expect(surfacePaint(readSectionStyle({}))).toEqual({
+    expect(surfacePaint(readSectionStyle({}))).toMatchObject({
       bg: undefined,
       backgroundImage: undefined,
       pattern: 'none',
+      media: null,
     })
     // A gradient wash rides along as a background image.
     const gradient = surfacePaint(

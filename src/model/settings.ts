@@ -81,6 +81,99 @@ export const CARD_STYLES = ['border', 'shadow', 'flat'] as const
 
 export const ANIMATION_STYLES = ['none', 'subtle', 'expressive'] as const
 
+/* -------------------------------------------------------------------------- */
+/* Splash screen                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The brand intro: a full-screen logo card on a visit's first load, never on
+ * in-site navigation. Off by default, so an existing theme reads unchanged.
+ * `smoke` and `ink` are CSS approximations of the Tier 2 shader exits; a
+ * no-JS page dismisses itself through the same CSS keyframes.
+ */
+export const SPLASH_STYLES = ['fade', 'slide-up', 'slide-down', 'smoke', 'ink'] as const
+export const SPLASH_TONES = ['page', 'dark', 'brand'] as const
+
+export type SplashStyle = (typeof SPLASH_STYLES)[number]
+export type SplashTone = (typeof SPLASH_TONES)[number]
+
+export interface SplashSettings {
+  enabled: boolean
+  style: SplashStyle
+  /** The shop's logo from shop settings, when it has one. */
+  showLogo: boolean
+  /** The shop's name. */
+  showName: boolean
+  tone: SplashTone
+  /** Skip the intro on later full loads in the same tab. Off: a reload replays. */
+  oncePerSession: boolean
+}
+
+export const DEFAULT_SPLASH: SplashSettings = {
+  enabled: false,
+  style: 'fade',
+  showLogo: true,
+  showName: true,
+  tone: 'page',
+  oncePerSession: false,
+}
+
+export const SPLASH_STYLE_LABELS: Record<SplashStyle, Localized> = {
+  fade: { en: 'Fade', id: 'Memudar' },
+  'slide-up': { en: 'Slide up', id: 'Geser ke atas' },
+  'slide-down': { en: 'Slide down', id: 'Geser ke bawah' },
+  smoke: { en: 'Smoke', id: 'Asap' },
+  ink: { en: 'Ink', id: 'Tinta' },
+}
+
+export const SPLASH_TONE_LABELS: Record<SplashTone, Localized> = {
+  page: { en: 'Page', id: 'Halaman' },
+  dark: { en: 'Dark', id: 'Gelap' },
+  brand: { en: 'Brand', id: 'Brand' },
+}
+
+/* -------------------------------------------------------------------------- */
+/* Site popup                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One popup per theme, told what to be: a welcome offer after a delay, an
+ * exit-intent offer, an age gate, or a cookie notice bar. Off by default.
+ * `oncePerSession` is the polite default for all but the cookie bar, which is
+ * remembered for the session so it does not nag.
+ */
+export const POPUP_KINDS = ['none', 'welcome', 'exit', 'age', 'cookie'] as const
+export type PopupKind = (typeof POPUP_KINDS)[number]
+
+export interface PopupSettings {
+  kind: PopupKind
+  title: string
+  body: string
+  buttonLabel: string
+  /** Seconds before a welcome popup opens. */
+  delaySeconds: number
+  oncePerSession: boolean
+  tone: SplashTone
+}
+
+export const DEFAULT_POPUP: PopupSettings = {
+  kind: 'none',
+  title: 'Welcome — here’s 10% off',
+  body: 'Join the list for first access to new drops.',
+  buttonLabel: 'Continue',
+  delaySeconds: 4,
+  oncePerSession: true,
+  tone: 'page',
+}
+
+export const POPUP_KIND_LABELS: Record<PopupKind, Localized> = {
+  none: { en: 'None', id: 'Tidak ada' },
+  welcome: { en: 'Welcome offer', id: 'Tawaran selamat datang' },
+  exit: { en: 'Exit intent', id: 'Saat akan keluar' },
+  age: { en: 'Age gate', id: 'Gerbang usia' },
+  cookie: { en: 'Cookie notice', id: 'Pemberitahuan cookie' },
+}
+
 /**
  * The colour schemes a section can wear besides the page's own. Four named
  * roles rather than a free list: a seller picks "the dark band", and every
@@ -152,6 +245,10 @@ export interface ThemeSettings {
   schemes: Partial<Record<SchemeKey, SchemeColors>>
   /** How sections enter as the page scrolls. */
   animation: AnimationStyle
+  /** The brand intro on a visit's first load. */
+  splash: SplashSettings
+  /** The one site popup: welcome, exit, age gate or cookie notice. */
+  popup: PopupSettings
 }
 
 /** Pesanle's own look, which is what an untouched storefront wears today. */
@@ -170,6 +267,8 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   // Off for a theme that never chose: a storefront that did not move yesterday
   // should not start moving after a deploy.
   animation: 'none',
+  splash: DEFAULT_SPLASH,
+  popup: DEFAULT_POPUP,
 }
 
 const HEX = /^#[0-9a-f]{6}$/i
@@ -221,6 +320,27 @@ const settingsSchema = z.object({
     )
     .catch({}),
   animation: z.enum(ANIMATION_STYLES).catch(DEFAULT_THEME_SETTINGS.animation),
+  splash: z
+    .object({
+      enabled: z.boolean().catch(DEFAULT_SPLASH.enabled),
+      style: z.enum(SPLASH_STYLES).catch(DEFAULT_SPLASH.style),
+      showLogo: z.boolean().catch(DEFAULT_SPLASH.showLogo),
+      showName: z.boolean().catch(DEFAULT_SPLASH.showName),
+      tone: z.enum(SPLASH_TONES).catch(DEFAULT_SPLASH.tone),
+      oncePerSession: z.boolean().catch(DEFAULT_SPLASH.oncePerSession),
+    })
+    .catch(DEFAULT_SPLASH),
+  popup: z
+    .object({
+      kind: z.enum(POPUP_KINDS).catch(DEFAULT_POPUP.kind),
+      title: z.string().trim().max(120).catch(DEFAULT_POPUP.title),
+      body: z.string().trim().max(400).catch(DEFAULT_POPUP.body),
+      buttonLabel: z.string().trim().max(40).catch(DEFAULT_POPUP.buttonLabel),
+      delaySeconds: z.number().int().min(1).max(60).catch(DEFAULT_POPUP.delaySeconds),
+      oncePerSession: z.boolean().catch(DEFAULT_POPUP.oncePerSession),
+      tone: z.enum(SPLASH_TONES).catch(DEFAULT_POPUP.tone),
+    })
+    .catch(DEFAULT_POPUP),
 })
 
 /**

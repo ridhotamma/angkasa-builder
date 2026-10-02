@@ -35,10 +35,12 @@ import {
 } from './article-page'
 import { PinnedScroll, ScrollRail, StackedCards } from './motion-sections'
 import { ProductInfo, ProductReviews, RelatedProducts } from './product-page'
+import { PREMIUM_SECTION_RENDERERS } from './premium-sections'
 import { BASE_SECTION_RENDERERS, type SectionProps } from './sections'
 
 export const SECTION_RENDERERS = {
   ...BASE_SECTION_RENDERERS,
+  ...PREMIUM_SECTION_RENDERERS,
   blocks: BlocksSection,
   'video-hero': VideoHero,
   'parallax-banner': ParallaxBanner,

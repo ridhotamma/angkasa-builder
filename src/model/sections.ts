@@ -14,6 +14,7 @@
 import { blocksSectionSchema } from './blocks'
 import type { BlockSchema, Field, ItemField, ListField, RichTextField, TextField } from './fields'
 import type { Localized } from './localized'
+import { PREMIUM_SECTION_SCHEMAS } from './premium-sections'
 
 /**
  * Where a template can use a section. Omitted means everywhere but the product
@@ -501,6 +502,7 @@ const PRODUCT_INFO_BLOCKS: readonly BlockSchema[] = [
 
 export const SECTION_SCHEMAS = [
   blocksSectionSchema,
+  ...PREMIUM_SECTION_SCHEMAS,
   {
     type: 'announcement-bar',
     scopes: EVERYWHERE,

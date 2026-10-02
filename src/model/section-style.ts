@@ -14,7 +14,15 @@
  * default below is "exactly as before".
  */
 
-import { readBoolean, readDate, readText, type Field, type FieldValues } from './fields'
+import {
+  readBoolean,
+  readDate,
+  readText,
+  readVideo,
+  type Field,
+  type FieldValues,
+  type VideoRef,
+} from './fields'
 import type { Localized } from './localized'
 import { SCHEME_KEYS, SCHEME_LABELS, type AnimationStyle, type SchemeKey } from './settings'
 
@@ -27,8 +35,17 @@ const SPACING = [
   { value: 'xl', label: { en: 'Extra large', id: 'Sangat besar' } },
 ] as const
 
-export const BACKGROUND_TYPES = ['default', 'gradient', 'pattern'] as const
+export const BACKGROUND_TYPES = ['default', 'gradient', 'pattern', 'image', 'video'] as const
 export type BackgroundType = (typeof BACKGROUND_TYPES)[number]
+
+/** How a photo or video background is dimmed so the words on it stay readable. */
+export const SURFACE_OVERLAYS = [
+  { value: 'none', label: { en: 'None', id: 'Tidak ada' } },
+  { value: 'light', label: { en: 'Light', id: 'Ringan' } },
+  { value: 'dark', label: { en: 'Dark', id: 'Gelap' } },
+  { value: 'strong', label: { en: 'Strong', id: 'Kuat' } },
+] as const
+export type SurfaceOverlay = (typeof SURFACE_OVERLAYS)[number]['value']
 
 export const BACKGROUND_GRADIENTS = [
   { value: 'subtle-warm', label: { en: 'Subtle Warm', id: 'Hangat Lembut' } },
@@ -45,6 +62,8 @@ export const BACKGROUND_PATTERNS = [
   { value: 'dots', label: { en: 'Subtle Dots', id: 'Titik-titik Halus' } },
   { value: 'grid', label: { en: 'Blueprint Grid', id: 'Garis Kisi' } },
   { value: 'stripes', label: { en: 'Diagonal Stripes', id: 'Garis Diagonal' } },
+  { value: 'grain', label: { en: 'Film Grain', id: 'Butiran Film' } },
+  { value: 'aurora', label: { en: 'Aurora Drift', id: 'Aurora Mengalir' } },
 ] as const
 export type BackgroundPattern = (typeof BACKGROUND_PATTERNS)[number]['value']
 
@@ -149,6 +168,55 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     options: BACKGROUND_PATTERNS,
     default: 'none',
     showWhen: { key: 'backgroundType', is: ['pattern'] },
+  },
+  {
+    kind: 'image',
+    key: 'backgroundImage',
+    label: { en: 'Background image', id: 'Gambar latar' },
+    help: {
+      en: 'Also the poster while a background video loads.',
+      id: 'Juga menjadi poster saat video latar dimuat.',
+    },
+    showWhen: { key: 'backgroundType', is: ['image', 'video'] },
+  },
+  {
+    kind: 'video',
+    key: 'backgroundVideo',
+    label: { en: 'Background video', id: 'Video latar' },
+    uploadOnly: true,
+    showWhen: { key: 'backgroundType', is: ['video'] },
+  },
+  {
+    kind: 'select',
+    key: 'backgroundOverlay',
+    label: { en: 'Image shade', id: 'Peredup gambar' },
+    help: {
+      en: 'Darkens a photo or video so text on it stays readable.',
+      id: 'Menggelapkan foto atau video agar teks di atasnya tetap terbaca.',
+    },
+    options: SURFACE_OVERLAYS,
+    default: 'light',
+    showWhen: { key: 'backgroundType', is: ['image', 'video'] },
+  },
+  {
+    kind: 'boolean',
+    key: 'textShadow',
+    label: { en: 'Lift text over the image', id: 'Angkat teks di atas gambar' },
+    help: {
+      en: 'A soft shadow behind the section’s text, for busy backgrounds.',
+      id: 'Bayangan halus di belakang teks bagian, untuk latar yang ramai.',
+    },
+    default: false,
+  },
+  {
+    kind: 'boolean',
+    key: 'sticky',
+    label: { en: 'Stick while scrolling', id: 'Menempel saat digulir' },
+    help: {
+      en: 'The section holds at the top of the screen while the next one scrolls over it.',
+      id: 'Bagian ini menahan di atas layar saat bagian berikutnya bergulir menutupinya.',
+    },
+    default: false,
   },
   {
     kind: 'select',
@@ -298,6 +366,13 @@ export interface ResolvedSectionStyle {
   backgroundType: BackgroundType
   backgroundGradient: BackgroundGradient
   backgroundPattern: BackgroundPattern
+  /** A media file id for an image background, or the poster of a video one. */
+  backgroundImageId: string
+  /** An uploaded file behind the section; embeds cannot loop silently. */
+  backgroundVideo: VideoRef | null
+  backgroundOverlay: SurfaceOverlay
+  textShadow: boolean
+  sticky: boolean
   dividerTop: DividerShape
   dividerBottom: DividerShape
   motion: SectionMotion
@@ -349,6 +424,16 @@ export function readSectionStyle(style: FieldValues): ResolvedSectionStyle {
       BACKGROUND_PATTERNS.map((pattern) => pattern.value),
       'none',
     ),
+    backgroundImageId: readText(style, 'backgroundImage'),
+    backgroundVideo: readVideo(style, 'backgroundVideo'),
+    backgroundOverlay: readOption(
+      style,
+      'backgroundOverlay',
+      SURFACE_OVERLAYS.map((overlay) => overlay.value),
+      'light',
+    ),
+    textShadow: readBoolean(style, 'textShadow'),
+    sticky: readBoolean(style, 'sticky'),
     dividerTop: readOption(
       style,
       'dividerTop',
