@@ -12,7 +12,7 @@ import {
   Switch,
   Text,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LuSparkles } from 'react-icons/lu'
 
 import {
@@ -65,7 +65,19 @@ export function ThemeSettingsPanel({
   priorityLookKeys?: readonly string[]
 }) {
   const { t, l } = useEditorText()
-  const [pickerOpen, setPickerOpen] = useState(defaultLookPickerOpen)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  // Opened after mount, not with it: two modal dialogs mounting open in the
+  // same commit confuse the layer stack, and dismissing the picker can take
+  // the editor down with it — back to the themes list with a clean draft.
+  useEffect(() => {
+    if (!defaultLookPickerOpen) return
+    if (typeof requestAnimationFrame === 'undefined') {
+      setPickerOpen(true)
+      return
+    }
+    const frame = requestAnimationFrame(() => setPickerOpen(true))
+    return () => cancelAnimationFrame(frame)
+  }, [defaultLookPickerOpen])
   const issues = contrastIssues(settings)
   const schemeIssues = schemeContrastIssues(settings)
 
