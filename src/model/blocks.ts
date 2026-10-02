@@ -15,6 +15,8 @@ import type { BlockSchema, BlockValue, BlocksField, Field, FieldValues, JsonValu
 import { isRecord, newId } from './fields'
 import {
   alignmentField,
+  buttonHoverField,
+  buttonPaddingField,
   buttonSizeField,
   buttonToneField,
   buttonVariantField,
@@ -123,10 +125,12 @@ const button: BlockSchema = {
     },
     { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
     buttonSizeField(),
+    buttonPaddingField(),
     selfWidthField(),
     alignmentField(),
     buttonVariantField(),
     buttonToneField(),
+    buttonHoverField(),
   ],
 }
 

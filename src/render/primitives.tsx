@@ -32,12 +32,20 @@ import {
 
 import { ImageWithFallback } from '@repo/theme'
 
+import {
+  ALIGN_SELF,
+  BUTTON_PADDING_X,
+  buttonAppearance,
+  readButtonElement,
+  type ButtonAppearance,
+  type ButtonHover,
+} from '../model/element-style'
 import { readLink, readText, type FieldValues } from '../model/fields'
 import type { Link } from '../model/links'
 import type { ButtonStyle, CardStyle } from '../model/settings'
 import type { SectionHeadline } from '../model/section-style'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
-import { Magnetic, SplitText } from './motion'
+import { SplitText } from './motion'
 
 /**
  * Props for every dialog and drawer a section opens (photo viewer, size
@@ -146,22 +154,107 @@ export function LinkButton({
   ...props
 }: { label: string; link: Link } & ComponentProps<typeof Button>) {
   const anchor = useAnchor(link)
-  if (!anchor) return <Button {...props}>{label}</Button>
+  // The label sits above a hover fill's pseudo-element, so the wipe never
+  // hides the words no matter which direction it comes from.
+  const content = (
+    <Box
+      as="span"
+      data-button-label=""
+      position="relative"
+      zIndex="1"
+      display="inline-flex"
+      alignItems="center"
+    >
+      {label}
+    </Box>
+  )
+  if (!anchor) return <Button {...props}>{content}</Button>
   return (
     <Button asChild {...props}>
       <ChakraLink unstyled {...anchor}>
-        {label}
+        {content}
       </ChakraLink>
     </Button>
   )
 }
 
+const HOVER_FILL_TRANSITION = 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1)'
+
+/**
+ * The hover the seller picked: a contrasting fill that wipes in from a
+ * direction, or a light that sweeps across. Runs only under
+ * `prefers-reduced-motion: no-preference`, and only ever styles the button —
+ * no pointer tracking, no cursor following.
+ */
+export function buttonHoverCss(
+  hover: ButtonHover | 'none',
+  appearance: ButtonAppearance,
+): BoxProps['css'] {
+  if (hover === 'none') return undefined
+  const wipe = (origin: string, axis: 'X' | 'Y') => ({
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      inset: '0',
+      backgroundColor: appearance.sweepBg,
+      transform: axis === 'Y' ? 'scaleY(0)' : 'scaleX(0)',
+      transformOrigin: origin,
+      transition: HOVER_FILL_TRANSITION,
+      pointerEvents: 'none',
+    },
+    '&:hover::before, &:focus-visible::before': {
+      transform: axis === 'Y' ? 'scaleY(1)' : 'scaleX(1)',
+    },
+  })
+  const effect =
+    hover === 'fill-up'
+      ? wipe('bottom', 'Y')
+      : hover === 'fill-down'
+        ? wipe('top', 'Y')
+        : hover === 'fill-left'
+          ? wipe('left', 'X')
+          : hover === 'fill-right'
+            ? wipe('right', 'X')
+            : {
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: '0',
+                  bottom: '0',
+                  left: '0',
+                  width: '40%',
+                  backgroundImage:
+                    'linear-gradient(100deg, transparent, color-mix(in srgb, white 55%, transparent), transparent)',
+                  transform: 'translateX(-160%) skewX(-18deg)',
+                  transition: 'transform 650ms ease',
+                  pointerEvents: 'none',
+                },
+                '&:hover::before, &:focus-visible::before': {
+                  transform: 'translateX(340%) skewX(-18deg)',
+                },
+              }
+  return {
+    position: 'relative',
+    overflow: 'hidden',
+    '@media (prefers-reduced-motion: no-preference)': {
+      ...effect,
+      '&:hover, &:focus-visible': { color: appearance.sweepColor },
+    },
+  }
+}
+
+/**
+ * A section's button, in the theme's shape unless the seller clicked it in
+ * the preview and restyled it. `elementKey` is where those overrides live in
+ * `SectionInstance.elements`; every button passes its own, so two buttons in
+ * one section never share a panel.
+ */
 export function ThemeButton({
   label,
   link,
   secondary = false,
   onImage = false,
-  magnetic = false,
+  elementKey = 'button',
 }: {
   label: string
   link: Link
@@ -169,35 +262,116 @@ export function ThemeButton({
   secondary?: boolean
   /** Over a photo, where the brand colour may not read: white instead. */
   onImage?: boolean
-  /** Lean toward the pointer on banners; pointers only, harmless elsewhere. */
-  magnetic?: boolean
+  /** The element id its editor overrides are stored under. */
+  elementKey?: string
 }) {
-  const { settings } = useRenderEnvironment()
+  const { settings, editing } = useRenderEnvironment()
+  const elements = useContext(SectionElementsContext)
   if (!label) return null
 
   const look = buttonLook(settings.buttonStyle)
-  const variant = secondary ? 'outline' : look.variant
-  const imageLook = onImage
-    ? secondary || variant === 'outline'
-      ? { color: 'white', borderColor: 'white', _hover: { bg: 'whiteAlpha.200' } }
-      : { bg: 'white', color: 'gray.900', _hover: { bg: 'whiteAlpha.900' } }
-    : {}
+  const override = readButtonElement(elements[elementKey])
+  const themeVariant = secondary ? 'outline' : look.variant
+  const variant = override.variant !== 'default' ? override.variant : themeVariant
+  const configured = override.variant !== 'default' || override.tone !== 'default'
+  const size = override.size !== 'default' ? override.size : 'lg'
+  const width = override.width !== 'default' ? override.width : 'auto'
+  const padding = override.padding !== 'default' ? BUTTON_PADDING_X[override.padding] : undefined
+  const alignSelf = override.align !== 'default' ? ALIGN_SELF[override.align] : undefined
+  const hover = override.hover === 'default' ? 'none' : override.hover
+  // The theme's variant and the resolved tones share one appearance, so a
+  // hover fill knows what to wipe in with on either path.
+  const appearance = buttonAppearance(
+    override.tone === 'default' ? 'brand' : override.tone,
+    variant,
+    settings,
+  )
+  const hoverCss = buttonHoverCss(hover, appearance)
 
-  const button = (
+  const press = {
+    transition: 'transform 180ms ease, background-color 150ms ease',
+    _hover: { transform: 'translateY(-1px)' },
+    _active: { transform: 'translateY(0) scale(0.98)' },
+  }
+  const shape = {
+    colorPalette: 'brand',
+    rounded: look.rounded,
+    size,
+    w: width === 'full' ? ('full' as const) : undefined,
+    px: padding,
+    alignSelf,
+    css: hoverCss,
+  }
+
+  const button = configured ? (
+    <ConfiguredButton
+      label={label}
+      link={link}
+      variant={variant}
+      appearance={appearance}
+      shape={shape}
+      press={press}
+    />
+  ) : (
     <LinkButton
       label={label}
       link={link}
-      colorPalette="brand"
       variant={variant}
-      rounded={look.rounded}
-      size="lg"
-      transition="transform 180ms ease, background-color 150ms ease"
-      _hover={{ transform: 'translateY(-1px)' }}
-      _active={{ transform: 'translateY(0) scale(0.98)' }}
-      {...imageLook}
+      {...shape}
+      {...press}
+      {...(onImage
+        ? secondary || variant === 'outline'
+          ? { color: 'white', borderColor: 'white', _hover: { bg: 'whiteAlpha.200' } }
+          : { bg: 'white', color: 'gray.900', _hover: { bg: 'whiteAlpha.900' } }
+        : {})}
     />
   )
-  return magnetic ? <Magnetic>{button}</Magnetic> : button
+
+  return (
+    <ElementShell
+      elementId={elementKey}
+      selected={editing?.selectedElementId === elementKey}
+      width={width}
+    >
+      {button}
+    </ElementShell>
+  )
+}
+
+/**
+ * A button with an explicit colour and style. The appearance decides the
+ * fill, text, border and hover; press physics and the theme's corner stay on
+ * top, so an overridden button still moves like every other button.
+ */
+function ConfiguredButton({
+  label,
+  link,
+  variant,
+  appearance,
+  shape,
+  press,
+}: {
+  label: string
+  link: Link
+  variant: 'solid' | 'outline' | 'ghost'
+  appearance: ButtonAppearance
+  shape: ComponentProps<typeof Button>
+  press: ComponentProps<typeof Button>
+}) {
+  return (
+    <LinkButton
+      label={label}
+      link={link}
+      variant="plain"
+      {...shape}
+      bg={appearance.bg}
+      color={appearance.color}
+      borderWidth="1px"
+      borderColor={appearance.borderColor ?? 'transparent'}
+      {...press}
+      _hover={{ ...press._hover, bg: appearance.hoverBg }}
+    />
+  )
 }
 
 /** A section's main and second buttons, side by side, wrapping on a narrow screen. */
@@ -205,12 +379,13 @@ export function ButtonRow({
   settings,
   align = 'left',
   onImage = false,
-  magnetic = false,
+  elementKey = 'button',
 }: {
   settings: FieldValues
   align?: 'left' | 'center'
   onImage?: boolean
-  magnetic?: boolean
+  /** The prefix for the two buttons' override ids. */
+  elementKey?: string
 }) {
   const primary = readText(settings, 'buttonLabel')
   const secondary = readText(settings, 'secondaryButtonLabel')
@@ -221,14 +396,14 @@ export function ButtonRow({
         label={primary}
         link={readLink(settings, 'buttonLink')}
         onImage={onImage}
-        magnetic={magnetic}
+        elementKey={elementKey}
       />
       <ThemeButton
         label={secondary}
         link={readLink(settings, 'secondaryButtonLink')}
         secondary
         onImage={onImage}
-        magnetic={magnetic}
+        elementKey={`${elementKey}.secondary`}
       />
     </HStack>
   )
@@ -240,6 +415,55 @@ export function ButtonRow({
 
 /** Which section a renderer is drawing, for text edited straight in the preview. */
 export const SectionIdContext = createContext<string | null>(null)
+
+/**
+ * The section's per-element overrides, keyed by element id: the button the
+ * seller clicked and restyled. Shared through context so a button deep in a
+ * section reads its own override without every renderer passing it down.
+ */
+export const SectionElementsContext = createContext<Record<string, FieldValues>>({})
+
+/**
+ * The editor's handle on a button. Live pages get the button untouched; a
+ * preview gets a hover/selected outline and a click that reports the element
+ * to the editor, whose panel then opens on it. The wrapper is `inline-flex`
+ * so the button keeps its natural place in its row or column.
+ */
+function ElementShell({
+  elementId,
+  selected,
+  width,
+  children,
+}: {
+  elementId: string
+  selected: boolean
+  width: 'auto' | 'full'
+  children: ReactNode
+}) {
+  const { mode, editing } = useRenderEnvironment()
+  const sectionId = useContext(SectionIdContext)
+  if (mode !== 'preview' || !editing?.onSelectElement || !sectionId) return <>{children}</>
+  return (
+    <Box
+      data-element-id={elementId}
+      display="inline-flex"
+      position="relative"
+      rounded="l2"
+      cursor="pointer"
+      w={width === 'full' ? 'full' : undefined}
+      outlineWidth="1px"
+      outlineStyle="dashed"
+      outlineColor={selected ? 'brand.solid' : 'transparent'}
+      _hover={{ outlineColor: selected ? 'brand.solid' : 'brand.muted' }}
+      onClick={(event) => {
+        event.stopPropagation()
+        editing.onSelectElement?.(sectionId, elementId)
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
 
 /**
  * The section's heading animation, set by the frame around it. Lives here —

@@ -27,8 +27,11 @@ import { effectCss, themeCssVars, type ThemeSettings } from '../model/settings'
 import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
 import { SectionFrame } from './frame'
 import { requestMotionRefresh } from './motion/engine'
-import { SectionIdContext } from './primitives'
+import { SectionElementsContext, SectionIdContext } from './primitives'
 import { SECTION_RENDERERS } from './registry'
+
+/** One shared empty map, so a section without overrides never re-renders on identity. */
+const NO_ELEMENTS: Record<string, never> = {}
 
 export function ThemeScope({
   settings,
@@ -215,9 +218,11 @@ const SectionItem = memo(function SectionItem({
 
   const rendered = (
     <SectionIdContext.Provider value={section.id}>
-      <SectionFrame style={section.style}>
-        <Section settings={section.settings} />
-      </SectionFrame>
+      <SectionElementsContext.Provider value={section.elements ?? NO_ELEMENTS}>
+        <SectionFrame style={section.style}>
+          <Section settings={section.settings} />
+        </SectionFrame>
+      </SectionElementsContext.Provider>
     </SectionIdContext.Provider>
   )
   if (!pickable) return <Box mt={mt}>{rendered}</Box>
@@ -232,10 +237,10 @@ const SectionItem = memo(function SectionItem({
       badge={<ScheduleBadge section={section} now={now ?? new Date()} />}
       onClickCapture={(event) => {
         const target = event.target as HTMLElement
-        // A block inside the section owns its own click: it selects itself
-        // and the section on the way up, and clearing the block here first
-        // would unmount the very field the click was aiming at.
-        if (target.closest('[data-block-id]')) return
+        // A block or element inside the section owns its own click: it
+        // selects itself and the section on the way up, and clearing it here
+        // first would unmount the very field the click was aiming at.
+        if (target.closest('[data-block-id]') || target.closest('[data-element-id]')) return
         // Every other click also picks the section. A link must not be
         // followed out of the editor; anything else — a tab, a slider arrow,
         // the size guide drawer — still works, so the seller can try the

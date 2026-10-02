@@ -47,6 +47,6 @@ export {
 export { SECTION_RENDERERS } from './registry'
 export { SectionDivider } from './dividers'
 export type { DividerShape } from '../model/section-style'
-export { CursorFollower, Magnetic, SplitText, Tilt, VelocityMarquee } from './motion'
+export { SplitText, Tilt, VelocityMarquee } from './motion'
 export type { SectionProps } from './sections'
 export { SNAPSHOT_WIDTH, TemplateSnapshotPage, type SnapshotPageProps } from './theme-preview'

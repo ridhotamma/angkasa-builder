@@ -19,6 +19,9 @@ import { ImageWithFallback } from '@repo/theme'
 
 import { blockSchema } from '../model/blocks'
 import {
+  BUTTON_HOVERS,
+  BUTTON_PADDINGS,
+  BUTTON_PADDING_X,
   BUTTON_SIZES,
   BUTTON_TONES,
   BUTTON_VARIANTS,
@@ -46,7 +49,13 @@ import {
 import { readBlocks, readLink, readText, type BlockValue } from '../model/fields'
 import { localize } from '../model/localized'
 import { useRenderEnvironment } from './context'
-import { EditableText, EmptyNotice, LinkButton, SectionIdContext } from './primitives'
+import {
+  buttonHoverCss,
+  EditableText,
+  EmptyNotice,
+  LinkButton,
+  SectionIdContext,
+} from './primitives'
 import { useEmptyText, type SectionProps } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -247,10 +256,12 @@ function ButtonBlock({ block }: { block: BlockValue }) {
   const label = readText(block.settings, 'label')
   if (!label) return null
   const size = readToken(block.settings, 'size', BUTTON_SIZES, 'md')
+  const padding = readToken(block.settings, 'padding', BUTTON_PADDINGS, 'default')
   const width = readToken(block.settings, 'width', SELF_WIDTHS, 'auto')
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const variant = readToken(block.settings, 'variant', BUTTON_VARIANTS, 'solid')
   const tone = readToken(block.settings, 'tone', BUTTON_TONES, 'brand')
+  const hover = readToken(block.settings, 'hover', BUTTON_HOVERS, 'none')
   const appearance = buttonAppearance(tone, variant, settings)
   const layout = selfLayout(width, align)
   return (
@@ -261,6 +272,8 @@ function ButtonBlock({ block }: { block: BlockValue }) {
         variant="plain"
         size={size}
         rounded="l2"
+        px={padding === 'default' ? undefined : BUTTON_PADDING_X[padding]}
+        css={buttonHoverCss(hover, appearance)}
         w={layout.w}
         bg={appearance.bg}
         color={appearance.color}

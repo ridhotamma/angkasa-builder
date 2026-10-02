@@ -17,7 +17,6 @@ import {
   type SectionInstance,
 } from '../src/index'
 import {
-  CursorFollower,
   sampleStorefrontData,
   SectionsRenderer,
   Tilt,
@@ -169,7 +168,7 @@ describe('effect stylesheet', () => {
 })
 
 describe('pointer primitives', () => {
-  test('tilt and cursor render statically without JavaScript', () => {
+  test('tilt renders statically without JavaScript', () => {
     const tilted = render(
       <Tilt>
         <span>Card</span>
@@ -177,8 +176,6 @@ describe('pointer primitives', () => {
     )
     expect(tilted).toContain('Card')
     expect(tilted).not.toContain('rotateY')
-    // The follower mounts nothing until its effects confirm a fine pointer.
-    expect(render(<CursorFollower />)).not.toContain('aria-hidden="true"')
   })
 })
 

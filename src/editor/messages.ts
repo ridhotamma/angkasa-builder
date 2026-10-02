@@ -157,6 +157,12 @@ const MESSAGES = {
     id: 'Klik sel, lalu gunakan pegangan di atas kolom atau di samping barisnya untuk memindah atau menghapus (atau Alt + tombol panah). Tempel sel dari spreadsheet ke sel mana pun.',
   },
   addBlock: { en: 'Add block', id: 'Tambah blok' },
+  buttonElement: { en: 'Button', id: 'Tombol' },
+  buttonElementHelp: {
+    en: 'Click the button in the preview to restyle just that one. Every other button keeps the theme.',
+    id: 'Klik tombol di pratinjau untuk mengubah gayanya saja. Tombol lain tetap mengikuti tema.',
+  },
+  resetToTheme: { en: 'Reset to theme', id: 'Kembalikan ke tema' },
 
   // Section settings groups
   sectionContent: { en: 'Content', id: 'Isi' },

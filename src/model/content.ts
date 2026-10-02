@@ -22,6 +22,7 @@ import {
   type FieldValues,
   type JsonValue,
 } from './fields'
+import { sanitizeElements } from './element-style'
 import { sanitizeLayout, type ThemeLayout } from './layout'
 import { SECTION_STYLE_FIELDS } from './section-style'
 import {
@@ -71,6 +72,13 @@ export interface SectionInstance {
   settings: FieldValues
   /** Colour scheme, spacing, width, devices and dates — see `./section-style`. */
   style: FieldValues
+  /**
+   * Per-element overrides, keyed by the element's own id — a button the
+   * seller clicked in the preview and restyled. Absent until one is set, so
+   * a layout that never touched one reads exactly as before. See
+   * `./element-style`.
+   */
+  elements?: Record<string, FieldValues>
 }
 
 export const TEMPLATE_KEYS = ['home', 'product', 'article'] as const
@@ -181,12 +189,14 @@ export function sanitizeSections(value: unknown, scope: SectionScope = 'home'): 
     if (seen.has(id)) id = newId()
     seen.add(id)
 
+    const elements = sanitizeElements(raw.elements)
     out.push({
       id,
       type: raw.type,
       hidden: raw.hidden === true,
       settings: sanitizeValues(schema.fields, raw.settings),
       style: sanitizeValues(SECTION_STYLE_FIELDS, raw.style),
+      ...(Object.keys(elements).length > 0 && { elements }),
     })
   }
 

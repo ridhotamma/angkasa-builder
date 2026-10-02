@@ -9,7 +9,7 @@
  * touches React so the server can validate a layout without it.
  */
 
-import type { Field, FieldValues, JsonValue } from './fields'
+import { isRecord, sanitizeValues, type Field, type FieldValues, type JsonValue } from './fields'
 import type { Localized } from './localized'
 import { readableOn, resolveScheme, type ThemeSettings } from './settings'
 
@@ -47,6 +47,33 @@ export type ButtonVariant = (typeof BUTTON_VARIANTS)[number]
 /** What a button is made of: the page's brand, the accent, the dark band or a soft surface. */
 export const BUTTON_TONES = ['brand', 'accent', 'dark', 'light'] as const
 export type ButtonTone = (typeof BUTTON_TONES)[number]
+
+/** A button's side padding, on the same spacing scale as everything else. */
+export const BUTTON_PADDINGS = ['none', 'sm', 'md', 'lg', 'xl'] as const
+export type ButtonPadding = (typeof BUTTON_PADDINGS)[number]
+
+/**
+ * What a button does under the pointer. `none` keeps the theme's own hover;
+ * the rest wipe a contrasting fill across the button — the pattern most
+ * storefronts use instead of pointer-following gimmicks.
+ */
+export const BUTTON_HOVERS = [
+  'none',
+  'fill-up',
+  'fill-down',
+  'fill-left',
+  'fill-right',
+  'shine',
+] as const
+export type ButtonHover = (typeof BUTTON_HOVERS)[number]
+
+export const BUTTON_PADDING_X: Record<ButtonPadding, string> = {
+  none: '0',
+  sm: '3',
+  md: '4',
+  lg: '6',
+  xl: '8',
+}
 
 export const IMAGE_RATIOS = ['auto', 'square', '4/3', '16/9', '3/4'] as const
 export type ImageRatio = (typeof IMAGE_RATIOS)[number]
@@ -124,6 +151,13 @@ export const ALIGN_JUSTIFY: Record<ElementAlignment, string> = {
   right: 'flex-end',
 }
 
+/** The same alignment, as `alignSelf` for a button in a column. */
+export const ALIGN_SELF: Record<ElementAlignment, string> = {
+  left: 'flex-start',
+  center: 'center',
+  right: 'flex-end',
+}
+
 export const IMAGE_RATIO: Record<ImageRatio, number | undefined> = {
   auto: undefined,
   square: 1,
@@ -178,6 +212,10 @@ export interface ButtonAppearance {
   borderColor?: string
   borderWidth?: string
   hoverBg?: string
+  /** The colour a hover fill wipes in with. */
+  sweepBg: string
+  /** The text colour on top of that fill. */
+  sweepColor: string
 }
 
 interface ToneSpec {
@@ -187,6 +225,8 @@ interface ToneSpec {
   contrast: string
   /** Outline border and ghost/outline text. */
   tint: string
+  /** Readable text on the tint, for a hover fill. */
+  tintContrast: string
   border?: string
 }
 
@@ -197,10 +237,16 @@ function toneSpec(tone: ButtonTone, settings: ThemeSettings): ToneSpec {
         fill: 'var(--chakra-colors-brand-solid)',
         contrast: 'var(--chakra-colors-brand-contrast)',
         tint: 'var(--chakra-colors-brand-solid)',
+        tintContrast: 'var(--chakra-colors-brand-contrast)',
       }
     case 'accent': {
       const accent = settings.colors.accent
-      return { fill: accent, contrast: readableOn(accent), tint: accent }
+      return {
+        fill: accent,
+        contrast: readableOn(accent),
+        tint: accent,
+        tintContrast: readableOn(accent),
+      }
     }
     case 'dark': {
       const inverse = resolveScheme(settings, 'inverse')
@@ -210,6 +256,7 @@ function toneSpec(tone: ButtonTone, settings: ThemeSettings): ToneSpec {
         // Outline and ghost follow the section's own text colour, so a dark
         // outline never disappears into a dark band.
         tint: 'var(--chakra-colors-fg)',
+        tintContrast: 'var(--chakra-colors-bg)',
       }
     }
     case 'light':
@@ -217,6 +264,7 @@ function toneSpec(tone: ButtonTone, settings: ThemeSettings): ToneSpec {
         fill: 'var(--chakra-colors-bg-subtle)',
         contrast: 'var(--chakra-colors-fg)',
         tint: 'var(--chakra-colors-fg)',
+        tintContrast: 'var(--chakra-colors-bg)',
         border: 'var(--chakra-colors-border)',
       }
   }
@@ -240,6 +288,10 @@ export function buttonAppearance(
         color: spec.contrast,
         borderColor: spec.fill,
         hoverBg: `color-mix(in srgb, ${spec.fill} 88%, black)`,
+        // A solid button inverts: the readable label colour wipes in and the
+        // text takes the fill.
+        sweepBg: spec.contrast,
+        sweepColor: spec.fill,
       }
     case 'outline':
       return {
@@ -248,12 +300,16 @@ export function buttonAppearance(
         borderColor: spec.border ?? spec.tint,
         borderWidth: '1px',
         hoverBg: 'color-mix(in srgb, currentColor 10%, transparent)',
+        sweepBg: spec.tint,
+        sweepColor: spec.tintContrast,
       }
     case 'ghost':
       return {
         bg: 'transparent',
         color: spec.tint,
         hoverBg: 'color-mix(in srgb, currentColor 10%, transparent)',
+        sweepBg: spec.tint,
+        sweepColor: spec.tintContrast,
       }
   }
 }
@@ -326,6 +382,33 @@ const BUTTON_TONE_OPTIONS = [
   option('accent', { en: 'Accent', id: 'Aksen' }),
   option('dark', { en: 'Dark', id: 'Gelap' }),
   option('light', { en: 'Light', id: 'Terang' }),
+]
+
+const BUTTON_PADDING_OPTIONS = [
+  option('default', { en: 'Auto (by size)', id: 'Otomatis (sesuai ukuran)' }),
+  option('none', { en: 'None', id: 'Tidak ada' }),
+  option('sm', { en: 'Small', id: 'Kecil' }),
+  option('md', { en: 'Medium', id: 'Sedang' }),
+  option('lg', { en: 'Large', id: 'Besar' }),
+  option('xl', { en: 'Extra large', id: 'Sangat besar' }),
+]
+
+const BUTTON_HOVER_OPTIONS = [
+  option('none', { en: 'None (theme hover)', id: 'Tanpa efek (hover tema)' }),
+  option('fill-up', { en: 'Fill up', id: 'Isi naik' }),
+  option('fill-down', { en: 'Fill down', id: 'Isi turun' }),
+  option('fill-left', { en: 'Fill from left', id: 'Isi dari kiri' }),
+  option('fill-right', { en: 'Fill from right', id: 'Isi dari kanan' }),
+  option('shine', { en: 'Shine sweep', id: 'Kilau menyapu' }),
+]
+
+const WIDTH_DEFAULT_OPTIONS = [
+  option('default', { en: 'Theme default', id: 'Ikuti tema' }),
+  ...SELF_WIDTH_OPTIONS,
+]
+const ALIGN_DEFAULT_OPTIONS = [
+  option('default', { en: 'Theme default', id: 'Ikuti tema' }),
+  ...ALIGN_OPTIONS,
 ]
 
 export function alignmentField(): Field {
@@ -408,6 +491,26 @@ export function buttonToneField(): Field {
   }
 }
 
+export function buttonPaddingField(): Field {
+  return {
+    kind: 'select',
+    key: 'padding',
+    label: { en: 'Side padding', id: 'Jarak samping' },
+    options: BUTTON_PADDING_OPTIONS,
+    default: 'default',
+  }
+}
+
+export function buttonHoverField(): Field {
+  return {
+    kind: 'select',
+    key: 'hover',
+    label: { en: 'Hover effect', id: 'Efek hover' },
+    options: BUTTON_HOVER_OPTIONS,
+    default: 'none',
+  }
+}
+
 export function spaceField(key: string, label: Localized, fallback: Space): Field {
   return { kind: 'select', key, label, options: SPACE_OPTIONS, default: fallback }
 }
@@ -423,4 +526,127 @@ export function readToken<T extends string>(
   return typeof value === 'string' && (allowed as readonly string[]).includes(value)
     ? (value as T)
     : fallback
+}
+
+/* -------------------------------------------------------------------------- */
+/* Element overrides                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A button restyled in the editor, without touching the section's fields.
+ * Every value is `'default'` until the seller overrides it, so a section
+ * keeps its theme look and one button can step out on its own.
+ */
+export interface ButtonElementOverrides {
+  variant: ButtonVariant | 'default'
+  tone: ButtonTone | 'default'
+  size: ButtonSize | 'default'
+  padding: ButtonPadding | 'default'
+  width: SelfWidth | 'default'
+  align: ElementAlignment | 'default'
+  hover: ButtonHover | 'default'
+}
+
+export const BUTTON_ELEMENT_DEFAULTS: ButtonElementOverrides = {
+  variant: 'default',
+  tone: 'default',
+  size: 'default',
+  padding: 'default',
+  width: 'default',
+  align: 'default',
+  hover: 'default',
+}
+
+/** The panel a button element opens when the seller clicks it in the preview. */
+export const BUTTON_ELEMENT_FIELDS: readonly Field[] = [
+  {
+    kind: 'select',
+    key: 'variant',
+    label: { en: 'Button style', id: 'Gaya tombol' },
+    options: [
+      option('default', { en: 'Theme default', id: 'Ikuti tema' }),
+      ...BUTTON_VARIANT_OPTIONS,
+    ],
+    default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'tone',
+    label: { en: 'Button colour', id: 'Warna tombol' },
+    options: [option('default', { en: 'Theme default', id: 'Ikuti tema' }), ...BUTTON_TONE_OPTIONS],
+    default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'size',
+    label: { en: 'Button size', id: 'Ukuran tombol' },
+    options: [option('default', { en: 'Theme default', id: 'Ikuti tema' }), ...BUTTON_SIZE_OPTIONS],
+    default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'padding',
+    label: { en: 'Side padding', id: 'Jarak samping' },
+    options: [
+      option('default', { en: 'Auto (by size)', id: 'Otomatis (sesuai ukuran)' }),
+      ...BUTTON_PADDING_OPTIONS.slice(1),
+    ],
+    default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'width',
+    label: { en: 'Button width', id: 'Lebar tombol' },
+    options: WIDTH_DEFAULT_OPTIONS,
+    default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'hover',
+    label: { en: 'Hover effect', id: 'Efek hover' },
+    options: [
+      option('default', { en: 'Theme default', id: 'Ikuti tema' }),
+      ...BUTTON_HOVER_OPTIONS.slice(1),
+    ],
+    default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'align',
+    label: { en: 'Alignment', id: 'Perataan' },
+    options: ALIGN_DEFAULT_OPTIONS,
+    default: 'default',
+  },
+]
+
+export function readButtonElement(values?: FieldValues): ButtonElementOverrides {
+  const source = values ?? {}
+  return {
+    variant: readToken(source, 'variant', ['default', ...BUTTON_VARIANTS], 'default'),
+    tone: readToken(source, 'tone', ['default', ...BUTTON_TONES], 'default'),
+    size: readToken(source, 'size', ['default', ...BUTTON_SIZES], 'default'),
+    padding: readToken(source, 'padding', ['default', ...BUTTON_PADDINGS], 'default'),
+    width: readToken(source, 'width', ['default', ...SELF_WIDTHS], 'default'),
+    align: readToken(source, 'align', ['default', ...ELEMENT_ALIGNMENTS], 'default'),
+    hover: readToken(source, 'hover', ['default', ...BUTTON_HOVERS], 'default'),
+  }
+}
+
+/** The element key a button stores its overrides under. */
+const ELEMENT_KEY = /^[A-Za-z0-9_.-]{1,80}$/
+
+/**
+ * A section's element overrides, cleaned: unknown keys and values dropped,
+ * and an entry left entirely at its defaults is not stored at all, so a
+ * layout that never touched a button stays exactly as it was.
+ */
+export function sanitizeElements(value: unknown): Record<string, FieldValues> {
+  if (!isRecord(value)) return {}
+  const out: Record<string, FieldValues> = {}
+  for (const [key, style] of Object.entries(value)) {
+    if (!ELEMENT_KEY.test(key)) continue
+    const clean = sanitizeValues(BUTTON_ELEMENT_FIELDS, style)
+    if (Object.values(clean).some((entry) => entry !== 'default')) out[key] = clean
+  }
+  return out
 }

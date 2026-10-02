@@ -220,7 +220,8 @@ function PinnedPanel({ panel }: { panel: FieldValues }) {
             </Heading>
           )}
           <RichTextView doc={readRichText(panel, 'body')} />
-          <ButtonRow settings={panel} />
+          {/* Each panel is its own button, so its overrides get their own id. */}
+          <ButtonRow settings={panel} elementKey={`panel.${readText(panel, 'id')}`} />
         </Stack>
         {src && (
           <AspectRatio

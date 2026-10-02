@@ -285,7 +285,17 @@ describe('button block settings', () => {
   test('the button schema offers size, width, variant and tone', () => {
     const button = blockSchema('button')!
     const keys = button.fields.map((field) => field.key)
-    for (const key of ['label', 'link', 'size', 'width', 'align', 'variant', 'tone']) {
+    for (const key of [
+      'label',
+      'link',
+      'size',
+      'padding',
+      'width',
+      'align',
+      'variant',
+      'tone',
+      'hover',
+    ]) {
       expect(keys).toContain(key)
     }
   })

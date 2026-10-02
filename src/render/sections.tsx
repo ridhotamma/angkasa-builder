@@ -209,7 +209,7 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
             <EditableText field="subheading" value={subheading} />
           </Text>
         )}
-        <ButtonRow settings={settings} align={align} onImage={onImage} magnetic />
+        <ButtonRow settings={settings} align={align} onImage={onImage} />
       </Stack>
     </Flex>
   )

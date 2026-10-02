@@ -90,6 +90,7 @@ import {
   updateBlocksIn,
 } from '../model/blocks'
 import { TEMPLATE_KEYS, type SectionInstance, type TemplateKey } from '../model/content'
+import { BUTTON_ELEMENT_DEFAULTS, BUTTON_ELEMENT_FIELDS } from '../model/element-style'
 import type { FieldValues } from '../model/fields'
 import {
   FOOTER_FIELDS,
@@ -341,6 +342,9 @@ function Builder({
   // The block the canvas has selected inside the chosen section, if any. The
   // panel follows it; clicking the section again clears it.
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
+  // The button (or other element) the canvas has selected, keyed in the
+  // section's `elements` map. A block selection wins when both are set.
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const [tab, setTab] = useState<'sections' | 'theme'>(startWithLooks ? 'theme' : 'sections')
   const [sectionTab, setSectionTab] = useState<'content' | 'style' | 'visibility'>('content')
   const [device, setDevice] = useState<PreviewDevice>('desktop')
@@ -445,6 +449,15 @@ function Builder({
   const onSelectBlock = useCallback((sectionId: string, blockId: string) => {
     setSelectedId(sectionId)
     setSelectedBlockId(blockId)
+    setSelectedElementId(null)
+    setTab('sections')
+  }, [])
+
+  // A button clicked on the canvas: same, through the section's element map.
+  const onSelectElement = useCallback((sectionId: string, elementId: string) => {
+    setSelectedId(sectionId)
+    setSelectedElementId(elementId)
+    setSelectedBlockId(null)
     setTab('sections')
   }, [])
 
@@ -474,7 +487,14 @@ function Builder({
       videoUrl: services.videoUrl,
       formatPrice,
       getWindow: previewDoc?.defaultView ? () => previewDoc.defaultView! : undefined,
-      editing: { onEditText, onEditBlockText, onSelectBlock, selectedBlockId },
+      editing: {
+        onEditText,
+        onEditBlockText,
+        onSelectBlock,
+        selectedBlockId,
+        onSelectElement,
+        selectedElementId,
+      },
     }),
     [
       envData,
@@ -487,6 +507,8 @@ function Builder({
       onEditBlockText,
       onSelectBlock,
       selectedBlockId,
+      onSelectElement,
+      selectedElementId,
     ],
   )
 
@@ -498,9 +520,11 @@ function Builder({
   const select = useCallback(
     (id: string, fromPreview = false) => {
       setSelectedId(id)
-      // Choosing a section drops any block of the previous one. A block click
-      // runs after the section's own selection, so its id lands here next.
+      // Choosing a section drops any block or element of the previous one. A
+      // block or button click runs after the section's own selection, so its
+      // id lands here next.
       setSelectedBlockId(null)
+      setSelectedElementId(null)
       setTab('sections')
       // Picked from the list: bring it into view in the preview, below the header.
       if (!fromPreview && previewDoc) revealSection(previewDoc, id, 'start')
@@ -666,6 +690,56 @@ function Builder({
             })
           }}
         />
+      </Stack>
+    ) : selected && selectedElementId ? (
+      <Stack gap="4">
+        <Button
+          size="xs"
+          variant="ghost"
+          alignSelf="start"
+          ml="-2"
+          onClick={() => setSelectedElementId(null)}
+        >
+          <Icon as={LuChevronLeft} />
+          {t('back')}
+        </Button>
+        <Stack gap="1">
+          <Text fontWeight="semibold">{t('buttonElement')}</Text>
+          <Text fontSize="xs" color="fg.muted">
+            {t('buttonElementHelp')}
+          </Text>
+        </Stack>
+        <FieldsForm
+          fields={BUTTON_ELEMENT_FIELDS}
+          values={selected.elements?.[selectedElementId] ?? { ...BUTTON_ELEMENT_DEFAULTS }}
+          services={services}
+          onChange={(values) =>
+            updateSection(selected.id, (section) => ({
+              ...section,
+              elements: { ...(section.elements ?? {}), [selectedElementId]: values },
+            }))
+          }
+        />
+        <Button
+          size="xs"
+          variant="outline"
+          alignSelf="start"
+          onClick={() =>
+            updateSection(selected.id, (section) => {
+              const current = section.elements
+              if (!current?.[selectedElementId]) return section
+              const remaining = { ...current }
+              delete remaining[selectedElementId]
+              if (Object.keys(remaining).length === 0) {
+                const { elements: _cleared, ...rest } = section
+                return rest
+              }
+              return { ...section, elements: remaining }
+            })
+          }
+        >
+          {t('resetToTheme')}
+        </Button>
       </Stack>
     ) : selected && schema ? (
       <Stack gap="4">
