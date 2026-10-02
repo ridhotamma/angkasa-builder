@@ -239,7 +239,9 @@ describe('premium backgrounds', () => {
     )
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(html).toContain('Over a photo')
-    expect(html).toContain('text-shadow')
+    expect(html).toContain(
+      'text-shadow:0 1px 3px rgba(0, 0, 0, 0.8),0 2px 12px rgba(0, 0, 0, 0.5)',
+    )
   })
 })
 

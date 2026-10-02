@@ -130,7 +130,7 @@ export function SectionFrame({
     ...(style.textShadow && {
       css: {
         ...(style.scheme && vars ? (schemeCss(style.scheme, vars) as object) : {}),
-        textShadow: '0 1px 14px rgba(0, 0, 0, 0.45)',
+        textShadow: '0 1px 3px rgba(0, 0, 0, 0.8), 0 2px 12px rgba(0, 0, 0, 0.5)',
       },
       color: style.scheme ? 'fg' : undefined,
     }),
