@@ -25,6 +25,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  type ComponentProps,
   type MouseEvent,
   type ReactNode,
 } from 'react'
@@ -134,6 +135,27 @@ export function cardFrame(style: CardStyle): BoxProps {
   }
 }
 
+/**
+ * A button with a link: a real `Button` when the link is empty, and the same
+ * button as an anchor when it is not. `ThemeButton` and the Blocks section's
+ * button block both build on it, so link behaviour stays in one place.
+ */
+export function LinkButton({
+  label,
+  link,
+  ...props
+}: { label: string; link: Link } & ComponentProps<typeof Button>) {
+  const anchor = useAnchor(link)
+  if (!anchor) return <Button {...props}>{label}</Button>
+  return (
+    <Button asChild {...props}>
+      <ChakraLink unstyled {...anchor}>
+        {label}
+      </ChakraLink>
+    </Button>
+  )
+}
+
 export function ThemeButton({
   label,
   link,
@@ -151,7 +173,6 @@ export function ThemeButton({
   magnetic?: boolean
 }) {
   const { settings } = useRenderEnvironment()
-  const anchor = useAnchor(link)
   if (!label) return null
 
   const look = buttonLook(settings.buttonStyle)
@@ -162,25 +183,19 @@ export function ThemeButton({
       : { bg: 'white', color: 'gray.900', _hover: { bg: 'whiteAlpha.900' } }
     : {}
 
-  const props = {
-    colorPalette: 'brand',
-    variant,
-    rounded: look.rounded,
-    size: 'lg',
-    transition: 'transform 180ms ease, background-color 150ms ease',
-    _hover: { transform: 'translateY(-1px)' },
-    _active: { transform: 'translateY(0) scale(0.98)' },
-    ...imageLook,
-  } as const
-
-  const button = !anchor ? (
-    <Button {...props}>{label}</Button>
-  ) : (
-    <Button asChild {...props}>
-      <ChakraLink unstyled {...anchor}>
-        {label}
-      </ChakraLink>
-    </Button>
+  const button = (
+    <LinkButton
+      label={label}
+      link={link}
+      colorPalette="brand"
+      variant={variant}
+      rounded={look.rounded}
+      size="lg"
+      transition="transform 180ms ease, background-color 150ms ease"
+      _hover={{ transform: 'translateY(-1px)' }}
+      _active={{ transform: 'translateY(0) scale(0.98)' }}
+      {...imageLook}
+    />
   )
   return magnetic ? <Magnetic>{button}</Magnetic> : button
 }
@@ -241,17 +256,27 @@ export const HeadlineContext = createContext<SectionHeadline>('none')
  * caret moves the caret — and committed on every input so the settings panel
  * follows along. Plain text only: paste is reduced to text, Enter ends the
  * edit, so no markup can get in.
+ *
+ * A block passes `editable={false}` until the seller selects it, so the first
+ * click selects the block and the next places the caret; `onCommit` sends the
+ * typed text wherever the block tree stores it.
  */
 export function EditableText({
   field,
   value,
   as = 'span',
+  editable = true,
+  onCommit,
   ...props
 }: {
   /** The section setting this text is. */
   field: string
   value: string
   as?: 'span' | 'h1' | 'h2' | 'p' | 'div'
+  /** Whether the preview shows a caret here; a block turns it on once selected. */
+  editable?: boolean
+  /** Where typed text goes; defaults to the section's own field. */
+  onCommit?: (value: string) => void
 } & Omit<BoxProps, 'as' | 'children'>) {
   const { mode, editing } = useRenderEnvironment()
   const sectionId = useContext(SectionIdContext)
@@ -265,7 +290,7 @@ export function EditableText({
     if (element && !focused.current && element.textContent !== value) element.textContent = value
   }, [value])
 
-  if (mode !== 'preview' || !editing || !sectionId) {
+  if (mode !== 'preview' || !editing || !sectionId || !editable) {
     return value ? (
       <Box as={as} {...props}>
         {value}
@@ -304,9 +329,11 @@ export function EditableText({
         const text = event.clipboardData.getData('text/plain').replace(/\s+/g, ' ')
         event.currentTarget.ownerDocument.execCommand('insertText', false, text)
       }}
-      onInput={(event) =>
-        editing.onEditText(sectionId, field, (event.currentTarget as HTMLElement).textContent ?? '')
-      }
+      onInput={(event) => {
+        const next = (event.currentTarget as HTMLElement).textContent ?? ''
+        if (onCommit) onCommit(next)
+        else editing.onEditText(sectionId, field, next)
+      }}
       {...props}
     >
       {value}

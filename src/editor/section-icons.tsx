@@ -2,6 +2,7 @@
 
 import type { IconType } from 'react-icons'
 import {
+  LuBlocks,
   LuBookOpen,
   LuCirclePlay,
   LuClapperboard,
@@ -68,6 +69,7 @@ const ICONS: Record<string, IconType> = {
   logos: LuShieldCheck,
   marquee: LuMoveHorizontal,
   columns: LuColumns3,
+  blocks: LuBlocks,
   stack: LuCopy,
   story: LuBookOpen,
   timeline: LuListOrdered,

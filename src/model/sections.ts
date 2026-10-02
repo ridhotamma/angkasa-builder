@@ -11,14 +11,8 @@
  * rules" in docs/POSITIONING.md.
  */
 
-import type {
-  BlockSchema,
-  Field,
-  ItemField,
-  ListField,
-  RichTextField,
-  TextField,
-} from './fields'
+import { blocksSectionSchema } from './blocks'
+import type { BlockSchema, Field, ItemField, ListField, RichTextField, TextField } from './fields'
 import type { Localized } from './localized'
 
 /**
@@ -34,6 +28,7 @@ export const SECTION_CATEGORIES = [
   'products',
   'media',
   'text',
+  'layout',
   'promotion',
   'trust',
   'store',
@@ -48,6 +43,7 @@ export const SECTION_CATEGORY_LABELS: Record<SectionCategory, Localized> = {
   products: { en: 'Products and collections', id: 'Produk dan koleksi' },
   media: { en: 'Images and video', id: 'Gambar dan video' },
   text: { en: 'Text and storytelling', id: 'Teks dan cerita' },
+  layout: { en: 'Layout and blocks', id: 'Tata letak dan blok' },
   promotion: { en: 'Promotions', id: 'Promosi' },
   trust: { en: 'Reviews and trust', id: 'Ulasan dan kepercayaan' },
   store: { en: 'Shop information', id: 'Informasi toko' },
@@ -504,6 +500,7 @@ const PRODUCT_INFO_BLOCKS: readonly BlockSchema[] = [
 /* -------------------------------------------------------------------------- */
 
 export const SECTION_SCHEMAS = [
+  blocksSectionSchema,
   {
     type: 'announcement-bar',
     scopes: EVERYWHERE,

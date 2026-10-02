@@ -63,13 +63,17 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  LuArrowDown,
+  LuArrowUp,
   LuChevronLeft,
+  LuCopy,
   LuEye,
   LuMonitor,
   LuRedo2,
   LuShoppingBag,
   LuSmartphone,
   LuTablet,
+  LuTrash2,
   LuUser,
   LuSearch,
   LuUndo2,
@@ -77,6 +81,14 @@ import {
 
 import { Tooltip } from '@repo/theme'
 
+import {
+  duplicateBlock,
+  findBlock,
+  moveBlock,
+  removeBlock,
+  updateBlockSettings,
+  updateBlocksIn,
+} from '../model/blocks'
 import { TEMPLATE_KEYS, type SectionInstance, type TemplateKey } from '../model/content'
 import type { FieldValues } from '../model/fields'
 import {
@@ -326,6 +338,9 @@ function Builder({
 }: PageBuilderProps & { products: StorefrontRenderData['latest'] }) {
   const { t, l } = useEditorText()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // The block the canvas has selected inside the chosen section, if any. The
+  // panel follows it; clicking the section again clears it.
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
   const [tab, setTab] = useState<'sections' | 'theme'>(startWithLooks ? 'theme' : 'sections')
   const [sectionTab, setSectionTab] = useState<'content' | 'style' | 'visibility'>('content')
   const [device, setDevice] = useState<PreviewDevice>('desktop')
@@ -341,6 +356,10 @@ function Builder({
   const editableLayout = Boolean(layout && onLayoutChange)
   const selected = sections.find((section) => section.id === selectedId) ?? null
   const schema = selected ? sectionSchema(selected.type) : null
+  const selectedBlock =
+    selected && schema && selectedBlockId
+      ? findBlock(schema.fields, selected.settings, selectedBlockId)
+      : null
 
   useHistoryKeys(
     history,
@@ -397,6 +416,38 @@ function Builder({
     )
   }, [])
 
+  // A text typed into a block, however deep the block sits in the tree.
+  const onEditBlockText = useCallback(
+    (sectionId: string, blockId: string, key: string, value: string) => {
+      const { sections: current, onSectionsChange: change } = latest.current
+      change(
+        current.map((section) => {
+          if (section.id !== sectionId) return section
+          const shape = sectionSchema(section.type)
+          if (!shape) return section
+          const settings = updateBlocksIn(
+            shape.fields,
+            section.settings,
+            blockId,
+            (blocks, index) =>
+              blocks.map((block, at) =>
+                at === index ? { ...block, settings: { ...block.settings, [key]: value } } : block,
+              ),
+          )
+          return settings ? { ...section, settings } : section
+        }),
+      )
+    },
+    [],
+  )
+
+  // A block clicked on the canvas: highlight it and open its panel.
+  const onSelectBlock = useCallback((sectionId: string, blockId: string) => {
+    setSelectedId(sectionId)
+    setSelectedBlockId(blockId)
+    setTab('sections')
+  }, [])
+
   // Callers build `data` inline (`{ ...context.data, products }`); its parts
   // are what stay the same between renders, so they are what is compared.
   const envData = useMemo<StorefrontRenderData>(
@@ -423,9 +474,20 @@ function Builder({
       videoUrl: services.videoUrl,
       formatPrice,
       getWindow: previewDoc?.defaultView ? () => previewDoc.defaultView! : undefined,
-      editing: { onEditText },
+      editing: { onEditText, onEditBlockText, onSelectBlock, selectedBlockId },
     }),
-    [envData, settings, services.imageUrl, services.videoUrl, formatPrice, previewDoc, onEditText],
+    [
+      envData,
+      settings,
+      services.imageUrl,
+      services.videoUrl,
+      formatPrice,
+      previewDoc,
+      onEditText,
+      onEditBlockText,
+      onSelectBlock,
+      selectedBlockId,
+    ],
   )
 
   // The footer's page list, compared by what it says: callers map it inline.
@@ -436,6 +498,9 @@ function Builder({
   const select = useCallback(
     (id: string, fromPreview = false) => {
       setSelectedId(id)
+      // Choosing a section drops any block of the previous one. A block click
+      // runs after the section's own selection, so its id lands here next.
+      setSelectedBlockId(null)
       setTab('sections')
       // Picked from the list: bring it into view in the preview, below the header.
       if (!fromPreview && previewDoc) revealSection(previewDoc, id, 'start')
@@ -464,6 +529,37 @@ function Builder({
 
   const layoutPart =
     selectedId === HEADER_ID ? 'header' : selectedId === FOOTER_ID ? 'footer' : null
+
+  // Actions on the canvas-selected block. Each rewrites the section's own
+  // settings, so a click on a stale panel can never clobber a newer edit.
+  const blockActions =
+    selectedBlock && selected && schema
+      ? {
+          up: () =>
+            updateSection(selected.id, (section) => {
+              const next = moveBlock(schema.fields, section.settings, selectedBlock.block.id, -1)
+              return next ? { ...section, settings: next } : section
+            }),
+          down: () =>
+            updateSection(selected.id, (section) => {
+              const next = moveBlock(schema.fields, section.settings, selectedBlock.block.id, 1)
+              return next ? { ...section, settings: next } : section
+            }),
+          duplicate: () => {
+            const result = duplicateBlock(schema.fields, selected.settings, selectedBlock.block.id)
+            if (!result) return
+            updateSection(selected.id, (section) => ({ ...section, settings: result.values }))
+            setSelectedBlockId(result.copy.id)
+          },
+          remove: () => {
+            updateSection(selected.id, (section) => {
+              const next = removeBlock(schema.fields, section.settings, selectedBlock.block.id)
+              return next ? { ...section, settings: next } : section
+            })
+            setSelectedBlockId(null)
+          },
+        }
+      : null
 
   const details = frame?.details
   const panel =
@@ -494,6 +590,81 @@ function Builder({
           values={layout[layoutPart]}
           services={services}
           onChange={(values: FieldValues) => onLayoutChange({ ...layout, [layoutPart]: values })}
+        />
+      </Stack>
+    ) : selected && schema && selectedBlock && blockActions ? (
+      <Stack gap="4">
+        <Button
+          size="xs"
+          variant="ghost"
+          alignSelf="start"
+          ml="-2"
+          onClick={() => setSelectedBlockId(null)}
+        >
+          <Icon as={LuChevronLeft} />
+          {t('back')}
+        </Button>
+        <Stack gap="1">
+          <Text fontWeight="semibold">{l(selectedBlock.schema.name)}</Text>
+          {selectedBlock.schema.description && (
+            <Text fontSize="xs" color="fg.muted">
+              {l(selectedBlock.schema.description)}
+            </Text>
+          )}
+        </Stack>
+        <HStack gap="1">
+          <IconButton
+            aria-label={t('moveUp')}
+            size="xs"
+            variant="outline"
+            disabled={selectedBlock.index === 0}
+            onClick={blockActions.up}
+          >
+            <LuArrowUp />
+          </IconButton>
+          <IconButton
+            aria-label={t('moveDown')}
+            size="xs"
+            variant="outline"
+            disabled={selectedBlock.index >= selectedBlock.count - 1}
+            onClick={blockActions.down}
+          >
+            <LuArrowDown />
+          </IconButton>
+          <IconButton
+            aria-label={t('duplicate')}
+            size="xs"
+            variant="outline"
+            disabled={selectedBlock.count >= selectedBlock.field.max}
+            onClick={blockActions.duplicate}
+          >
+            <LuCopy />
+          </IconButton>
+          <IconButton
+            aria-label={t('remove')}
+            size="xs"
+            variant="outline"
+            colorPalette="danger"
+            onClick={blockActions.remove}
+          >
+            <LuTrash2 />
+          </IconButton>
+        </HStack>
+        <FieldsForm
+          fields={selectedBlock.schema.fields}
+          values={selectedBlock.block.settings}
+          services={services}
+          onChange={(values) => {
+            updateSection(selected.id, (section) => {
+              const settings = updateBlockSettings(
+                schema.fields,
+                section.settings,
+                selectedBlock.block.id,
+                values,
+              )
+              return settings ? { ...section, settings } : section
+            })
+          }}
         />
       </Stack>
     ) : selected && schema ? (

@@ -168,14 +168,28 @@ export interface ListField extends BaseField {
   fields: readonly ItemField[]
 }
 
-/** One kind of block a `blocks` field can hold. */
+/**
+ * One kind of block a `blocks` field can hold. A block's own fields may
+ * include another `blocks` field — a column holds blocks, a row holds
+ * columns — so the tree nests. `sanitizeBlocks` bounds that nesting.
+ */
 export interface BlockSchema {
   type: string
   name: Localized
   /** At most this many of this block in one field; unlimited when omitted. */
   max?: number
-  fields: readonly (ItemField | ListField)[]
+  /** A line the editor shows under the block's name, when it has one. */
+  description?: Localized
+  fields: readonly Field[]
 }
+
+/**
+ * How deep blocks may nest (a column inside a row inside a column is 3), and
+ * how many one section may hold in total. Both are storage guards: a crafted
+ * payload cannot make a save or a render walk an unbounded tree.
+ */
+export const MAX_BLOCK_DEPTH = 3
+export const MAX_BLOCKS_PER_SECTION = 256
 
 /**
  * An ordered list of typed blocks — Shopify's blocks inside a section. Unlike
@@ -329,28 +343,52 @@ export interface BlockValue {
   settings: FieldValues
 }
 
-function sanitizeBlocks(field: BlocksField, value: unknown): BlockValue[] {
+/**
+ * How many blocks one `sanitizeValues` call has admitted, shared across every
+ * nested field. `depth` is the nesting level of the blocks field itself.
+ */
+interface SanitizeBudget {
+  blocks: number
+  ids: Set<string>
+}
+
+function sanitizeBlocks(
+  field: BlocksField,
+  value: unknown,
+  budget: SanitizeBudget,
+  depth: number,
+): BlockValue[] {
+  if (depth > MAX_BLOCK_DEPTH) return []
   if (!Array.isArray(value)) {
     return (field.defaultBlocks ?? []).flatMap((type) => {
       const schema = field.blocks.find((block) => block.type === type)
-      return schema ? [{ id: newId(), type, settings: defaultValues(schema.fields) }] : []
+      if (!schema || budget.blocks >= MAX_BLOCKS_PER_SECTION) return []
+      budget.blocks += 1
+      return [{ id: newId(), type, settings: sanitizeValues(schema.fields, {}, budget, depth + 1) }]
     })
   }
   const counts = new Map<string, number>()
-  const seen = new Set<string>()
   const out: BlockValue[] = []
   for (const raw of value) {
     if (out.length >= field.max) break
+    if (budget.blocks >= MAX_BLOCKS_PER_SECTION) break
     if (!isRecord(raw) || typeof raw.type !== 'string') continue
     const schema = field.blocks.find((block) => block.type === raw.type)
     if (!schema) continue
     const count = counts.get(schema.type) ?? 0
     if (schema.max !== undefined && count >= schema.max) continue
     counts.set(schema.type, count + 1)
+    budget.blocks += 1
+    // Ids are unique across the whole section, not just one sibling list, so
+    // a click on a block can never land on a namesake in another branch.
     let id = typeof raw.id === 'string' && ID.test(raw.id) ? raw.id : newId()
-    if (seen.has(id)) id = newId()
-    seen.add(id)
-    out.push({ id, type: schema.type, settings: sanitizeValues(schema.fields, raw.settings) })
+    if (budget.ids.has(id)) id = newId()
+    budget.ids.add(id)
+    out.push({
+      id,
+      type: schema.type,
+      settings: sanitizeValues(schema.fields, raw.settings, budget, depth + 1),
+    })
   }
   return out
 }
@@ -369,7 +407,12 @@ export function canAddBlock(field: BlocksField, blocks: readonly BlockValue[], t
   return schema.max === undefined || blocks.filter((b) => b.type === type).length < schema.max
 }
 
-function sanitizeField(field: Field, value: unknown): JsonValue {
+function sanitizeField(
+  field: Field,
+  value: unknown,
+  budget: SanitizeBudget,
+  depth: number,
+): JsonValue {
   switch (field.kind) {
     case 'text':
     case 'textarea':
@@ -412,12 +455,12 @@ function sanitizeField(field: Field, value: unknown): JsonValue {
     case 'point':
       return sanitizePoint(value) as unknown as JsonValue
     case 'blocks':
-      return sanitizeBlocks(field, value) as unknown as JsonValue
+      return sanitizeBlocks(field, value, budget, depth) as unknown as JsonValue
     case 'list': {
       if (!Array.isArray(value)) return []
       return value.slice(0, field.max).map((item): FieldValues => ({
         id: isRecord(item) && typeof item.id === 'string' && ID.test(item.id) ? item.id : newId(),
-        ...sanitizeValues(field.fields, isRecord(item) ? item : {}),
+        ...sanitizeValues(field.fields, isRecord(item) ? item : {}, budget, depth),
       }))
     }
   }
@@ -428,10 +471,17 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Every declared field, sanitised; every undeclared key, dropped. */
-export function sanitizeValues(fields: readonly Field[], values: unknown): FieldValues {
+export function sanitizeValues(
+  fields: readonly Field[],
+  values: unknown,
+  budget: SanitizeBudget = { blocks: 0, ids: new Set() },
+  depth = 0,
+): FieldValues {
   const source = isRecord(values) ? values : {}
   const out: FieldValues = {}
-  for (const field of fields) out[field.key] = sanitizeField(field, source[field.key])
+  for (const field of fields) {
+    out[field.key] = sanitizeField(field, source[field.key], budget, depth)
+  }
   return out
 }
 

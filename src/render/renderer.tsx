@@ -231,10 +231,15 @@ const SectionItem = memo(function SectionItem({
       toolbar={toolbar}
       badge={<ScheduleBadge section={section} now={now ?? new Date()} />}
       onClickCapture={(event) => {
-        // Every click also picks the section. A link must not be followed out
-        // of the editor; anything else — a tab, a slider arrow, the size
-        // guide drawer — still works, so the seller can try the section out.
         const target = event.target as HTMLElement
+        // A block inside the section owns its own click: it selects itself
+        // and the section on the way up, and clearing the block here first
+        // would unmount the very field the click was aiming at.
+        if (target.closest('[data-block-id]')) return
+        // Every other click also picks the section. A link must not be
+        // followed out of the editor; anything else — a tab, a slider arrow,
+        // the size guide drawer — still works, so the seller can try the
+        // section out.
         if (target.closest('a[href]') && !target.closest('[data-editable]')) {
           event.preventDefault()
         }

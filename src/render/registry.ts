@@ -7,6 +7,7 @@ import type { ComponentType } from 'react'
 
 import type { SectionType } from '../model/sections'
 import { ParallaxBanner, VideoHero } from './banner-sections'
+import { BlocksSection } from './blocks-section'
 import { CollectionTabs, Countdown, FeaturedProduct, PromoCodes } from './commerce-sections'
 import {
   ContactCta,
@@ -38,6 +39,7 @@ import { BASE_SECTION_RENDERERS, type SectionProps } from './sections'
 
 export const SECTION_RENDERERS = {
   ...BASE_SECTION_RENDERERS,
+  blocks: BlocksSection,
   'video-hero': VideoHero,
   'parallax-banner': ParallaxBanner,
   'featured-product': FeaturedProduct,

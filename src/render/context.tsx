@@ -194,9 +194,15 @@ export interface RenderEnvironment {
    * editor's own window would lay the phone preview out as a desktop.
    */
   getWindow?: () => Window
-  /** Editor only: text typed straight into the preview. */
+  /** Editor only: text typed and blocks clicked straight in the preview. */
   editing?: {
     onEditText: (sectionId: string, key: string, value: string) => void
+    /** Text typed into a block's field, however deep the block sits. */
+    onEditBlockText?: (sectionId: string, blockId: string, key: string, value: string) => void
+    /** A block clicked in the preview; the editor selects it. */
+    onSelectBlock?: (sectionId: string, blockId: string) => void
+    /** The block the editor has selected, so the canvas can outline it. */
+    selectedBlockId?: string | null
   }
 }
 
