@@ -191,6 +191,7 @@ export function buttonHoverCss(
   appearance: ButtonAppearance,
 ): BoxProps['css'] {
   if (hover === 'none') return undefined
+  // A fill wipes in and stays, so the text flips to stay readable on it.
   const wipe = (origin: string, axis: 'X' | 'Y') => ({
     '&::before': {
       content: '""',
@@ -205,6 +206,7 @@ export function buttonHoverCss(
     '&:hover::before, &:focus-visible::before': {
       transform: axis === 'Y' ? 'scaleY(1)' : 'scaleX(1)',
     },
+    '&:hover, &:focus-visible': { color: appearance.sweepColor },
   })
   const effect =
     hover === 'fill-up'
@@ -215,7 +217,9 @@ export function buttonHoverCss(
           ? wipe('left', 'X')
           : hover === 'fill-right'
             ? wipe('right', 'X')
-            : {
+            : // A shine is only a light passing over: the button's own fill,
+              // border and text stay exactly as they were.
+              {
                 '&::before': {
                   content: '""',
                   position: 'absolute',
@@ -236,10 +240,7 @@ export function buttonHoverCss(
   return {
     position: 'relative',
     overflow: 'hidden',
-    '@media (prefers-reduced-motion: no-preference)': {
-      ...effect,
-      '&:hover, &:focus-visible': { color: appearance.sweepColor },
-    },
+    '@media (prefers-reduced-motion: no-preference)': effect,
   }
 }
 
@@ -303,12 +304,14 @@ export function ThemeButton({
     css: hoverCss,
   }
 
+  const imageSolid = onImage && !(secondary || variant === 'outline')
   const button = configured ? (
     <ConfiguredButton
       label={label}
       link={link}
       variant={variant}
       appearance={appearance}
+      hover={hover}
       shape={shape}
       press={press}
     />
@@ -324,6 +327,11 @@ export function ThemeButton({
           ? { color: 'white', borderColor: 'white', _hover: { bg: 'whiteAlpha.200' } }
           : { bg: 'white', color: 'gray.900', _hover: { bg: 'whiteAlpha.900' } }
         : {})}
+      // A shine is only a light passing over: pin the button's own fill so
+      // neither the recipe's hover nor the on-image look darkens it.
+      {...(hover === 'shine' && {
+        _hover: { ...press._hover, bg: imageSolid ? 'white' : appearance.bg },
+      })}
     />
   )
 
@@ -348,6 +356,7 @@ function ConfiguredButton({
   link,
   variant,
   appearance,
+  hover,
   shape,
   press,
 }: {
@@ -355,6 +364,7 @@ function ConfiguredButton({
   link: Link
   variant: 'solid' | 'outline' | 'ghost'
   appearance: ButtonAppearance
+  hover: ButtonHover | 'none'
   shape: ComponentProps<typeof Button>
   press: ComponentProps<typeof Button>
 }) {
@@ -369,7 +379,8 @@ function ConfiguredButton({
       borderWidth="1px"
       borderColor={appearance.borderColor ?? 'transparent'}
       {...press}
-      _hover={{ ...press._hover, bg: appearance.hoverBg }}
+      // The shine leaves the fill alone; only the other hovers shade it.
+      _hover={{ ...press._hover, ...(hover !== 'shine' && { bg: appearance.hoverBg }) }}
     />
   )
 }

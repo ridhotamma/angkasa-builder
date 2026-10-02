@@ -15,9 +15,11 @@ import {
 } from '../src/index'
 import {
   BUTTON_ELEMENT_DEFAULTS,
+  buttonAppearance,
   readButtonElement,
   sanitizeElements,
 } from '../src/model/element-style'
+import { buttonHoverCss } from '../src/render/primitives'
 import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
 
 function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
@@ -142,6 +144,22 @@ describe('an overridden button', () => {
       />,
     )
     expect(html).toContain('data-element-id="button"')
+  })
+
+  test('the shine sweeps without recolouring the button', () => {
+    const appearance = buttonAppearance('brand', 'solid', DEFAULT_THEME_SETTINGS)
+    const mediaOf = (hover: 'shine' | 'fill-up') => {
+      const css = buttonHoverCss(hover, appearance) as unknown as Record<string, unknown>
+      return css['@media (prefers-reduced-motion: no-preference)'] as Record<string, unknown>
+    }
+    const shine = mediaOf('shine')
+    expect(shine['&::before']).toBeDefined()
+    // No hover rule touches the fill or the text: only the light moves.
+    expect(shine['&:hover, &:focus-visible']).toBeUndefined()
+    expect(JSON.stringify(shine)).not.toContain(appearance.sweepBg)
+    // A fill, by contrast, flips the text to stay readable on the wipe.
+    const fill = mediaOf('fill-up')
+    expect(fill['&:hover, &:focus-visible']).toEqual({ color: appearance.sweepColor })
   })
 
   test('a section without overrides renders the plain theme button', () => {

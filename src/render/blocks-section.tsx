@@ -279,7 +279,8 @@ function ButtonBlock({ block }: { block: BlockValue }) {
         color={appearance.color}
         borderWidth="1px"
         borderColor={appearance.borderColor ?? 'transparent'}
-        _hover={{ bg: appearance.hoverBg }}
+        // The shine leaves the fill alone; only the other hovers shade it.
+        _hover={hover === 'shine' ? undefined : { bg: appearance.hoverBg }}
         transition="background-color 150ms ease, border-color 150ms ease, color 150ms ease"
       />
     </Flex>
