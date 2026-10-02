@@ -8,7 +8,15 @@
  */
 
 import { Badge, Box, Stack, type BoxProps } from '@chakra-ui/react'
-import { memo, useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 
 import { useLocale } from '@repo/i18n'
 
@@ -18,6 +26,7 @@ import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/secti
 import { effectCss, themeCssVars, type ThemeSettings } from '../model/settings'
 import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
 import { SectionFrame } from './frame'
+import { requestMotionRefresh } from './motion/engine'
 import { SectionIdContext } from './primitives'
 import { SECTION_RENDERERS } from './registry'
 
@@ -140,6 +149,12 @@ export function SectionsRenderer({
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
   const pick = useCallback((id: string) => onSelectRef.current?.(id), [])
+
+  // The editor redraws on every edit; a ScrollTrigger measured against the
+  // old layout is re-measured once the new one has painted.
+  useEffect(() => {
+    requestMotionRefresh()
+  }, [sections])
 
   return (
     <RenderProvider value={env}>

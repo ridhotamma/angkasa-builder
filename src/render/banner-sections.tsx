@@ -1,13 +1,14 @@
 /** The video and parallax banners — the hero's moving relatives. */
 
 import { Box, Image } from '@chakra-ui/react'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 
 import { readText, readVideo } from '../model/fields'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { useSectionLayout } from './frame'
 import { BackgroundVideo } from './media'
+import { useMotionEffect } from './motion/engine'
 import { EmptyNotice } from './primitives'
 import { BannerCopy, heroHeight, type SectionProps } from './sections'
 
@@ -39,10 +40,10 @@ export function VideoHero({ settings }: SectionProps) {
 const PARALLAX = { soft: 0.18, strong: 0.35 } as const
 
 /**
- * An image that scrolls slower than the page. Moved by a transform written
- * straight to the element on each animation frame — never through React
- * state, which would re-render the section sixty times a second — and only
- * while it is on screen. A shopper who prefers less motion sees a still
+ * An image that scrolls slower than the page: a ScrollTrigger scrub moves it
+ * ±half the intensity across the banner, with the zoom it starts at constant
+ * underneath. Never through React state, which would re-render the section
+ * sixty times a second. A shopper who prefers less motion sees a still
  * image; so does a page without JavaScript.
  */
 export function ParallaxBanner({ settings }: SectionProps) {
@@ -55,34 +56,31 @@ export function ParallaxBanner({ settings }: SectionProps) {
   const intensity =
     PARALLAX[readText(settings, 'intensity') as keyof typeof PARALLAX] ?? PARALLAX.soft
 
-  useEffect(() => {
-    const element = frame.current
-    const image = layer.current
-    const view = element?.ownerDocument.defaultView
-    if (!element || !image || !view) return
-    if (view.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-    let raf = 0
-    const update = () => {
-      raf = 0
-      const rect = element.getBoundingClientRect()
-      if (rect.bottom < 0 || rect.top > view.innerHeight) return
-      // -1 as the banner enters from below, +1 as it leaves at the top.
-      const progress = (view.innerHeight / 2 - (rect.top + rect.height / 2)) / view.innerHeight
-      image.style.transform = `translate3d(0, ${progress * intensity * rect.height}px, 0) scale(${1 + intensity})`
-    }
-    const onScroll = () => {
-      if (!raf) raf = view.requestAnimationFrame(update)
-    }
-    update()
-    view.addEventListener('scroll', onScroll, { passive: true })
-    view.addEventListener('resize', onScroll)
-    return () => {
-      view.removeEventListener('scroll', onScroll)
-      view.removeEventListener('resize', onScroll)
-      if (raf) view.cancelAnimationFrame(raf)
-    }
-  }, [intensity])
+  useMotionEffect(
+    frame,
+    ({ gsap }) => {
+      const element = frame.current
+      const image = layer.current
+      if (!element || !image) return
+      gsap.set(image, { scale: 1 + intensity })
+      gsap.fromTo(
+        image,
+        { yPercent: -50 * intensity },
+        {
+          yPercent: 50 * intensity,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: element,
+            scroller: element.ownerDocument.documentElement,
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: true,
+          },
+        },
+      )
+    },
+    [intensity],
+  )
 
   return (
     <Box
@@ -94,7 +92,7 @@ export function ParallaxBanner({ settings }: SectionProps) {
       bg="gray.800"
     >
       {src && (
-        <Box ref={layer} position="absolute" inset="0" willChange="transform">
+        <Box ref={layer} data-parallax="layer" position="absolute" inset="0" willChange="transform">
           <Image src={src} alt="" w="full" h="full" objectFit="cover" loading="lazy" />
         </Box>
       )}

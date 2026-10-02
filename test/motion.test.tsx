@@ -12,6 +12,7 @@ import {
   effectCss,
   isFieldShown,
   readSectionStyle,
+  resolveEntrance,
   SECTION_STYLE_FIELDS,
   type SectionInstance,
 } from '../src/index'
@@ -23,7 +24,7 @@ import {
   type RenderEnvironment,
 } from '../src/render/index'
 import { dividerContainerStyle, surfacePaint } from '../src/render/dividers'
-import { railProgress, scrollRoomHeight } from '../src/render/motion-sections'
+import { scrollRoomHeight } from '../src/render/motion-sections'
 
 function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
   return {
@@ -224,17 +225,49 @@ describe('surface paint', () => {
   })
 })
 
-describe('scroll rail progress', () => {
-  test('travels 0 to 1 across the scroll room, clamped', () => {
-    // A 1900px stage in a 900px viewport: 1000px of travel.
-    expect(railProgress(900, 1900, 900)).toBe(0)
-    expect(railProgress(400, 1900, 900)).toBe(0.5)
-    expect(railProgress(-100, 1900, 900)).toBe(1)
-    expect(railProgress(2000, 1900, 900)).toBe(0)
-    expect(railProgress(-2000, 1900, 900)).toBe(1)
-    // No room to travel reads as the start, never NaN.
-    expect(railProgress(0, 800, 900)).toBe(0)
-    expect(railProgress(0, 900, 900)).toBe(0)
+describe('motion entrances', () => {
+  test('the theme applies until a section overrides it', () => {
+    expect(resolveEntrance('none', readSectionStyle({}))).toBeNull()
+    expect(resolveEntrance('subtle', readSectionStyle({}))?.key).toContain('subtle')
+    expect(resolveEntrance('subtle', readSectionStyle({ motion: 'none' }))).toBeNull()
+    expect(resolveEntrance('subtle', readSectionStyle({ motion: 'expressive' }))?.key).toContain(
+      'expressive',
+    )
+  })
+
+  test('tuning scales distance, duration and delay', () => {
+    const base = resolveEntrance('none', readSectionStyle({ motion: 'slide-up' }))
+    const tuned = resolveEntrance(
+      'none',
+      readSectionStyle({
+        motion: 'slide-up',
+        motionDistance: 'long',
+        motionDuration: 'slow',
+        motionDelay: 'medium',
+      }),
+    )
+    expect(base?.y).toBe(48)
+    expect(base?.duration).toBeCloseTo(0.7, 5)
+    expect(base?.delay).toBe(0)
+    expect(tuned!.y).toBeGreaterThan(base!.y)
+    expect(tuned!.duration).toBeGreaterThan(base!.duration)
+    expect(tuned!.delay).toBeGreaterThan(0)
+  })
+
+  test('staggering gives a section an entrance even with the theme off', () => {
+    const entrance = resolveEntrance('none', readSectionStyle({ stagger: true }))
+    expect(entrance?.stagger ?? 0).toBeGreaterThan(0)
+  })
+
+  test('unknown tuning values fall back safely', () => {
+    const style = readSectionStyle({
+      motionDuration: 'warp',
+      motionDistance: 'far',
+      motionDelay: 'later',
+    })
+    expect(style.motionDuration).toBe('normal')
+    expect(style.motionDistance).toBe('medium')
+    expect(style.motionDelay).toBe('none')
   })
 })
 
@@ -262,9 +295,13 @@ describe('section dividers', () => {
 
 describe('split headings', () => {
   test('a rising heading keeps every word in the HTML, masked per word', () => {
-    const html = page(
-      [createSection('rich-text', { heading: 'Crafted in small batches', body: '' }, { headline: 'rise' })],
-    )
+    const html = page([
+      createSection(
+        'rich-text',
+        { heading: 'Crafted in small batches', body: '' },
+        { headline: 'rise' },
+      ),
+    ])
     // Words render in their own mask spans, so the sentence is not one
     // contiguous string — but no word may be lost for readers or no-JS.
     for (const word of ['Crafted', 'in', 'small', 'batches']) {
@@ -273,7 +310,9 @@ describe('split headings', () => {
   })
 
   test('a static heading stays one plain string', () => {
-    const html = page([createSection('rich-text', { heading: 'Crafted in small batches', body: '' })])
+    const html = page([
+      createSection('rich-text', { heading: 'Crafted in small batches', body: '' }),
+    ])
     expect(html).toContain('Crafted in small batches')
   })
 })

@@ -39,6 +39,7 @@ import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { featureIcon } from './icons'
 import { Tilt } from './motion'
+import { useMotionEffect } from './motion/engine'
 import {
   EditableText,
   EmptyNotice,
@@ -165,49 +166,79 @@ export function ScrollingStory({ settings }: SectionProps) {
   const steps = readList(settings, 'steps')
   const [active, setActive] = useState(0)
   const refs = useRef<Array<HTMLDivElement | null>>([])
-  const trackRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const previous = useRef(0)
   const imageRight = readText(settings, 'imagePosition') === 'right'
 
   useEffect(() => {
-    const track = trackRef.current
-    const view = track?.ownerDocument.defaultView
-    if (!track || !view) return
-    let raf = 0
-    const update = () => {
-      raf = 0
-      // The chapter being read is the one whose middle sits closest to the
-      // middle of the screen. Unlike a threshold band, this is unambiguous
-      // at every scroll position — hovering on a boundary flips exactly once
-      // at the midpoint, scrolling either direction, with no flicker.
-      const trackRect = track.getBoundingClientRect()
-      if (trackRect.bottom < 0 || trackRect.top > view.innerHeight) return
-      const middle = view.innerHeight / 2
-      let best = 0
-      let nearest = Infinity
-      for (let index = 0; index < refs.current.length; index++) {
-        const element = refs.current[index]
-        if (!element) continue
-        const rect = element.getBoundingClientRect()
-        const distance = Math.abs(rect.top + rect.height / 2 - middle)
-        if (distance < nearest) {
-          nearest = distance
-          best = index
+    const first = refs.current.find(Boolean)
+    const view = first?.ownerDocument.defaultView
+    if (!first || !view || !('IntersectionObserver' in view)) return
+    const observer = new view.IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          // The chapter being read is the one crossing the middle of the
+          // screen. A zero-height band there is unambiguous at every scroll
+          // position — on a boundary it flips exactly once, either direction.
+          const index = refs.current.indexOf(entry.target as HTMLDivElement)
+          if (index >= 0) setActive(index)
+        }
+      },
+      { rootMargin: '-50% 0px -50% 0px' },
+    )
+    refs.current.forEach((element) => element && observer.observe(element))
+    return () => observer.disconnect()
+  }, [steps.length])
+
+  // The crossfade between chapters, tweened by GSAP from wherever the last
+  // switch left the picture. Desktop only: below `md` each chapter shows its
+  // own still, and the dimming is a desktop reading aid.
+  useMotionEffect(
+    sectionRef,
+    ({ gsap }) => {
+      const element = sectionRef.current
+      const view = element?.ownerDocument.defaultView
+      if (!element || !view || view.innerWidth < 768) return
+      const images = element.querySelectorAll<HTMLElement>('[data-story-image]')
+      const texts = element.querySelectorAll<HTMLElement>('[data-story-text]')
+      const from = previous.current
+      images.forEach((image, index) => {
+        gsap.fromTo(
+          image,
+          { autoAlpha: index === from ? 1 : 0, scale: index === from ? 1 : 1.04 },
+          {
+            autoAlpha: index === active ? 1 : 0,
+            scale: index === active ? 1 : 1.04,
+            duration: index === active ? 0.7 : 0.5,
+            ease: 'power2.out',
+            overwrite: 'auto',
+          },
+        )
+      })
+      texts.forEach((text, index) => {
+        gsap.to(text, {
+          opacity: index === active ? 1 : 0.35,
+          duration: 0.4,
+          ease: 'power2.out',
+          overwrite: 'auto',
+        })
+      })
+      previous.current = active
+
+      // Leaving the desktop layout must drop the inline styles: below `md`
+      // every chapter is plain text, undimmed.
+      const desktop = view.matchMedia('(min-width: 768px)')
+      const onLayoutChange = () => {
+        if (!desktop.matches) {
+          gsap.set([...images, ...texts], { clearProps: 'opacity,visibility,transform' })
         }
       }
-      setActive(best)
-    }
-    const kick = () => {
-      if (!raf) raf = view.requestAnimationFrame(update)
-    }
-    update()
-    view.addEventListener('scroll', kick, { passive: true })
-    view.addEventListener('resize', kick)
-    return () => {
-      view.removeEventListener('scroll', kick)
-      view.removeEventListener('resize', kick)
-      if (raf) view.cancelAnimationFrame(raf)
-    }
-  }, [steps.length])
+      desktop.addEventListener('change', onLayoutChange)
+      return () => desktop.removeEventListener('change', onLayoutChange)
+    },
+    [active],
+  )
 
   if (steps.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
 
@@ -217,7 +248,7 @@ export function ScrollingStory({ settings }: SectionProps) {
   }
 
   return (
-    <Stack as="section" gap="6">
+    <Stack ref={sectionRef} as="section" gap="6">
       <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={{ md: '12' }}>
         <Box hideBelow="md" order={imageRight ? 1 : 0}>
@@ -227,6 +258,7 @@ export function ScrollingStory({ settings }: SectionProps) {
                 {steps.map((step, index) => (
                   <ImageWithFallback
                     key={step.id}
+                    data-story-image=""
                     src={src(step) ?? undefined}
                     alt=""
                     position="absolute"
@@ -236,7 +268,6 @@ export function ScrollingStory({ settings }: SectionProps) {
                     objectFit="cover"
                     opacity={index === active ? 1 : 0}
                     transform={index === active ? 'scale(1)' : 'scale(1.04)'}
-                    transition="opacity 700ms ease, transform 1200ms ease"
                     loading={index === 0 ? 'eager' : 'lazy'}
                   />
                 ))}
@@ -244,10 +275,11 @@ export function ScrollingStory({ settings }: SectionProps) {
             </AspectRatio>
           </Box>
         </Box>
-        <Stack ref={trackRef} gap={{ base: '10', md: '0' }}>
+        <Stack gap={{ base: '10', md: '0' }}>
           {steps.map((step, index) => (
             <Stack
               key={step.id}
+              data-story-text=""
               ref={(element: HTMLDivElement | null) => {
                 refs.current[index] = element
               }}
@@ -255,7 +287,6 @@ export function ScrollingStory({ settings }: SectionProps) {
               minH={{ md: '70svh' }}
               justify="center"
               opacity={{ base: 1, md: index === active ? 1 : 0.35 }}
-              transition="opacity 400ms ease"
             >
               <AspectRatio
                 ratio={4 / 5}

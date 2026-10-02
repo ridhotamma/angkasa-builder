@@ -16,7 +16,7 @@
 
 import { readBoolean, readDate, readText, type Field, type FieldValues } from './fields'
 import type { Localized } from './localized'
-import { SCHEME_KEYS, SCHEME_LABELS, type SchemeKey } from './settings'
+import { SCHEME_KEYS, SCHEME_LABELS, type AnimationStyle, type SchemeKey } from './settings'
 
 const SPACING = [
   { value: 'auto', label: { en: 'Automatic', id: 'Otomatis' } },
@@ -58,14 +58,49 @@ export const DIVIDER_SHAPES = [
 ] as const
 export type DividerShape = (typeof DIVIDER_SHAPES)[number]['value']
 
+/**
+ * How a section enters as it scrolls into view. `default` follows the theme;
+ * everything else is an explicit override, and `subtle`/`slide-up`/
+ * `expressive` keep the entrance a layout saved before GSAP already had.
+ */
 export const MOTION_OVERRIDES = [
   { value: 'default', label: { en: 'Theme default', id: 'Ikuti tema' } },
   { value: 'none', label: { en: 'None (static)', id: 'Tanpa animasi' } },
+  { value: 'fade', label: { en: 'Fade in', id: 'Memudar masuk' } },
   { value: 'subtle', label: { en: 'Subtle fade in', id: 'Muncul perlahan' } },
   { value: 'slide-up', label: { en: 'Rise & settle', id: 'Naik & menetap' } },
+  { value: 'zoom', label: { en: 'Zoom in', id: 'Membesar masuk' } },
+  { value: 'blur', label: { en: 'Blur in', id: 'Fokus perlahan' } },
   { value: 'expressive', label: { en: 'Expressive zoom', id: 'Zoom ekspresif' } },
 ] as const
 export type SectionMotion = (typeof MOTION_OVERRIDES)[number]['value']
+
+/** The motion values that actually animate — the tuning controls follow these. */
+export const MOTION_ENTRANCES = MOTION_OVERRIDES.filter(
+  (motion) => motion.value !== 'default' && motion.value !== 'none',
+)
+
+export const MOTION_DURATIONS = [
+  { value: 'fast', label: { en: 'Fast', id: 'Cepat' } },
+  { value: 'normal', label: { en: 'Normal', id: 'Normal' } },
+  { value: 'slow', label: { en: 'Slow', id: 'Lambat' } },
+] as const
+export type MotionDuration = (typeof MOTION_DURATIONS)[number]['value']
+
+export const MOTION_DISTANCES = [
+  { value: 'short', label: { en: 'Short', id: 'Pendek' } },
+  { value: 'medium', label: { en: 'Medium', id: 'Sedang' } },
+  { value: 'long', label: { en: 'Long', id: 'Jauh' } },
+] as const
+export type MotionDistance = (typeof MOTION_DISTANCES)[number]['value']
+
+export const MOTION_DELAYS = [
+  { value: 'none', label: { en: 'None', id: 'Tidak ada' } },
+  { value: 'short', label: { en: 'Short', id: 'Singkat' } },
+  { value: 'medium', label: { en: 'Medium', id: 'Sedang' } },
+  { value: 'long', label: { en: 'Long', id: 'Lama' } },
+] as const
+export type MotionDelay = (typeof MOTION_DELAYS)[number]['value']
 
 export const HEADLINE_ANIMATIONS = [
   { value: 'none', label: { en: 'None', id: 'Tidak ada' } },
@@ -135,6 +170,34 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     label: { en: 'Section motion', id: 'Animasi bagian' },
     options: MOTION_OVERRIDES,
     default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'motionDuration',
+    label: { en: 'Entrance speed', id: 'Kecepatan animasi' },
+    options: MOTION_DURATIONS,
+    default: 'normal',
+    showWhen: { key: 'motion', is: MOTION_ENTRANCES.map((motion) => motion.value) },
+  },
+  {
+    kind: 'select',
+    key: 'motionDistance',
+    label: { en: 'Entrance distance', id: 'Jarak animasi' },
+    help: {
+      en: 'How far the section travels. Fade and zoom ignore it.',
+      id: 'Seberapa jauh bagian bergerak. Memudar dan membesar mengabaikannya.',
+    },
+    options: MOTION_DISTANCES,
+    default: 'medium',
+    showWhen: { key: 'motion', is: MOTION_ENTRANCES.map((motion) => motion.value) },
+  },
+  {
+    kind: 'select',
+    key: 'motionDelay',
+    label: { en: 'Entrance delay', id: 'Jeda animasi' },
+    options: MOTION_DELAYS,
+    default: 'none',
+    showWhen: { key: 'motion', is: MOTION_ENTRANCES.map((motion) => motion.value) },
   },
   {
     kind: 'select',
@@ -238,6 +301,9 @@ export interface ResolvedSectionStyle {
   dividerTop: DividerShape
   dividerBottom: DividerShape
   motion: SectionMotion
+  motionDuration: MotionDuration
+  motionDistance: MotionDistance
+  motionDelay: MotionDelay
   headline: SectionHeadline
   stagger: boolean
   width: SectionWidth
@@ -295,7 +361,30 @@ export function readSectionStyle(style: FieldValues): ResolvedSectionStyle {
       DIVIDER_SHAPES.map((divider) => divider.value),
       'none',
     ),
-    motion: readOption(style, 'motion', MOTION_OVERRIDES.map((motion) => motion.value), 'default'),
+    motion: readOption(
+      style,
+      'motion',
+      MOTION_OVERRIDES.map((motion) => motion.value),
+      'default',
+    ),
+    motionDuration: readOption(
+      style,
+      'motionDuration',
+      MOTION_DURATIONS.map((duration) => duration.value),
+      'normal',
+    ),
+    motionDistance: readOption(
+      style,
+      'motionDistance',
+      MOTION_DISTANCES.map((distance) => distance.value),
+      'medium',
+    ),
+    motionDelay: readOption(
+      style,
+      'motionDelay',
+      MOTION_DELAYS.map((delay) => delay.value),
+      'none',
+    ),
     headline: readOption(
       style,
       'headline',
@@ -304,7 +393,12 @@ export function readSectionStyle(style: FieldValues): ResolvedSectionStyle {
     ),
     stagger: readBoolean(style, 'stagger'),
     width: width === 'full' || width === 'edge' ? width : 'contained',
-    paddingTop: readOption(style, 'paddingTop', SPACING.map((option) => option.value), 'auto'),
+    paddingTop: readOption(
+      style,
+      'paddingTop',
+      SPACING.map((option) => option.value),
+      'auto',
+    ),
     paddingBottom: readOption(
       style,
       'paddingBottom',
@@ -339,4 +433,135 @@ export const SCHEDULE_LABELS: Record<'scheduled' | 'live' | 'ended', Localized> 
   scheduled: { en: 'Scheduled', id: 'Terjadwal' },
   live: { en: 'Timed', id: 'Berjangka' },
   ended: { en: 'Ended', id: 'Berakhir' },
+}
+
+/* -------------------------------------------------------------------------- */
+/* Entrances                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A section's entrance, resolved to the numbers GSAP animates. `opacity`,
+ * `y`, `scale` and `blur` are the from-state; the tween ends at the element's
+ * natural state. `imageScale` additionally eases photos inside the section
+ * down from a slight zoom.
+ */
+export interface EntrancePreset {
+  /** Identity for effect dependencies: two equal settings share one. */
+  key: string
+  opacity: number
+  y: number
+  scale: number
+  blur: number
+  imageScale: number
+  /** Seconds. */
+  duration: number
+  /** Seconds before the entrance starts. */
+  delay: number
+  /** Seconds between children when the section staggers. */
+  stagger: number
+  /** A GSAP ease name. */
+  ease: string
+}
+
+interface EntranceSpec {
+  opacity: number
+  y: number
+  scale: number
+  blur: number
+  imageScale: number
+  duration: number
+  ease: string
+}
+
+/** The look of each explicit entrance, tuned by the seller's controls. */
+const ENTRANCES: Record<Exclude<SectionMotion, 'default' | 'none'>, EntranceSpec> = {
+  fade: { opacity: 0, y: 0, scale: 1, blur: 0, imageScale: 1, duration: 0.6, ease: 'power2.out' },
+  subtle: {
+    opacity: 0,
+    y: 16,
+    scale: 1,
+    blur: 0,
+    imageScale: 1,
+    duration: 0.6,
+    ease: 'power2.out',
+  },
+  'slide-up': {
+    opacity: 0,
+    y: 48,
+    scale: 1,
+    blur: 0,
+    imageScale: 1,
+    duration: 0.7,
+    ease: 'power3.out',
+  },
+  zoom: {
+    opacity: 0,
+    y: 0,
+    scale: 0.94,
+    blur: 0,
+    imageScale: 1,
+    duration: 0.7,
+    ease: 'power3.out',
+  },
+  blur: { opacity: 0, y: 12, scale: 1, blur: 12, imageScale: 1, duration: 0.8, ease: 'power2.out' },
+  expressive: {
+    opacity: 0,
+    y: 48,
+    scale: 0.98,
+    blur: 0,
+    imageScale: 1.06,
+    duration: 0.9,
+    ease: 'power3.out',
+  },
+}
+
+/** What the theme's own motion setting means, in entrance terms. */
+const THEME_ENTRANCES: Record<AnimationStyle, Exclude<SectionMotion, 'default'> | null> = {
+  none: null,
+  subtle: 'subtle',
+  expressive: 'expressive',
+}
+
+const DISTANCE_FACTOR: Record<MotionDistance, number> = { short: 0.5, medium: 1, long: 1.75 }
+const DURATION_FACTOR: Record<MotionDuration, number> = { fast: 0.65, normal: 1, slow: 1.6 }
+const DELAY_SECONDS: Record<MotionDelay, number> = { none: 0, short: 0.1, medium: 0.25, long: 0.5 }
+const STAGGER_SECONDS = 0.08
+
+/**
+ * The entrance a section should play, or `null` for none: the section's own
+ * motion when set, the theme's otherwise. Staggering implies an entrance — a
+ * section that opted out still needs one for its blocks to cascade through.
+ */
+export function resolveEntrance(
+  theme: AnimationStyle,
+  style: ResolvedSectionStyle,
+): EntrancePreset | null {
+  let entrance: SectionMotion | null =
+    style.motion === 'default' ? THEME_ENTRANCES[theme] : style.motion
+  if (!entrance || entrance === 'none') {
+    // Staggering implies an entrance: a section that opted out of motion
+    // still needs one for its blocks to cascade through.
+    if (!style.stagger) return null
+    entrance = 'subtle'
+  }
+
+  const spec = ENTRANCES[entrance]
+  return {
+    key: [
+      entrance,
+      style.motionDuration,
+      style.motionDistance,
+      style.motionDelay,
+      style.stagger ? 'stagger' : 'plain',
+    ].join(':'),
+    opacity: spec.opacity,
+    y: spec.y * DISTANCE_FACTOR[style.motionDistance],
+    scale: spec.scale,
+    blur: spec.blur,
+    imageScale: spec.imageScale,
+    duration: spec.duration * DURATION_FACTOR[style.motionDuration],
+    delay: DELAY_SECONDS[style.motionDelay],
+    stagger: style.stagger ? STAGGER_SECONDS : 0,
+    ease: spec.ease,
+  }
 }

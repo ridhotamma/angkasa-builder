@@ -3,9 +3,10 @@
  * scroll-driven horizontal rail.
  *
  * Like everything else, they render their final state as plain HTML: panels
- * stack, rails scroll natively. Effects enhance on top —
- * `IntersectionObserver` and `requestAnimationFrame` on the element's own
- * document — and stand down for reduced motion.
+ * stack, rails scroll natively. GSAP and ScrollTrigger enhance on top — with
+ * ScrollTrigger scoped to the element's own document, so the editor preview
+ * animates inside its iframe exactly like the storefront — and every effect
+ * stands down for reduced motion.
  */
 
 import { AspectRatio, Box, Flex, Heading, Stack, Text } from '@chakra-ui/react'
@@ -13,18 +14,13 @@ import { useEffect, useRef, useState } from 'react'
 
 import { ImageWithFallback } from '@repo/theme'
 
-import {
-  readLink,
-  readList,
-  readRichText,
-  readText,
-  type FieldValues,
-} from '../model/fields'
+import { readLink, readList, readRichText, readText, type FieldValues } from '../model/fields'
 import { isRichDocEmpty } from '../model/rich-text'
 import { resolveScheme, schemeCssVars } from '../model/settings'
 import { HEADER_HEIGHT_VAR } from './chrome'
 import { useRenderEnvironment } from './context'
 import { schemeCss } from './frame'
+import { requestMotionRefresh, useMotionEffect } from './motion/engine'
 import {
   ButtonRow,
   EmptyNotice,
@@ -43,8 +39,8 @@ import { alignOf, useEmptyText, type SectionProps } from './sections'
 /**
  * Cards pinning one over another as the page scrolls, each peeking from
  * under the next and shrinking into the pile. Pinning is plain CSS sticky;
- * the shrink is a scroll-driven animation where supported, stillness
- * otherwise — and nothing anywhere without it.
+ * the shrink is a ScrollTrigger scrub, so it works in every browser rather
+ * than only where CSS scroll-driven animations do.
  */
 export function StackedCards({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
@@ -52,6 +48,36 @@ export function StackedCards({ settings }: SectionProps) {
   const empty = useEmptyText()
   const align = alignOf(settings)
   const items = readList(settings, 'items')
+  const stack = useRef<HTMLDivElement>(null)
+
+  useMotionEffect(
+    stack,
+    ({ gsap }) => {
+      const element = stack.current
+      const scroller = element?.ownerDocument.documentElement
+      if (!element || !scroller) return
+      element.querySelectorAll<HTMLElement>('[data-stack-card]').forEach((card) => {
+        gsap.fromTo(
+          card,
+          { scale: 1, filter: 'brightness(1)' },
+          {
+            scale: 0.93,
+            filter: 'brightness(0.94)',
+            ease: 'none',
+            scrollTrigger: {
+              trigger: card,
+              scroller,
+              start: 'top top',
+              end: 'bottom top',
+              scrub: true,
+            },
+          },
+        )
+      })
+    },
+    [items.length],
+  )
+
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
 
   return (
@@ -59,7 +85,7 @@ export function StackedCards({ settings }: SectionProps) {
       <SectionHeading align={align} field="heading">
         {readText(settings, 'heading')}
       </SectionHeading>
-      <Stack gap="6">
+      <Stack ref={stack} gap="6">
         {items.map((item, index) => {
           const fileId = readText(item, 'image')
           const src = fileId ? imageUrl(fileId, { width: 1000, height: 625 }) : null
@@ -68,22 +94,10 @@ export function StackedCards({ settings }: SectionProps) {
           return (
             <Box
               key={item.id}
+              data-stack-card=""
               position="sticky"
               // Below the store header, each card a thumb lower than the last.
               top={`calc(var(${HEADER_HEIGHT_VAR}, 76px) + ${16 + index * 28}px)`}
-              css={{
-                '@supports (animation-timeline: view())': {
-                  '@media (prefers-reduced-motion: no-preference)': {
-                    animation: 'pb-stack-cover linear both',
-                    animationTimeline: 'view()',
-                    animationRange: 'exit 0% exit 100%',
-                  },
-                },
-                '@keyframes pb-stack-cover': {
-                  from: { transform: 'scale(1)', filter: 'brightness(1)' },
-                  to: { transform: 'scale(0.93)', filter: 'brightness(0.94)' },
-                },
-              }}
             >
               <Box
                 bg="bg.panel"
@@ -135,12 +149,7 @@ export function StackedCards({ settings }: SectionProps) {
                       bg="bg.subtle"
                       flexShrink="0"
                     >
-                      <ImageWithFallback
-                        src={src}
-                        alt={title}
-                        objectFit="cover"
-                        loading="lazy"
-                      />
+                      <ImageWithFallback src={src} alt={title} objectFit="cover" loading="lazy" />
                     </AspectRatio>
                   )}
                 </Flex>
@@ -178,8 +187,8 @@ export function scrollRoomHeight(value: string): string {
 function hasPanel(panel: FieldValues): boolean {
   return Boolean(
     readText(panel, 'heading') ||
-      !isRichDocEmpty(readRichText(panel, 'body')) ||
-      readText(panel, 'image'),
+    !isRichDocEmpty(readRichText(panel, 'body')) ||
+    readText(panel, 'image'),
   )
 }
 
@@ -233,8 +242,11 @@ function PinnedPanel({ panel }: { panel: FieldValues }) {
 
 /**
  * A full-screen stage pinned while the page scrolls through one panel per
- * screen. Phones get the same panels as plain stacked cards — no pinning,
- * nothing hidden.
+ * screen. The stage is native CSS sticky; an IntersectionObserver picks the
+ * panel crossing the middle of the screen and a GSAP crossfade moves the
+ * stage between them. Phones get the same panels as plain stacked cards —
+ * no pinning, nothing hidden. A shopper who prefers less motion gets the
+ * same panels, switching without the fade.
  */
 export function PinnedScroll({ settings }: SectionProps) {
   const empty = useEmptyText()
@@ -242,6 +254,8 @@ export function PinnedScroll({ settings }: SectionProps) {
   const room = scrollRoomHeight(readText(settings, 'scrollLength'))
   const [active, setActive] = useState(0)
   const sentinels = useRef<Array<HTMLDivElement | null>>([])
+  const stage = useRef<HTMLDivElement>(null)
+  const previous = useRef(0)
 
   useEffect(() => {
     const first = sentinels.current.find(Boolean)
@@ -262,6 +276,35 @@ export function PinnedScroll({ settings }: SectionProps) {
     return () => observer.disconnect()
   }, [panels.length])
 
+  // The crossfade: from wherever the previous panel left the stage, to the
+  // one that owns it now. GSAP writes the inline styles; the attributes that
+  // keep hidden panels out of the tab order are React's own.
+  useMotionEffect(
+    stage,
+    ({ gsap }) => {
+      const element = stage.current
+      const view = element?.ownerDocument.defaultView
+      if (!element || !view || view.innerWidth < 768) return
+      const nodes = Array.from(element.querySelectorAll<HTMLElement>('[data-pinned-panel]'))
+      if (nodes.length === 0) return
+      const from = previous.current
+      const at = (index: number, owner: number) => ({
+        autoAlpha: index === owner ? 1 : 0,
+        y: index === owner ? 0 : 24,
+      })
+      nodes.forEach((node, index) => {
+        gsap.fromTo(node, at(index, from), {
+          ...at(index, active),
+          duration: 0.5,
+          ease: 'power2.out',
+          overwrite: 'auto',
+        })
+      })
+      previous.current = active
+    },
+    [active],
+  )
+
   if (panels.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
 
   return (
@@ -272,6 +315,7 @@ export function PinnedScroll({ settings }: SectionProps) {
             scrolls past, giving it one screen of stick range per panel.
             Desktop only. */}
         <Box
+          ref={stage}
           data-pinned="stage"
           hideBelow="md"
           position="sticky"
@@ -287,6 +331,7 @@ export function PinnedScroll({ settings }: SectionProps) {
             return (
               <Box
                 key={panel.id}
+                data-pinned-panel=""
                 position="absolute"
                 insetX="0"
                 mx="auto"
@@ -294,8 +339,6 @@ export function PinnedScroll({ settings }: SectionProps) {
                 px={{ md: '6' }}
                 opacity={visible ? 1 : 0}
                 transform={visible ? 'translateY(0)' : 'translateY(24px)'}
-                transition="opacity 500ms ease, transform 500ms ease"
-                css={{ '@media (prefers-reduced-motion: reduce)': { transition: 'none' } }}
                 aria-hidden={!visible}
                 inert={!visible}
                 pointerEvents={visible ? 'auto' : 'none'}
@@ -334,131 +377,89 @@ export function PinnedScroll({ settings }: SectionProps) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * How far the rail has travelled, 0 to 1: the stage enters with its top at
- * the viewport's bottom edge and releases with its bottom there.
- */
-export function railProgress(rectTop: number, outerHeight: number, viewHeight: number): number {
-  const total = outerHeight - viewHeight
-  if (!(total > 0)) return 0
-  return Math.min(1, Math.max(0, (viewHeight - rectTop) / total))
-}
-
-/**
  * A horizontal gallery the page's vertical scroll drives: the stage pins for
- * exactly the rail's overflow, then releases. Phones, reduced motion and
- * no-JS get the same cards as a native swipeable strip.
+ * exactly the rail's overflow, then releases — a ScrollTrigger scrub across
+ * the section's own scroll room, with the stage held by native CSS sticky.
+ * Phones and reduced motion get the same cards as a native swipeable strip.
  */
 export function ScrollRail({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const { frame } = useCardStyle()
   const items = readList(settings, 'items')
-  const outerRef = useRef<HTMLDivElement>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
+  const outer = useRef<HTMLDivElement>(null)
+  const track = useRef<HTMLDivElement>(null)
   const [driving, setDriving] = useState(false)
 
-  useEffect(() => {
-    const outer = outerRef.current
-    const track = trackRef.current
-    const view = outer?.ownerDocument.defaultView
-    if (!outer || !track || !view) return
+  useMotionEffect(
+    outer,
+    ({ gsap }) => {
+      const section = outer.current
+      const rail = track.current
+      const view = section?.ownerDocument.defaultView
+      if (!section || !rail || !view) return
+      const scroller = section.ownerDocument.documentElement
 
-    let raf = 0
-    let visible = false
-    let written = ''
-    let lastMeasure = 0
-    const motionQuery = view.matchMedia('(prefers-reduced-motion: reduce)')
-    // Re-evaluated, never decided once: a device switch, a resize, a
-    // reduced-motion toggle or a content edit engages or releases drive
-    // mode instead of stranding the last decision.
-    const measure = (): boolean => {
-      const ok =
-        !motionQuery.matches &&
-        view.innerWidth >= 768 &&
-        track.scrollWidth - outer.clientWidth > view.innerHeight * 0.1
-      setDriving((was) => {
-        if (was === ok) return was
-        if (!ok) {
-          outer.style.height = ''
-          track.style.transform = ''
-          written = ''
-        }
-        return ok
+      const tween = gsap.to(rail, {
+        x: () => -(rail.scrollWidth - section.clientWidth),
+        ease: 'none',
+        scrollTrigger: {
+          trigger: section,
+          scroller,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: true,
+          invalidateOnRefresh: true,
+        },
       })
-      if (ok) {
-        // Scroll room for exactly the overflow, plus most of a screen so the
-        // last card rests in view before the stage releases.
-        const overflow = track.scrollWidth - outer.clientWidth
-        outer.style.height = `${overflow + view.innerHeight * 0.9}px`
-      }
-      return ok
-    }
+      const trigger = tween.scrollTrigger
+      if (!trigger) return
 
-    const update = (now: number) => {
-      raf = 0
-      if (!visible) return
-      // Engagement is re-checked a few times a second; the transform itself
-      // follows every frame from the rect, so no scroll listener can go
-      // missing — the loop only needs animation frames.
-      if (now - lastMeasure > 500) {
-        lastMeasure = now
-        if (!measure()) return
+      const motionQuery = view.matchMedia('(prefers-reduced-motion: reduce)')
+      let isDriving = false
+      const measure = () => {
+        const next =
+          !motionQuery.matches &&
+          view.innerWidth >= 768 &&
+          rail.scrollWidth - section.clientWidth > view.innerHeight * 0.1
+        if (next) {
+          // Scroll room for exactly the overflow, plus one screen so the
+          // stage releases only once the last card has rested in view.
+          section.style.height = `${rail.scrollWidth - section.clientWidth + view.innerHeight}px`
+        } else {
+          section.style.height = ''
+          gsap.set(rail, { clearProps: 'transform' })
+        }
+        if (next !== isDriving) {
+          isDriving = next
+          setDriving(next)
+        }
+        if (next) trigger.enable()
+        else trigger.disable(false)
+        requestMotionRefresh()
       }
-      const rect = outer.getBoundingClientRect()
-      const progress = railProgress(rect.top, outer.offsetHeight, view.innerHeight)
-      const overflow = track.scrollWidth - outer.clientWidth
-      const next = `translate3d(${(-progress * overflow).toFixed(1)}px, 0, 0)`
-      // Unchanged transforms are not rewritten: without this the compositor
-      // never rests while the section is on screen.
-      if (next !== written) {
-        track.style.transform = next
-        written = next
-      }
-      raf = view.requestAnimationFrame(update)
-    }
-    const kick = () => {
-      if (!raf) raf = view.requestAnimationFrame(update)
-    }
-    const onResize = () => {
-      lastMeasure = view.performance.now()
       measure()
-      kick()
-    }
 
-    const observer =
-      'IntersectionObserver' in view
-        ? new view.IntersectionObserver(
-            ([entry]) => {
-              visible = Boolean(entry?.isIntersecting)
-              kick()
-            },
-            // Any sliver on screen keeps the loop alive; the work itself is
-            // one rect read and, usually, no write at all.
-            { threshold: 0 },
-          )
-        : null
-    if (observer) observer.observe(outer)
-    else kick()
-    view.addEventListener('resize', onResize)
-    const onMotionChange = () => {
-      lastMeasure = 0
-      if (measure()) kick()
-    }
-    motionQuery.addEventListener('change', onMotionChange)
-    return () => {
-      view.removeEventListener('resize', onResize)
-      motionQuery.removeEventListener('change', onMotionChange)
-      observer?.disconnect()
-      if (raf) view.cancelAnimationFrame(raf)
-      outer.style.height = ''
-      track.style.transform = ''
-    }
-  }, [items.length])
+      const resize = new view.ResizeObserver(measure)
+      resize.observe(rail)
+      view.addEventListener('resize', measure)
+      void view.document.fonts?.ready.then(measure).catch(() => undefined)
+      motionQuery.addEventListener('change', measure)
+
+      return () => {
+        resize.disconnect()
+        view.removeEventListener('resize', measure)
+        motionQuery.removeEventListener('change', measure)
+        section.style.height = ''
+      }
+    },
+    [items.length],
+  )
 
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
 
   return (
-    <Box ref={outerRef}>
+    <Box ref={outer} data-rail="section">
       <Box
         position={driving ? 'sticky' : 'static'}
         top="0"
@@ -471,7 +472,7 @@ export function ScrollRail({ settings }: SectionProps) {
       >
         <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
         <Box overflowX={driving ? 'hidden' : 'auto'} pb={driving ? '0' : '2'}>
-          <Flex ref={trackRef} gap="5" w="max-content">
+          <Flex ref={track} data-rail="track" gap="5" w="max-content">
             {items.map((item) => {
               const fileId = readText(item, 'image')
               const src = fileId ? imageUrl(fileId, { width: 800, height: 600 }) : null
@@ -495,12 +496,7 @@ export function ScrollRail({ settings }: SectionProps) {
                   <SmartLink link={readLink(item, 'link')} display="block" h="full">
                     {src && (
                       <AspectRatio ratio={4 / 3} bg="bg.subtle">
-                        <ImageWithFallback
-                          src={src}
-                          alt={title}
-                          objectFit="cover"
-                          loading="lazy"
-                        />
+                        <ImageWithFallback src={src} alt={title} objectFit="cover" loading="lazy" />
                       </AspectRatio>
                     )}
                     {(title || text) && (
