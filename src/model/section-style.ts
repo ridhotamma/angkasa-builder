@@ -78,6 +78,21 @@ export const DIVIDER_SHAPES = [
 export type DividerShape = (typeof DIVIDER_SHAPES)[number]['value']
 
 /**
+ * What a divider's shape is painted with. `auto` mirrors the section's own
+ * background — which is invisible when the two sections it sits between share
+ * a colour, as plain sections do on a dark page — so a seller can pick one of
+ * the theme's bands instead and always see the shape.
+ */
+export const DIVIDER_TONES = [
+  { value: 'auto', label: { en: 'Section background', id: 'Latar bagian' } },
+  { value: 'subtle', label: SCHEME_LABELS.subtle },
+  { value: 'inverse', label: SCHEME_LABELS.inverse },
+  { value: 'brand', label: SCHEME_LABELS.brand },
+  { value: 'accent', label: SCHEME_LABELS.accent },
+] as const
+export type DividerTone = (typeof DIVIDER_TONES)[number]['value']
+
+/**
  * How a section enters as it scrolls into view. `default` follows the theme;
  * everything else is an explicit override, and `subtle`/`slide-up`/
  * `expressive` keep the entrance a layout saved before GSAP already had.
@@ -234,6 +249,17 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
   },
   {
     kind: 'select',
+    key: 'dividerTone',
+    label: { en: 'Divider colour', id: 'Warna pembatas' },
+    help: {
+      en: 'Automatic mirrors the section. Pick a band when the sections around it share a colour, so the shape still shows.',
+      id: 'Otomatis mengikuti bagian. Pilih warna bila bagian di sekitarnya sewarna, agar bentuknya tetap terlihat.',
+    },
+    options: DIVIDER_TONES,
+    default: 'auto',
+  },
+  {
+    kind: 'select',
     key: 'motion',
     label: { en: 'Section motion', id: 'Animasi bagian' },
     options: MOTION_OVERRIDES,
@@ -375,6 +401,7 @@ export interface ResolvedSectionStyle {
   sticky: boolean
   dividerTop: DividerShape
   dividerBottom: DividerShape
+  dividerTone: DividerTone
   motion: SectionMotion
   motionDuration: MotionDuration
   motionDistance: MotionDistance
@@ -445,6 +472,12 @@ export function readSectionStyle(style: FieldValues): ResolvedSectionStyle {
       'dividerBottom',
       DIVIDER_SHAPES.map((divider) => divider.value),
       'none',
+    ),
+    dividerTone: readOption(
+      style,
+      'dividerTone',
+      DIVIDER_TONES.map((tone) => tone.value),
+      'auto',
     ),
     motion: readOption(
       style,

@@ -39,7 +39,7 @@ import {
   type VideoRef,
 } from '../model/fields'
 import type { SectionType } from '../model/sections'
-import { resolveScheme, schemeCssVars } from '../model/settings'
+import { resolveScheme, schemeCssVars, themeCssVarGroups } from '../model/settings'
 import { whatsappHref } from './content-sections'
 import { useRenderEnvironment } from './context'
 import { schemeCss, useSectionLayout } from './frame'
@@ -697,15 +697,19 @@ const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayout
  * editor preview's iframe. The first render keeps it in place, matching the
  * server HTML, and the layout effect moves it before the browser paints.
  */
-export function FloatingContact({ settings }: SectionProps) {
-  const { getWindow } = useRenderEnvironment()
+export function FloatingContact({ settings: section }: SectionProps) {
+  const { getWindow, settings } = useRenderEnvironment()
   const reduced = usePrefersReducedMotion()
   const [host, setHost] = useState<HTMLElement | null>(null)
-  const wa = whatsappHref(readText(settings, 'whatsapp'), readText(settings, 'whatsappMessage'))
-  const email = readText(settings, 'email')
+  const wa = whatsappHref(readText(section, 'whatsapp'), readText(section, 'whatsappMessage'))
+  const email = readText(section, 'email')
   const mail = email.includes('@') ? `mailto:${email}` : null
-  const showTop = readBoolean(settings, 'showTop')
-  const side = readText(settings, 'position') === 'left' ? { left: '4' } : { right: '4' }
+  const showTop = readBoolean(section, 'showTop')
+  const side = readText(section, 'position') === 'left' ? { left: '4' } : { right: '4' }
+  // Portalled out of the theme's scope, the cluster must carry the theme's
+  // variables itself — otherwise `brand.solid` falls back to Pesanle's orange
+  // in the editor preview. Light-mode surfaces only, exactly like the root.
+  const theme = themeCssVarGroups(settings)
 
   useIsoLayoutEffect(() => {
     const view = getWindow?.() ?? globalThis.window
@@ -720,7 +724,14 @@ export function FloatingContact({ settings }: SectionProps) {
   }
 
   const cluster = (
-    <Box data-floating-contact="" position="fixed" bottom="4" zIndex="docked" {...side}>
+    <Box
+      data-floating-contact=""
+      position="fixed"
+      bottom="4"
+      zIndex="docked"
+      css={{ ...theme.always, 'html:not(.dark) &': theme.surfaces }}
+      {...side}
+    >
       <Stack gap="2" align="flex-end">
         {showTop && (
           <IconButton

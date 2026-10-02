@@ -140,9 +140,9 @@ export function SectionFrame({
 
   const pattern = paint.pattern
   const shade = surfaceShade(paint.overlay)
-  // The divider insets to the panel only on a contained band; a plain
-  // contained section spans the whole page column.
-  const containedDivider = banded && style.width === 'contained'
+  // A shaped edge replaces the panel's rounded corners: keeping both left a
+  // notch of page colour where the divider's straight edge met the radius.
+  const shaped = style.dividerTop !== 'none' || style.dividerBottom !== 'none'
 
   // Background layers sit on the section itself, so a full-width band's
   // photo or video reaches both edges — not only the content column.
@@ -192,7 +192,7 @@ export function SectionFrame({
         shape={style.dividerTop}
         position="top"
         paint={paint}
-        contained={containedDivider}
+        tone={style.dividerTone}
       />
     ) : null
   const dividerBottom =
@@ -201,7 +201,7 @@ export function SectionFrame({
         shape={style.dividerBottom}
         position="bottom"
         paint={paint}
-        contained={containedDivider}
+        tone={style.dividerTone}
       />
     ) : null
 
@@ -244,7 +244,11 @@ export function SectionFrame({
 
   // Page width: a band is a rounded panel in the column, padded on all sides.
   return (
-    <Box {...display} {...surface} {...(banded && { rounded: 'l3', px: PANEL_PX })}>
+    <Box
+      {...display}
+      {...surface}
+      {...(banded && { px: PANEL_PX, ...(shaped ? {} : { rounded: 'l3' }) })}
+    >
       {layers}
       {dividerTop}
       {inner}

@@ -13,11 +13,13 @@ import { Box, type BoxProps } from '@chakra-ui/react'
 import { ImageWithFallback } from '@repo/theme'
 
 import type { VideoRef } from '../model/fields'
+import { resolveScheme } from '../model/settings'
 import { useRenderEnvironment } from './context'
 import type {
   BackgroundGradient,
   BackgroundPattern,
   DividerShape,
+  DividerTone,
   ResolvedSectionStyle,
   SurfaceOverlay,
 } from '../model/section-style'
@@ -158,12 +160,15 @@ function maskProps(shape: Exclude<DividerShape, 'none'>): BoxProps['css'] {
  * edge stays flush with its own section either way. The box needs a real
  * height — an empty absolutely positioned element measures zero — and the
  * translate leaves a sliver overlapping its own section so no seam shows.
+ *
+ * It always spans the section's full width: insetting it to a panel's
+ * content column left the panel's corners poking out beside the shape.
  */
-export function dividerContainerStyle(position: 'top' | 'bottom', contained = false): BoxProps {
+export function dividerContainerStyle(position: 'top' | 'bottom'): BoxProps {
   return {
     position: 'absolute',
-    left: contained ? PANEL_PX : 0,
-    right: contained ? PANEL_PX : 0,
+    left: 0,
+    right: 0,
     h: { base: '56px', md: '96px' },
     overflow: 'hidden',
     lineHeight: 0,
@@ -194,32 +199,45 @@ interface SectionDividerProps extends BoxProps {
   position: 'top' | 'bottom'
   /** The section's own paint, mirrored exactly. */
   paint: SurfacePaint
-  /** Constrain to the content column on contained sections. */
-  contained?: boolean
+  /** `auto` mirrors the paint; a band paints its own colour instead. */
+  tone?: DividerTone
 }
 
 export function SectionDivider({
   shape,
   position,
   paint,
-  contained = false,
+  tone = 'auto',
   ...rest
 }: SectionDividerProps) {
-  const { imageUrl } = useRenderEnvironment()
+  const { imageUrl, settings } = useRenderEnvironment()
   if (shape === 'none') return null
   const mask = maskProps(shape)
+  // A chosen band guarantees the shape is visible even between same-coloured
+  // sections; automatic mirrors the section's own background.
+  if (tone !== 'auto') {
+    return (
+      <Box
+        {...dividerContainerStyle(position)}
+        bg={resolveScheme(settings, tone).background}
+        css={mask}
+        {...rest}
+      />
+    )
+  }
   // A photo background carries into its divider, clipped by the same mask.
   const media = paint.media?.imageId
     ? imageUrl(paint.media.imageId, { width: 1920, height: 240 })
     : null
   const shade = media ? surfaceShade(paint.overlay) : null
-  // Nothing painted at all (a plain page section): the divider carves the
-  // page's own colour into the neighbouring section, so the shape is visible.
-  const bare = !paint.bg && !paint.backgroundImage && paint.pattern === 'none' && !media
+  // A section with no background of its own (plain, or only a wash/pattern
+  // over the page) still needs a base colour under the shape — otherwise the
+  // divider is a faint outline at best.
+  const base = !paint.bg && !media ? 'bg' : paint.bg
   return (
     <Box
-      {...dividerContainerStyle(position, contained)}
-      bg={bare ? 'bg' : paint.bg}
+      {...dividerContainerStyle(position)}
+      bg={base}
       backgroundImage={paint.backgroundImage}
       css={mask}
       {...rest}

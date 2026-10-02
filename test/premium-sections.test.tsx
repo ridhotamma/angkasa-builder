@@ -239,11 +239,7 @@ describe('section chrome', () => {
   })
 
   test('a plain section divider still carves the page colour', () => {
-    const section = createSection(
-      'rich-text',
-      { heading: 'Cut', body: '' },
-      { dividerTop: 'wave' },
-    )
+    const section = createSection('rich-text', { heading: 'Cut', body: '' }, { dividerTop: 'wave' })
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(html).toContain('mask-image')
     expect(/background(-color)?:var\(--chakra-colors-bg\)/.test(html)).toBe(true)
@@ -259,5 +255,48 @@ describe('section chrome', () => {
     // (which can stay hidden when a cached photo loads before hydration) is gone.
     expect(html).toContain('data:image/svg+xml')
     expect(html).not.toContain('data-part="image"')
+  })
+})
+
+describe('divider colour', () => {
+  test('defaults to the section paint, and reads a chosen band', () => {
+    expect(readSectionStyle({ dividerTop: 'wave' }).dividerTone).toBe('auto')
+    expect(readSectionStyle({ dividerTone: 'brand' }).dividerTone).toBe('brand')
+    expect(readSectionStyle({ dividerTone: 'neon' }).dividerTone).toBe('auto')
+  })
+
+  test('a chosen band paints the shape even between same-coloured sections', () => {
+    const accent = { ...DEFAULT_THEME_SETTINGS.colors, accent: '#123456' }
+    const section = createSection(
+      'rich-text',
+      { heading: 'Plain', body: '' },
+      { dividerTop: 'wave', dividerBottom: 'wave', dividerTone: 'accent' },
+    )
+    const html = render(
+      <SectionsRenderer
+        sections={[section]}
+        env={env({ settings: { ...DEFAULT_THEME_SETTINGS, colors: accent } })}
+      />,
+    )
+    expect(html).toContain('mask-image')
+    expect(html).toContain('#123456')
+  })
+})
+
+describe('floating contact theming', () => {
+  test('the cluster carries the theme variables, so its buttons follow the brand', () => {
+    const colors = { ...DEFAULT_THEME_SETTINGS.colors, brand: '#123456' }
+    const section = createSection('floating-contact', {
+      whatsapp: '08123456789',
+      email: '',
+      showTop: false,
+    })
+    const html = render(
+      <SectionsRenderer
+        sections={[section]}
+        env={env({ settings: { ...DEFAULT_THEME_SETTINGS, colors } })}
+      />,
+    )
+    expect(html).toContain('--chakra-colors-brand-solid:#123456')
   })
 })
