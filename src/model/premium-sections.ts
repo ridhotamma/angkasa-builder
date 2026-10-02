@@ -461,8 +461,14 @@ export const PREMIUM_SECTION_SCHEMAS = [
         image('image', { en: 'Frame', id: 'Bingkai' }),
         text('alt', { en: 'Description', id: 'Deskripsi' }, 120),
       ]),
-      toggle('autoSpin', { en: 'Turn slowly on its own', id: 'Berputar perlahan sendiri' }, true),
-      text('caption', { en: 'Caption', id: 'Keterangan' }, 120, 'Drag to spin'),
+      toggle('autoSpin', { en: 'Turn slowly on its own', id: 'Berputar perlahan sendiri' }, true, {
+        en: 'Pauses while the shopper drags, then starts again.',
+        id: 'Berhenti saat pengunjung menggeser, lalu mulai lagi.',
+      }),
+      text('caption', { en: 'Drag hint', id: 'Petunjuk geser' }, 120, 'Drag to spin', {
+        en: 'Shown over the photo until the shopper drags it.',
+        id: 'Ditampilkan di atas foto sampai pengunjung menggesernya.',
+      }),
     ],
   },
 ] as const satisfies readonly SectionSchema[]

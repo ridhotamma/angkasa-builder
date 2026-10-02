@@ -61,6 +61,8 @@ const TEXT = {
   },
   addToCart: { en: 'Add to cart', id: 'Tambah ke keranjang' },
   buyNow: { en: 'Buy now', id: 'Beli sekarang' },
+  saveToWishlist: { en: 'Save to wishlist', id: 'Simpan ke wishlist' },
+  savedToWishlist: { en: 'Saved to wishlist', id: 'Tersimpan di wishlist' },
   reviewsPreview: {
     en: "Buyers' reviews of the product appear here on the storefront.",
     id: 'Ulasan pembeli untuk produk tampil di sini di etalase.',

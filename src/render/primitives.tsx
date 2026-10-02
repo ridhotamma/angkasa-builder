@@ -13,6 +13,7 @@ import {
   Card,
   Heading,
   HStack,
+  IconButton,
   Link as ChakraLink,
   SimpleGrid,
   Stack,
@@ -29,6 +30,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react'
+import { LuHeart } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -45,6 +47,7 @@ import type { Link } from '../model/links'
 import type { ButtonStyle, CardStyle } from '../model/settings'
 import type { SectionHeadline } from '../model/section-style'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
+import { useRenderText } from './copy'
 import { SplitText } from './motion'
 
 /**
@@ -668,12 +671,50 @@ export function useCardStyle(): { frame: BoxProps; flat: boolean } {
   return { frame: cardFrame(settings.cardStyle), flat: settings.cardStyle === 'flat' }
 }
 
+/**
+ * The heart a product surface overlays: filled when the shopper has saved the
+ * product, writing through the host's wishlist. Renders nothing when the host
+ * has none — the editor preview passes an empty set so it is visible on the
+ * canvas, and snapshots leave it out.
+ */
+export function WishlistButton({
+  product,
+  ...props
+}: { product: StorefrontProductCard } & Omit<ComponentProps<typeof IconButton>, 'children'>) {
+  const { wishlist } = useRenderEnvironment()
+  const text = useRenderText()
+  if (!wishlist) return null
+  const saved = wishlist.ids.has(product.id)
+
+  return (
+    <IconButton
+      data-wishlist-toggle=""
+      aria-label={saved ? text('savedToWishlist') : text('saveToWishlist')}
+      aria-pressed={saved}
+      size="sm"
+      rounded="full"
+      variant="surface"
+      colorPalette={saved ? 'red' : 'gray'}
+      shadow="sm"
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        wishlist.onToggle(product)
+      }}
+      {...props}
+    >
+      <LuHeart fill={saved ? 'currentColor' : 'none'} />
+    </IconButton>
+  )
+}
+
 export function ProductCard({ product }: { product: StorefrontProductCard }) {
   const { data, formatPrice } = useRenderEnvironment()
   const { frame, flat } = useCardStyle()
 
   return (
     <Card.Root
+      position="relative"
       h="full"
       bg="bg.panel"
       rounded="l3"
@@ -725,6 +766,9 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
           </Stack>
         </Stack>
       </SmartLink>
+      {/* Outside the link: a button nested in an anchor is neither valid HTML
+          nor clickable without hijacking the navigation. */}
+      <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
     </Card.Root>
   )
 }

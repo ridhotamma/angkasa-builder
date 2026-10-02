@@ -30,6 +30,7 @@ import {
   SectionHeading,
   ThemeButton,
   useCardStyle,
+  WishlistButton,
 } from './primitives'
 import { alignOf, useEmptyText, type SectionProps } from './sections'
 
@@ -62,9 +63,12 @@ export function FeaturedProduct({ settings }: SectionProps) {
       alignItems="center"
     >
       <Stack gap="3" order={{ base: 0, md: imageRight ? 1 : 0 }}>
-        <AspectRatio ratio={1} rounded="l3" overflow="hidden" bg="bg.subtle">
-          <ImageWithFallback src={cover ?? undefined} alt={product.name} objectFit="cover" />
-        </AspectRatio>
+        <Box position="relative" rounded="l3" overflow="hidden" bg="bg.subtle">
+          <AspectRatio ratio={1}>
+            <ImageWithFallback src={cover ?? undefined} alt={product.name} objectFit="cover" />
+          </AspectRatio>
+          <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
+        </Box>
         {images.length > 1 && (
           <HStack gap="2">
             {images.slice(0, 6).map((url, index) => (

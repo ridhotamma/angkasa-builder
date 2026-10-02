@@ -15,6 +15,7 @@ import {
   type SectionInstance,
 } from '../src/index'
 import { surfacePaint } from '../src/render/dividers'
+import { spinStep } from '../src/render/premium-sections'
 import {
   embedUrl,
   sampleStorefrontData,
@@ -158,6 +159,36 @@ describe('premium section library', () => {
       expect(at, label).toBeGreaterThan(-1)
       expect(html.slice(at, at + 900), label).toContain('<svg')
     }
+  })
+})
+
+describe('360° spin', () => {
+  test('a drag the width of the photo turns exactly one full rotation', () => {
+    expect(spinStep(300, 300, 36)).toBe(36)
+    expect(spinStep(150, 300, 36)).toBe(18)
+    expect(spinStep(-150, 300, 36)).toBe(-18)
+    expect(spinStep(0, 300, 36)).toBe(0)
+    // A handful of frames turns the same distance, not the same frame count.
+    expect(spinStep(300, 300, 4)).toBe(4)
+    expect(spinStep(0, 0, 4)).toBe(0)
+    expect(spinStep(10, 300, 0)).toBe(0)
+  })
+
+  test('draws the frame with a drag hint and without a native image drag', () => {
+    const section = createSection('spin-360', {
+      heading: 'Turn it',
+      frames: [
+        { image: 'f1', alt: '' },
+        { image: 'f2', alt: '' },
+      ],
+      caption: 'Drag to spin',
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('data-spin-360')
+    expect(html).toContain('Drag to spin')
+    // The browser's own image drag must not steal the pointer gesture.
+    expect(html).toContain('draggable="false"')
+    expect(html).toContain('touch-action:pan-y')
   })
 })
 

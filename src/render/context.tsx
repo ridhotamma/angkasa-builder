@@ -189,6 +189,21 @@ export interface RenderEnvironment {
     articleBody?: ReactNode
   }
   /**
+   * The signed-in shopper's saved products, when the host has a wishlist.
+   *
+   * A product card draws a heart for the ids it finds here and calls
+   * `onToggle` to save or unsave. The host owns both the write and the
+   * optimistic state; the editor preview passes an empty set so the icon is
+   * visible on the canvas, and snapshots and theme previews leave it out
+   * entirely, since there is no shopper behind them.
+   */
+  wishlist?: {
+    /** Product ids this shopper has saved, so a heart starts filled. */
+    ids: ReadonlySet<string>
+    /** Save or unsave one product. */
+    onToggle: (product: StorefrontProductCard) => void
+  }
+  /**
    * The window media queries run against. The editor renders its preview in
    * an iframe the width of the chosen device, and a breakpoint read from the
    * editor's own window would lay the phone preview out as a desktop.

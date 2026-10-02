@@ -40,45 +40,38 @@ const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayout
 const EXITS: Record<SplashStyle, Record<string, unknown>> = {
   fade: {
     animation: `pb-splash-fade 620ms ease ${HOLD_MS}ms both`,
-    '@keyframes pb-splash-fade': {
-      to: { opacity: 0, visibility: 'hidden', pointerEvents: 'none' },
-    },
   },
   'slide-up': {
     animation: `pb-splash-up 680ms cubic-bezier(0.22, 1, 0.36, 1) ${HOLD_MS}ms both`,
-    '@keyframes pb-splash-up': {
-      to: { transform: 'translateY(-102%)', visibility: 'hidden', pointerEvents: 'none' },
-    },
   },
   'slide-down': {
     animation: `pb-splash-down 680ms cubic-bezier(0.22, 1, 0.36, 1) ${HOLD_MS}ms both`,
-    '@keyframes pb-splash-down': {
-      to: { transform: 'translateY(102%)', visibility: 'hidden', pointerEvents: 'none' },
-    },
   },
   smoke: {
     animation: `pb-splash-smoke 900ms ease ${HOLD_MS}ms both`,
-    '@keyframes pb-splash-smoke': {
-      to: {
-        opacity: 0,
-        filter: 'blur(24px)',
-        transform: 'scale(1.05)',
-        visibility: 'hidden',
-        pointerEvents: 'none',
-      },
-    },
   },
   ink: {
     animation: `pb-splash-ink 800ms ease ${HOLD_MS}ms both`,
-    '@keyframes pb-splash-ink': {
-      from: { clipPath: 'circle(150% at 50% 50%)' },
-      to: {
-        clipPath: 'circle(0% at 50% 50%)',
-        visibility: 'hidden',
-        pointerEvents: 'none',
-      },
-    },
   },
+}
+
+/**
+ * The exit keyframes, as stylesheet text.
+ *
+ * Not inside the `css` prop: Chakra v3 flattens a nested `@keyframes` object
+ * one declaration per rule and drops the property names, so the emitted
+ * `@keyframes pb-splash-up{to:translateY(-102%)}` never runs. A raw `<style>`
+ * is what `ThemeScope` uses for its effect CSS too.
+ */
+const EXIT_KEYFRAMES: Record<SplashStyle, string> = {
+  fade: '@keyframes pb-splash-fade{to{opacity:0;visibility:hidden;pointer-events:none;}}',
+  'slide-up':
+    '@keyframes pb-splash-up{to{transform:translateY(-102%);visibility:hidden;pointer-events:none;}}',
+  'slide-down':
+    '@keyframes pb-splash-down{to{transform:translateY(102%);visibility:hidden;pointer-events:none;}}',
+  smoke:
+    '@keyframes pb-splash-smoke{to{opacity:0;filter:blur(24px);transform:scale(1.05);visibility:hidden;pointer-events:none;}}',
+  ink: '@keyframes pb-splash-ink{from{clip-path:circle(150% at 50% 50%);}to{clip-path:circle(0% at 50% 50%);visibility:hidden;pointer-events:none;}}',
 }
 
 export interface SplashShop {
@@ -142,52 +135,55 @@ export function SplashScreen({
   const vars = scheme ? schemeCssVars(resolveScheme(settings, scheme.key)) : null
 
   return (
-    <Flex
-      data-splash=""
-      aria-hidden
-      position="fixed"
-      inset="0"
-      zIndex="2000"
-      align="center"
-      justify="center"
-      direction="column"
-      gap="4"
-      px="6"
-      bg="bg"
-      color="fg"
-      cursor="pointer"
-      onClick={() => {
-        setDone(true)
-        onDoneRef.current?.()
-      }}
-      css={{
-        ...(scheme && vars ? (schemeCss(scheme.key, vars) as Record<string, unknown>) : {}),
-        ...EXITS[splash.style],
-        // A page with no JavaScript must not stare at a logo: the same
-        // keyframes hide it, and reduced motion never shows it at all.
-        '@media (prefers-reduced-motion: reduce)': { animation: 'none', display: 'none' },
-      }}
-    >
-      {splash.showLogo && shop.logoUrl && (
-        <ImageWithFallback
-          src={shop.logoUrl}
-          alt=""
-          maxH="20"
-          maxW="52"
-          objectFit="contain"
-          loading="eager"
-        />
-      )}
-      {splash.showName && (
-        <Heading
-          as="div"
-          size={{ base: '2xl', md: '4xl' }}
-          fontFamily="heading"
-          letterSpacing="-0.02em"
-        >
-          {shop.name}
-        </Heading>
-      )}
-    </Flex>
+    <>
+      <style>{EXIT_KEYFRAMES[splash.style]}</style>
+      <Flex
+        data-splash=""
+        aria-hidden
+        position="fixed"
+        inset="0"
+        zIndex="2000"
+        align="center"
+        justify="center"
+        direction="column"
+        gap="4"
+        px="6"
+        bg="bg"
+        color="fg"
+        cursor="pointer"
+        onClick={() => {
+          setDone(true)
+          onDoneRef.current?.()
+        }}
+        css={{
+          ...(scheme && vars ? (schemeCss(scheme.key, vars) as Record<string, unknown>) : {}),
+          ...EXITS[splash.style],
+          // A page with no JavaScript must not stare at a logo: the same
+          // keyframes hide it, and reduced motion never shows it at all.
+          '@media (prefers-reduced-motion: reduce)': { animation: 'none', display: 'none' },
+        }}
+      >
+        {splash.showLogo && shop.logoUrl && (
+          <ImageWithFallback
+            src={shop.logoUrl}
+            alt=""
+            maxH="20"
+            maxW="52"
+            objectFit="contain"
+            loading="eager"
+          />
+        )}
+        {splash.showName && (
+          <Heading
+            as="div"
+            size={{ base: '2xl', md: '4xl' }}
+            fontFamily="heading"
+            letterSpacing="-0.02em"
+          >
+            {shop.name}
+          </Heading>
+        )}
+      </Flex>
+    </>
   )
 }

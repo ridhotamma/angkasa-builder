@@ -9,6 +9,7 @@ import {
   DEFAULT_SPLASH,
   DEFAULT_THEME_SETTINGS,
   sanitizeThemeSettings,
+  SPLASH_STYLES,
   type ThemeSettings,
 } from '../src/index'
 import { SplashScreen } from '../src/render/index'
@@ -54,7 +55,25 @@ describe('the splash screen', () => {
     expect(html).toContain('data-splash')
     expect(html).toContain('Kopi Kita')
     expect(html).toContain('pb-splash-up')
+    // The keyframes reach the page as real CSS. A `css`-prop object would come
+    // out flattened to `to:translateY(-102%)`, which no browser runs.
+    expect(html).toContain(
+      '@keyframes pb-splash-up{to{transform:translateY(-102%);visibility:hidden;pointer-events:none;}}',
+    )
     expect(html).toContain('prefers-reduced-motion')
+  })
+
+  test('every exit reaches the page as valid keyframes', () => {
+    for (const style of SPLASH_STYLES) {
+      const settings: ThemeSettings = {
+        ...DEFAULT_THEME_SETTINGS,
+        splash: { ...DEFAULT_SPLASH, enabled: true, style },
+      }
+      const html = render(settings)
+      expect(html).toContain(`@keyframes pb-splash-`)
+      expect(html).not.toContain('to:translateY')
+      expect(html).not.toContain('to:opacity')
+    }
   })
 
   test('a dark or brand backdrop carries the scheme colours', () => {

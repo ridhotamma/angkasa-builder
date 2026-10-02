@@ -230,6 +230,15 @@ export interface FrameDetails {
 const REVEAL_GAP = 48
 
 /**
+ * The editor preview's wishlist: an empty, write-less set so product cards
+ * draw the heart they draw on the storefront without pretending to save.
+ */
+const PREVIEW_WISHLIST: NonNullable<RenderEnvironment['wishlist']> = {
+  ids: new Set(),
+  onToggle: () => undefined,
+}
+
+/**
  * Scroll the preview so section `id` is in view below the header, not under
  * it. `start` brings its top to just under the header (a section picked from
  * the list); `nearest` only nudges it on screen if it went off (a section
@@ -486,6 +495,9 @@ function Builder({
       imageUrl: services.imageUrl,
       videoUrl: services.videoUrl,
       formatPrice,
+      // Drawn on the canvas exactly as the storefront draws it, but there is
+      // no shopper to save for: the heart is a preview, not a control.
+      wishlist: PREVIEW_WISHLIST,
       getWindow: previewDoc?.defaultView ? () => previewDoc.defaultView! : undefined,
       editing: {
         onEditText,

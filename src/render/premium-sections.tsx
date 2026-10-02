@@ -24,7 +24,7 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react'
 import { createPortal } from 'react-dom'
 import { FaWhatsapp } from 'react-icons/fa6'
-import { LuArrowUp, LuMail, LuPlay } from 'react-icons/lu'
+import { LuArrowUp, LuMail, LuPlay, LuRotate3D } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -782,24 +782,75 @@ export function FloatingContact({ settings: section }: SectionProps) {
 /* 360° spin                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/** One full automatic turn, in milliseconds. */
+const SPIN_AUTO_TURN_MS = 6000
+/** How long after the shopper lets go before the automatic turn picks up again. */
+const SPIN_AUTO_RESUME_MS = 5000
+
+/**
+ * How many frames a horizontal drag of `dx` across `width` should turn: a drag
+ * the width of the photo turns it once, for any number of frames.
+ */
+export function spinStep(dx: number, width: number, count: number): number {
+  if (width <= 0 || count <= 0) return 0
+  return Math.round((dx / width) * count)
+}
+
 export function Spin360({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const reduced = usePrefersReducedMotion()
   const frames = readList(settings, 'frames').filter((frame) => readText(frame, 'image'))
+  const sources = frames.map((frame) =>
+    imageUrl(readText(frame, 'image'), { width: 1200, height: 1200 }),
+  )
+  const count = frames.length
   const [index, setIndex] = useState(0)
-  const drag = useRef<{ x: number; index: number } | null>(null)
+  const [touched, setTouched] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const drag = useRef<{ x: number; width: number; index: number } | null>(null)
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const auto = readBoolean(settings, 'autoSpin') && !reduced
 
+  // Load every frame once, up front: swapping in an image the browser still
+  // has to fetch is what makes a spin look like a flicker.
+  const sourceKey = sources.join('\n')
   useEffect(() => {
-    if (!auto || frames.length < 2) return
-    const timer = setInterval(() => setIndex((current) => (current + 1) % frames.length), 180)
-    return () => clearInterval(timer)
-  }, [auto, frames.length])
+    for (const source of sourceKey.split('\n')) {
+      if (!source) continue
+      const preload = new window.Image()
+      preload.src = source
+    }
+  }, [sourceKey])
 
-  if (frames.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
-  const active = frames[index % frames.length]!
-  const src = imageUrl(readText(active, 'image'), { width: 1200, height: 1200 })
+  // A constant turn, not a constant frame rate: a full turn takes the same
+  // time whether the seller uploaded 4 frames or 36.
+  useEffect(() => {
+    if (!auto || paused || count < 2) return
+    const step = Math.max(80, Math.round(SPIN_AUTO_TURN_MS / count))
+    const timer = setInterval(() => setIndex((current) => (current + 1) % count), step)
+    return () => clearInterval(timer)
+  }, [auto, paused, count])
+
+  useEffect(
+    () => () => {
+      if (resumeTimer.current) clearTimeout(resumeTimer.current)
+    },
+    [],
+  )
+
+  const release = () => {
+    if (!drag.current) return
+    drag.current = null
+    if (resumeTimer.current) clearTimeout(resumeTimer.current)
+    resumeTimer.current = setTimeout(() => setPaused(false), SPIN_AUTO_RESUME_MS)
+  }
+
+  if (count === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
+  const active = frames[index % count]!
+  const src = sources[index % count] ?? null
+  const hint = readText(settings, 'caption')
+  const spinnable = count > 1
 
   return (
     <Stack gap="4" align="center">
@@ -807,40 +858,84 @@ export function Spin360({ settings }: SectionProps) {
         {readText(settings, 'heading')}
       </SectionHeading>
       <Box
+        data-spin-360=""
+        position="relative"
         w="full"
         maxW="xl"
         rounded="l3"
         overflow="hidden"
         bg="bg.subtle"
-        cursor="grab"
-        _active={{ cursor: 'grabbing' }}
+        cursor={spinnable ? 'grab' : 'default'}
+        userSelect="none"
+        _active={spinnable ? { cursor: 'grabbing' } : undefined}
         style={{ touchAction: 'pan-y' }}
+        onDragStart={(event) => event.preventDefault()}
         onPointerDown={(event) => {
-          drag.current = { x: event.clientX, index }
-          event.currentTarget.setPointerCapture(event.pointerId)
+          if (!spinnable) return
+          drag.current = { x: event.clientX, width: event.currentTarget.clientWidth, index }
+          setPaused(true)
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId)
+          } catch {
+            // A pointer the browser has already released; dragging still works.
+          }
         }}
         onPointerMove={(event) => {
-          if (!drag.current) return
-          const step = Math.round((event.clientX - drag.current.x) / 14)
-          const count = frames.length
-          setIndex((((drag.current.index + step) % count) + count) % count)
+          const current = drag.current
+          if (!current) return
+          const step = spinStep(event.clientX - current.x, current.width, count)
+          if (step !== 0) setTouched(true)
+          setIndex((((current.index + step) % count) + count) % count)
         }}
-        onPointerUp={() => (drag.current = null)}
-        onPointerCancel={() => (drag.current = null)}
+        onPointerUp={(event) => {
+          try {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          } catch {
+            // Never captured (see pointerdown); nothing to release.
+          }
+          release()
+        }}
+        onPointerCancel={release}
+        onLostPointerCapture={release}
       >
         <AspectRatio ratio={1}>
           {src ? (
-            <ImageWithFallback src={src} alt={readText(active, 'alt')} objectFit="cover" />
+            <ImageWithFallback
+              src={src}
+              alt={readText(active, 'alt')}
+              objectFit="cover"
+              loading="eager"
+              draggable={false}
+            />
           ) : (
             <Box />
           )}
         </AspectRatio>
+        {spinnable && hint && !touched && (
+          <Flex
+            position="absolute"
+            insetX="0"
+            bottom="0"
+            justify="center"
+            p="3"
+            pointerEvents="none"
+          >
+            <Flex
+              align="center"
+              gap="2"
+              bg="blackAlpha.700"
+              color="white"
+              rounded="full"
+              px="3"
+              py="1.5"
+              fontSize="sm"
+            >
+              <LuRotate3D />
+              {hint}
+            </Flex>
+          </Flex>
+        )}
       </Box>
-      {readText(settings, 'caption') && (
-        <Text fontSize="sm" color="fg.muted">
-          {readText(settings, 'caption')}
-        </Text>
-      )}
     </Stack>
   )
 }
