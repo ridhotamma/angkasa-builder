@@ -194,6 +194,12 @@ export interface PageBuilderProps {
   startWithLooks?: { priorityKeys?: readonly string[] }
   /** Rendered above the preview, e.g. save and publish buttons. */
   toolbar?: ReactNode
+  /**
+   * The section the canvas has picked, or null when nothing is. Lets a host
+   * panel outside the builder follow the selection — the AI designer uses it
+   * to aim a revision at one section.
+   */
+  onSelectionChange?: (id: string | null) => void
   /** Said above the preview before the "click a section" hint, e.g. which theme it uses. */
   previewNote?: string
   /** The height the editor fills (a length or `100%`); panels scroll inside it. */
@@ -354,6 +360,7 @@ function Builder({
   footerPages: footerPagesProp = NO_PAGES,
   history,
   toolbar,
+  onSelectionChange,
   previewNote,
   height = 'calc(100dvh - 9rem)',
   frame,
@@ -394,6 +401,11 @@ function Builder({
     history,
     useMemo(() => [globalThis.document ?? null, previewDoc], [previewDoc]),
   )
+
+  // A host panel outside the builder follows what the canvas has picked.
+  useEffect(() => {
+    onSelectionChange?.(selectedId)
+  }, [onSelectionChange, selectedId])
 
   // On a phone the sheet opens on the phone layout; a desktop one would be
   // shrunk to a third of its size.
