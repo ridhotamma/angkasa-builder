@@ -91,7 +91,13 @@ import {
   updateBlocksIn,
 } from '../model/blocks'
 import { TEMPLATE_KEYS, type SectionInstance, type TemplateKey } from '../model/content'
-import { BUTTON_ELEMENT_DEFAULTS, BUTTON_ELEMENT_FIELDS } from '../model/element-style'
+import {
+  BUTTON_ELEMENT_DEFAULTS,
+  BUTTON_ELEMENT_FIELDS,
+  TEXT_ELEMENT_DEFAULTS,
+  TEXT_ELEMENT_FIELDS,
+  type ElementKind,
+} from '../model/element-style'
 import type { FieldValues } from '../model/fields'
 import {
   FOOTER_FIELDS,
@@ -353,9 +359,11 @@ function Builder({
   // The block the canvas has selected inside the chosen section, if any. The
   // panel follows it; clicking the section again clears it.
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
-  // The button (or other element) the canvas has selected, keyed in the
-  // section's `elements` map. A block selection wins when both are set.
+  // The button (or text element) the canvas has selected, keyed in the
+  // section's `elements` map, and whether its panel is the button's or the
+  // text's. A block selection wins when both are set.
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+  const [selectedElementKind, setSelectedElementKind] = useState<ElementKind>('button')
   const [tab, setTab] = useState<'sections' | 'theme'>(startWithLooks ? 'theme' : 'sections')
   const [sectionTab, setSectionTab] = useState<'content' | 'style' | 'visibility'>('content')
   const [device, setDevice] = useState<PreviewDevice>('desktop')
@@ -464,13 +472,18 @@ function Builder({
     setTab('sections')
   }, [])
 
-  // A button clicked on the canvas: same, through the section's element map.
-  const onSelectElement = useCallback((sectionId: string, elementId: string) => {
-    setSelectedId(sectionId)
-    setSelectedElementId(elementId)
-    setSelectedBlockId(null)
-    setTab('sections')
-  }, [])
+  // A button or text element clicked on the canvas: same, through the
+  // section's element map. The kind decides which panel opens.
+  const onSelectElement = useCallback(
+    (sectionId: string, elementId: string, kind: ElementKind = 'button') => {
+      setSelectedId(sectionId)
+      setSelectedElementId(elementId)
+      setSelectedElementKind(kind)
+      setSelectedBlockId(null)
+      setTab('sections')
+    },
+    [],
+  )
 
   // Callers build `data` inline (`{ ...context.data, products }`); its parts
   // are what stay the same between renders, so they are what is compared.
@@ -736,14 +749,21 @@ function Builder({
           {t('back')}
         </Button>
         <Stack gap="1">
-          <Text fontWeight="semibold">{t('buttonElement')}</Text>
+          <Text fontWeight="semibold">
+            {selectedElementKind === 'text' ? t('textElement') : t('buttonElement')}
+          </Text>
           <Text fontSize="xs" color="fg.muted">
-            {t('buttonElementHelp')}
+            {selectedElementKind === 'text' ? t('textElementHelp') : t('buttonElementHelp')}
           </Text>
         </Stack>
         <FieldsForm
-          fields={BUTTON_ELEMENT_FIELDS}
-          values={selected.elements?.[selectedElementId] ?? { ...BUTTON_ELEMENT_DEFAULTS }}
+          fields={selectedElementKind === 'text' ? TEXT_ELEMENT_FIELDS : BUTTON_ELEMENT_FIELDS}
+          values={
+            selected.elements?.[selectedElementId] ??
+            (selectedElementKind === 'text'
+              ? { ...TEXT_ELEMENT_DEFAULTS }
+              : { ...BUTTON_ELEMENT_DEFAULTS })
+          }
           services={services}
           onChange={(values) =>
             updateSection(selected.id, (section) => ({

@@ -168,6 +168,11 @@ const MESSAGES = {
     en: 'Click the button in the preview to restyle just that one. Every other button keeps the theme.',
     id: 'Klik tombol di pratinjau untuk mengubah gayanya saja. Tombol lain tetap mengikuti tema.',
   },
+  textElement: { en: 'Text', id: 'Teks' },
+  textElementHelp: {
+    en: 'Click the text in the preview to change its font, size, colour or spacing for that one element. Click it again to type.',
+    id: 'Klik teks di pratinjau untuk mengubah font, ukuran, warna, atau jaraknya pada elemen itu saja. Klik sekali lagi untuk mengetik.',
+  },
   resetToTheme: { en: 'Reset to theme', id: 'Kembalikan ke tema' },
 
   // Section settings groups

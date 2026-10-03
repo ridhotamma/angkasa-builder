@@ -11,6 +11,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react'
 
+import type { ElementKind } from '../model/element-style'
 import type { TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
@@ -218,8 +219,12 @@ export interface RenderEnvironment {
     onSelectBlock?: (sectionId: string, blockId: string) => void
     /** The block the editor has selected, so the canvas can outline it. */
     selectedBlockId?: string | null
-    /** An element (a button) clicked in the preview; the editor selects it. */
-    onSelectElement?: (sectionId: string, elementId: string) => void
+    /**
+     * An element clicked in the preview; the editor selects it and opens the
+     * matching panel. The kind is `button` when omitted, so existing hosts
+     * keep working.
+     */
+    onSelectElement?: (sectionId: string, elementId: string, kind?: ElementKind) => void
     /** The element the editor has selected, so the canvas can outline it. */
     selectedElementId?: string | null
   }

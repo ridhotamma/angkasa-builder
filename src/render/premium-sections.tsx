@@ -40,6 +40,7 @@ import {
 } from '../model/fields'
 import type { SectionType } from '../model/sections'
 import { resolveScheme, schemeCssVars, themeCssVarGroups } from '../model/settings'
+import { textElementKey } from '../model/element-style'
 import { whatsappHref } from './content-sections'
 import { useRenderEnvironment } from './context'
 import { schemeCss, useSectionLayout } from './frame'
@@ -50,6 +51,7 @@ import {
   EmptyNotice,
   SectionHeading,
   SmartLink,
+  ThemeText,
   useCardStyle,
   useOverlayProps,
 } from './primitives'
@@ -516,6 +518,8 @@ export function EditorialStatement({ settings }: SectionProps) {
   const align = alignOf(settings)
   const fileId = readText(settings, 'image')
   const src = fileId ? imageUrl(fileId, { width: 1920, height: 1200 }) : null
+  const eyebrow = readText(settings, 'eyebrow')
+  const heading = readText(settings, 'heading')
 
   return (
     <Box position="relative" overflow="hidden" rounded="l3">
@@ -539,31 +543,39 @@ export function EditorialStatement({ settings }: SectionProps) {
           align={align === 'center' ? 'center' : 'flex-start'}
           color={src ? 'white' : 'fg'}
         >
-          {readText(settings, 'eyebrow') && (
-            <Text
+          {eyebrow && (
+            <ThemeText
+              elementKey={textElementKey('eyebrow')}
+              field="eyebrow"
+              value={eyebrow}
               fontSize="sm"
               fontWeight="semibold"
               letterSpacing="0.14em"
               textTransform="uppercase"
               opacity={0.85}
-            >
-              {readText(settings, 'eyebrow')}
-            </Text>
+            />
           )}
-          {readText(settings, 'heading') && (
-            <Heading
+          {heading && (
+            <ThemeText
               as="h2"
-              size={{ base: '3xl', md: '5xl' }}
+              elementKey={textElementKey('heading')}
+              field="heading"
+              value={heading}
+              fontSize={{ base: '3xl', md: '5xl' }}
               letterSpacing="-0.03em"
               lineHeight="1.02"
               textWrap="balance"
-            >
-              {readText(settings, 'heading')}
-            </Heading>
+            />
           )}
-          <Box css={{ '& *': { color: 'inherit' } }}>
+          <ThemeText
+            as="div"
+            elementKey={textElementKey('body')}
+            field="body"
+            inline={false}
+            css={{ '& *': { color: 'inherit' } }}
+          >
             <RichTextView doc={readRichText(settings, 'body')} />
-          </Box>
+          </ThemeText>
           <ButtonRow settings={settings} align={align} onImage={Boolean(src)} />
         </Stack>
       </Flex>

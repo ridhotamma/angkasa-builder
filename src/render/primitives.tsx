@@ -39,6 +39,8 @@ import {
   BUTTON_PADDING_X,
   buttonAppearance,
   readButtonElement,
+  readTextElement,
+  textElementStyle,
   type ButtonAppearance,
   type ButtonHover,
 } from '../model/element-style'
@@ -471,10 +473,111 @@ function ElementShell({
       _hover={{ outlineColor: selected ? 'brand.solid' : 'brand.muted' }}
       onClick={(event) => {
         event.stopPropagation()
-        editing.onSelectElement?.(sectionId, elementId)
+        editing.onSelectElement?.(sectionId, elementId, 'button')
       }}
     >
       {children}
+    </Box>
+  )
+}
+
+/**
+ * A section's heading, paragraph or label that the seller can select and
+ * restyle like a button: font size, colour, weight, line height, letter
+ * spacing, case, italic, underline and alignment, stored per element in
+ * `SectionInstance.elements` under `text.<name>` (see `textElementKey`).
+ *
+ * Once selected it is also editable in place — a second click places the
+ * caret. `inline={false}` keeps the inner content uneditable (a rich-text
+ * document is edited from the settings panel) while the element can still be
+ * selected for styling. On the storefront and in snapshots it is plain text
+ * with no wrapper.
+ */
+export function ThemeText({
+  elementKey,
+  field,
+  value,
+  as = 'span',
+  inline = true,
+  children,
+  ...props
+}: {
+  /** The element id its overrides are stored under. */
+  elementKey: string
+  /** The section setting the text is, for the inline editor. */
+  field: string
+  value?: string
+  as?: 'span' | 'h1' | 'h2' | 'h3' | 'p' | 'div'
+  /** Whether typing in the preview edits the text; false for rich documents. */
+  inline?: boolean
+  children?: ReactNode
+} & Omit<BoxProps, 'as' | 'children'>) {
+  const { mode, editing } = useRenderEnvironment()
+  const sectionId = useContext(SectionIdContext)
+  const elements = useContext(SectionElementsContext)
+  const overrides = textElementStyle(readTextElement(elements[elementKey]))
+  // The theme's own props first, the seller's overrides on top. A heading tag
+  // keeps the heading face and weight Chakra's own `Heading` would give it,
+  // since a plain box would inherit the body font.
+  const heading = as === 'h1' || as === 'h2' || as === 'h3'
+  const style = {
+    ...(heading && { fontFamily: 'heading', fontWeight: 'semibold' }),
+    ...props,
+    ...overrides,
+  }
+
+  // The storefront and snapshots: final markup, no wrapper or affordance.
+  if (mode !== 'preview' || !editing?.onSelectElement || !sectionId) {
+    if (children !== undefined) {
+      return (
+        <Box as={as} {...style}>
+          {children}
+        </Box>
+      )
+    }
+    return value ? (
+      <Box as={as} {...style}>
+        {value}
+      </Box>
+    ) : null
+  }
+
+  const selected = editing.selectedElementId === elementKey
+  const content =
+    children !== undefined ? (
+      <Box as={as} {...style}>
+        {children}
+      </Box>
+    ) : inline && value !== undefined ? (
+      // Plain until the element is selected, then the caret: the first click
+      // selects and opens the panel, the next one types.
+      <EditableText field={field} value={value} as={as} editable={selected} {...style} />
+    ) : value ? (
+      <Box as={as} {...style}>
+        {value}
+      </Box>
+    ) : null
+
+  return (
+    <Box
+      data-element-id={elementKey}
+      position="relative"
+      rounded="sm"
+      cursor="pointer"
+      outlineWidth="1px"
+      outlineStyle="dashed"
+      outlineColor={selected ? 'brand.solid' : 'transparent'}
+      css={{
+        '&:hover:not(:has([data-element-id]:hover))': {
+          outlineColor: selected ? 'brand.solid' : 'brand.muted',
+        },
+      }}
+      onClick={(event) => {
+        event.stopPropagation()
+        editing.onSelectElement?.(sectionId, elementKey, 'text')
+      }}
+    >
+      {content}
     </Box>
   )
 }
@@ -510,7 +613,7 @@ export function EditableText({
   /** The section setting this text is. */
   field: string
   value: string
-  as?: 'span' | 'h1' | 'h2' | 'p' | 'div'
+  as?: 'span' | 'h1' | 'h2' | 'h3' | 'p' | 'div'
   /** Whether the preview shows a caret here; a block turns it on once selected. */
   editable?: boolean
   /** Where typed text goes; defaults to the section's own field. */

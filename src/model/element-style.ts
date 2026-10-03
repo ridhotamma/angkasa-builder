@@ -9,7 +9,15 @@
  * touches React so the server can validate a layout without it.
  */
 
-import { isRecord, sanitizeValues, type Field, type FieldValues, type JsonValue } from './fields'
+import {
+  defaultForField,
+  isRecord,
+  readText,
+  sanitizeValues,
+  type Field,
+  type FieldValues,
+  type JsonValue,
+} from './fields'
 import type { Localized } from './localized'
 import { readableOn, resolveScheme, type ThemeSettings } from './settings'
 
@@ -632,21 +640,409 @@ export function readButtonElement(values?: FieldValues): ButtonElementOverrides 
   }
 }
 
-/** The element key a button stores its overrides under. */
-const ELEMENT_KEY = /^[A-Za-z0-9_.-]{1,80}$/
+/** What kind of element an override belongs to; the editor picks its panel from it. */
+export type ElementKind = 'button' | 'text'
+
+/* -------------------------------------------------------------------------- */
+/* Text element overrides                                                     */
+/* -------------------------------------------------------------------------- */
 
 /**
- * A section's element overrides, cleaned: unknown keys and values dropped,
- * and an entry left entirely at its defaults is not stored at all, so a
- * layout that never touched a button stays exactly as it was.
+ * A heading, a paragraph or a label restyled in the editor, without touching
+ * the section's fields — the text counterpart of `ButtonElementOverrides`.
+ * Every value is `'default'` until the seller overrides it, so a section keeps
+ * its theme look and one element can step out on its own.
+ *
+ * Keys are namespaced (`text.` + the element's own name, see `textElementKey`)
+ * so the sanitiser can tell a text override from a button's without knowing
+ * the section.
+ */
+export const TEXT_ELEMENT_PREFIX = 'text.'
+
+/** The element key a text element stores its overrides under. */
+export function textElementKey(name: string): string {
+  return `${TEXT_ELEMENT_PREFIX}${name}`
+}
+
+export const TEXT_ELEMENT_SIZES = [
+  'default',
+  'xs',
+  'sm',
+  'md',
+  'lg',
+  'xl',
+  '2xl',
+  '3xl',
+  '4xl',
+  '5xl',
+] as const
+export type TextElementSize = (typeof TEXT_ELEMENT_SIZES)[number]
+
+/**
+ * `custom` reveals a hex picker; every other value is a semantic token, so an
+ * overridden label still follows the section's scheme and the dark mode.
+ */
+export const TEXT_ELEMENT_COLORS = [
+  'default',
+  'inherit',
+  'fg',
+  'fg-muted',
+  'fg-subtle',
+  'brand-solid',
+  'brand-contrast',
+  'white',
+  'black',
+  'custom',
+] as const
+export type TextElementColor = (typeof TEXT_ELEMENT_COLORS)[number]
+
+export const TEXT_ELEMENT_FONTS = ['default', 'heading', 'body', 'brand'] as const
+export type TextElementFont = (typeof TEXT_ELEMENT_FONTS)[number]
+
+export const TEXT_ELEMENT_WEIGHTS = [
+  'default',
+  'light',
+  'normal',
+  'medium',
+  'semibold',
+  'bold',
+] as const
+export type TextElementWeight = (typeof TEXT_ELEMENT_WEIGHTS)[number]
+
+export const TEXT_ELEMENT_LINE_HEIGHTS = [
+  'default',
+  'tight',
+  'snug',
+  'normal',
+  'relaxed',
+  'loose',
+] as const
+export type TextElementLineHeight = (typeof TEXT_ELEMENT_LINE_HEIGHTS)[number]
+
+export const TEXT_ELEMENT_LETTER_SPACINGS = [
+  'default',
+  'tighter',
+  'tight',
+  'normal',
+  'wide',
+  'wider',
+  'widest',
+] as const
+export type TextElementLetterSpacing = (typeof TEXT_ELEMENT_LETTER_SPACINGS)[number]
+
+export const TEXT_ELEMENT_TRANSFORMS = [
+  'default',
+  'none',
+  'uppercase',
+  'lowercase',
+  'capitalize',
+] as const
+export type TextElementTransform = (typeof TEXT_ELEMENT_TRANSFORMS)[number]
+
+export const TEXT_ELEMENT_STYLES = ['default', 'normal', 'italic'] as const
+export type TextElementFontStyle = (typeof TEXT_ELEMENT_STYLES)[number]
+
+export const TEXT_ELEMENT_DECORATIONS = [
+  'default',
+  'none',
+  'underline',
+  'line-through',
+] as const
+export type TextElementDecoration = (typeof TEXT_ELEMENT_DECORATIONS)[number]
+
+export const TEXT_ELEMENT_ALIGNS = ['default', 'left', 'center', 'right'] as const
+export type TextElementAlign = (typeof TEXT_ELEMENT_ALIGNS)[number]
+
+export interface TextElementOverrides {
+  size: TextElementSize
+  color: TextElementColor
+  /** The hex behind `color: 'custom'`; empty until picked. */
+  customColor: string
+  font: TextElementFont
+  weight: TextElementWeight
+  lineHeight: TextElementLineHeight
+  letterSpacing: TextElementLetterSpacing
+  transform: TextElementTransform
+  style: TextElementFontStyle
+  decoration: TextElementDecoration
+  align: TextElementAlign
+}
+
+export const TEXT_ELEMENT_DEFAULTS: TextElementOverrides = {
+  size: 'default',
+  color: 'default',
+  customColor: '',
+  font: 'default',
+  weight: 'default',
+  lineHeight: 'default',
+  letterSpacing: 'default',
+  transform: 'default',
+  style: 'default',
+  decoration: 'default',
+  align: 'default',
+}
+
+const TEXT_ELEMENT_SIZE_OPTIONS = [
+  option('xs', { en: 'Extra small', id: 'Sangat kecil' }),
+  option('sm', { en: 'Small', id: 'Kecil' }),
+  option('md', { en: 'Medium', id: 'Sedang' }),
+  option('lg', { en: 'Large', id: 'Besar' }),
+  option('xl', { en: 'Extra large', id: 'Sangat besar' }),
+  option('2xl', { en: '2XL', id: '2XL' }),
+  option('3xl', { en: '3XL', id: '3XL' }),
+  option('4xl', { en: '4XL', id: '4XL' }),
+  option('5xl', { en: '5XL', id: '5XL' }),
+]
+
+const TEXT_COLOR_OPTIONS = [
+  option('inherit', { en: 'Section colour', id: 'Warna bagian' }),
+  option('fg', { en: 'Page text', id: 'Teks halaman' }),
+  option('fg-muted', { en: 'Muted text', id: 'Teks redup' }),
+  option('fg-subtle', { en: 'Subtle text', id: 'Teks samar' }),
+  option('brand-solid', { en: 'Brand', id: 'Brand' }),
+  option('brand-contrast', { en: 'On brand', id: 'Di atas brand' }),
+  option('white', { en: 'White', id: 'Putih' }),
+  option('black', { en: 'Black', id: 'Hitam' }),
+  option('custom', { en: 'Custom colour…', id: 'Warna kustom…' }),
+]
+
+const TEXT_FONT_OPTIONS = [
+  option('heading', { en: 'Heading font', id: 'Font judul' }),
+  option('body', { en: 'Body font', id: 'Font isi' }),
+  option('brand', { en: 'Display font', id: 'Font display' }),
+]
+
+const TEXT_WEIGHT_OPTIONS = [
+  option('light', { en: 'Light', id: 'Ringan' }),
+  option('normal', { en: 'Normal', id: 'Normal' }),
+  option('medium', { en: 'Medium', id: 'Sedang' }),
+  option('semibold', { en: 'Semibold', id: 'Semi tebal' }),
+  option('bold', { en: 'Bold', id: 'Tebal' }),
+]
+
+const TEXT_LINE_HEIGHT_OPTIONS = [
+  option('tight', { en: 'Tight', id: 'Rapat' }),
+  option('snug', { en: 'Snug', id: 'Agak rapat' }),
+  option('normal', { en: 'Normal', id: 'Normal' }),
+  option('relaxed', { en: 'Relaxed', id: 'Renggang' }),
+  option('loose', { en: 'Loose', id: 'Sangat renggang' }),
+]
+
+const TEXT_LETTER_SPACING_OPTIONS = [
+  option('tighter', { en: 'Tighter', id: 'Sangat rapat' }),
+  option('tight', { en: 'Tight', id: 'Rapat' }),
+  option('normal', { en: 'Normal', id: 'Normal' }),
+  option('wide', { en: 'Wide', id: 'Lebar' }),
+  option('wider', { en: 'Wider', id: 'Lebih lebar' }),
+  option('widest', { en: 'Widest', id: 'Paling lebar' }),
+]
+
+const TEXT_TRANSFORM_OPTIONS = [
+  option('none', { en: 'As typed', id: 'Sesuai ketikan' }),
+  option('uppercase', { en: 'UPPERCASE', id: 'HURUF BESAR' }),
+  option('lowercase', { en: 'lowercase', id: 'huruf kecil' }),
+  option('capitalize', { en: 'Capitalise', id: 'Huruf Awal Besar' }),
+]
+
+const TEXT_STYLE_OPTIONS = [
+  option('normal', { en: 'Upright', id: 'Tegak' }),
+  option('italic', { en: 'Italic', id: 'Miring' }),
+]
+
+const TEXT_DECORATION_OPTIONS = [
+  option('none', { en: 'None', id: 'Tanpa garis' }),
+  option('underline', { en: 'Underline', id: 'Garis bawah' }),
+  option('line-through', { en: 'Strikethrough', id: 'Coret' }),
+]
+
+const TEXT_ALIGN_OPTIONS = [
+  option('left', { en: 'Left', id: 'Kiri' }),
+  option('center', { en: 'Center', id: 'Tengah' }),
+  option('right', { en: 'Right', id: 'Kanan' }),
+]
+
+const defaultOption = option('default', { en: 'Theme default', id: 'Ikuti tema' })
+
+const textSelect = (
+  key: string,
+  label: Localized,
+  options: ReadonlyArray<{ value: string; label: Localized }>,
+): Field => ({
+  kind: 'select',
+  key,
+  label,
+  options: [defaultOption, ...options],
+  default: 'default',
+})
+
+/** The panel a text element opens when the seller clicks it in the preview. */
+export const TEXT_ELEMENT_FIELDS: readonly Field[] = [
+  textSelect('size', { en: 'Font size', id: 'Ukuran huruf' }, TEXT_ELEMENT_SIZE_OPTIONS),
+  textSelect('color', { en: 'Text colour', id: 'Warna teks' }, TEXT_COLOR_OPTIONS),
+  {
+    kind: 'color',
+    key: 'customColor',
+    label: { en: 'Custom colour', id: 'Warna kustom' },
+    default: '',
+    showWhen: { key: 'color', is: ['custom'] },
+  },
+  textSelect('font', { en: 'Font', id: 'Font' }, TEXT_FONT_OPTIONS),
+  textSelect('weight', { en: 'Weight', id: 'Ketebalan' }, TEXT_WEIGHT_OPTIONS),
+  textSelect('lineHeight', { en: 'Line height', id: 'Jarak baris' }, TEXT_LINE_HEIGHT_OPTIONS),
+  textSelect(
+    'letterSpacing',
+    { en: 'Letter spacing', id: 'Jarak antar huruf' },
+    TEXT_LETTER_SPACING_OPTIONS,
+  ),
+  textSelect('transform', { en: 'Letter case', id: 'Huruf besar/kecil' }, TEXT_TRANSFORM_OPTIONS),
+  textSelect('style', { en: 'Italic', id: 'Miring' }, TEXT_STYLE_OPTIONS),
+  textSelect('decoration', { en: 'Underline', id: 'Garis' }, TEXT_DECORATION_OPTIONS),
+  textSelect('align', { en: 'Alignment', id: 'Perataan' }, TEXT_ALIGN_OPTIONS),
+]
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+
+export function readTextElement(values?: FieldValues): TextElementOverrides {
+  const source = values ?? {}
+  const customColor = readText(source, 'customColor')
+  return {
+    size: readToken(source, 'size', TEXT_ELEMENT_SIZES, 'default'),
+    color: readToken(source, 'color', TEXT_ELEMENT_COLORS, 'default'),
+    customColor: HEX_COLOR.test(customColor) ? customColor.toLowerCase() : '',
+    font: readToken(source, 'font', TEXT_ELEMENT_FONTS, 'default'),
+    weight: readToken(source, 'weight', TEXT_ELEMENT_WEIGHTS, 'default'),
+    lineHeight: readToken(source, 'lineHeight', TEXT_ELEMENT_LINE_HEIGHTS, 'default'),
+    letterSpacing: readToken(source, 'letterSpacing', TEXT_ELEMENT_LETTER_SPACINGS, 'default'),
+    transform: readToken(source, 'transform', TEXT_ELEMENT_TRANSFORMS, 'default'),
+    style: readToken(source, 'style', TEXT_ELEMENT_STYLES, 'default'),
+    decoration: readToken(source, 'decoration', TEXT_ELEMENT_DECORATIONS, 'default'),
+    align: readToken(source, 'align', TEXT_ELEMENT_ALIGNS, 'default'),
+  }
+}
+
+/** The style props an overridden text element draws with. */
+export interface TextElementStyle {
+  fontSize?: string
+  fontFamily?: string
+  fontWeight?: string
+  lineHeight?: string
+  letterSpacing?: string
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
+  fontStyle?: 'normal' | 'italic'
+  textDecoration?: string
+  textAlign?: 'left' | 'center' | 'right'
+  color?: string
+}
+
+const TEXT_SIZE_CSS: Record<string, string> = {
+  xs: 'var(--chakra-font-sizes-xs)',
+  sm: 'var(--chakra-font-sizes-sm)',
+  md: 'var(--chakra-font-sizes-md)',
+  lg: 'var(--chakra-font-sizes-lg)',
+  xl: 'var(--chakra-font-sizes-xl)',
+  '2xl': 'var(--chakra-font-sizes-2xl)',
+  '3xl': 'var(--chakra-font-sizes-3xl)',
+  '4xl': 'var(--chakra-font-sizes-4xl)',
+  '5xl': 'var(--chakra-font-sizes-5xl)',
+}
+
+const TEXT_COLOR_CSS: Record<string, string> = {
+  inherit: 'inherit',
+  fg: 'var(--chakra-colors-fg)',
+  'fg-muted': 'var(--chakra-colors-fg-muted)',
+  'fg-subtle': 'var(--chakra-colors-fg-subtle)',
+  'brand-solid': 'var(--chakra-colors-brand-solid)',
+  'brand-contrast': 'var(--chakra-colors-brand-contrast)',
+  white: 'white',
+  black: 'black',
+}
+
+const TEXT_FONT_CSS: Record<string, string> = {
+  heading: 'var(--chakra-fonts-heading)',
+  body: 'var(--chakra-fonts-body)',
+  brand: 'var(--chakra-fonts-brand)',
+}
+
+const TEXT_WEIGHT_CSS: Record<string, string> = {
+  light: '300',
+  normal: '400',
+  medium: '500',
+  semibold: '600',
+  bold: '700',
+}
+
+const TEXT_LINE_HEIGHT_CSS: Record<string, string> = {
+  tight: '1.1',
+  snug: '1.3',
+  normal: '1.5',
+  relaxed: '1.7',
+  loose: '2',
+}
+
+const TEXT_LETTER_SPACING_CSS: Record<string, string> = {
+  tighter: '-0.05em',
+  tight: '-0.025em',
+  normal: '0',
+  wide: '0.025em',
+  wider: '0.05em',
+  widest: '0.1em',
+}
+
+/** Only what was overridden; every `default` is left off. */
+export function textElementStyle(overrides: TextElementOverrides): TextElementStyle {
+  const out: TextElementStyle = {}
+  if (overrides.size !== 'default' && TEXT_SIZE_CSS[overrides.size]) {
+    out.fontSize = TEXT_SIZE_CSS[overrides.size]
+  }
+  if (overrides.color === 'custom') {
+    if (overrides.customColor) out.color = overrides.customColor
+  } else if (overrides.color !== 'default' && TEXT_COLOR_CSS[overrides.color]) {
+    out.color = TEXT_COLOR_CSS[overrides.color]
+  }
+  if (overrides.font !== 'default' && TEXT_FONT_CSS[overrides.font]) {
+    out.fontFamily = TEXT_FONT_CSS[overrides.font]
+  }
+  if (overrides.weight !== 'default') out.fontWeight = TEXT_WEIGHT_CSS[overrides.weight]
+  if (overrides.lineHeight !== 'default') out.lineHeight = TEXT_LINE_HEIGHT_CSS[overrides.lineHeight]
+  if (overrides.letterSpacing !== 'default') {
+    out.letterSpacing = TEXT_LETTER_SPACING_CSS[overrides.letterSpacing]
+  }
+  if (overrides.transform !== 'default') out.textTransform = overrides.transform
+  if (overrides.style !== 'default') out.fontStyle = overrides.style
+  if (overrides.decoration !== 'default') out.textDecoration = overrides.decoration
+  if (overrides.align !== 'default') out.textAlign = overrides.align
+  return out
+}
+
+/* -------------------------------------------------------------------------- */
+/* Element sanitising                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** The element key any override stores itself under. */
+const ELEMENT_KEY = /^[A-Za-z0-9_.-]{1,80}$/
+
+function isOverride(fields: readonly Field[], clean: FieldValues): boolean {
+  return fields.some(
+    (field) =>
+      clean[field.key] !== undefined &&
+      JSON.stringify(clean[field.key]) !== JSON.stringify(defaultForField(field)),
+  )
+}
+
+/**
+ * A section's element overrides, cleaned: unknown keys and values dropped, and
+ * an entry left entirely at its defaults is not stored at all, so a layout
+ * that never touched a button or a label stays exactly as it was. Text keys
+ * are the ones namespaced with `text.`; everything else is a button.
  */
 export function sanitizeElements(value: unknown): Record<string, FieldValues> {
   if (!isRecord(value)) return {}
   const out: Record<string, FieldValues> = {}
   for (const [key, style] of Object.entries(value)) {
     if (!ELEMENT_KEY.test(key)) continue
-    const clean = sanitizeValues(BUTTON_ELEMENT_FIELDS, style)
-    if (Object.values(clean).some((entry) => entry !== 'default')) out[key] = clean
+    const fields = key.startsWith(TEXT_ELEMENT_PREFIX) ? TEXT_ELEMENT_FIELDS : BUTTON_ELEMENT_FIELDS
+    const clean = sanitizeValues(fields, style)
+    if (isOverride(fields, clean)) out[key] = clean
   }
   return out
 }

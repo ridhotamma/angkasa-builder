@@ -367,7 +367,7 @@ interface SanitizeBudget {
 }
 
 /** The value a field holds when it is untouched, for dropping no-op overrides. */
-function defaultForField(field: Field): JsonValue {
+export function defaultForField(field: Field): JsonValue {
   switch (field.kind) {
     case 'text':
     case 'textarea':
