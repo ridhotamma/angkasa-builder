@@ -42,6 +42,7 @@ export const SECTION_RENDERERS = {
   ...BASE_SECTION_RENDERERS,
   ...PREMIUM_SECTION_RENDERERS,
   blocks: BlocksSection,
+  custom: BlocksSection,
   'video-hero': VideoHero,
   'parallax-banner': ParallaxBanner,
   'featured-product': FeaturedProduct,

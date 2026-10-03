@@ -11,10 +11,16 @@
  * rules" in docs/POSITIONING.md.
  */
 
-import { blocksSectionSchema } from './blocks'
+import { blocksSectionSchema, customSectionSchema } from './blocks'
 import type { BlockSchema, Field, ItemField, ListField, RichTextField, TextField } from './fields'
+import { FEATURE_ICONS, FEATURE_ICON_LABELS, type FeatureIcon } from './icons'
 import type { Localized } from './localized'
 import { PREMIUM_SECTION_SCHEMAS } from './premium-sections'
+
+// The icon catalogue lives in `./icons` so the primitive blocks can use it
+// without importing this module (which imports them). Re-exported here for
+// the API's existing readers.
+export { FEATURE_ICONS, type FeatureIcon } from './icons'
 
 /**
  * Where a template can use a section. Omitted means everywhere but the product
@@ -312,59 +318,6 @@ const imageAlt: ItemField = {
   default: '',
 }
 
-/**
- * The icons a seller can pick for a feature or a badge. A fixed set of keys
- * rather than an icon name, so a stored layout cannot ask the renderer for a
- * component that does not exist. Mapped to glyphs in `render/icons`.
- */
-export const FEATURE_ICONS = [
-  'truck',
-  'cash',
-  'shield',
-  'refresh',
-  'leaf',
-  'star',
-  'heart',
-  'gift',
-  'clock',
-  'chat',
-  'package',
-  'badge',
-  'sparkles',
-  'pin',
-  'card',
-  'phone',
-  'award',
-  'droplet',
-  'ruler',
-  'hand',
-] as const
-
-export type FeatureIcon = (typeof FEATURE_ICONS)[number]
-
-const FEATURE_ICON_LABELS: Record<FeatureIcon, Localized> = {
-  truck: { en: 'Delivery truck', id: 'Truk pengiriman' },
-  cash: { en: 'Cash (COD)', id: 'Uang tunai (COD)' },
-  shield: { en: 'Shield (guarantee)', id: 'Perisai (garansi)' },
-  refresh: { en: 'Returns', id: 'Pengembalian' },
-  leaf: { en: 'Leaf (natural)', id: 'Daun (alami)' },
-  star: { en: 'Star', id: 'Bintang' },
-  heart: { en: 'Heart', id: 'Hati' },
-  gift: { en: 'Gift', id: 'Hadiah' },
-  clock: { en: 'Clock', id: 'Jam' },
-  chat: { en: 'Chat', id: 'Obrolan' },
-  package: { en: 'Package', id: 'Paket' },
-  badge: { en: 'Verified badge', id: 'Lencana terverifikasi' },
-  sparkles: { en: 'Sparkles', id: 'Kilau' },
-  pin: { en: 'Map pin', id: 'Penanda peta' },
-  card: { en: 'Card payment', id: 'Pembayaran kartu' },
-  phone: { en: 'Phone', id: 'Telepon' },
-  award: { en: 'Award', id: 'Penghargaan' },
-  droplet: { en: 'Droplet', id: 'Tetesan' },
-  ruler: { en: 'Ruler (size)', id: 'Penggaris (ukuran)' },
-  hand: { en: 'Handmade', id: 'Buatan tangan' },
-}
-
 const iconField = (fallback: FeatureIcon): ItemField => ({
   kind: 'select',
   key: 'icon',
@@ -527,6 +480,7 @@ const PRODUCT_INFO_BLOCKS: readonly BlockSchema[] = [
 
 export const SECTION_SCHEMAS = [
   blocksSectionSchema,
+  customSectionSchema,
   ...PREMIUM_SECTION_SCHEMAS,
   {
     type: 'announcement-bar',

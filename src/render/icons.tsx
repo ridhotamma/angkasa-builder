@@ -24,7 +24,7 @@ import {
   LuTruck,
 } from 'react-icons/lu'
 
-import type { FeatureIcon } from '../model/sections'
+import type { FeatureIcon } from '../model/icons'
 
 export const FEATURE_ICON_GLYPHS: Record<FeatureIcon, IconType> = {
   truck: LuTruck,

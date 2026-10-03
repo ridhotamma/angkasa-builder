@@ -183,9 +183,10 @@ export interface PageBuilderProps {
   /** Undo and redo, from the screen's `useUndoableState`. */
   history?: EditorHistory
   /**
-   * Open the look picker on mount, on the theme tab — a blank theme just
-   * created, or a template just installed. `priorityKeys` are the installed
-   * template's suggested looks, shown first.
+   * Start on the theme tab — a blank theme just created, or a template just
+   * installed. `priorityKeys` are the installed template's suggested looks,
+   * shown first when the seller opens the look picker; the picker itself
+   * never opens on its own.
    */
   startWithLooks?: { priorityKeys?: readonly string[] }
   /** Rendered above the preview, e.g. save and publish buttons. */
@@ -901,7 +902,6 @@ function Builder({
                 settings={settings}
                 onChange={onSettingsChange}
                 shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
-                defaultLookPickerOpen={Boolean(startWithLooks)}
                 priorityLookKeys={startWithLooks?.priorityKeys}
               />
             </Tabs.Content>
@@ -976,14 +976,17 @@ function Builder({
 
   /**
    * Clicking the preview's empty space — outside every section and the
-   * header/footer rows — drops the selection and returns to the list.
-   * Bubble phase, so a click on a section reaches that section's own
-   * capture-phase picker first and is left alone here.
+   * header/footer rows — drops the whole selection, the block or element
+   * included, and returns to the list. Bubble phase, so a click on a section
+   * reaches that section's own capture-phase picker first and is left alone
+   * here.
    */
   const clickAway = useCallback((event: { target: EventTarget | null }) => {
     const target = event.target as HTMLElement | null
     if (typeof target?.closest !== 'function' || target.closest('[data-section-id]')) return
     setSelectedId(null)
+    setSelectedBlockId(null)
+    setSelectedElementId(null)
   }, [])
 
   const pickable = useCallback(

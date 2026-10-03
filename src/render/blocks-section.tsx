@@ -11,7 +11,16 @@
  * `../model/element-style`, so nothing here invents a size.
  */
 
-import { AspectRatio, Box, Flex, Grid, Heading, Stack, type BoxProps } from '@chakra-ui/react'
+import {
+  AspectRatio,
+  Box,
+  Flex,
+  Grid,
+  Heading,
+  Icon,
+  Stack,
+  type BoxProps,
+} from '@chakra-ui/react'
 import { useContext, type ReactNode } from 'react'
 
 import { useLocale } from '@repo/i18n'
@@ -20,6 +29,7 @@ import { ImageWithFallback } from '@repo/theme'
 import { blockSchema } from '../model/blocks'
 import { blockStyleCss } from '../model/block-style'
 import {
+  ALIGN_JUSTIFY,
   BUTTON_HOVERS,
   BUTTON_PADDINGS,
   BUTTON_PADDING_X,
@@ -47,10 +57,21 @@ import {
   readToken,
   selfLayout,
 } from '../model/element-style'
-import { readBlocks, readBoolean, readLink, readText, type BlockValue } from '../model/fields'
+import {
+  readBlocks,
+  readBoolean,
+  readLink,
+  readRichText,
+  readText,
+  readVideo,
+  type BlockValue,
+} from '../model/fields'
 import { localize } from '../model/localized'
+import { isRichDocEmpty } from '../model/rich-text'
 import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
+import { featureIcon } from './icons'
+import { VideoFrame } from './media'
 import {
   buttonHoverCss,
   EditableText,
@@ -58,6 +79,7 @@ import {
   LinkButton,
   SectionIdContext,
 } from './primitives'
+import { RichTextView } from './rich-text'
 import { useEmptyText, type SectionProps } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -108,6 +130,11 @@ const BUILT_IN_BLOCKS: Record<string, BlockRenderer> = {
   columns: ColumnsBlock,
   row: RowBlock,
   grid: GridBlock,
+  richtext: RichTextBlock,
+  icon: IconBlock,
+  divider: DividerBlock,
+  video: VideoBlock,
+  badge: BadgeBlock,
 }
 
 function blockContent(block: BlockValue): ReactNode {
@@ -327,6 +354,145 @@ function ImageBlock({ block }: { block: BlockValue }) {
 
 function SpacerBlock({ block }: { block: BlockValue }) {
   return <Box h={SPACE_HEIGHT[readToken(block.settings, 'size', SPACES, 'md')]} aria-hidden />
+}
+
+/* -------------------------------------------------------------------------- */
+/* Further primitives                                                         */
+/* -------------------------------------------------------------------------- */
+
+function RichTextBlock({ block }: { block: BlockValue }) {
+  const doc = readRichText(block.settings, 'body')
+  if (isRichDocEmpty(doc)) return null
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
+  return (
+    <Box {...contentLayout(width, align)}>
+      <RichTextView doc={doc} align={align === 'center' ? 'center' : 'left'} />
+    </Box>
+  )
+}
+
+const ICON_SIZES: Record<string, string> = { sm: '4', md: '6', lg: '8', xl: '12' }
+const ICON_SIZE_KEYS = ['sm', 'md', 'lg', 'xl'] as const
+
+const ICON_TONES: Record<string, string> = {
+  brand: 'var(--chakra-colors-brand-solid)',
+  accent: 'var(--pb-accent)',
+  muted: 'var(--chakra-colors-fg-muted)',
+  dark: 'var(--chakra-colors-fg)',
+}
+const ICON_TONE_KEYS = ['brand', 'accent', 'muted', 'dark', 'inherit'] as const
+
+function IconBlock({ block }: { block: BlockValue }) {
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const size = readToken(block.settings, 'size', ICON_SIZE_KEYS, 'md')
+  const tone = readToken(block.settings, 'tone', ICON_TONE_KEYS, 'brand')
+  return (
+    <Flex justify={ALIGN_JUSTIFY[align]}>
+      <Icon
+        as={featureIcon(readText(block.settings, 'icon'))}
+        boxSize={ICON_SIZES[size]}
+        color={tone === 'inherit' ? 'currentColor' : ICON_TONES[tone]}
+        aria-hidden
+      />
+    </Flex>
+  )
+}
+
+const DIVIDER_THICKNESS: Record<string, string> = {
+  thin: '1px',
+  medium: '2px',
+  thick: '4px',
+}
+const DIVIDER_THICKNESS_KEYS = ['thin', 'medium', 'thick'] as const
+
+const DIVIDER_TONES: Record<string, string> = {
+  subtle: 'var(--chakra-colors-border-subtle)',
+  border: 'var(--chakra-colors-border)',
+  strong: 'var(--chakra-colors-fg)',
+  brand: 'var(--chakra-colors-brand-solid)',
+}
+const DIVIDER_TONE_KEYS = ['subtle', 'border', 'strong', 'brand'] as const
+
+function DividerBlock({ block }: { block: BlockValue }) {
+  const spacing = readToken(block.settings, 'spacing', SPACES, 'md')
+  const thickness = readToken(block.settings, 'thickness', DIVIDER_THICKNESS_KEYS, 'thin')
+  const tone = readToken(block.settings, 'tone', DIVIDER_TONE_KEYS, 'border')
+  const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  return (
+    <Box py={SPACE_GAP[spacing]} {...contentLayout(width, align)}>
+      <Box h={DIVIDER_THICKNESS[thickness]} bg={DIVIDER_TONES[tone]} rounded="full" />
+    </Box>
+  )
+}
+
+const VIDEO_RATIOS: Record<string, number> = {
+  '16/9': 16 / 9,
+  '4/3': 4 / 3,
+  '1/1': 1,
+  '9/16': 9 / 16,
+}
+const VIDEO_RATIO_KEYS = ['16/9', '4/3', '1/1', '9/16'] as const
+
+function VideoBlock({ block }: { block: BlockValue }) {
+  const { imageUrl } = useRenderEnvironment()
+  const video = readVideo(block.settings, 'video')
+  if (!video) return null
+  const posterId = readText(block.settings, 'poster')
+  const poster = posterId ? imageUrl(posterId, { width: 1600, height: 900 }) : null
+  const ratio = VIDEO_RATIOS[readToken(block.settings, 'ratio', VIDEO_RATIO_KEYS, '16/9')] ?? 16 / 9
+  const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  return (
+    <Box {...contentLayout(width, align)}>
+      <VideoFrame
+        video={video}
+        poster={poster}
+        ratio={ratio}
+        autoplay={readBoolean(block.settings, 'autoplay')}
+        title=""
+      />
+    </Box>
+  )
+}
+
+const BADGE_TONES = {
+  brand: { bg: 'var(--chakra-colors-brand-solid)', color: 'var(--chakra-colors-brand-contrast)' },
+  dark: { bg: 'var(--chakra-colors-fg)', color: 'var(--chakra-colors-bg)' },
+  subtle: { bg: 'var(--chakra-colors-bg-muted)', color: 'var(--chakra-colors-fg)' },
+  outline: {
+    borderWidth: '1px',
+    borderColor: 'var(--chakra-colors-border)',
+    color: 'var(--chakra-colors-fg)',
+  },
+} satisfies Record<string, BoxProps>
+const BADGE_TONE_KEYS = ['brand', 'dark', 'subtle', 'outline'] as const
+
+function BadgeBlock({ block }: { block: BlockValue }) {
+  const label = readText(block.settings, 'text')
+  if (!label) return null
+  const tone = readToken(block.settings, 'tone', BADGE_TONE_KEYS, 'brand')
+  const size = readToken(block.settings, 'size', ['sm', 'md'] as const, 'md')
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  return (
+    <Flex justify={ALIGN_JUSTIFY[align]}>
+      <Box
+        as="span"
+        display="inline-flex"
+        alignItems="center"
+        px={size === 'sm' ? '2.5' : '3.5'}
+        py={size === 'sm' ? '0.5' : '1'}
+        rounded="full"
+        fontSize={size === 'sm' ? 'xs' : 'sm'}
+        fontWeight="medium"
+        lineHeight="1.4"
+        {...BADGE_TONES[tone]}
+      >
+        {label}
+      </Box>
+    </Flex>
+  )
 }
 
 /* -------------------------------------------------------------------------- */

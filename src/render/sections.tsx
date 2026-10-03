@@ -164,7 +164,7 @@ export function overlayProps(
  */
 export function BannerCopy({ settings, onImage }: { settings: FieldValues; onImage: boolean }) {
   const { mode } = useRenderEnvironment()
-  const { headline } = useSectionLayout()
+  const { headline, width: sectionWidth, banded } = useSectionLayout()
   const heading = readText(settings, 'heading')
   const subheading = readText(settings, 'subheading')
   const align = alignOf(settings)
@@ -172,6 +172,44 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
   const height = heroHeight(settings)
   // The hero's words rise on the storefront; the preview keeps editable text.
   const animatedHeading = headline === 'rise' && mode === 'live'
+  // An edge-to-edge banner keeps its background across the page, but its copy
+  // lines up with the header and the sections around it — the page column,
+  // not the viewport edges. A "full-width background" frame already supplies
+  // that column; a contained panel keeps its own inner padding.
+  const edge = sectionWidth === 'edge'
+  const pageColumn = edge || (sectionWidth === 'full' && banded)
+
+  const copy = (
+    <Stack
+      gap="4"
+      maxW="3xl"
+      textAlign={align}
+      align={align === 'center' ? 'center' : 'start'}
+      color={onImage ? 'white' : 'fg'}
+    >
+      {heading && (
+        <Heading
+          as="h1"
+          size={{ base: '3xl', md: '5xl' }}
+          letterSpacing="-0.025em"
+          lineHeight="1.05"
+          textWrap="balance"
+        >
+          {animatedHeading ? (
+            <SplitText text={heading} />
+          ) : (
+            <EditableText field="heading" value={heading} />
+          )}
+        </Heading>
+      )}
+      {subheading && (
+        <Text fontSize={{ base: 'md', md: 'xl' }} opacity={0.9} textWrap="pretty">
+          <EditableText field="subheading" value={subheading} />
+        </Text>
+      )}
+      <ButtonRow settings={settings} align={align} onImage={onImage} />
+    </Stack>
+  )
 
   return (
     <Flex
@@ -179,38 +217,21 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
       minH={height}
       align={middle ? 'center' : 'end'}
       justify={align === 'center' ? 'center' : 'start'}
-      p={{ base: '6', md: '12' }}
+      px={pageColumn ? '0' : { base: '6', md: '12' }}
+      py={{ base: '6', md: '12' }}
       {...(onImage ? overlayProps(readText(settings, 'overlay')) : {})}
     >
-      <Stack
-        gap="4"
-        maxW="3xl"
-        textAlign={align}
-        align={align === 'center' ? 'center' : 'start'}
-        color={onImage ? 'white' : 'fg'}
-      >
-        {heading && (
-          <Heading
-            as="h1"
-            size={{ base: '3xl', md: '5xl' }}
-            letterSpacing="-0.025em"
-            lineHeight="1.05"
-            textWrap="balance"
-          >
-            {animatedHeading ? (
-              <SplitText text={heading} />
-            ) : (
-              <EditableText field="heading" value={heading} />
-            )}
-          </Heading>
-        )}
-        {subheading && (
-          <Text fontSize={{ base: 'md', md: 'xl' }} opacity={0.9} textWrap="pretty">
-            <EditableText field="subheading" value={subheading} />
-          </Text>
-        )}
-        <ButtonRow settings={settings} align={align} onImage={onImage} />
-      </Stack>
+      {edge ? (
+        // The page's own column, so the words start where the header's logo
+        // and the sections below do.
+        <Container maxW="6xl" px={{ base: '4', md: '6' }} w="full">
+          <Flex w="full" justify={align === 'center' ? 'center' : 'start'}>
+            {copy}
+          </Flex>
+        </Container>
+      ) : (
+        copy
+      )}
     </Flex>
   )
 }

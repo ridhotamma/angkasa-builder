@@ -15,7 +15,7 @@ import {
   Text,
   Textarea,
 } from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { LuSparkles } from 'react-icons/lu'
 
 import {
@@ -69,35 +69,23 @@ export function ThemeSettingsPanel({
   settings,
   onChange,
   shop,
-  defaultLookPickerOpen = false,
   priorityLookKeys = [],
 }: {
   settings: ThemeSettings
   onChange: (settings: ThemeSettings) => void
   /** The shop's own name and logo, for the splash replay. */
   shop?: SplashShop
-  /** Open the look picker on mount — a fresh theme or a fresh install. */
-  defaultLookPickerOpen?: boolean
   /** Look keys a freshly installed template suggests, shown first. */
   priorityLookKeys?: readonly string[]
 }) {
   const { t, l } = useEditorText()
+  // The picker opens only when the seller asks for it: a modal that opens
+  // itself on a fresh theme or install is one more thing to dismiss, and
+  // dismissing it could take the editor down with it.
   const [pickerOpen, setPickerOpen] = useState(false)
   // A count, so each press replays the intro; zero means it is not playing.
   const [splashPreview, setSplashPreview] = useState(0)
   const [popupPreview, setPopupPreview] = useState(0)
-  // Opened after mount, not with it: two modal dialogs mounting open in the
-  // same commit confuse the layer stack, and dismissing the picker can take
-  // the editor down with it — back to the themes list with a clean draft.
-  useEffect(() => {
-    if (!defaultLookPickerOpen) return
-    if (typeof requestAnimationFrame === 'undefined') {
-      setPickerOpen(true)
-      return
-    }
-    const frame = requestAnimationFrame(() => setPickerOpen(true))
-    return () => cancelAnimationFrame(frame)
-  }, [defaultLookPickerOpen])
   const issues = contrastIssues(settings)
   const schemeIssues = schemeContrastIssues(settings)
 

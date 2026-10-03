@@ -241,12 +241,16 @@ const SectionItem = memo(function SectionItem({
         // selects itself and the section on the way up, and clearing it here
         // first would unmount the very field the click was aiming at.
         if (target.closest('[data-block-id]') || target.closest('[data-element-id]')) return
-        // Every other click also picks the section. A link must not be
-        // followed out of the editor; anything else — a tab, a slider arrow,
-        // the size guide drawer — still works, so the seller can try the
-        // section out.
-        if (target.closest('a[href]') && !target.closest('[data-editable]')) {
+        // The selected section's own toolbar (move, duplicate, remove) works.
+        if (target.closest('[data-section-outline]')) return
+        // Anywhere else, a click is a *selection*, not a use: links do not
+        // navigate and controls do not act — no accordion opens, no tab
+        // switches, no slider moves, no dialog or drawer appears. The seller
+        // tries the section out in the storefront preview instead. Editable
+        // text is left alone so the caret can land in it.
+        if (!target.closest('[data-editable]')) {
           event.preventDefault()
+          event.stopPropagation()
         }
         onSelect(section.id)
       }}

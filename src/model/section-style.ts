@@ -327,8 +327,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
       { value: 'edge', label: { en: 'Edge to edge', id: 'Penuh dari tepi ke tepi' } },
     ],
     help: {
-      en: 'Edge to edge also stretches the content itself — best for banners, videos and galleries.',
-      id: 'Penuh dari tepi ke tepi juga melebarkan isinya — cocok untuk banner, video, dan galeri.',
+      en: 'Full-width background and edge to edge both keep the text in the page column, lined up with the header; edge to edge is for galleries and video that should span the screen.',
+      id: 'Latar selebar layar dan penuh dari tepi ke tepi sama-sama menjaga teks tetap di kolom halaman, sejajar dengan header; penuh dari tepi ke tepi untuk galeri dan video yang memenuhi layar.',
     },
     default: 'contained',
   },
