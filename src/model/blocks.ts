@@ -11,6 +11,7 @@
  * and the canvas selection so both always speak about the same block.
  */
 
+import { BLOCK_STYLE_FIELDS } from './block-style'
 import type { BlockSchema, BlockValue, BlocksField, Field, FieldValues, JsonValue } from './fields'
 import { isRecord, newId } from './fields'
 import {
@@ -51,6 +52,7 @@ const nested = (
   label,
   max,
   blocks: BLOCK_TYPES,
+  styleFields: BLOCK_STYLE_FIELDS,
   ...(defaultBlocks && { defaultBlocks }),
 })
 
@@ -239,7 +241,98 @@ const columns: BlockSchema = {
   ],
 }
 
-BLOCK_TYPES.push(heading, text, button, image, spacer, column, columns)
+const row: BlockSchema = {
+  type: 'row',
+  name: { en: 'Row', id: 'Baris' },
+  description: {
+    en: 'Blocks side by side, wrapping and stacking on phones.',
+    id: 'Blok berdampingan, membungkus dan menumpuk di ponsel.',
+  },
+  fields: [
+    nested('blocks', { en: 'Blocks', id: 'Blok' }, 30),
+    spaceField('gap', { en: 'Gap', id: 'Jarak' }, 'md'),
+    {
+      kind: 'select',
+      key: 'align',
+      label: { en: 'Vertical alignment', id: 'Perataan vertikal' },
+      options: [
+        { value: 'start', label: { en: 'Top', id: 'Atas' } },
+        { value: 'center', label: { en: 'Middle', id: 'Tengah' } },
+        { value: 'end', label: { en: 'Bottom', id: 'Bawah' } },
+        { value: 'stretch', label: { en: 'Stretch', id: 'Penuh' } },
+      ],
+      default: 'stretch',
+    },
+    {
+      kind: 'select',
+      key: 'justify',
+      label: { en: 'Horizontal placement', id: 'Penempatan mendatar' },
+      options: [
+        { value: 'start', label: { en: 'Start', id: 'Awal' } },
+        { value: 'center', label: { en: 'Centre', id: 'Tengah' } },
+        { value: 'end', label: { en: 'End', id: 'Akhir' } },
+        { value: 'between', label: { en: 'Space between', id: 'Renggang di antara' } },
+        { value: 'around', label: { en: 'Space around', id: 'Renggang sekeliling' } },
+        { value: 'evenly', label: { en: 'Space evenly', id: 'Renggang merata' } },
+      ],
+      default: 'start',
+    },
+    {
+      kind: 'boolean',
+      key: 'wrap',
+      label: { en: 'Wrap onto the next line', id: 'Bungkus ke baris berikutnya' },
+      default: true,
+    },
+    {
+      kind: 'boolean',
+      key: 'stackOnMobile',
+      label: { en: 'Stack on phones', id: 'Menumpuk di ponsel' },
+      default: true,
+    },
+    spaceField('padding', { en: 'Padding', id: 'Jarak dalam' }, 'none'),
+  ],
+}
+
+const grid: BlockSchema = {
+  type: 'grid',
+  name: { en: 'Grid', id: 'Kisi' },
+  description: {
+    en: 'Blocks in a grid of equal columns, collapsing on phones.',
+    id: 'Blok dalam kisi kolom sama lebar, menciut di ponsel.',
+  },
+  fields: [
+    nested('blocks', { en: 'Blocks', id: 'Blok' }, 30),
+    {
+      kind: 'select',
+      key: 'columns',
+      label: { en: 'Columns on desktop', id: 'Kolom di desktop' },
+      options: [1, 2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: { en: String(n), id: String(n) } })),
+      default: '2',
+    },
+    spaceField('gap', { en: 'Gap', id: 'Jarak' }, 'md'),
+    {
+      kind: 'select',
+      key: 'align',
+      label: { en: 'Vertical alignment', id: 'Perataan vertikal' },
+      options: [
+        { value: 'start', label: { en: 'Top', id: 'Atas' } },
+        { value: 'center', label: { en: 'Middle', id: 'Tengah' } },
+        { value: 'end', label: { en: 'Bottom', id: 'Bawah' } },
+        { value: 'stretch', label: { en: 'Stretch', id: 'Penuh' } },
+      ],
+      default: 'stretch',
+    },
+    {
+      kind: 'boolean',
+      key: 'stackOnMobile',
+      label: { en: 'One column on phones', id: 'Satu kolom di ponsel' },
+      default: true,
+    },
+    spaceField('padding', { en: 'Padding', id: 'Jarak dalam' }, 'none'),
+  ],
+}
+
+BLOCK_TYPES.push(heading, text, button, image, spacer, column, columns, row, grid)
 
 export function blockSchema(type: string): BlockSchema | null {
   return BLOCK_TYPES.find((block) => block.type === type) ?? null
@@ -264,6 +357,7 @@ export const blocksSectionSchema = {
       max: 60,
       blocks: BLOCK_TYPES,
       defaultBlocks: ['heading', 'text', 'button'],
+      styleFields: BLOCK_STYLE_FIELDS,
     },
     spaceField('gap', { en: 'Spacing between blocks', id: 'Jarak antar blok' }, 'md'),
   ],
@@ -394,6 +488,24 @@ export function updateBlockSettings(
   })
 }
 
+/**
+ * The block's style overrides replaced — set to `undefined` to clear every
+ * override, leaving the block exactly as its section draws it.
+ */
+export function updateBlockStyle(
+  fields: readonly Field[],
+  values: FieldValues,
+  id: string,
+  style: FieldValues | undefined,
+): FieldValues | null {
+  return updateBlocksIn(fields, values, id, (blocks, index) => {
+    const next = [...blocks]
+    const { style: _cleared, ...block } = next[index]!
+    next[index] = style && Object.keys(style).length > 0 ? { ...block, style } : block
+    return next
+  })
+}
+
 /** The block removed, leaving its siblings; an empty field renders its empty state. */
 export function removeBlock(
   fields: readonly Field[],
@@ -426,7 +538,12 @@ export function moveBlock(
  * would edit the other.
  */
 function cloneBlock(block: BlockValue, schema: BlockSchema): BlockValue {
-  return { id: newId(), type: block.type, settings: cloneSettings(schema.fields, block.settings) }
+  return {
+    id: newId(),
+    type: block.type,
+    settings: cloneSettings(schema.fields, block.settings),
+    ...(block.style && { style: { ...block.style } }),
+  }
 }
 
 function cloneSettings(fields: readonly Field[], settings: FieldValues): FieldValues {

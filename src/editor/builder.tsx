@@ -87,6 +87,7 @@ import {
   moveBlock,
   removeBlock,
   updateBlockSettings,
+  updateBlockStyle,
   updateBlocksIn,
 } from '../model/blocks'
 import { TEMPLATE_KEYS, type SectionInstance, type TemplateKey } from '../model/content'
@@ -112,6 +113,7 @@ import {
 import { PAGE_WIDTH_CONTAINER } from '../render/primitives'
 import { drawnSections, pageEdges, SectionsRenderer, ThemeScope } from '../render/renderer'
 import { useBuilderDialogFooter } from './builder-dialog'
+import { BlockStylePanel } from './block-style-panel'
 import { CatalogueProvider } from './catalogue'
 import { FieldsForm, SelectInput } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
@@ -702,6 +704,24 @@ function Builder({
             })
           }}
         />
+        {selectedBlock.field.styleFields && (
+          <BlockStylePanel
+            fields={selectedBlock.field.styleFields}
+            values={selectedBlock.block.style ?? {}}
+            services={services}
+            onChange={(style) =>
+              updateSection(selected.id, (section) => {
+                const settings = updateBlockStyle(
+                  schema.fields,
+                  section.settings,
+                  selectedBlock.block.id,
+                  style,
+                )
+                return settings ? { ...section, settings } : section
+              })
+            }
+          />
+        )}
       </Stack>
     ) : selected && selectedElementId ? (
       <Stack gap="4">

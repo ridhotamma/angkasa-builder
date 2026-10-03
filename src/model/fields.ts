@@ -202,6 +202,13 @@ export interface BlocksField extends BaseField {
   blocks: readonly BlockSchema[]
   /** What a freshly added section starts with, by block type. */
   defaultBlocks?: readonly string[]
+  /**
+   * The style-override properties a block in this field may set, sanitised
+   * like any other field list and stored on `BlockValue.style`. Omitted when
+   * the blocks are not styleable — e.g. the product page's own blocks, drawn
+   * by their section rather than the blocks renderer.
+   */
+  styleFields?: readonly Field[]
 }
 
 export type Field = ItemField | ListField | BlocksField
@@ -341,6 +348,13 @@ export interface BlockValue {
   id: string
   type: string
   settings: FieldValues
+  /**
+   * Per-block visual overrides, from the field's `styleFields`: the position,
+   * z-index, background and effects one block may set without touching its
+   * section. Absent until one is set, so a block that overrode nothing reads
+   * exactly as before.
+   */
+  style?: FieldValues
 }
 
 /**
@@ -350,6 +364,62 @@ export interface BlockValue {
 interface SanitizeBudget {
   blocks: number
   ids: Set<string>
+}
+
+/** The value a field holds when it is untouched, for dropping no-op overrides. */
+function defaultForField(field: Field): JsonValue {
+  switch (field.kind) {
+    case 'text':
+    case 'textarea':
+      return field.default
+    case 'richtext':
+      return sanitizeRichDoc(field.default, field.max) as unknown as JsonValue
+    case 'number':
+      return field.default
+    case 'select':
+      return field.default
+    case 'boolean':
+      return field.default
+    case 'color':
+      return field.default
+    case 'image':
+    case 'collection':
+    case 'category':
+    case 'voucher':
+    case 'product':
+    case 'datetime':
+      return ''
+    case 'link':
+      return NO_LINK as unknown as JsonValue
+    case 'video':
+      return null
+    case 'table':
+      return structuredClone(EMPTY_TABLE) as unknown as JsonValue
+    case 'point':
+      return { x: 50, y: 50 }
+    case 'blocks':
+    case 'list':
+      return []
+  }
+}
+
+/**
+ * A field list's values, with entries still at their default dropped: the
+ * storage shape of an override map. A block that set nothing stores nothing,
+ * and a key that was never overridden cannot make a later default change a
+ * layout — it simply is not there.
+ */
+function sanitizeOverrides(fields: readonly Field[], value: unknown): FieldValues | undefined {
+  if (fields.length === 0) return undefined
+  const clean = sanitizeValues(fields, value)
+  const out: FieldValues = {}
+  for (const field of fields) {
+    const entry = clean[field.key]
+    if (entry === undefined) continue
+    if (JSON.stringify(entry) === JSON.stringify(defaultForField(field))) continue
+    out[field.key] = entry
+  }
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 function sanitizeBlocks(
@@ -384,10 +454,14 @@ function sanitizeBlocks(
     let id = typeof raw.id === 'string' && ID.test(raw.id) ? raw.id : newId()
     if (budget.ids.has(id)) id = newId()
     budget.ids.add(id)
+    const style = field.styleFields
+      ? sanitizeOverrides(field.styleFields, raw.style)
+      : undefined
     out.push({
       id,
       type: schema.type,
       settings: sanitizeValues(schema.fields, raw.settings, budget, depth + 1),
+      ...(style && { style }),
     })
   }
   return out

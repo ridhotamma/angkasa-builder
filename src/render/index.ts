@@ -29,6 +29,15 @@ export {
   type StoreHeaderProps,
 } from './chrome'
 export { ArticleCard, ArticleGrid, formatArticleDate } from './article-page'
+export { BlockChildren } from './blocks-section'
+export {
+  blockRenderer,
+  registerBlockRenderer,
+  registeredBlockRenderers,
+  registerWidget,
+  type BlockRenderer,
+  type BlockRendererProps,
+} from './block-registry'
 export { DataTable, whatsappHref } from './content-sections'
 export { embedUrl } from './media'
 export { buttonLook, cardFrame, FullBleed, PAGE_WIDTH_CONTAINER } from './primitives'

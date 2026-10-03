@@ -7,6 +7,9 @@
  */
 
 export * from './model/articles'
+export * from './model/block-registry'
+export * from './model/block-style'
+export * from './model/blocks'
 export * from './model/content'
 export * from './model/fields'
 export * from './model/layout'

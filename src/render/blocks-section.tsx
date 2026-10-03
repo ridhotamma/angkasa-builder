@@ -18,6 +18,7 @@ import { useLocale } from '@repo/i18n'
 import { ImageWithFallback } from '@repo/theme'
 
 import { blockSchema } from '../model/blocks'
+import { blockStyleCss } from '../model/block-style'
 import {
   BUTTON_HOVERS,
   BUTTON_PADDINGS,
@@ -46,8 +47,9 @@ import {
   readToken,
   selfLayout,
 } from '../model/element-style'
-import { readBlocks, readLink, readText, type BlockValue } from '../model/fields'
+import { readBlocks, readBoolean, readLink, readText, type BlockValue } from '../model/fields'
 import { localize } from '../model/localized'
+import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
 import {
   buttonHoverCss,
@@ -73,40 +75,44 @@ export function BlocksSection({ settings }: SectionProps) {
 function BlockList({ blocks, gap }: { blocks: BlockValue[]; gap: string }) {
   const empty = useEmptyText()
   if (blocks.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
-  return (
-    <Stack gap={gap}>
-      {blocks.map((block) => (
-        <BlockView key={block.id} block={block} />
-      ))}
-    </Stack>
-  )
+  return <Stack gap={gap}>{blockItems(blocks)}</Stack>
+}
+
+/**
+ * The blocks drawn one by one, with no gap of their own — what a layout block
+ * (a row, a grid) arranges itself. Exported so a custom layout renderer can
+ * put its own children through the same shells.
+ */
+export function BlockChildren({ blocks }: { blocks: readonly BlockValue[] }) {
+  return <>{blockItems(blocks)}</>
+}
+
+function blockItems(blocks: readonly BlockValue[]) {
+  return blocks.map((block) => <BlockView key={block.id} block={block} />)
 }
 
 function BlockView({ block }: { block: BlockValue }) {
   const content = blockContent(block)
-  if (!content) return null
+  if (content === null) return null
   return <BlockShell block={block}>{content}</BlockShell>
 }
 
+/** The built-in blocks; a registered renderer of the same type wins. */
+const BUILT_IN_BLOCKS: Record<string, BlockRenderer> = {
+  heading: HeadingBlock,
+  text: TextBlock,
+  button: ButtonBlock,
+  image: ImageBlock,
+  spacer: SpacerBlock,
+  column: ColumnBlock,
+  columns: ColumnsBlock,
+  row: RowBlock,
+  grid: GridBlock,
+}
+
 function blockContent(block: BlockValue): ReactNode {
-  switch (block.type) {
-    case 'heading':
-      return <HeadingBlock block={block} />
-    case 'text':
-      return <TextBlock block={block} />
-    case 'button':
-      return <ButtonBlock block={block} />
-    case 'image':
-      return <ImageBlock block={block} />
-    case 'spacer':
-      return <SpacerBlock block={block} />
-    case 'column':
-      return <ColumnBlock block={block} />
-    case 'columns':
-      return <ColumnsBlock block={block} />
-    default:
-      return null
-  }
+  const Renderer = blockRenderer(block.type) ?? BUILT_IN_BLOCKS[block.type]
+  return Renderer ? <Renderer block={block} /> : null
 }
 
 /* -------------------------------------------------------------------------- */
@@ -125,20 +131,29 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
   const sectionId = useContext(SectionIdContext)
   const { locale } = useLocale()
   const schema = blockSchema(block.type)
+  // The seller's per-block overrides. On the storefront a block with none is
+  // drawn exactly as its section's markup was — no wrapper, no class.
+  const css = blockStyleCss(block.style)
+  const styled = Object.keys(css).length > 0
 
-  if (mode !== 'preview' || !editing?.onSelectBlock || !sectionId) return <>{children}</>
+  if (mode !== 'preview' || !editing?.onSelectBlock || !sectionId) {
+    return styled ? <Box css={css}>{children}</Box> : <>{children}</>
+  }
   const selected = editing.selectedBlockId === block.id
 
   return (
     <Box
       data-block-id={block.id}
-      position="relative"
-      rounded="sm"
+      // The editor's outline and label need a positioned ancestor; a style
+      // override of the block's own position is applied instead.
+      position={css.position === undefined ? 'relative' : undefined}
+      rounded={css.borderRadius === undefined ? 'sm' : undefined}
       cursor="pointer"
       outlineWidth="1px"
       outlineStyle="dashed"
       outlineColor={selected ? 'brand.solid' : 'transparent'}
       css={{
+        ...css,
         '&:hover:not(:has([data-block-id]:hover))': {
           outlineColor: selected ? 'brand.solid' : 'brand.muted',
         },
@@ -357,6 +372,77 @@ function ColumnsBlock({ block }: { block: BlockValue }) {
     >
       <BlockList blocks={readBlocks(block.settings, 'left')} gap={gap} />
       <BlockList blocks={readBlocks(block.settings, 'right')} gap={gap} />
+    </Grid>
+  )
+}
+
+const ROW_ALIGNS = ['start', 'center', 'end', 'stretch'] as const
+const ROW_JUSTIFIES = ['start', 'center', 'end', 'between', 'around', 'evenly'] as const
+
+const ROW_ALIGN: Record<string, string> = {
+  start: 'flex-start',
+  center: 'center',
+  end: 'flex-end',
+  stretch: 'stretch',
+}
+
+const ROW_JUSTIFY: Record<string, string> = {
+  start: 'flex-start',
+  center: 'center',
+  end: 'flex-end',
+  between: 'space-between',
+  around: 'space-around',
+  evenly: 'space-evenly',
+}
+
+/**
+ * Blocks in a row, wrapping when they run out of width and stacking on a
+ * phone unless told otherwise. The flexible layout primitive: put text,
+ * buttons, images or whole columns beside each other and size them with
+ * their own width and style overrides.
+ */
+function RowBlock({ block }: { block: BlockValue }) {
+  const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'md')]
+  const align = readToken(block.settings, 'align', ROW_ALIGNS, 'stretch')
+  const justify = readToken(block.settings, 'justify', ROW_JUSTIFIES, 'start')
+  const wrap = readBoolean(block.settings, 'wrap')
+  const stack = readBoolean(block.settings, 'stackOnMobile')
+  const padding = SPACE_GAP[readToken(block.settings, 'padding', SPACES, 'none')]
+  return (
+    <Flex
+      direction={{ base: stack ? 'column' : 'row', md: 'row' }}
+      wrap={wrap ? 'wrap' : 'nowrap'}
+      align={ROW_ALIGN[align]}
+      justify={ROW_JUSTIFY[justify]}
+      gap={gap}
+      p={padding}
+    >
+      {blockItems(readBlocks(block.settings, 'blocks'))}
+    </Flex>
+  )
+}
+
+/**
+ * Blocks in a grid of equal columns — cards, features, a gallery of custom
+ * content — collapsing to one column on a phone by default.
+ */
+function GridBlock({ block }: { block: BlockValue }) {
+  const columns = Math.min(6, Math.max(1, Number(readText(block.settings, 'columns')) || 2))
+  const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'md')]
+  const align = readToken(block.settings, 'align', ROW_ALIGNS, 'stretch')
+  const stack = readBoolean(block.settings, 'stackOnMobile')
+  const padding = SPACE_GAP[readToken(block.settings, 'padding', SPACES, 'none')]
+  return (
+    <Grid
+      templateColumns={{
+        base: stack ? '1fr' : `repeat(${columns}, minmax(0, 1fr))`,
+        md: `repeat(${columns}, minmax(0, 1fr))`,
+      }}
+      gap={gap}
+      alignItems={ROW_ALIGN[align]}
+      p={padding}
+    >
+      {blockItems(readBlocks(block.settings, 'blocks'))}
     </Grid>
   )
 }
