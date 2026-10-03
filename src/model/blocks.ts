@@ -1484,3 +1484,104 @@ export function duplicateBlock(
   if (!next || !created.copy) return null
   return { values: next, copy: created.copy }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Inserting a dragged block                                                  */
+/* -------------------------------------------------------------------------- */
+
+function splice<T>(list: readonly T[], index: number, item: T): T[] {
+  const next = [...list]
+  next.splice(Math.max(0, Math.min(list.length, index)), 0, item)
+  return next
+}
+
+/**
+ * The blocks of the container a drop named: the top-level blocks field when
+ * `parentId` is `null`, otherwise the `fieldKey` blocks field inside the block
+ * with that id. `null` when the container does not exist or is full.
+ */
+function insertInto(
+  fields: readonly Field[],
+  values: FieldValues,
+  parentId: string | null,
+  fieldKey: string,
+  index: number,
+  block: BlockValue,
+): FieldValues | null {
+  for (const field of fields) {
+    const raw = values[field.key]
+    if (field.kind === 'blocks' && Array.isArray(raw)) {
+      const blocks = raw as unknown as BlockValue[]
+      if (parentId === null && field.key === fieldKey) {
+        if (blocks.length >= field.max) return null
+        return { ...values, [field.key]: splice(blocks, index, block) as unknown as JsonValue }
+      }
+      for (let at = 0; at < blocks.length; at++) {
+        const candidate = blocks[at]!
+        if (!isRecord(candidate.settings)) continue
+        if (candidate.id === parentId) {
+          const container = field.blocks
+            .find((schema) => schema.type === candidate.type)
+            ?.fields.find((inner) => inner.kind === 'blocks' && inner.key === fieldKey)
+          if (!container || container.kind !== 'blocks') return null
+          const children = Array.isArray(candidate.settings[fieldKey])
+            ? (candidate.settings[fieldKey] as unknown as BlockValue[])
+            : []
+          if (children.length >= container.max) return null
+          const next = [...blocks]
+          next[at] = {
+            ...candidate,
+            settings: {
+              ...candidate.settings,
+              [fieldKey]: splice(children, index, block) as unknown as JsonValue,
+            },
+          }
+          return { ...values, [field.key]: next as unknown as JsonValue }
+        }
+        const schema = field.blocks.find((candidateSchema) => candidateSchema.type === candidate.type)
+        if (!schema) continue
+        const nested = insertInto(
+          schema.fields,
+          candidate.settings as FieldValues,
+          parentId,
+          fieldKey,
+          index,
+          block,
+        )
+        if (nested) {
+          const next = [...blocks]
+          next[at] = { ...candidate, settings: nested }
+          return { ...values, [field.key]: next as unknown as JsonValue }
+        }
+      }
+    }
+    if (field.kind === 'list' && Array.isArray(raw)) {
+      const items = raw as unknown as FieldValues[]
+      for (let at = 0; at < items.length; at++) {
+        const nested = insertInto(field.fields, items[at]!, parentId, fieldKey, index, block)
+        if (nested) {
+          const next = [...items]
+          next[at] = nested
+          return { ...values, [field.key]: next as unknown as JsonValue }
+        }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * `values` with `block` inserted at `index` in the blocks container a drop
+ * pointed at — the top-level field when `parentId` is `null`, or a nested
+ * column, row or grid row otherwise. `null` when that container is full or no
+ * longer exists, so a stale drop can never corrupt the tree.
+ */
+export function insertBlock(
+  fields: readonly Field[],
+  values: FieldValues,
+  target: { parentId: string | null; fieldKey: string },
+  index: number,
+  block: BlockValue,
+): FieldValues | null {
+  return insertInto(fields, values, target.parentId, target.fieldKey, index, block)
+}

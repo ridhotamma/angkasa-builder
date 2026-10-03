@@ -100,6 +100,128 @@ const DISPLAYS = [
   option('none', { en: 'Hidden', id: 'Tersembunyi' }),
 ]
 
+const HEIGHTS = [
+  option('auto', { en: 'Automatic', id: 'Otomatis' }),
+  option('sm', { en: 'Short', id: 'Pendek' }),
+  option('md', { en: 'Medium', id: 'Sedang' }),
+  option('lg', { en: 'Tall', id: 'Tinggi' }),
+  option('xl', { en: 'Extra tall', id: 'Sangat tinggi' }),
+  option('full', { en: 'Full height', id: 'Setinggi induk' }),
+  option('screen', { en: 'One screen', id: 'Satu layar' }),
+]
+
+const MAX_WIDTHS = [
+  option('none', { en: 'No limit', id: 'Tanpa batas' }),
+  option('sm', { en: 'S', id: 'S' }),
+  option('md', { en: 'M', id: 'M' }),
+  option('lg', { en: 'L', id: 'L' }),
+  option('xl', { en: 'XL', id: 'XL' }),
+  option('2xl', { en: '2XL', id: '2XL' }),
+  option('3xl', { en: '3XL', id: '3XL' }),
+  option('4xl', { en: '4XL', id: '4XL' }),
+  option('5xl', { en: '5XL', id: '5XL' }),
+  option('6xl', { en: '6XL', id: '6XL' }),
+  option('full', { en: 'Full width', id: 'Selebar penuh' }),
+]
+
+const MAX_HEIGHTS = [
+  option('none', { en: 'No limit', id: 'Tanpa batas' }),
+  option('sm', { en: 'Short', id: 'Pendek' }),
+  option('md', { en: 'Medium', id: 'Sedang' }),
+  option('lg', { en: 'Tall', id: 'Tinggi' }),
+  option('xl', { en: 'Extra tall', id: 'Sangat tinggi' }),
+  option('screen', { en: 'One screen', id: 'Satu layar' }),
+]
+
+const BLEEDS = [
+  option('full', {
+    en: 'Full bleed — content stretches too',
+    id: 'Penuh tepi ke tepi — isinya ikut melebar',
+  }),
+  option('band', {
+    en: 'Full-width band — content in the page column',
+    id: 'Pita selebar layar — isi tetap di kolom halaman',
+  }),
+]
+
+const FONT_SIZES = [
+  option('xs', { en: 'Extra small', id: 'Sangat kecil' }),
+  option('sm', { en: 'Small', id: 'Kecil' }),
+  option('md', { en: 'Medium', id: 'Sedang' }),
+  option('lg', { en: 'Large', id: 'Besar' }),
+  option('xl', { en: 'Extra large', id: 'Sangat besar' }),
+  option('2xl', { en: '2XL', id: '2XL' }),
+  option('3xl', { en: '3XL', id: '3XL' }),
+  option('4xl', { en: '4XL', id: '4XL' }),
+  option('5xl', { en: '5XL', id: '5XL' }),
+]
+
+const TEXT_COLORS = [
+  option('inherit', { en: 'Section colour', id: 'Warna bagian' }),
+  option('fg', { en: 'Page text', id: 'Teks halaman' }),
+  option('fg-muted', { en: 'Muted text', id: 'Teks redup' }),
+  option('fg-subtle', { en: 'Subtle text', id: 'Teks samar' }),
+  option('brand', { en: 'Brand', id: 'Brand' }),
+  option('white', { en: 'White', id: 'Putih' }),
+  option('black', { en: 'Black', id: 'Hitam' }),
+  option('custom', { en: 'Custom colour…', id: 'Warna kustom…' }),
+]
+
+const FONT_FAMILIES = [
+  option('heading', { en: 'Heading font', id: 'Font judul' }),
+  option('body', { en: 'Body font', id: 'Font isi' }),
+  option('brand', { en: 'Display font', id: 'Font display' }),
+]
+
+const FONT_WEIGHTS = [
+  option('light', { en: 'Light', id: 'Ringan' }),
+  option('normal', { en: 'Normal', id: 'Normal' }),
+  option('medium', { en: 'Medium', id: 'Sedang' }),
+  option('semibold', { en: 'Semibold', id: 'Semi tebal' }),
+  option('bold', { en: 'Bold', id: 'Tebal' }),
+]
+
+const LINE_HEIGHTS = [
+  option('tight', { en: 'Tight', id: 'Rapat' }),
+  option('snug', { en: 'Snug', id: 'Agak rapat' }),
+  option('normal', { en: 'Normal', id: 'Normal' }),
+  option('relaxed', { en: 'Relaxed', id: 'Renggang' }),
+  option('loose', { en: 'Loose', id: 'Sangat renggang' }),
+]
+
+const LETTER_SPACINGS = [
+  option('tighter', { en: 'Tighter', id: 'Sangat rapat' }),
+  option('tight', { en: 'Tight', id: 'Rapat' }),
+  option('normal', { en: 'Normal', id: 'Normal' }),
+  option('wide', { en: 'Wide', id: 'Lebar' }),
+  option('wider', { en: 'Wider', id: 'Lebih lebar' }),
+  option('widest', { en: 'Widest', id: 'Paling lebar' }),
+]
+
+const TEXT_TRANSFORMS = [
+  option('none', { en: 'As typed', id: 'Sesuai ketikan' }),
+  option('uppercase', { en: 'UPPERCASE', id: 'HURUF BESAR' }),
+  option('lowercase', { en: 'lowercase', id: 'huruf kecil' }),
+  option('capitalize', { en: 'Capitalise', id: 'Huruf Awal Besar' }),
+]
+
+const FONT_STYLES = [
+  option('normal', { en: 'Upright', id: 'Tegak' }),
+  option('italic', { en: 'Italic', id: 'Miring' }),
+]
+
+const TEXT_DECORATIONS = [
+  option('none', { en: 'None', id: 'Tanpa garis' }),
+  option('underline', { en: 'Underline', id: 'Garis bawah' }),
+  option('line-through', { en: 'Strikethrough', id: 'Coret' }),
+]
+
+const TEXT_ALIGNS = [
+  option('left', { en: 'Left', id: 'Kiri' }),
+  option('center', { en: 'Center', id: 'Tengah' }),
+  option('right', { en: 'Right', id: 'Kanan' }),
+]
+
 const OVERFLOWS = [
   option('visible', { en: 'Visible', id: 'Terlihat' }),
   option('hidden', { en: 'Hidden', id: 'Terpotong' }),
@@ -269,10 +391,37 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
       select('bottom', { en: 'Bottom', id: 'Bawah' }, INSET_VALUES),
       select('left', { en: 'Left', id: 'Kiri' }, INSET_VALUES),
       select('width', { en: 'Width', id: 'Lebar' }, WIDTHS),
+      select('height', { en: 'Height', id: 'Tinggi' }, HEIGHTS),
       select('minHeight', { en: 'Minimum height', id: 'Tinggi minimum' }, MIN_HEIGHTS),
+      select('maxWidth', { en: 'Maximum width', id: 'Lebar maksimum' }, MAX_WIDTHS),
+      select('maxHeight', { en: 'Maximum height', id: 'Tinggi maksimum' }, MAX_HEIGHTS),
+      select('bleed', { en: 'Full bleed', id: 'Penuh tepi ke tepi' }, BLEEDS),
       select('display', { en: 'Display', id: 'Tampilan' }, DISPLAYS),
       select('aspectRatio', { en: 'Aspect ratio', id: 'Rasio' }, ASPECTS),
       select('overflow', { en: 'Overflow', id: 'Luapan' }, OVERFLOWS),
+    ],
+  },
+  {
+    key: 'text',
+    label: { en: 'Text', id: 'Teks' },
+    fields: [
+      select('fontSize', { en: 'Font size', id: 'Ukuran huruf' }, FONT_SIZES),
+      select('color', { en: 'Text colour', id: 'Warna teks' }, TEXT_COLORS),
+      {
+        kind: 'color',
+        key: 'textColorCustom',
+        label: { en: 'Custom colour', id: 'Warna kustom' },
+        default: '',
+        showWhen: { key: 'color', is: ['custom'] },
+      },
+      select('fontFamily', { en: 'Font', id: 'Font' }, FONT_FAMILIES),
+      select('fontWeight', { en: 'Weight', id: 'Ketebalan' }, FONT_WEIGHTS),
+      select('lineHeight', { en: 'Line height', id: 'Jarak baris' }, LINE_HEIGHTS),
+      select('letterSpacing', { en: 'Letter spacing', id: 'Jarak antar huruf' }, LETTER_SPACINGS),
+      select('textTransform', { en: 'Letter case', id: 'Huruf besar/kecil' }, TEXT_TRANSFORMS),
+      select('fontStyle', { en: 'Italic', id: 'Miring' }, FONT_STYLES),
+      select('textDecoration', { en: 'Underline', id: 'Garis' }, TEXT_DECORATIONS),
+      select('textAlign', { en: 'Alignment', id: 'Perataan' }, TEXT_ALIGNS),
     ],
   },
   {
@@ -391,6 +540,100 @@ const PERCENT: Record<string, string> = {
   '100': '100%',
 }
 
+const HEIGHT: Record<string, string> = {
+  auto: 'auto',
+  sm: '6rem',
+  md: '10rem',
+  lg: '16rem',
+  xl: '24rem',
+  full: '100%',
+  screen: '100svh',
+}
+
+const MAX_WIDTH: Record<string, string> = {
+  none: 'none',
+  sm: '24rem',
+  md: '28rem',
+  lg: '32rem',
+  xl: '36rem',
+  '2xl': '42rem',
+  '3xl': '48rem',
+  '4xl': '56rem',
+  '5xl': '64rem',
+  '6xl': '72rem',
+  full: '100%',
+}
+
+const MAX_HEIGHT: Record<string, string> = {
+  none: 'none',
+  sm: '6rem',
+  md: '10rem',
+  lg: '16rem',
+  xl: '24rem',
+  screen: '100svh',
+}
+
+const FONT_SIZE: Record<string, string> = {
+  xs: 'var(--chakra-font-sizes-xs)',
+  sm: 'var(--chakra-font-sizes-sm)',
+  md: 'var(--chakra-font-sizes-md)',
+  lg: 'var(--chakra-font-sizes-lg)',
+  xl: 'var(--chakra-font-sizes-xl)',
+  '2xl': 'var(--chakra-font-sizes-2xl)',
+  '3xl': 'var(--chakra-font-sizes-3xl)',
+  '4xl': 'var(--chakra-font-sizes-4xl)',
+  '5xl': 'var(--chakra-font-sizes-5xl)',
+}
+
+const TEXT_COLOR: Record<string, string> = {
+  inherit: 'inherit',
+  fg: 'var(--chakra-colors-fg)',
+  'fg-muted': 'var(--chakra-colors-fg-muted)',
+  'fg-subtle': 'var(--chakra-colors-fg-subtle)',
+  brand: 'var(--chakra-colors-brand-solid)',
+  white: 'white',
+  black: 'black',
+}
+
+const FONT_FAMILY: Record<string, string> = {
+  heading: 'var(--chakra-fonts-heading)',
+  body: 'var(--chakra-fonts-body)',
+  brand: 'var(--chakra-fonts-brand)',
+}
+
+const FONT_WEIGHT: Record<string, string> = {
+  light: '300',
+  normal: '400',
+  medium: '500',
+  semibold: '600',
+  bold: '700',
+}
+
+const LINE_HEIGHT: Record<string, string> = {
+  tight: '1.1',
+  snug: '1.3',
+  normal: '1.5',
+  relaxed: '1.7',
+  loose: '2',
+}
+
+const LETTER_SPACING: Record<string, string> = {
+  tighter: '-0.05em',
+  tight: '-0.025em',
+  normal: '0',
+  wide: '0.025em',
+  wider: '0.05em',
+  widest: '0.1em',
+}
+
+const FONT_STYLE: Record<string, string> = { normal: 'normal', italic: 'italic' }
+const TEXT_DECORATION: Record<string, string> = {
+  none: 'none',
+  underline: 'underline',
+  'line-through': 'line-through',
+}
+const TEXT_ALIGN: Record<string, string> = { left: 'left', center: 'center', right: 'right' }
+
 const RADIUS: Record<string, string> = {
   none: '0',
   sm: '0.25rem',
@@ -472,6 +715,7 @@ const BACKGROUND_SIZE = fromValues(BACKGROUND_SIZES)
 const BACKGROUND_REPEAT = fromValues(BACKGROUND_REPEATS)
 const BACKGROUND_ATTACHMENT = fromValues(BACKGROUND_ATTACHMENTS)
 const BORDER_STYLE = fromValues(BORDER_STYLES)
+const TEXT_TRANSFORM = fromValues(TEXT_TRANSFORMS)
 const MIX_BLEND = fromValues(BLEND_MODES)
 const ISOLATION = fromValues(ISOLATION_VALUES)
 const POINTER = fromValues(POINTER_EVENTS)
@@ -481,6 +725,18 @@ const VISIBILITY = fromValues(VISIBILITIES)
 function token(values: FieldValues, key: string, map: Record<string, string>): string | undefined {
   const value = readText(values, key)
   return value && value !== 'default' ? map[value] : undefined
+}
+
+/**
+ * How a block escapes the page column: `full` stretches the content with the
+ * band, `band` keeps the content in the page column (the renderer wraps it),
+ * `null` leaves the block where it is.
+ */
+export type BlockBleed = 'full' | 'band'
+
+export function readBlockBleed(style: FieldValues | undefined): BlockBleed | null {
+  const value = style ? readText(style, 'bleed') : ''
+  return value === 'full' || value === 'band' ? value : null
 }
 
 /**
@@ -514,10 +770,40 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   set('bottom', token(style, 'bottom', INSET))
   set('left', token(style, 'left', INSET))
   set('width', token(style, 'width', PERCENT))
+  set('height', token(style, 'height', HEIGHT))
   set('minHeight', token(style, 'minHeight', MIN_HEIGHT))
+  set('maxWidth', token(style, 'maxWidth', MAX_WIDTH))
+  set('maxHeight', token(style, 'maxHeight', MAX_HEIGHT))
+  // Full bleed escapes the page column to the page's container width
+  // (`PAGE_WIDTH_CONTAINER`), the same trick `FullBleed` uses. It wins over a
+  // chosen width or maximum width. `band` keeps the content in the page column
+  // through the renderer.
+  if (readBlockBleed(style)) {
+    out.width = '100cqw'
+    out.maxWidth = 'none'
+    out.marginInline = 'calc(50% - 50cqw)'
+  }
   set('display', token(style, 'display', DISPLAY))
   set('aspectRatio', token(style, 'aspectRatio', ASPECT))
   set('overflow', token(style, 'overflow', OVERFLOW))
+
+  // Text
+  set('fontSize', token(style, 'fontSize', FONT_SIZE))
+  const textColor = readText(style, 'color')
+  if (textColor === 'custom') {
+    const custom = readText(style, 'textColorCustom')
+    if (/^#[0-9a-f]{6}$/i.test(custom)) out.color = custom.toLowerCase()
+  } else {
+    set('color', token(style, 'color', TEXT_COLOR))
+  }
+  set('fontFamily', token(style, 'fontFamily', FONT_FAMILY))
+  set('fontWeight', token(style, 'fontWeight', FONT_WEIGHT))
+  set('lineHeight', token(style, 'lineHeight', LINE_HEIGHT))
+  set('letterSpacing', token(style, 'letterSpacing', LETTER_SPACING))
+  set('textTransform', token(style, 'textTransform', TEXT_TRANSFORM))
+  set('fontStyle', token(style, 'fontStyle', FONT_STYLE))
+  set('textDecoration', token(style, 'textDecoration', TEXT_DECORATION))
+  set('textAlign', token(style, 'textAlign', TEXT_ALIGN))
 
   // Spacing
   set('padding', token(style, 'padding', SPACE))

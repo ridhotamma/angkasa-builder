@@ -133,6 +133,14 @@ describe('blocks section, in the editor preview', () => {
     expect(html).toContain('>Text<')
   })
 
+  test('block lists are marked as drop targets for the palette', () => {
+    expect(html).toContain('data-block-list')
+    expect(html).toContain('data-parent-id="cols"')
+    expect(html).toContain('data-field-key="left"')
+    // The top-level list names the section, not a block.
+    expect(html).toContain('data-parent-id=""')
+  })
+
   test('only the selected text block becomes editable', () => {
     const editable = html.match(/contenteditable="plaintext-only"/gi) ?? []
     expect(editable).toHaveLength(1)

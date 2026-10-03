@@ -14,6 +14,7 @@
 import {
   AspectRatio,
   Box,
+  Container,
   Flex,
   Grid,
   Heading,
@@ -27,7 +28,7 @@ import { useLocale } from '@repo/i18n'
 import { ImageWithFallback } from '@repo/theme'
 
 import { blockSchema } from '../model/blocks'
-import { blockStyleCss } from '../model/block-style'
+import { blockStyleCss, readBlockBleed } from '../model/block-style'
 import {
   ALIGN_JUSTIFY,
   BUTTON_HOVERS,
@@ -66,7 +67,7 @@ import {
   readVideo,
   type BlockValue,
 } from '../model/fields'
-import { localize } from '../model/localized'
+import { localize, type Localized } from '../model/localized'
 import { isRichDocEmpty } from '../model/rich-text'
 import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
@@ -94,10 +95,46 @@ export function BlocksSection({ settings }: SectionProps) {
   return <BlockList blocks={blocks} gap={gap} />
 }
 
-function BlockList({ blocks, gap }: { blocks: BlockValue[]; gap: string }) {
+/**
+ * The attributes that mark a block list as a drop target in the editor's
+ * preview: which field holds the children and which block (or the section)
+ * owns it. Absent on live pages, so nothing leaks to shoppers.
+ */
+function useDropTarget(parentId: string | null, fieldKey: string): Record<string, string> {
+  const { mode } = useRenderEnvironment()
+  return mode === 'preview'
+    ? { 'data-block-list': '', 'data-parent-id': parentId ?? '', 'data-field-key': fieldKey }
+    : {}
+}
+
+function BlockList({
+  blocks,
+  gap,
+  parentId = null,
+  fieldKey = 'blocks',
+}: {
+  blocks: BlockValue[]
+  gap: string
+  parentId?: string | null
+  fieldKey?: string
+}) {
   const empty = useEmptyText()
-  if (blocks.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
-  return <Stack gap={gap}>{blockItems(blocks)}</Stack>
+  const drop = useDropTarget(parentId, fieldKey)
+  if (blocks.length === 0) {
+    // An empty column is still somewhere to drop a block from the palette.
+    return Object.keys(drop).length > 0 ? (
+      <Box {...drop} minH="10" display="flex" alignItems="center" justifyContent="center">
+        <BlockPlaceholder label={BLOCK_PLACEHOLDERS.drop} />
+      </Box>
+    ) : (
+      <EmptyNotice>{empty('items')}</EmptyNotice>
+    )
+  }
+  return (
+    <Stack gap={gap} {...drop}>
+      {blockItems(blocks)}
+    </Stack>
+  )
 }
 
 /**
@@ -142,6 +179,69 @@ function blockContent(block: BlockValue): ReactNode {
   return Renderer ? <Renderer block={block} /> : null
 }
 
+/**
+ * What an empty block says in the editor's preview: a dashed note that marks
+ * where the just-added block sits. On the storefront it draws nothing, so an
+ * empty block costs no markup there.
+ */
+const BLOCK_PLACEHOLDERS = {
+  heading: { en: 'Write a heading', id: 'Tulis judul' },
+  text: { en: 'Write your text', id: 'Tulis teks Anda' },
+  richtext: { en: 'Write your text', id: 'Tulis teks Anda' },
+  button: { en: 'Set a button label', id: 'Atur label tombol' },
+  image: { en: 'Upload your image', id: 'Unggah gambar Anda' },
+  video: { en: 'Pick a video', id: 'Pilih video' },
+  badge: { en: 'Write a badge label', id: 'Tulis label lencana' },
+  drop: { en: 'Drag a block here', id: 'Seret blok ke sini' },
+} as const satisfies Record<string, Localized>
+
+/**
+ * The typography a block's own style overrides set, passed to its inner text
+ * element so it beats the block's own size/alignment settings — a wrapper
+ * alone cannot, since the text sets its size explicitly.
+ */
+function blockTextOverrides(block: BlockValue): Record<string, string> {
+  const css = blockStyleCss(block.style)
+  const out: Record<string, string> = {}
+  for (const key of [
+    'fontFamily',
+    'fontSize',
+    'fontWeight',
+    'lineHeight',
+    'letterSpacing',
+    'textTransform',
+    'fontStyle',
+    'textDecoration',
+    'textAlign',
+    'color',
+  ] as const) {
+    const value = css[key]
+    if (value !== undefined) out[key] = String(value)
+  }
+  return out
+}
+
+function BlockPlaceholder({ label }: { label: Localized }) {
+  const { mode } = useRenderEnvironment()
+  const { locale } = useLocale()
+  if (mode !== 'preview') return null
+  return (
+    <Box
+      borderWidth="1px"
+      borderStyle="dashed"
+      borderColor="border"
+      rounded="md"
+      px="4"
+      py="6"
+      textAlign="center"
+      color="fg.muted"
+      fontSize="sm"
+    >
+      {localize(label, locale)}
+    </Box>
+  )
+}
+
 /* -------------------------------------------------------------------------- */
 /* Canvas selection                                                           */
 /* -------------------------------------------------------------------------- */
@@ -162,9 +262,19 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
   // drawn exactly as its section's markup was — no wrapper, no class.
   const css = blockStyleCss(block.style)
   const styled = Object.keys(css).length > 0
+  // A full-width band spans the page, but its words stay in the page column —
+  // the same measure the header and the sections around it use.
+  const content =
+    readBlockBleed(block.style) === 'band' ? (
+      <Container maxW="6xl" px={{ base: '4', md: '6' }} w="full">
+        {children}
+      </Container>
+    ) : (
+      children
+    )
 
   if (mode !== 'preview' || !editing?.onSelectBlock || !sectionId) {
-    return styled ? <Box css={css}>{children}</Box> : <>{children}</>
+    return styled ? <Box css={css}>{content}</Box> : <>{content}</>
   }
   const selected = editing.selectedBlockId === block.id
 
@@ -193,7 +303,7 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
         editing.onSelectBlock?.(sectionId, block.id)
       }}
     >
-      {children}
+      {content}
       {schema && (
         <Box
           data-block-label=""
@@ -263,13 +373,19 @@ function BlockText({
 
 function HeadingBlock({ block }: { block: BlockValue }) {
   const value = readText(block.settings, 'text')
-  if (!value) return null
+  if (!value) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.heading} />
   const level = readToken(block.settings, 'level', HEADING_LEVELS, 'h2')
   const size = HEADING_FONT_SIZE[readToken(block.settings, 'size', HEADING_SIZES, 'lg')]
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   return (
-    <Heading as={level} size={size} letterSpacing="-0.01em" {...contentLayout(width, align)}>
+    <Heading
+      as={level}
+      size={size}
+      letterSpacing="-0.01em"
+      {...contentLayout(width, align)}
+      {...blockTextOverrides(block)}
+    >
       <BlockText block={block} field="text" value={value} />
     </Heading>
   )
@@ -277,7 +393,7 @@ function HeadingBlock({ block }: { block: BlockValue }) {
 
 function TextBlock({ block }: { block: BlockValue }) {
   const value = readText(block.settings, 'body')
-  if (!value) return null
+  if (!value) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.text} />
   const size = TEXT_FONT_SIZE[readToken(block.settings, 'size', TEXT_SIZES, 'md')]
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
@@ -292,6 +408,7 @@ function TextBlock({ block }: { block: BlockValue }) {
       lineHeight="tall"
       whiteSpace="pre-line"
       {...contentLayout(width, align)}
+      {...blockTextOverrides(block)}
     />
   )
 }
@@ -299,7 +416,7 @@ function TextBlock({ block }: { block: BlockValue }) {
 function ButtonBlock({ block }: { block: BlockValue }) {
   const { settings } = useRenderEnvironment()
   const label = readText(block.settings, 'label')
-  if (!label) return null
+  if (!label) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.button} />
   const size = readToken(block.settings, 'size', BUTTON_SIZES, 'md')
   const padding = readToken(block.settings, 'padding', BUTTON_PADDINGS, 'default')
   const width = readToken(block.settings, 'width', SELF_WIDTHS, 'auto')
@@ -327,6 +444,7 @@ function ButtonBlock({ block }: { block: BlockValue }) {
         // The shine leaves the fill alone; only the other hovers shade it.
         _hover={hover === 'shine' ? undefined : { bg: appearance.hoverBg }}
         transition="background-color 150ms ease, border-color 150ms ease, color 150ms ease"
+        {...blockTextOverrides(block)}
       />
     </Flex>
   )
@@ -336,7 +454,7 @@ function ImageBlock({ block }: { block: BlockValue }) {
   const { imageUrl } = useRenderEnvironment()
   const fileId = readText(block.settings, 'image')
   const src = fileId ? imageUrl(fileId, { width: 1200, height: 900 }) : null
-  if (!src) return null
+  if (!src) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.image} />
   const ratio = IMAGE_RATIO[readToken(block.settings, 'ratio', IMAGE_RATIOS, '4/3')]
   const rounded = IMAGE_ROUNDED[readToken(block.settings, 'rounded', IMAGE_ROUNDING, 'md')]
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
@@ -365,12 +483,16 @@ function SpacerBlock({ block }: { block: BlockValue }) {
 
 function RichTextBlock({ block }: { block: BlockValue }) {
   const doc = readRichText(block.settings, 'body')
-  if (isRichDocEmpty(doc)) return null
+  if (isRichDocEmpty(doc)) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.richtext} />
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   return (
     <Box {...contentLayout(width, align)}>
-      <RichTextView doc={doc} align={align === 'center' ? 'center' : 'left'} />
+      <RichTextView
+        doc={doc}
+        align={align === 'center' ? 'center' : 'left'}
+        style={blockTextOverrides(block)}
+      />
     </Box>
   )
 }
@@ -390,12 +512,13 @@ function IconBlock({ block }: { block: BlockValue }) {
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const size = readToken(block.settings, 'size', ICON_SIZE_KEYS, 'md')
   const tone = readToken(block.settings, 'tone', ICON_TONE_KEYS, 'brand')
+  const color = blockTextOverrides(block).color
   return (
     <Flex justify={ALIGN_JUSTIFY[align]}>
       <Icon
         as={featureIcon(readText(block.settings, 'icon'))}
         boxSize={ICON_SIZES[size]}
-        color={tone === 'inherit' ? 'currentColor' : ICON_TONES[tone]}
+        color={color ?? (tone === 'inherit' ? 'currentColor' : ICON_TONES[tone])}
         aria-hidden
       />
     </Flex>
@@ -441,7 +564,7 @@ const VIDEO_RATIO_KEYS = ['16/9', '4/3', '1/1', '9/16'] as const
 function VideoBlock({ block }: { block: BlockValue }) {
   const { imageUrl } = useRenderEnvironment()
   const video = readVideo(block.settings, 'video')
-  if (!video) return null
+  if (!video) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.video} />
   const posterId = readText(block.settings, 'poster')
   const poster = posterId ? imageUrl(posterId, { width: 1600, height: 900 }) : null
   const ratio = VIDEO_RATIOS[readToken(block.settings, 'ratio', VIDEO_RATIO_KEYS, '16/9')] ?? 16 / 9
@@ -474,7 +597,7 @@ const BADGE_TONE_KEYS = ['brand', 'dark', 'subtle', 'outline'] as const
 
 function BadgeBlock({ block }: { block: BlockValue }) {
   const label = readText(block.settings, 'text')
-  if (!label) return null
+  if (!label) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.badge} />
   const tone = readToken(block.settings, 'tone', BADGE_TONE_KEYS, 'brand')
   const size = readToken(block.settings, 'size', ['sm', 'md'] as const, 'md')
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
@@ -491,6 +614,7 @@ function BadgeBlock({ block }: { block: BlockValue }) {
         fontWeight="medium"
         lineHeight="1.4"
         {...BADGE_TONES[tone]}
+        {...blockTextOverrides(block)}
       >
         {label}
       </Box>
@@ -509,7 +633,7 @@ function ColumnBlock({ block }: { block: BlockValue }) {
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   return (
     <Box py={paddingY} {...contentLayout(width, align)}>
-      <BlockList blocks={readBlocks(block.settings, 'blocks')} gap={gap} />
+      <BlockList blocks={readBlocks(block.settings, 'blocks')} gap={gap} parentId={block.id} />
     </Box>
   )
 }
@@ -539,8 +663,18 @@ function ColumnsBlock({ block }: { block: BlockValue }) {
       gap={gap}
       alignItems={COLUMN_ALIGN[align]}
     >
-      <BlockList blocks={readBlocks(block.settings, 'left')} gap={gap} />
-      <BlockList blocks={readBlocks(block.settings, 'right')} gap={gap} />
+      <BlockList
+        blocks={readBlocks(block.settings, 'left')}
+        gap={gap}
+        parentId={block.id}
+        fieldKey="left"
+      />
+      <BlockList
+        blocks={readBlocks(block.settings, 'right')}
+        gap={gap}
+        parentId={block.id}
+        fieldKey="right"
+      />
     </Grid>
   )
 }
@@ -571,12 +705,21 @@ const ROW_JUSTIFY: Record<string, string> = {
  * their own width and style overrides.
  */
 function RowBlock({ block }: { block: BlockValue }) {
+  const drop = useDropTarget(block.id, 'blocks')
   const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'md')]
   const align = readToken(block.settings, 'align', ROW_ALIGNS, 'stretch')
   const justify = readToken(block.settings, 'justify', ROW_JUSTIFIES, 'start')
   const wrap = readBoolean(block.settings, 'wrap')
   const stack = readBoolean(block.settings, 'stackOnMobile')
   const padding = SPACE_GAP[readToken(block.settings, 'padding', SPACES, 'none')]
+  const children = readBlocks(block.settings, 'blocks')
+  if (children.length === 0) {
+    return (
+      <Box {...drop} flex="1" minW="0">
+        <BlockPlaceholder label={BLOCK_PLACEHOLDERS.drop} />
+      </Box>
+    )
+  }
   return (
     <Flex
       direction={{ base: stack ? 'column' : 'row', md: 'row' }}
@@ -585,6 +728,7 @@ function RowBlock({ block }: { block: BlockValue }) {
       justify={ROW_JUSTIFY[justify]}
       gap={gap}
       p={padding}
+      {...drop}
     >
       {blockItems(readBlocks(block.settings, 'blocks'))}
     </Flex>
@@ -596,11 +740,20 @@ function RowBlock({ block }: { block: BlockValue }) {
  * content — collapsing to one column on a phone by default.
  */
 function GridBlock({ block }: { block: BlockValue }) {
+  const drop = useDropTarget(block.id, 'blocks')
   const columns = Math.min(6, Math.max(1, Number(readText(block.settings, 'columns')) || 2))
   const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'md')]
   const align = readToken(block.settings, 'align', ROW_ALIGNS, 'stretch')
   const stack = readBoolean(block.settings, 'stackOnMobile')
   const padding = SPACE_GAP[readToken(block.settings, 'padding', SPACES, 'none')]
+  const children = readBlocks(block.settings, 'blocks')
+  if (children.length === 0) {
+    return (
+      <Box {...drop}>
+        <BlockPlaceholder label={BLOCK_PLACEHOLDERS.drop} />
+      </Box>
+    )
+  }
   return (
     <Grid
       templateColumns={{
@@ -610,6 +763,7 @@ function GridBlock({ block }: { block: BlockValue }) {
       gap={gap}
       alignItems={ROW_ALIGN[align]}
       p={padding}
+      {...drop}
     >
       {blockItems(readBlocks(block.settings, 'blocks'))}
     </Grid>

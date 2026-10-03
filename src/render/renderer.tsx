@@ -289,9 +289,17 @@ function measureOutline(wrapper: HTMLElement): OutlineBox | null {
   // A section hidden on this device has no box to outline.
   if (!frame || frame.offsetWidth === 0) return null
   const page = wrapper.ownerDocument.documentElement.clientWidth
-  const origin = wrapper.getBoundingClientRect().left
-  const start = frame.offsetLeft
-  const end = start + frame.offsetWidth
+  const wrapperRect = wrapper.getBoundingClientRect()
+  const origin = wrapperRect.left
+  let start = frame.offsetLeft
+  let end = start + frame.offsetWidth
+  // A full-bleed block escapes the frame it sits in; the section's outline
+  // should cover it rather than cut through it.
+  for (const node of frame.querySelectorAll<HTMLElement>('[data-block-id]')) {
+    const rect = node.getBoundingClientRect()
+    start = Math.min(start, rect.left - origin)
+    end = Math.max(end, rect.right - origin)
+  }
   const band = origin + start <= OUTLINE_GAP && origin + end >= page - OUTLINE_GAP
   const gap = band ? -OUTLINE_INSET : OUTLINE_GAP
   const left = Math.max(start - gap, OUTLINE_INSET - origin)

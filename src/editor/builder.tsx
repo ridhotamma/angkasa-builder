@@ -84,13 +84,14 @@ import { Tooltip } from '@repo/theme'
 import {
   duplicateBlock,
   findBlock,
+  insertBlock,
   moveBlock,
   removeBlock,
   updateBlockSettings,
   updateBlockStyle,
   updateBlocksIn,
 } from '../model/blocks'
-import { TEMPLATE_KEYS, type SectionInstance, type TemplateKey } from '../model/content'
+import { createSection, TEMPLATE_KEYS, type SectionInstance, type TemplateKey } from '../model/content'
 import {
   BUTTON_ELEMENT_DEFAULTS,
   BUTTON_ELEMENT_FIELDS,
@@ -98,7 +99,7 @@ import {
   TEXT_ELEMENT_FIELDS,
   type ElementKind,
 } from '../model/element-style'
-import type { FieldValues } from '../model/fields'
+import { readBlocks, type FieldValues } from '../model/fields'
 import {
   FOOTER_FIELDS,
   HEADER_FIELDS,
@@ -118,9 +119,11 @@ import {
 } from '../render/context'
 import { PAGE_WIDTH_CONTAINER } from '../render/primitives'
 import { drawnSections, pageEdges, SectionsRenderer, ThemeScope } from '../render/renderer'
+import { PaletteDragProvider, usePaletteDrag } from './add-palette'
 import { useBuilderDialogFooter } from './builder-dialog'
 import { BlockStylePanel } from './block-style-panel'
 import { CatalogueProvider } from './catalogue'
+import { DropOverlay, type DropTarget } from './preview-drop'
 import { FieldsForm, SelectInput } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
 import { useEditorText } from './messages'
@@ -327,9 +330,11 @@ const TEMPLATE_LABELS = {
 
 export function PageBuilder(props: PageBuilderProps) {
   return (
-    <CatalogueProvider initial={props.data.products ?? []}>
-      {(products) => <Builder {...props} products={products} />}
-    </CatalogueProvider>
+    <PaletteDragProvider>
+      <CatalogueProvider initial={props.data.products ?? []}>
+        {(products) => <Builder {...props} products={products} />}
+      </CatalogueProvider>
+    </PaletteDragProvider>
   )
 }
 
@@ -438,6 +443,65 @@ function Builder({
           : section,
       ),
     )
+  }, [])
+
+  // What the add palette is dragging, read through a ref so the drop handler
+  // never closes over a stale item.
+  const paletteDrag = usePaletteDrag()
+  const dragRef = useRef(paletteDrag)
+  dragRef.current = paletteDrag
+
+  /**
+   * A palette item dropped on the preview: a section lands between sections,
+   * blocks land in the container the pointer named — or in a new Custom
+   * section when dropped between sections instead.
+   */
+  const onPaletteDrop = useCallback((target: DropTarget) => {
+    const { item, end } = dragRef.current
+    end()
+    if (!item) return
+    const { sections: current, onSectionsChange: change } = latest.current
+    const at = (index: number) => Math.max(0, Math.min(current.length, index))
+
+    // Dropped, not selected: the detail panel opens when the seller clicks
+    // the section or block, so the palette stays open for the next item.
+    if (item.kind === 'section') {
+      const section = createSection(item.type, item.preset?.settings, item.preset?.style)
+      const next = [...current]
+      next.splice(at(target.kind === 'sections' ? target.index : current.length), 0, section)
+      change(next)
+      return
+    }
+
+    const donor = createSection('custom', { blocks: item.blocks as never })
+    const created = readBlocks(donor.settings, 'blocks')
+
+    if (target.kind === 'blocks') {
+      const host = current.find((section) => section.id === target.sectionId)
+      const shape = host ? sectionSchema(host.type) : null
+      if (host && shape && created.length > 0) {
+        let values = host.settings
+        let index = target.index
+        for (const block of created) {
+          const inserted = insertBlock(
+            shape.fields,
+            values,
+            { parentId: target.parentId, fieldKey: target.fieldKey },
+            index,
+            block,
+          )
+          if (!inserted) break
+          values = inserted
+          index += 1
+        }
+        change(current.map((section) => (section.id === host.id ? { ...section, settings: values } : section)))
+        return
+      }
+    }
+
+    const next = [...current]
+    next.splice(at(target.kind === 'sections' ? target.index : current.length), 0, donor)
+    change(next)
   }, [])
 
   // A text typed into a block, however deep the block sits in the tree.
@@ -1310,8 +1374,16 @@ function Builder({
                 borderWidth="1px"
                 borderColor="border.subtle"
                 overflow="hidden"
+                position="relative"
               >
                 {previewFrame}
+                <DropOverlay
+                  doc={previewDoc}
+                  active={Boolean(paletteDrag.item)}
+                  blocks={paletteDrag.item?.kind === 'blocks'}
+                  sections={sections}
+                  onDrop={onPaletteDrop}
+                />
               </Box>
             </Flex>
           </Splitter.Panel>
@@ -1363,8 +1435,18 @@ function Builder({
                   borderWidth="1px"
                   borderColor="border.subtle"
                   overflow="hidden"
+                  position="relative"
                 >
                   {previewOpen && previewFrame}
+                  {previewOpen && (
+                    <DropOverlay
+                      doc={previewDoc}
+                      active={Boolean(paletteDrag.item)}
+                      blocks={paletteDrag.item?.kind === 'blocks'}
+                      sections={sections}
+                      onDrop={onPaletteDrop}
+                    />
+                  )}
                 </Box>
               </Dialog.Body>
             </Dialog.Content>

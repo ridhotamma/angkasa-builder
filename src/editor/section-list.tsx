@@ -9,22 +9,7 @@
  * there, never moved or removed, but picked like any section to edit them.
  */
 
-import {
-  Badge,
-  Box,
-  Button,
-  CloseButton,
-  Dialog,
-  HStack,
-  Icon,
-  IconButton,
-  Input,
-  InputGroup,
-  Portal,
-  SimpleGrid,
-  Stack,
-  Text,
-} from '@chakra-ui/react'
+import { Badge, Box, Button, HStack, Icon, IconButton, Stack, Text } from '@chakra-ui/react'
 import {
   closestCenter,
   DndContext,
@@ -46,7 +31,6 @@ import { CSS } from '@dnd-kit/utilities'
 import { useMemo, useState, type ReactNode } from 'react'
 import {
   LuClipboardCopy,
-  LuClipboardPaste,
   LuCopy,
   LuEye,
   LuEyeOff,
@@ -54,10 +38,8 @@ import {
   LuLock,
   LuMonitor,
   LuPlus,
-  LuSearch,
   LuSmartphone,
   LuTrash2,
-  LuX,
 } from 'react-icons/lu'
 
 import { Tooltip } from '@repo/theme'
@@ -73,18 +55,8 @@ import {
 import { newId, readText } from '../model/fields'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
-import {
-  isSectionOffered,
-  offeredPresets,
-  SECTION_CATEGORIES,
-  SECTION_CATEGORY_LABELS,
-  SECTION_SCHEMAS,
-  sectionSchema,
-  type SectionPreset,
-  type SectionSchema,
-  type SectionScope,
-  type SectionType,
-} from '../model/sections'
+import { sectionSchema, type SectionScope } from '../model/sections'
+import { AddPalette, type PaletteBlock } from './add-palette'
 import { useEditorText } from './messages'
 import { sectionIcon } from './section-icons'
 
@@ -360,233 +332,6 @@ export function PinnedRow({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Picker                                                                     */
-/* -------------------------------------------------------------------------- */
-
-interface PickerEntry {
-  key: string
-  schema: SectionSchema
-  preset: SectionPreset | null
-  name: string
-  description: string
-}
-
-/**
- * Every section this page can hold, by category, with the ready-made
- * variants beside the plain ones and a search across both.
- */
-function AddSectionDialog({
-  scope,
-  counts,
-  disabled,
-  onAdd,
-  onPaste,
-}: {
-  scope: SectionScope
-  counts: Map<string, number>
-  disabled: boolean
-  onAdd: (type: SectionType, preset: SectionPreset | null) => void
-  onPaste: (section: SectionInstance) => void
-}) {
-  const { t, l } = useEditorText()
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [copied, setCopied] = useState<SectionInstance | null>(null)
-
-  const entries = useMemo(() => {
-    const out: PickerEntry[] = []
-    for (const schema of SECTION_SCHEMAS as readonly SectionSchema[]) {
-      if (!isSectionOffered(schema, scope)) continue
-      out.push({
-        key: schema.type,
-        schema,
-        preset: null,
-        name: l(schema.name),
-        description: l(schema.description),
-      })
-      for (const preset of offeredPresets(schema)) {
-        out.push({
-          key: `${schema.type}:${preset.key}`,
-          schema,
-          preset,
-          name: l(preset.name),
-          description: l(preset.description),
-        })
-      }
-    }
-    return out
-  }, [scope, l])
-
-  const needle = query.trim().toLowerCase()
-  const shown = needle
-    ? entries.filter((entry) => `${entry.name} ${entry.description}`.toLowerCase().includes(needle))
-    : entries
-
-  const full = (schema: SectionSchema) =>
-    schema.max !== undefined && (counts.get(schema.type) ?? 0) >= schema.max
-
-  return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={({ open: next }) => {
-        setOpen(next)
-        if (next) {
-          setQuery('')
-          setCopied(readClipboard(scope))
-        }
-      }}
-      size="lg"
-      scrollBehavior="inside"
-    >
-      <Dialog.Trigger asChild>
-        <Button size="sm" variant="outline" w="full" disabled={disabled}>
-          <Icon as={LuPlus} />
-          {t('addSection')}
-        </Button>
-      </Dialog.Trigger>
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content maxH="min(44rem, calc(100dvh - 4rem))">
-            <Dialog.Header flexDirection="column" alignItems="stretch" gap="3">
-              <Dialog.Title>{t('addSection')}</Dialog.Title>
-              <InputGroup startElement={<Icon as={LuSearch} color="fg.subtle" />}>
-                <Input
-                  size="sm"
-                  autoFocus
-                  placeholder={t('searchSections')}
-                  value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
-                />
-              </InputGroup>
-              {/* The copy stays after pasting, like a clipboard, so it can go on
-                  several pages; the cross forgets it. */}
-              {copied && (
-                <HStack gap="1">
-                  <Button
-                    size="sm"
-                    variant="subtle"
-                    colorPalette="brand"
-                    justifyContent="start"
-                    flex="1"
-                    minW="0"
-                    onClick={() => {
-                      onPaste(copied)
-                      setOpen(false)
-                    }}
-                  >
-                    <LuClipboardPaste />
-                    <Text truncate>
-                      {t('pasteSection')} — {l(sectionSchema(copied.type)!.name)}
-                    </Text>
-                  </Button>
-                  <Tooltip content={t('clearCopied')}>
-                    <IconButton
-                      aria-label={t('clearCopied')}
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        clearClipboard()
-                        setCopied(null)
-                      }}
-                    >
-                      <LuX />
-                    </IconButton>
-                  </Tooltip>
-                </HStack>
-              )}
-            </Dialog.Header>
-            <Dialog.Body pt="0">
-              {shown.length === 0 ? (
-                <Text fontSize="sm" color="fg.muted" py="6" textAlign="center">
-                  {t('noSectionsMatch')}
-                </Text>
-              ) : (
-                <Stack gap="5">
-                  {SECTION_CATEGORIES.map((category) => {
-                    const inCategory = shown.filter((entry) => entry.schema.category === category)
-                    if (inCategory.length === 0) return null
-                    return (
-                      <Stack key={category} gap="2">
-                        <Text
-                          fontSize="xs"
-                          fontWeight="semibold"
-                          textTransform="uppercase"
-                          letterSpacing="wide"
-                          color="fg.muted"
-                        >
-                          {l(SECTION_CATEGORY_LABELS[category])}
-                        </Text>
-                        <SimpleGrid columns={{ base: 1, sm: 2 }} gap="2">
-                          {inCategory.map((entry) => (
-                            <Button
-                              key={entry.key}
-                              variant="outline"
-                              h="auto"
-                              p="3"
-                              justifyContent="start"
-                              alignItems="start"
-                              textAlign="left"
-                              whiteSpace="normal"
-                              gap="3"
-                              disabled={full(entry.schema)}
-                              onClick={() => {
-                                onAdd(entry.schema.type as SectionType, entry.preset)
-                                setOpen(false)
-                              }}
-                            >
-                              <Box
-                                boxSize="9"
-                                rounded="md"
-                                bg={entry.preset ? 'brand.subtle' : 'bg.muted'}
-                                color={entry.preset ? 'brand.fg' : 'fg.muted'}
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                                flexShrink="0"
-                              >
-                                <Icon as={sectionIcon(entry.schema.icon)} boxSize="4.5" />
-                              </Box>
-                              {/* The badge goes under the description, not beside
-                                  the name, so a long name keeps the card's width. */}
-                              <Stack gap="0.5" minW="0" flex="1" align="start">
-                                <Text fontSize="sm" fontWeight="medium">
-                                  {entry.name}
-                                </Text>
-                                <Text
-                                  fontSize="xs"
-                                  color="fg.muted"
-                                  fontWeight="normal"
-                                  lineHeight="short"
-                                >
-                                  {entry.description}
-                                </Text>
-                                {entry.preset && (
-                                  <Badge size="xs" colorPalette="brand" variant="subtle" mt="1">
-                                    {t('preset')}
-                                  </Badge>
-                                )}
-                              </Stack>
-                            </Button>
-                          ))}
-                        </SimpleGrid>
-                      </Stack>
-                    )
-                  })}
-                </Stack>
-              )}
-            </Dialog.Body>
-            <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
-            </Dialog.CloseTrigger>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
 /* The list                                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -613,7 +358,9 @@ export function SectionList({
   /** Says something short to the seller, e.g. that a section was copied. */
   onNotice?: (message: string) => void
 }) {
-  const { t } = useEditorText()
+  const { t, l } = useEditorText()
+  const [adding, setAdding] = useState(false)
+  const [copied, setCopied] = useState<SectionInstance | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -639,12 +386,55 @@ export function SectionList({
       : sections.length
     const next = [...sections]
     next.splice(at > 0 ? at : sections.length, 0, section)
+    // Added, not selected: the detail panel opens when the seller clicks the
+    // section, so the palette stays open for the next item.
     onChange(next)
-    onSelect(section.id)
+  }
+
+  // The palette takes over the panel while it is open, so dragging from it
+  // into the preview never has to share space with the section list.
+  if (adding) {
+    return (
+      <AddPalette
+        scope={scope}
+        counts={counts}
+        copiedLabel={copied ? l(sectionSchema(copied.type)!.name) : null}
+        onClearCopied={() => {
+          clearClipboard()
+          setCopied(null)
+        }}
+        onAddSection={(type, preset) =>
+          insert(createSection(type, preset?.settings, preset?.style))
+        }
+        onAddBlocks={(blocks: readonly PaletteBlock[]) =>
+          insert(createSection('custom', { blocks }))
+        }
+        onPaste={() => {
+          if (!copied) return
+          const schema = sectionSchema(copied.type)
+          if (schema?.max !== undefined && (counts.get(copied.type) ?? 0) >= schema.max) return
+          insert({ ...copied, id: newId() })
+        }}
+        onClose={() => setAdding(false)}
+      />
+    )
   }
 
   return (
     <Stack gap="3">
+      <Button
+        size="sm"
+        variant="outline"
+        w="full"
+        disabled={full}
+        onClick={() => {
+          setCopied(readClipboard(scope))
+          setAdding(true)
+        }}
+      >
+        <Icon as={LuPlus} />
+        {t('addSection')}
+      </Button>
       {before}
       {sections.length === 0 ? (
         <Text fontSize="sm" color="fg.muted">
@@ -690,17 +480,6 @@ export function SectionList({
           </SortableContext>
         </DndContext>
       )}
-      <AddSectionDialog
-        scope={scope}
-        counts={counts}
-        disabled={full}
-        onAdd={(type, preset) => insert(createSection(type, preset?.settings, preset?.style))}
-        onPaste={(section) => {
-          const schema = sectionSchema(section.type)
-          if (schema?.max !== undefined && (counts.get(section.type) ?? 0) >= schema.max) return
-          insert({ ...section, id: newId() })
-        }}
-      />
       {after}
     </Stack>
   )

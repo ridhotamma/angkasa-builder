@@ -5,12 +5,18 @@ import {
   blockSchema,
   duplicateBlock,
   findBlock,
+  insertBlock,
   moveBlock,
   removeBlock,
   updateBlockSettings,
 } from '../src/model/blocks'
 import { buttonAppearance, contentLayout, readToken, selfLayout } from '../src/model/element-style'
-import { MAX_BLOCKS_PER_SECTION, readBlocks, sanitizeValues } from '../src/model/fields'
+import {
+  createBlock,
+  MAX_BLOCKS_PER_SECTION,
+  readBlocks,
+  sanitizeValues,
+} from '../src/model/fields'
 import { createSection, DEFAULT_THEME_SETTINGS, sectionSchema } from '../src/index'
 
 const MAX_BLOCKS = MAX_BLOCKS_PER_SECTION
@@ -241,6 +247,55 @@ describe('block tree helpers', () => {
     expect(findBlock([field], next!, 'c')).toBeNull()
     const columns = findBlock([field], next!, 'cols')
     expect(readBlocks(columns!.block.settings, 'right')).toHaveLength(0)
+  })
+})
+
+describe('inserting a dragged block', () => {
+  const { field } = blocksField()
+  const raw = (id: string) => ({ id, type: 'text', settings: {} })
+
+  test('inserts at a top-level index', () => {
+    const values = sanitizeValues([field], { blocks: [raw('a'), raw('b')] })
+    const block = createBlock(field, 'spacer')!
+    const next = insertBlock([field], values, { parentId: null, fieldKey: 'blocks' }, 1, block)!
+    expect(readBlocks(next, 'blocks').map((candidate) => candidate.id)).toEqual([
+      'a',
+      block.id,
+      'b',
+    ])
+  })
+
+  test('inserts into a nested column, addressed by its id', () => {
+    const values = sampleValues()
+    const block = createBlock(field, 'spacer')!
+    const next = insertBlock(
+      [field],
+      values,
+      { parentId: 'cols', fieldKey: 'left' },
+      0,
+      block,
+    )!
+    const columns = findBlock([field], next, 'cols')!
+    expect(readBlocks(columns.block.settings, 'left').map((candidate) => candidate.id)).toEqual([
+      block.id,
+      'b',
+    ])
+    // The other branch is untouched.
+    expect(readBlocks(columns.block.settings, 'right')).toHaveLength(1)
+  })
+
+  test('a stale container or a full field changes nothing', () => {
+    const values = sampleValues()
+    const block = createBlock(field, 'spacer')!
+    expect(
+      insertBlock([field], values, { parentId: 'missing', fieldKey: 'blocks' }, 0, block),
+    ).toBeNull()
+    const full = sanitizeValues([field], {
+      blocks: Array.from({ length: 60 }, (_, index) => raw(`b-${index}`)),
+    })
+    expect(
+      insertBlock([field], full, { parentId: null, fieldKey: 'blocks' }, 0, block),
+    ).toBeNull()
   })
 })
 

@@ -190,11 +190,88 @@ describe('the new primitives, rendered', () => {
     expect(html).toContain('embed/-BpekQRliGE')
   })
 
-  test('a video block with nothing picked draws nothing', () => {
+  test('a full-bleed block escapes the page column', () => {
+    const section = createSection('custom', {
+      blocks: [
+        { id: 'hero', type: 'heading', settings: { text: 'Lebar penuh' }, style: { bleed: 'full' } },
+      ],
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('width:100cqw')
+    expect(html).toMatch(/margin-inline:calc\(50% - 50cqw\)/)
+    expect(html).toContain('max-width:none')
+  })
+
+  test('a full-width band keeps its content in the page column', () => {
+    const section = createSection('custom', {
+      blocks: [
+        { id: 'hero', type: 'heading', settings: { text: 'Pita' }, style: { bleed: 'band' } },
+      ],
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('width:100cqw')
+    // The inner Container is the page column, aligned with the header.
+    expect(html).toContain('max-width:var(--chakra-sizes-6xl)')
+  })
+
+  test('a text override beats the block’s own size setting', () => {
+    const styled = createSection('blocks', {
+      blocks: [
+        {
+          id: 't',
+          type: 'text',
+          settings: { body: 'Gaya menang', size: 'sm' },
+          style: { fontSize: '3xl', color: 'custom', textColorCustom: '#112233' },
+        },
+      ],
+    })
+    const styledHtml = render(<SectionsRenderer sections={[styled]} env={env()} />)
+    expect(styledHtml).toContain('font-size:var(--chakra-font-sizes-3xl)')
+    expect(styledHtml).toContain('color:#112233')
+    expect(styledHtml).not.toContain('font-size:var(--chakra-font-sizes-sm)')
+  })
+
+  test('a video block with nothing picked draws nothing on the storefront', () => {
     const empty = createSection('blocks', { blocks: [{ id: 'vd', type: 'video', settings: {} }] })
     const emptyHtml = render(<SectionsRenderer sections={[empty]} env={env()} />)
     // Chakra's reset mentions `iframe`; no `<iframe>` element should exist.
     expect(emptyHtml).not.toContain('<iframe')
+  })
+
+  test('an empty block shows a placeholder in the preview, and nothing live', () => {
+    const empty = createSection('blocks', {
+      blocks: [
+        { id: 'txt', type: 'text', settings: { body: '' } },
+        { id: 'img', type: 'image', settings: {} },
+        { id: 'btn', type: 'button', settings: { label: '' } },
+        { id: 'rich', type: 'richtext', settings: { body: '' } },
+        { id: 'vid', type: 'video', settings: {} },
+        { id: 'bdg', type: 'badge', settings: { text: '' } },
+        { id: 'col', type: 'column', settings: { blocks: [] } },
+      ],
+    })
+
+    const live = render(<SectionsRenderer sections={[empty]} env={env()} />)
+    for (const note of ['Upload your image', 'Write your text', 'Drag a block here']) {
+      expect(live, note).not.toContain(note)
+    }
+
+    const preview = render(
+      <SectionsRenderer
+        sections={[empty]}
+        env={env({ mode: 'preview', editing: { onEditText: () => undefined } })}
+      />,
+    )
+    for (const note of [
+      'Upload your image',
+      'Write your text',
+      'Set a button label',
+      'Pick a video',
+      'Write a badge label',
+      'Drag a block here',
+    ]) {
+      expect(preview, note).toContain(note)
+    }
   })
 
   test('every preset renders on the storefront', () => {

@@ -44,6 +44,24 @@ describe('the block style allowlist', () => {
       'borderRadius',
       'opacity',
       'transform',
+      // Sizing, for every block.
+      'width',
+      'height',
+      'minHeight',
+      'maxWidth',
+      'maxHeight',
+      'bleed',
+      // Text, for blocks that draw words.
+      'fontSize',
+      'color',
+      'fontFamily',
+      'fontWeight',
+      'lineHeight',
+      'letterSpacing',
+      'textTransform',
+      'fontStyle',
+      'textDecoration',
+      'textAlign',
     ]) {
       expect(keys).toContain(key)
     }
@@ -132,6 +150,58 @@ describe('resolving a block style to CSS', () => {
   test('a style with nothing set resolves to the shared empty object', () => {
     expect(blockStyleCss(undefined)).toEqual({})
     expect(blockStyleCss({ position: 'default', opacity: 100 })).toEqual({})
+  })
+
+  test('typography and sizing tokens become plain CSS', () => {
+    expect(
+      blockStyleCss({
+        fontSize: '3xl',
+        color: 'custom',
+        textColorCustom: '#112233',
+        lineHeight: 'relaxed',
+        textDecoration: 'underline',
+        height: 'screen',
+        maxWidth: '4xl',
+        maxHeight: 'xl',
+      }),
+    ).toMatchObject({
+      fontSize: 'var(--chakra-font-sizes-3xl)',
+      color: '#112233',
+      lineHeight: '1.7',
+      textDecoration: 'underline',
+      height: '100svh',
+      maxWidth: '56rem',
+      maxHeight: '24rem',
+    })
+    // A token colour resolves to the theme variable.
+    expect(blockStyleCss({ color: 'fg-muted' }).color).toBe('var(--chakra-colors-fg-muted)')
+  })
+
+  test('full bleed escapes the page column, and default is not stored', () => {
+    for (const bleed of ['full', 'band']) {
+      expect(blockStyleCss({ bleed })).toMatchObject({
+        width: '100cqw',
+        maxWidth: 'none',
+        marginInline: 'calc(50% - 50cqw)',
+      })
+    }
+    // Bleed wins over a chosen width.
+    expect(blockStyleCss({ bleed: 'band', width: '50' }).width).toBe('100cqw')
+
+    const kept = stored({
+      id: 'a',
+      type: 'heading',
+      settings: { text: 'A' },
+      style: { bleed: 'band' },
+    })
+    expect(kept.block!.style).toEqual({ bleed: 'band' })
+    const dropped = stored({
+      id: 'a',
+      type: 'heading',
+      settings: { text: 'A' },
+      style: { bleed: 'default' },
+    })
+    expect(dropped.block!.style).toBeUndefined()
   })
 })
 

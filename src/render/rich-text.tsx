@@ -30,6 +30,7 @@ export function RichTextView({
   elementKey,
   field,
   inheritColor = false,
+  style,
 }: {
   doc: RichDoc
   align?: 'left' | 'center'
@@ -37,6 +38,8 @@ export function RichTextView({
   field?: string
   /** Take the surrounding colour (a white-on-photo band) instead of the muted page ink. */
   inheritColor?: boolean
+  /** Typography a block's own style overrides set, winning over the defaults. */
+  style?: Record<string, string>
 }) {
   const overrides = useTextElementStyle(elementKey)
   if (isRichDocEmpty(doc)) return null
@@ -47,6 +50,7 @@ export function RichTextView({
       color={inheritColor ? 'inherit' : 'fg.muted'}
       lineHeight="tall"
       {...overrides}
+      {...style}
     >
       {doc.content.map((block, index) => (
         <Block key={index} block={block} />

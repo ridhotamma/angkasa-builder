@@ -157,6 +157,14 @@ const MESSAGES = {
     id: 'Klik sel, lalu gunakan pegangan di atas kolom atau di samping barisnya untuk memindah atau menghapus (atau Alt + tombol panah). Tempel sel dari spreadsheet ke sel mana pun.',
   },
   addBlock: { en: 'Add block', id: 'Tambah blok' },
+  paletteSections: { en: 'Presets', id: 'Preset' },
+  paletteBlocks: { en: 'Custom blocks', id: 'Blok kustom' },
+  paletteLayouts: { en: 'Ready-made layouts', id: 'Tata letak siap pakai' },
+  palettePrimitives: { en: 'Building blocks', id: 'Blok penyusun' },
+  paletteDragHint: {
+    en: 'Drag into the preview, or click to add at the end.',
+    id: 'Seret ke pratinjau, atau klik untuk menambah di akhir.',
+  },
   blockStyle: { en: 'Style overrides', id: 'Gaya tambahan' },
   blockStyleHelp: {
     en: 'Position, background and effects for this block only. Other blocks keep the section’s look.',
