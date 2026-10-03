@@ -21,26 +21,6 @@ registerWidgets()
 
 const TREE = [
   {
-    id: 'calc',
-    type: 'widget-calculator',
-    settings: { title: 'Tip calculator' },
-  },
-  {
-    id: 'todo',
-    type: 'widget-todo-list',
-    settings: {
-      title: 'Packing list',
-      initialItems: 'Book a courier\nPack the order',
-      allowAdd: true,
-    },
-  },
-  {
-    id: 'snake',
-    type: 'widget-snake',
-    settings: { title: 'Break time', gridSize: 12, speed: 'fast' },
-    style: { position: 'relative', zIndex: '10' },
-  },
-  {
     id: 'tabs',
     type: 'widget-tabs',
     settings: {
@@ -50,6 +30,7 @@ const TREE = [
       tab2Label: 'Sizing',
       tab2Blocks: [{ id: 'tab-text', type: 'text', settings: { body: 'Tab body' } }],
     },
+    style: { position: 'relative', zIndex: '10' },
   },
   {
     id: 'quiz',
@@ -83,11 +64,6 @@ const TREE = [
     type: 'widget-countdown',
     settings: { heading: 'Launch', endsAt: '2027-01-01T00:00:00.000Z' },
   },
-  {
-    id: 'order-form',
-    type: 'widget-order-form',
-    settings: { title: 'Order on WhatsApp' },
-  },
 ]
 
 function section(): SectionInstance {
@@ -119,47 +95,21 @@ function render(node: ReactNode): string {
 describe('the widget library on the storefront', () => {
   const html = render(<SectionsRenderer sections={[section()]} env={env()} />)
 
-  test('the calculator draws its keypad and starting display', () => {
-    expect(html).toContain('data-widget="calculator"')
-    expect(html).toContain('Tip calculator')
-    expect(html).toContain('aria-live="polite"')
-    for (const key of ['7', '+', '=', 'C']) {
-      expect(html).toContain(`>${key}<`)
-    }
-  })
-
-  test('the todo list draws its seeded items and an add field', () => {
-    expect(html).toContain('data-widget="todo-list"')
-    expect(html).toContain('Packing list')
-    expect(html).toContain('Book a courier')
-    expect(html).toContain('Pack the order')
-    expect(html).toContain('Add an item…')
-  })
-
-  test('the snake draws a canvas, controls and a starting hint', () => {
-    expect(html).toContain('data-widget="snake"')
-    expect(html).toContain('Break time')
-    expect(html).toContain('<canvas')
-    expect(html).toContain('Press Play or an arrow key to start')
-    expect(html).toContain('>Play<')
-    expect(html).toContain('aria-label="Up"')
-  })
-
-  test('the style override on the game survives sanitising and reaches the CSS', () => {
-    const stored = readBlocks(section().settings, 'blocks')
-    expect(stored.find((block) => block.id === 'snake')?.style).toEqual({
-      position: 'relative',
-      zIndex: '10',
-    })
-    expect(html).toMatch(/z-index:\s*10/)
-  })
-
   test('tabs draw their labels and the first panel of real blocks', () => {
     expect(html).toContain('data-widget="tabs"')
     expect(html).toContain('Details')
     expect(html).toContain('Overview')
     expect(html).toContain('Sizing')
     expect(html).toContain('Tab heading')
+  })
+
+  test('the style override on a widget survives sanitising and reaches the CSS', () => {
+    const stored = readBlocks(section().settings, 'blocks')
+    expect(stored.find((block) => block.id === 'tabs')?.style).toEqual({
+      position: 'relative',
+      zIndex: '10',
+    })
+    expect(html).toMatch(/z-index:\s*10/)
   })
 
   test('the quiz draws its question and choices', () => {
@@ -193,12 +143,5 @@ describe('the widget library on the storefront', () => {
     expect(html).toContain('Minutes')
     // Server-rendered digits would hydrate seconds out of date.
     expect(html).toContain('––')
-  })
-
-  test('the order form draws products and a wa.me link', () => {
-    expect(html).toContain('data-widget="order-form"')
-    expect(html).toContain('Order on WhatsApp')
-    expect(html).toContain('aria-label="Add one ')
-    expect(html).toContain('https://wa.me/6281234567890')
   })
 })

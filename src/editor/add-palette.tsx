@@ -14,7 +14,6 @@
  */
 
 import {
-  Badge,
   Box,
   Button,
   Flex,
@@ -136,7 +135,6 @@ function PaletteCard({
   name,
   description,
   icon,
-  preset = false,
   disabled = false,
   onAdd,
 }: {
@@ -144,11 +142,9 @@ function PaletteCard({
   name: string
   description: string
   icon: ReactNode
-  preset?: boolean
   disabled?: boolean
   onAdd: () => void
 }) {
-  const { t } = useEditorText()
   const drag = usePaletteDrag()
 
   const onDragStart = (event: DragEvent) => {
@@ -184,8 +180,8 @@ function PaletteCard({
       <Box
         boxSize="9"
         rounded="md"
-        bg={preset ? 'brand.subtle' : 'bg.muted'}
-        color={preset ? 'brand.fg' : 'fg.muted'}
+        bg="bg.muted"
+        color="fg.muted"
         display="flex"
         alignItems="center"
         justifyContent="center"
@@ -201,11 +197,6 @@ function PaletteCard({
           <Text fontSize="xs" color="fg.muted" fontWeight="normal" lineHeight="short">
             {description}
           </Text>
-        )}
-        {preset && (
-          <Badge size="xs" colorPalette="brand" variant="subtle" mt="1">
-            {t('preset')}
-          </Badge>
         )}
       </Stack>
     </Button>
@@ -370,12 +361,24 @@ export function AddPalette({
 
       {mode === 'sections' && copiedLabel && (
         <HStack gap="1">
-          <Button size="sm" variant="subtle" colorPalette="brand" flex="1" minW="0" onClick={onPaste}>
+          <Button
+            size="sm"
+            variant="subtle"
+            colorPalette="brand"
+            flex="1"
+            minW="0"
+            onClick={onPaste}
+          >
             <Text truncate>
               {t('pasteSection')} — {copiedLabel}
             </Text>
           </Button>
-          <IconButton aria-label={t('clearCopied')} size="sm" variant="ghost" onClick={onClearCopied}>
+          <IconButton
+            aria-label={t('clearCopied')}
+            size="sm"
+            variant="ghost"
+            onClick={onClearCopied}
+          >
             <LuX />
           </IconButton>
         </HStack>
@@ -410,12 +413,9 @@ export function AddPalette({
                       }}
                       name={l(entry.preset?.name ?? entry.schema.name)}
                       description={l(entry.preset?.description ?? entry.schema.description)}
-                      preset={Boolean(entry.preset)}
                       icon={<Icon as={sectionIcon(entry.schema.icon)} boxSize="4.5" />}
                       disabled={full(entry.schema)}
-                      onAdd={() =>
-                        onAddSection(entry.schema.type as SectionType, entry.preset)
-                      }
+                      onAdd={() => onAddSection(entry.schema.type as SectionType, entry.preset)}
                     />
                   ))}
                 </SimpleGrid>
@@ -440,7 +440,6 @@ export function AddPalette({
                     }}
                     name={l(preset.name)}
                     description={l(preset.description)}
-                    preset
                     icon={<Icon as={LuLayoutGrid} boxSize="4.5" />}
                     onAdd={() => onAddBlocks(presetBlocks(preset), l(preset.name))}
                   />
@@ -457,7 +456,11 @@ export function AddPalette({
                 .map((schema) => (
                   <PaletteCard
                     key={schema.type}
-                    item={{ kind: 'blocks', blocks: [{ type: schema.type }], label: l(schema.name) }}
+                    item={{
+                      kind: 'blocks',
+                      blocks: [{ type: schema.type }],
+                      label: l(schema.name),
+                    }}
                     name={l(schema.name)}
                     description={schema.description ? l(schema.description) : ''}
                     icon={<Icon as={BLOCK_GLYPHS[schema.type] ?? LuPlus} boxSize="4.5" />}

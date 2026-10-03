@@ -20,6 +20,7 @@ import {
   GridItem,
   Heading,
   HStack,
+  Icon,
   IconButton,
   Image,
   Marquee,
@@ -30,7 +31,7 @@ import {
   type BoxProps,
 } from '@chakra-ui/react'
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react'
-import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
+import { LuChevronLeft, LuChevronRight, LuMinus, LuPlus } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 import { useLocale } from '@repo/i18n'
@@ -44,7 +45,7 @@ import {
   readText,
   type FieldValues,
 } from '../model/fields'
-import { textElementKey } from '../model/element-style'
+import { readToken, textElementKey } from '../model/element-style'
 import { isRichDocEmpty } from '../model/rich-text'
 import type { SectionType } from '../model/sections'
 import { HEADER_HEIGHT_VAR } from './chrome'
@@ -875,12 +876,7 @@ function RichText({ settings }: SectionProps) {
           {text('textPlaceholder')}
         </Text>
       ) : (
-        <RichTextView
-          doc={body}
-          align={align}
-          elementKey={textElementKey('body')}
-          field="body"
-        />
+        <RichTextView doc={body} align={align} elementKey={textElementKey('body')} field="body" />
       )}
     </TextColumn>
   )
@@ -996,9 +992,31 @@ function ImageGallery({ settings }: SectionProps) {
   )
 }
 
+const FAQ_VARIANTS = ['enclosed', 'outline', 'plain'] as const
+const FAQ_SIZES = ['sm', 'md', 'lg'] as const
+const FAQ_ICONS = ['chevron', 'plus'] as const
+
+/**
+ * The trigger's icon: Chakra's own chevron, or a plus that becomes a minus
+ * while the answer is open. The indicator carries `data-state`, so the two
+ * glyphs swap with CSS — no state to thread through React.
+ */
+function FaqIndicator({ icon }: { icon: string }) {
+  if (icon !== 'plus') return <Accordion.ItemIndicator />
+  return (
+    <Accordion.ItemIndicator>
+      <Icon as={LuPlus} boxSize="4" css={{ '[data-state="open"] &': { display: 'none' } }} />
+      <Icon as={LuMinus} boxSize="4" css={{ '[data-state="closed"] &': { display: 'none' } }} />
+    </Accordion.ItemIndicator>
+  )
+}
+
 function Faq({ settings }: SectionProps) {
   const empty = useEmptyText()
   const items = readList(settings, 'items').filter((item) => readText(item, 'question'))
+  const variant = readToken(settings, 'variant', FAQ_VARIANTS, 'enclosed')
+  const size = readToken(settings, 'size', FAQ_SIZES, 'md')
+  const icon = readToken(settings, 'icon', FAQ_ICONS, 'chevron')
 
   // Only the heading follows the alignment: questions and answers stay
   // left-aligned inside the box, where a centred paragraph would be hard to read.
@@ -1010,12 +1028,17 @@ function Faq({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <Accordion.Root collapsible variant="enclosed" rounded="l3">
+        <Accordion.Root
+          collapsible
+          variant={variant}
+          size={size}
+          rounded={variant === 'enclosed' ? 'l3' : undefined}
+        >
           {items.map((item) => (
             <Accordion.Item key={item.id} value={item.id}>
               <Accordion.ItemTrigger fontWeight="medium">
                 <Box flex="1">{readText(item, 'question')}</Box>
-                <Accordion.ItemIndicator />
+                <FaqIndicator icon={icon} />
               </Accordion.ItemTrigger>
               <Accordion.ItemContent>
                 <Accordion.ItemBody>

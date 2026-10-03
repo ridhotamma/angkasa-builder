@@ -201,7 +201,6 @@ const MESSAGES = {
     en: 'Section copied. Paste it from "Add section" on any page or theme.',
     id: 'Bagian disalin. Tempel dari "Tambah bagian" di halaman atau tema mana pun.',
   },
-  preset: { en: 'Ready-made', id: 'Siap pakai' },
 
   // Editor chrome
   undo: { en: 'Undo', id: 'Urungkan' },

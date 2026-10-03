@@ -77,12 +77,29 @@ describe('sections', () => {
     expect(sections[0]!.settings).not.toHaveProperty('style')
   })
 
-  test('an FAQ saved before it had layout settings stays centred and narrow', () => {
+  test('an FAQ saved before it had look settings stays centred and narrow', () => {
     const [faq] = sanitizeSections([
       { id: 'f', type: 'faq', settings: { heading: 'FAQ', items: [] } },
     ])
     expect(faq!.settings.align).toBe('center')
     expect(faq!.settings.width).toBe('narrow')
+    // The look settings arrived later; an old FAQ keeps the look it always had.
+    expect(faq!.settings.variant).toBe('enclosed')
+    expect(faq!.settings.size).toBe('md')
+    expect(faq!.settings.icon).toBe('chevron')
+  })
+
+  test('FAQ look settings outside their lists fall back to the defaults', () => {
+    const [faq] = sanitizeSections([
+      {
+        id: 'f',
+        type: 'faq',
+        settings: { variant: 'stripes', size: 'huge', icon: 'arrow', items: [] },
+      },
+    ])
+    expect(faq!.settings.variant).toBe('enclosed')
+    expect(faq!.settings.size).toBe('md')
+    expect(faq!.settings.icon).toBe('chevron')
   })
 
   test('a colour setting accepts only a hex code, since it lands inside CSS', () => {
@@ -182,7 +199,16 @@ describe('theme content', () => {
     ])
     expect(sanitizeRecommendedLooks('warm-organic')).toEqual([])
     expect(sanitizeRecommendedLooks(undefined)).toEqual([])
-    const many = ['minimal', 'warm-organic', 'editorial-fashion', 'neo-brutalist', 'luxury-boutique', 'bold-maximal', 'retro-vintage', 'tech-futuristic']
+    const many = [
+      'minimal',
+      'warm-organic',
+      'editorial-fashion',
+      'neo-brutalist',
+      'luxury-boutique',
+      'bold-maximal',
+      'retro-vintage',
+      'tech-futuristic',
+    ]
     expect(sanitizeRecommendedLooks(many)).toHaveLength(MAX_RECOMMENDED_LOOKS)
     expect(isLookKey('warm-organic')).toBe(true)
     expect(isLookKey('nope')).toBe(false)

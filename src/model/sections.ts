@@ -972,11 +972,43 @@ export const SECTION_SCHEMAS = [
     icon: 'help',
     name: { en: 'FAQ', id: 'Tanya jawab' },
     description: {
-      en: 'Questions and answers that expand.',
-      id: 'Pertanyaan dan jawaban yang bisa dibuka.',
+      en: 'Questions and answers that expand — with a choice of border, size and indicator icon.',
+      id: 'Pertanyaan dan jawaban yang bisa dibuka — dengan pilihan garis, ukuran, dan ikon penanda.',
     },
     fields: [
       heading('Frequently asked questions'),
+      {
+        kind: 'select',
+        key: 'variant',
+        label: { en: 'Borders', id: 'Garis' },
+        options: [
+          { value: 'enclosed', label: { en: 'Boxed', id: 'Kotak' } },
+          { value: 'outline', label: { en: 'Dividers', id: 'Garis pemisah' } },
+          { value: 'plain', label: { en: 'None', id: 'Tanpa garis' } },
+        ],
+        default: 'enclosed',
+      },
+      {
+        kind: 'select',
+        key: 'size',
+        label: { en: 'Size', id: 'Ukuran' },
+        options: [
+          { value: 'sm', label: { en: 'Small', id: 'Kecil' } },
+          { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+          { value: 'lg', label: { en: 'Large', id: 'Besar' } },
+        ],
+        default: 'md',
+      },
+      {
+        kind: 'select',
+        key: 'icon',
+        label: { en: 'Indicator icon', id: 'Ikon penanda' },
+        options: [
+          { value: 'chevron', label: { en: 'Chevron', id: 'Chevron' } },
+          { value: 'plus', label: { en: 'Plus / minus', id: 'Plus / minus' } },
+        ],
+        default: 'chevron',
+      },
       {
         kind: 'list',
         key: 'items',
