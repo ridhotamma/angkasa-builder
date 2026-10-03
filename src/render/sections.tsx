@@ -44,6 +44,7 @@ import {
   readText,
   type FieldValues,
 } from '../model/fields'
+import { textElementKey } from '../model/element-style'
 import { isRichDocEmpty } from '../model/rich-text'
 import type { SectionType } from '../model/sections'
 import { HEADER_HEIGHT_VAR } from './chrome'
@@ -874,7 +875,12 @@ function RichText({ settings }: SectionProps) {
           {text('textPlaceholder')}
         </Text>
       ) : (
-        <RichTextView doc={body} align={align} />
+        <RichTextView
+          doc={body}
+          align={align}
+          elementKey={textElementKey('body')}
+          field="body"
+        />
       )}
     </TextColumn>
   )
@@ -906,7 +912,11 @@ function ImageWithText({ settings }: SectionProps) {
           width with or without a link. */}
       <Stack gap="4" align="start">
         <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-        <RichTextView doc={readRichText(settings, 'body')} />
+        <RichTextView
+          doc={readRichText(settings, 'body')}
+          elementKey={textElementKey('body')}
+          field="body"
+        />
         <ThemeButton
           label={readText(settings, 'buttonLabel')}
           link={readLink(settings, 'buttonLink')}

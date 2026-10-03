@@ -250,6 +250,9 @@ function BlockText({
       value={value}
       as={as}
       editable={canEdit && selected}
+      // The block owns the click inside a blocks tree; its text is not an
+      // element of its own.
+      element={false}
       {...(canEdit && {
         onCommit: (next: string) => editing!.onEditBlockText!(sectionId!, block.id, field, next),
       })}

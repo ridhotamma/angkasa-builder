@@ -37,6 +37,7 @@ import {
   readVideo,
   type FieldValues,
 } from '../model/fields'
+import { textElementKey } from '../model/element-style'
 import { findProductCard, useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
@@ -438,7 +439,11 @@ export function Lookbook({ settings }: SectionProps) {
   const copy = (
     <Stack gap="4">
       <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-      <RichTextView doc={readRichText(settings, 'body')} />
+      <RichTextView
+        doc={readRichText(settings, 'body')}
+        elementKey={textElementKey('body')}
+        field="body"
+      />
       {showList && (
         <Stack gap="2">
           {spots.map(({ spot, product }) => (
@@ -503,7 +508,11 @@ export function BeforeAfter({ settings }: SectionProps) {
       {(readText(settings, 'heading') || readRichText(settings, 'body').content.length > 0) && (
         <Stack gap="2" maxW="3xl">
           <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-          <RichTextView doc={readRichText(settings, 'body')} />
+          <RichTextView
+            doc={readRichText(settings, 'body')}
+            elementKey={textElementKey('body')}
+            field="body"
+          />
         </Stack>
       )}
       {beforeSrc && afterSrc ? (

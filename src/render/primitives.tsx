@@ -25,6 +25,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   type ComponentProps,
   type MouseEvent,
@@ -40,9 +41,11 @@ import {
   buttonAppearance,
   readButtonElement,
   readTextElement,
+  textElementKey,
   textElementStyle,
   type ButtonAppearance,
   type ButtonHover,
+  type TextElementStyle,
 } from '../model/element-style'
 import { readLink, readText, type FieldValues } from '../model/fields'
 import type { Link } from '../model/links'
@@ -440,6 +443,19 @@ export const SectionIdContext = createContext<string | null>(null)
 export const SectionElementsContext = createContext<Record<string, FieldValues>>({})
 
 /**
+ * A stored text element's resolved style, shared by everything that draws one:
+ * `EditableText`, `ThemeText` and rich-text views. Empty for a key that was
+ * never overridden, so an untouched element costs nothing.
+ */
+export function useTextElementStyle(elementKey?: string): TextElementStyle {
+  const elements = useContext(SectionElementsContext)
+  return useMemo(
+    () => textElementStyle(readTextElement(elementKey ? elements[elementKey] : undefined)),
+    [elements, elementKey],
+  )
+}
+
+/**
  * The editor's handle on a button. Live pages get the button untouched; a
  * preview gets a hover/selected outline and a click that reports the element
  * to the editor, whose panel then opens on it. The wrapper is `inline-flex`
@@ -514,8 +530,7 @@ export function ThemeText({
 } & Omit<BoxProps, 'as' | 'children'>) {
   const { mode, editing } = useRenderEnvironment()
   const sectionId = useContext(SectionIdContext)
-  const elements = useContext(SectionElementsContext)
-  const overrides = textElementStyle(readTextElement(elements[elementKey]))
+  const overrides = useTextElementStyle(elementKey)
   // The theme's own props first, the seller's overrides on top. A heading tag
   // keeps the heading face and weight Chakra's own `Heading` would give it,
   // since a plain box would inherit the body font.
@@ -551,7 +566,14 @@ export function ThemeText({
     ) : inline && value !== undefined ? (
       // Plain until the element is selected, then the caret: the first click
       // selects and opens the panel, the next one types.
-      <EditableText field={field} value={value} as={as} editable={selected} {...style} />
+      <EditableText
+        field={field}
+        value={value}
+        as={as}
+        editable={selected}
+        element={false}
+        {...style}
+      />
     ) : value ? (
       <Box as={as} {...style}>
         {value}
@@ -607,6 +629,8 @@ export function EditableText({
   value,
   as = 'span',
   editable = true,
+  element = true,
+  elementKey,
   onCommit,
   ...props
 }: {
@@ -616,30 +640,43 @@ export function EditableText({
   as?: 'span' | 'h1' | 'h2' | 'h3' | 'p' | 'div'
   /** Whether the preview shows a caret here; a block turns it on once selected. */
   editable?: boolean
+  /**
+   * Whether this text is a styleable element. On by default, so every
+   * section-level heading, subheading and label can be picked and restyled
+   * like a button; `false` inside a block, where the block owns the click.
+   */
+  element?: boolean
+  /** Stored under this key instead of the derived `text.<field>`. */
+  elementKey?: string
   /** Where typed text goes; defaults to the section's own field. */
   onCommit?: (value: string) => void
 } & Omit<BoxProps, 'as' | 'children'>) {
   const { mode, editing } = useRenderEnvironment()
   const sectionId = useContext(SectionIdContext)
+  const key = elementKey ?? textElementKey(field)
+  // Read even outside the preview: a stored override must draw on the
+  // storefront exactly as it does in the editor.
+  const overrides = useTextElementStyle(element ? key : undefined)
   const ref = useRef<HTMLElement>(null)
   const focused = useRef(false)
 
   // Keep the DOM in step with edits from the settings panel, except while the
   // seller is typing here.
   useEffect(() => {
-    const element = ref.current
-    if (element && !focused.current && element.textContent !== value) element.textContent = value
+    const node = ref.current
+    if (node && !focused.current && node.textContent !== value) node.textContent = value
   }, [value])
 
-  if (mode !== 'preview' || !editing || !sectionId || !editable) {
-    return value ? (
-      <Box as={as} {...props}>
-        {value}
-      </Box>
-    ) : null
-  }
+  if (!value) return null
 
-  return (
+  const interactive = mode === 'preview' && Boolean(editing) && Boolean(sectionId)
+  const elementAware = element && interactive && Boolean(editing?.onSelectElement)
+  const selected = editing?.selectedElementId === key
+  // The first click picks the element; the next places the caret.
+  const canEdit = interactive && editable && (!elementAware || selected)
+  const style = { ...props, ...overrides }
+
+  const text = canEdit ? (
     <Box
       as={as}
       ref={ref}
@@ -673,11 +710,44 @@ export function EditableText({
       onInput={(event) => {
         const next = (event.currentTarget as HTMLElement).textContent ?? ''
         if (onCommit) onCommit(next)
-        else editing.onEditText(sectionId, field, next)
+        else editing!.onEditText(sectionId!, field, next)
       }}
-      {...props}
+      {...style}
     >
       {value}
+    </Box>
+  ) : (
+    <Box as={as} {...style}>
+      {value}
+    </Box>
+  )
+
+  if (!elementAware) return text
+
+  // An inline run keeps its place in the line; a block-level text stands alone.
+  const inline = as === 'span'
+  return (
+    <Box
+      as={inline ? 'span' : 'div'}
+      data-element-id={key}
+      display={inline ? 'inline-block' : undefined}
+      position="relative"
+      rounded="sm"
+      cursor="pointer"
+      outlineWidth="1px"
+      outlineStyle="dashed"
+      outlineColor={selected ? 'brand.solid' : 'transparent'}
+      css={{
+        '&:hover:not(:has([data-element-id]:hover))': {
+          outlineColor: selected ? 'brand.solid' : 'brand.muted',
+        },
+      }}
+      onClick={(event) => {
+        event.stopPropagation()
+        editing!.onSelectElement?.(sectionId!, key, 'text')
+      }}
+    >
+      {text}
     </Box>
   )
 }

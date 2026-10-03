@@ -83,12 +83,21 @@ export function Newsletter({ settings }: SectionProps) {
       <SectionHeading align={align} field="heading">
         {readText(settings, 'heading')}
       </SectionHeading>
-      <RichTextView doc={readRichText(settings, 'body')} />
+      <RichTextView
+        doc={readRichText(settings, 'body')}
+        elementKey={textElementKey('body')}
+        field="body"
+      />
       <ButtonRow settings={settings} align={align} />
       {note && (
-        <Text fontSize="sm" color="fg.muted">
-          {note}
-        </Text>
+        <ThemeText
+          as="p"
+          elementKey={textElementKey('note')}
+          field="note"
+          value={note}
+          fontSize="sm"
+          color="fg.muted"
+        />
       )}
     </Stack>
   )
@@ -139,18 +148,31 @@ export function BackgroundVideoSection({ settings }: SectionProps) {
           color="white"
         >
           {readText(settings, 'heading') && (
-            <Heading as="h2" size={{ base: '3xl', md: '5xl' }} letterSpacing="-0.025em">
-              {readText(settings, 'heading')}
-            </Heading>
+            <ThemeText
+              as="h2"
+              elementKey={textElementKey('heading')}
+              field="heading"
+              value={readText(settings, 'heading')}
+              fontSize={{ base: '3xl', md: '5xl' }}
+              letterSpacing="-0.025em"
+            />
           )}
           {readText(settings, 'subheading') && (
-            <Text fontSize={{ base: 'md', md: 'xl' }} opacity={0.92}>
-              {readText(settings, 'subheading')}
-            </Text>
+            <ThemeText
+              as="p"
+              elementKey={textElementKey('subheading')}
+              field="subheading"
+              value={readText(settings, 'subheading')}
+              fontSize={{ base: 'md', md: 'xl' }}
+              opacity={0.92}
+            />
           )}
-          <Box css={{ '& *': { color: 'inherit' } }}>
-            <RichTextView doc={readRichText(settings, 'body')} />
-          </Box>
+          <RichTextView
+            doc={readRichText(settings, 'body')}
+            elementKey={textElementKey('body')}
+            field="body"
+            inheritColor
+          />
           {!middle && <ButtonRow settings={settings} align={align} onImage />}
         </Stack>
         {middle && <Box />}
@@ -404,7 +426,11 @@ export function Team({ settings }: SectionProps) {
       <SectionHeading align={align} field="heading">
         {readText(settings, 'heading')}
       </SectionHeading>
-      <RichTextView doc={readRichText(settings, 'body')} />
+      <RichTextView
+        doc={readRichText(settings, 'body')}
+        elementKey={textElementKey('body')}
+        field="body"
+      />
       <SimpleGrid columns={{ base: 1, sm: 2, md: readColumns(settings, 3) }} gap="5">
         {items.map((item) => {
           const photo = readText(item, 'photo')
@@ -623,7 +649,11 @@ export function SplitScreen({ settings }: SectionProps) {
       >
         <Stack gap="4" maxW="xl">
           <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-          <RichTextView doc={readRichText(settings, 'body')} />
+          <RichTextView
+            doc={readRichText(settings, 'body')}
+            elementKey={textElementKey('body')}
+            field="body"
+          />
           <ButtonRow settings={settings} align="left" />
         </Stack>
       </Flex>

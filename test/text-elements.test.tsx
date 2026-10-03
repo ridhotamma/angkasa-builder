@@ -138,6 +138,69 @@ describe('text element overrides, as stored', () => {
   })
 })
 
+describe('section-level text everywhere', () => {
+  function imageText(elements?: SectionInstance['elements']): SectionInstance {
+    const section = createSection('image-with-text', {
+      heading: 'Judul bisa diatur',
+      body: 'Paragraf isi yang bisa diatur.',
+      buttonLabel: '',
+      buttonLink: { kind: 'none' },
+    })
+    return elements ? { ...section, elements } : section
+  }
+
+  test('a heading override draws on the storefront', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          imageText({ 'text.heading': { size: '2xl', color: 'custom', customColor: '#ff0000' } }),
+        ]}
+        env={env()}
+      />,
+    )
+    expect(html).toContain('font-size:var(--chakra-font-sizes-2xl)')
+    expect(html).toContain('color:#ff0000')
+    expect(html).not.toContain('data-element-id')
+  })
+
+  test('a rich body override draws on the storefront', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          imageText({
+            'text.body': { color: 'custom', customColor: '#00aa00', lineHeight: 'relaxed' },
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    expect(html).toContain('color:#00aa00')
+    expect(html).toContain('line-height:1.7')
+  })
+
+  test('heading and body are pickable in the preview, editable once picked', () => {
+    const editing = { onEditText: () => undefined, onSelectElement: () => undefined }
+    const idle = render(
+      <SectionsRenderer
+        sections={[imageText()]}
+        env={env({ mode: 'preview', editing })}
+      />,
+    )
+    expect(idle).toContain('data-element-id="text.heading"')
+    expect(idle).toContain('data-element-id="text.body"')
+    // Nothing types until the seller picks it.
+    expect(idle.match(/contenteditable="plaintext-only"/gi) ?? []).toHaveLength(0)
+
+    const picked = render(
+      <SectionsRenderer
+        sections={[imageText()]}
+        env={env({ mode: 'preview', editing: { ...editing, selectedElementId: 'text.heading' } })}
+      />,
+    )
+    expect(picked.match(/contenteditable="plaintext-only"/gi) ?? []).toHaveLength(1)
+  })
+})
+
 describe('an overridden text element', () => {
   test('draws with its own font on the storefront, without editor affordances', () => {
     const html = render(<SectionsRenderer sections={[editorial(OVERRIDDEN)]} env={env()} />)

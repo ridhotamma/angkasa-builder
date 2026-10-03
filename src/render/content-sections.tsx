@@ -35,6 +35,7 @@ import {
   readText,
   type FieldValues,
 } from '../model/fields'
+import { textElementKey } from '../model/element-style'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { featureIcon } from './icons'
@@ -501,7 +502,12 @@ export function TableSection({ settings }: SectionProps) {
         <SectionHeading align={align} field="heading">
           {readText(settings, 'heading')}
         </SectionHeading>
-        <RichTextView doc={readRichText(settings, 'body')} align={align} />
+        <RichTextView
+          doc={readRichText(settings, 'body')}
+          align={align}
+          elementKey={textElementKey('body')}
+          field="body"
+        />
         {hasCells ? (
           <DataTable
             table={table}

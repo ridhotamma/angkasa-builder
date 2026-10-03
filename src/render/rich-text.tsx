@@ -16,15 +16,48 @@ import {
   type RichInline,
   type RichListItem,
 } from '../model/rich-text'
+import { ThemeText, useTextElementStyle } from './primitives'
 
-export function RichTextView({ doc, align = 'left' }: { doc: RichDoc; align?: 'left' | 'center' }) {
+/**
+ * A stored rich document. Given an `elementKey` and `field`, the whole body is
+ * also a selectable text element — the seller clicks it in the preview and
+ * restyles the font, size, colour and spacing from the panel, exactly like a
+ * heading or a button. Without them it is plain output, as before.
+ */
+export function RichTextView({
+  doc,
+  align = 'left',
+  elementKey,
+  field,
+  inheritColor = false,
+}: {
+  doc: RichDoc
+  align?: 'left' | 'center'
+  elementKey?: string
+  field?: string
+  /** Take the surrounding colour (a white-on-photo band) instead of the muted page ink. */
+  inheritColor?: boolean
+}) {
+  const overrides = useTextElementStyle(elementKey)
   if (isRichDocEmpty(doc)) return null
-  return (
-    <Stack gap="3" textAlign={align} color="fg.muted" lineHeight="tall">
+  const view = (
+    <Stack
+      gap="3"
+      textAlign={align}
+      color={inheritColor ? 'inherit' : 'fg.muted'}
+      lineHeight="tall"
+      {...overrides}
+    >
       {doc.content.map((block, index) => (
         <Block key={index} block={block} />
       ))}
     </Stack>
+  )
+  if (!elementKey || !field) return view
+  return (
+    <ThemeText elementKey={elementKey} field={field} as="div" inline={false}>
+      {view}
+    </ThemeText>
   )
 }
 
