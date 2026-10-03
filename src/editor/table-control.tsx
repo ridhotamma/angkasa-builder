@@ -103,6 +103,13 @@ const keyOf = ({ row, column }: TableCell) => `${row}:${column}`
 /** The gutters that hold the grips, beside and above the cells. */
 const GUTTER = '1.25rem'
 
+/**
+ * The narrowest a cell may get. Past their combined minimum the columns stop
+ * shrinking and the grid scrolls sideways instead — a nine-column chart gets
+ * an unreadable 4rem cell otherwise.
+ */
+const CELL_MIN = '6.5rem'
+
 export function TableControl({
   value,
   onChange,
@@ -295,8 +302,8 @@ export function TableControl({
   })
 
   return (
-    <Stack gap="2">
-      <ScrollArea.Root size="xs">
+    <Stack gap="2" w="full" minW="0">
+      <ScrollArea.Root size="xs" w="full" minW="0">
         <ScrollArea.Viewport>
           <ScrollArea.Content style={{ minWidth: 0 }}>
             <Box
@@ -311,12 +318,13 @@ export function TableControl({
               }}
             >
               {/* A gutter column for the row grips and a gutter row for the
-                  column grips: the grips sit beside the cells, never on them. */}
+                  column grips: the grips sit beside the cells, never on them.
+                  The per-column minimum is what makes a wide chart scroll
+                  rather than cram every cell. */}
               <Grid
-                templateColumns={`${GUTTER} repeat(${columns.length}, minmax(0, 1fr))`}
+                templateColumns={`${GUTTER} repeat(${columns.length}, minmax(${CELL_MIN}, 1fr))`}
                 gap="0.5"
                 alignItems="center"
-                minW={`calc(${GUTTER} + ${columns.length * 4.5}rem)`}
               >
                 <Box h={GUTTER} />
                 {columns.map((_, column) => (
