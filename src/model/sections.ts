@@ -63,6 +63,11 @@ export interface SectionPreset {
   description: Localized
   settings?: Record<string, unknown>
   style?: Record<string, unknown>
+  /**
+   * Kept for layouts that were built from it, but not offered in the picker.
+   * The plain section stays available.
+   */
+  hidden?: boolean
 }
 
 export interface SectionSchema {
@@ -80,6 +85,12 @@ export interface SectionSchema {
   max?: number
   /** Cannot be removed from a layout that allows it, e.g. the product's buy box. */
   required?: boolean
+  /**
+   * Kept in the library for layouts that already use it, but not offered in
+   * the "Add section" picker. Existing sections still render and sanitise;
+   * only the catalogue is narrowed.
+   */
+  hidden?: boolean
   /** Style a freshly added section starts with, e.g. edge to edge for a video. */
   defaultStyle?: Record<string, unknown>
   presets?: readonly SectionPreset[]
@@ -102,6 +113,20 @@ export function sectionScopes(schema: SectionSchema): readonly SectionScope[] {
 
 export function isSectionAllowed(schema: SectionSchema, scope: SectionScope): boolean {
   return sectionScopes(schema).includes(scope)
+}
+
+/**
+ * Whether the picker should offer `schema` for `scope`: allowed there and not
+ * hidden from the catalogue. A hidden section stays valid everywhere else —
+ * a layout that already holds one keeps rendering, duplicating and saving it.
+ */
+export function isSectionOffered(schema: SectionSchema, scope: SectionScope): boolean {
+  return !schema.hidden && isSectionAllowed(schema, scope)
+}
+
+/** The presets the picker offers for a section, in order; hidden ones stay usable in stored layouts. */
+export function offeredPresets(schema: SectionSchema): readonly SectionPreset[] {
+  return (schema.presets ?? []).filter((preset) => !preset.hidden)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -508,6 +533,7 @@ export const SECTION_SCHEMAS = [
     scopes: EVERYWHERE,
     category: 'promotion',
     icon: 'megaphone',
+    hidden: true,
     name: { en: 'Announcement bar', id: 'Bar pengumuman' },
     description: {
       en: 'A thin strip for a promotion or notice.',
@@ -578,6 +604,7 @@ export const SECTION_SCHEMAS = [
       },
       {
         key: 'split-buttons',
+        hidden: true,
         name: { en: 'Hero — two buttons', id: 'Banner — dua tombol' },
         description: {
           en: 'A headline with a main and a second button.',
@@ -1660,6 +1687,7 @@ export const SECTION_SCHEMAS = [
     type: 'pinned-scroll',
     category: 'text',
     icon: 'layers',
+    hidden: true,
     name: { en: 'Pinned story', id: 'Cerita menempel' },
     description: {
       en: 'A full-screen stage pinned while scrolling through feature panels.',

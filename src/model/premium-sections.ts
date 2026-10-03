@@ -157,6 +157,7 @@ export const PREMIUM_SECTION_SCHEMAS = [
     type: 'newsletter',
     category: 'promotion',
     icon: 'mail',
+    hidden: true,
     name: { en: 'Newsletter', id: 'Buletin' },
     description: {
       en: 'A signup invitation that links to your own form — links first, no stored addresses.',
@@ -450,6 +451,7 @@ export const PREMIUM_SECTION_SCHEMAS = [
     type: 'spin-360',
     category: 'media',
     icon: 'spin',
+    hidden: true,
     name: { en: '360° spin', id: 'Putaran 360°' },
     description: {
       en: 'A product turned frame by frame — drag to spin. Frames, not a 3D model.',

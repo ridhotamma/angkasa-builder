@@ -611,10 +611,23 @@ function ListControl({
   )
 }
 
+/** A stored colour, or `undefined` when the field is empty — never parse `''`. */
+function parseHex(value: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(value)) return undefined
+  try {
+    return parseColor(value)
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Chakra's `ColorPicker`, in hex. Opaque only: stored colours have no alpha,
  * and `toString('hex')` keeps them in the `#rrggbb` shape both the theme and
  * the section sanitisers accept.
+ *
+ * Empty is a real value — "no colour overridden yet" — so the picker starts
+ * with no value rather than throwing on an unparseable string.
  */
 export function ColorInput({
   label,
@@ -626,7 +639,7 @@ export function ColorInput({
   value: string
   onChange: (value: string) => void
 }) {
-  const color = useMemo(() => parseColor(value), [value])
+  const color = useMemo(() => parseHex(value), [value])
 
   return (
     <ColorPicker.Root

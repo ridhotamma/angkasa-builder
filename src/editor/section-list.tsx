@@ -74,7 +74,8 @@ import { newId, readText } from '../model/fields'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
 import {
-  isSectionAllowed,
+  isSectionOffered,
+  offeredPresets,
   SECTION_CATEGORIES,
   SECTION_CATEGORY_LABELS,
   SECTION_SCHEMAS,
@@ -395,7 +396,7 @@ function AddSectionDialog({
   const entries = useMemo(() => {
     const out: PickerEntry[] = []
     for (const schema of SECTION_SCHEMAS as readonly SectionSchema[]) {
-      if (!isSectionAllowed(schema, scope)) continue
+      if (!isSectionOffered(schema, scope)) continue
       out.push({
         key: schema.type,
         schema,
@@ -403,7 +404,7 @@ function AddSectionDialog({
         name: l(schema.name),
         description: l(schema.description),
       })
-      for (const preset of schema.presets ?? []) {
+      for (const preset of offeredPresets(schema)) {
         out.push({
           key: `${schema.type}:${preset.key}`,
           schema,
