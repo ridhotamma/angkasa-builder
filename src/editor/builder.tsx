@@ -91,7 +91,12 @@ import {
   updateBlockStyle,
   updateBlocksIn,
 } from '../model/blocks'
-import { createSection, TEMPLATE_KEYS, type SectionInstance, type TemplateKey } from '../model/content'
+import {
+  createSection,
+  TEMPLATE_KEYS,
+  type SectionInstance,
+  type TemplateKey,
+} from '../model/content'
 import {
   BUTTON_ELEMENT_DEFAULTS,
   BUTTON_ELEMENT_FIELDS,
@@ -202,6 +207,14 @@ export interface PageBuilderProps {
   onSelectionChange?: (id: string | null) => void
   /** Said above the preview before the "click a section" hint, e.g. which theme it uses. */
   previewNote?: string
+  /**
+   * Replaces the left panel — the section list and theme settings — with the
+   * host's own content, e.g. the AI designer's chat. The preview, the
+   * selection and both responsive layouts stay exactly as they are; the host
+   * closes it to hand the editor panel back. A host panel owns its own
+   * scrolling and height.
+   */
+  panelOverride?: ReactNode
   /** The height the editor fills (a length or `100%`); panels scroll inside it. */
   height?: string
   /**
@@ -362,6 +375,7 @@ function Builder({
   toolbar,
   onSelectionChange,
   previewNote,
+  panelOverride,
   height = 'calc(100dvh - 9rem)',
   frame,
   startWithLooks,
@@ -506,7 +520,11 @@ function Builder({
           values = inserted
           index += 1
         }
-        change(current.map((section) => (section.id === host.id ? { ...section, settings: values } : section)))
+        change(
+          current.map((section) =>
+            section.id === host.id ? { ...section, settings: values } : section,
+          ),
+        )
         return
       }
     }
@@ -1330,7 +1348,22 @@ function Builder({
     </PreviewFrame>
   )
 
-  const panelBox = (
+  const panelBox = panelOverride ? (
+    // The host panel fills the same frame the section list gets, but without
+    // the scroll area: a chat pins its composer and scrolls its own messages.
+    <Box
+      h={{ lg: 'full' }}
+      minH="0"
+      minW="0"
+      borderWidth="1px"
+      borderColor="border.subtle"
+      rounded="lg"
+      bg="bg.panel"
+      overflow="hidden"
+    >
+      {panelOverride}
+    </Box>
+  ) : (
     <ScrollArea.Root
       size="xs"
       h={{ lg: 'full' }}
