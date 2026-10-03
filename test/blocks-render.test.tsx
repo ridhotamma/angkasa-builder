@@ -107,6 +107,57 @@ describe('blocks section, on the storefront', () => {
     // the `plaintext-only` one.
     expect(/contenteditable="plaintext-only"/i.test(html)).toBe(false)
   })
+
+  test('a sticky column keeps its default offset on the storefront', () => {
+    const sticky = createSection('blocks', {
+      blocks: [
+        {
+          id: 'cols',
+          type: 'columns',
+          settings: {
+            layout: 'equal',
+            align: 'start',
+            left: [
+              {
+                id: 'left',
+                type: 'column',
+                settings: {
+                  blocks: [{ id: 'h', type: 'heading', settings: { text: 'Sticky side' } }],
+                },
+                style: { position: 'sticky' },
+              },
+            ],
+            right: [{ id: 'r', type: 'text', settings: { body: 'Right side' } }],
+          },
+        },
+      ],
+    })
+    const out = render(<SectionsRenderer sections={[sticky]} env={env()} />)
+    // Sticky without an offset would scroll away like any other block.
+    expect(out).toMatch(/position:sticky;top:0/)
+    expect(out).toContain('Sticky side')
+  })
+
+  test('a button can use a custom colour', () => {
+    const custom = createSection('blocks', {
+      blocks: [
+        {
+          id: 'b',
+          type: 'button',
+          settings: {
+            label: 'Custom',
+            link: { kind: 'none' },
+            tone: 'custom',
+            toneColor: '#112233',
+            toneTextColor: '#ffd60a',
+          },
+        },
+      ],
+    })
+    const out = render(<SectionsRenderer sections={[custom]} env={env()} />)
+    expect(out).toMatch(/background:\s*#112233/)
+    expect(out).toMatch(/color:\s*#ffd60a/)
+  })
 })
 
 describe('blocks section, in the editor preview', () => {
@@ -146,6 +197,21 @@ describe('blocks section, in the editor preview', () => {
     expect(editable).toHaveLength(1)
     // The editable field is the selected paragraph, not the heading.
     expect(html).toContain('First line')
+  })
+
+  test('a columns side is a stretched stack, so a sticky column can travel', () => {
+    const at = html.indexOf('data-field-key="left"')
+    const element = html.slice(html.lastIndexOf('<', at), html.indexOf('>', at))
+    const cls =
+      element
+        .match(/class="([^"]+)"/)?.[1]
+        ?.split(/\s+/)
+        .pop() ?? ''
+    const rule = html.match(new RegExp(`\\.${cls}\\{([^}]*)\\}`))?.[1] ?? ''
+    // The chosen alignment packs the side inside a full-height stack; a
+    // content-height grid item would leave a sticky column no room to stick.
+    expect(rule).toContain('flex-direction:column')
+    expect(rule).toContain('justify-content:center')
   })
 })
 

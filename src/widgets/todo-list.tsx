@@ -33,14 +33,19 @@ export function parseTodoItems(text: string): TodoItem[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .slice(0, MAX_TODOS)
-    .map((line, index) => ({ id: `todo-${index}`, text: line.slice(0, MAX_TODO_TEXT), done: false }))
+    .map((line, index) => ({
+      id: `todo-${index}`,
+      text: line.slice(0, MAX_TODO_TEXT),
+      done: false,
+    }))
 }
 
 /** `items` with `text` appended; unchanged when empty, a duplicate or full. */
 export function addTodo(items: readonly TodoItem[], text: string, id: string): TodoItem[] {
   const value = text.trim().slice(0, MAX_TODO_TEXT)
   if (!value || items.length >= MAX_TODOS) return items as TodoItem[]
-  if (items.some((item) => item.text.toLowerCase() === value.toLowerCase())) return items as TodoItem[]
+  if (items.some((item) => item.text.toLowerCase() === value.toLowerCase()))
+    return items as TodoItem[]
   return [...items, { id, text: value, done: false }]
 }
 
@@ -116,9 +121,7 @@ export function TodoList({ block }: BlockRendererProps) {
     <Stack gap="3" data-widget="todo-list" maxW="md">
       {(title || items.length > 0) && (
         <HStack justify="space-between" align="baseline" gap="3">
-          {title && (
-            <Text fontWeight="semibold">{title}</Text>
-          )}
+          {title && <Text fontWeight="semibold">{title}</Text>}
           {items.length > 0 && (
             <Text fontSize="xs" color="fg.muted" flexShrink="0">
               {remaining} / {items.length}

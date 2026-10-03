@@ -200,11 +200,11 @@ export interface PageBuilderProps {
   /** Rendered above the preview, e.g. save and publish buttons. */
   toolbar?: ReactNode
   /**
-   * The section the canvas has picked, or null when nothing is. Lets a host
-   * panel outside the builder follow the selection — the AI designer uses it
-   * to aim a revision at one section.
+   * What the canvas has picked. Lets a host panel outside the builder follow
+   * the selection — the AI designer aims a revision at the chosen block, or
+   * at the section when no block is. `blockId` is always inside `sectionId`.
    */
-  onSelectionChange?: (id: string | null) => void
+  onSelectionChange?: (selection: { sectionId: string | null; blockId: string | null }) => void
   /** Said above the preview before the "click a section" hint, e.g. which theme it uses. */
   previewNote?: string
   /**
@@ -416,10 +416,11 @@ function Builder({
     useMemo(() => [globalThis.document ?? null, previewDoc], [previewDoc]),
   )
 
-  // A host panel outside the builder follows what the canvas has picked.
+  // A host panel outside the builder follows what the canvas has picked,
+  // block included — the AI chat aims its next edit at it.
   useEffect(() => {
-    onSelectionChange?.(selectedId)
-  }, [onSelectionChange, selectedId])
+    onSelectionChange?.({ sectionId: selectedId, blockId: selectedBlockId })
+  }, [onSelectionChange, selectedId, selectedBlockId])
 
   // On a phone the sheet opens on the phone layout; a desktop one would be
   // shrunk to a third of its size.

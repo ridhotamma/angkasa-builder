@@ -180,3 +180,31 @@ describe('an overridden button', () => {
     expect(html).not.toContain('background:#ff3d8b')
   })
 })
+
+describe('a custom button tone', () => {
+  test('uses the seller fill and derives a readable label', () => {
+    const dark = buttonAppearance('custom', 'solid', DEFAULT_THEME_SETTINGS, { fill: '#111111' })
+    expect(dark.bg).toBe('#111111')
+    expect(dark.color).toBe('#ffffff')
+
+    const explicit = buttonAppearance('custom', 'solid', DEFAULT_THEME_SETTINGS, {
+      fill: '#111111',
+      text: '#ffd60a',
+    })
+    expect(explicit.color).toBe('#ffd60a')
+
+    // Nothing set: the brand token keeps the button sensible rather than black.
+    const fallback = buttonAppearance('custom', 'solid', DEFAULT_THEME_SETTINGS)
+    expect(fallback.bg).toBe('var(--chakra-colors-brand-solid)')
+    expect(fallback.color).toBe('var(--chakra-colors-brand-contrast)')
+  })
+
+  test('an outline custom button tints its border and label with the fill', () => {
+    const outline = buttonAppearance('custom', 'outline', DEFAULT_THEME_SETTINGS, {
+      fill: '#112233',
+    })
+    expect(outline.bg).toBe('transparent')
+    expect(outline.color).toBe('#112233')
+    expect(outline.borderColor).toBe('#112233')
+  })
+})

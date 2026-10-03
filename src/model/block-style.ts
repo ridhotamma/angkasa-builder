@@ -156,14 +156,56 @@ const FONT_SIZES = [
   option('5xl', { en: '5XL', id: '5XL' }),
 ]
 
-const TEXT_COLORS = [
-  option('inherit', { en: 'Section colour', id: 'Warna bagian' }),
+/**
+ * The theme's own colours, as tokens a block override may name.
+ *
+ * These are the semantic Chakra variables the theme declares (`themeCssVars`)
+ * and each section scheme remaps (`schemeCssVars`), so a block that picks one
+ * follows the page's palette and the band it sits in — the thing a raw hex
+ * cannot do. `accent` is the theme's accent colour (`--pb-accent`).
+ */
+const THEME_COLOR_OPTIONS = [
   option('fg', { en: 'Page text', id: 'Teks halaman' }),
   option('fg-muted', { en: 'Muted text', id: 'Teks redup' }),
   option('fg-subtle', { en: 'Subtle text', id: 'Teks samar' }),
+  option('bg', { en: 'Page background', id: 'Latar halaman' }),
+  option('bg-subtle', { en: 'Subtle surface', id: 'Permukaan halus' }),
+  option('bg-panel', { en: 'Panel surface', id: 'Permukaan panel' }),
+  option('bg-muted', { en: 'Muted surface', id: 'Permukaan redup' }),
   option('brand', { en: 'Brand', id: 'Brand' }),
+  option('brand-subtle', { en: 'Brand, soft', id: 'Brand, lembut' }),
+  option('brand-emphasized', { en: 'Brand, deep', id: 'Brand, pekat' }),
+  option('accent', { en: 'Accent', id: 'Aksen' }),
+  option('border', { en: 'Border', id: 'Garis tepi' }),
   option('white', { en: 'White', id: 'Putih' }),
   option('black', { en: 'Black', id: 'Hitam' }),
+  option('transparent', { en: 'Transparent', id: 'Transparan' }),
+]
+
+const THEME_COLOR: Record<string, string> = {
+  fg: 'var(--chakra-colors-fg)',
+  'fg-muted': 'var(--chakra-colors-fg-muted)',
+  'fg-subtle': 'var(--chakra-colors-fg-subtle)',
+  bg: 'var(--chakra-colors-bg)',
+  'bg-subtle': 'var(--chakra-colors-bg-subtle)',
+  'bg-panel': 'var(--chakra-colors-bg-panel)',
+  'bg-muted': 'var(--chakra-colors-bg-muted)',
+  brand: 'var(--chakra-colors-brand-solid)',
+  'brand-subtle': 'var(--chakra-colors-brand-subtle)',
+  'brand-emphasized': 'var(--chakra-colors-brand-emphasized)',
+  accent: 'var(--pb-accent)',
+  border: 'var(--chakra-colors-border)',
+  white: 'white',
+  black: 'black',
+  transparent: 'transparent',
+}
+
+/** The colour a text override may pick; `custom` opens the hex field. */
+const TEXT_COLOR: Record<string, string> = { inherit: 'inherit', ...THEME_COLOR }
+
+const TEXT_COLORS = [
+  option('inherit', { en: 'Section colour', id: 'Warna bagian' }),
+  ...THEME_COLOR_OPTIONS,
   option('custom', { en: 'Custom colour…', id: 'Warna kustom…' }),
 ]
 
@@ -439,14 +481,24 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
     key: 'background',
     label: { en: 'Background', id: 'Latar' },
     fields: [
-      { kind: 'color', key: 'backgroundColor', label: { en: 'Background colour', id: 'Warna latar' }, default: '' },
+      select('backgroundColorTheme', { en: 'Theme colour', id: 'Warna tema' }, THEME_COLOR_OPTIONS),
+      {
+        kind: 'color',
+        key: 'backgroundColor',
+        label: { en: 'Custom colour', id: 'Warna kustom' },
+        help: {
+          en: 'Used when no theme colour is picked.',
+          id: 'Dipakai bila tidak ada warna tema yang dipilih.',
+        },
+        default: '',
+      },
       select('backgroundSize', { en: 'Background size', id: 'Ukuran latar' }, BACKGROUND_SIZES),
+      select('backgroundPosition', { en: 'Background position', id: 'Posisi latar' }, ORIGINS),
       select(
-        'backgroundPosition',
-        { en: 'Background position', id: 'Posisi latar' },
-        ORIGINS,
+        'backgroundRepeat',
+        { en: 'Background repeat', id: 'Pengulangan latar' },
+        BACKGROUND_REPEATS,
       ),
-      select('backgroundRepeat', { en: 'Background repeat', id: 'Pengulangan latar' }, BACKGROUND_REPEATS),
       select(
         'backgroundAttachment',
         { en: 'Background attachment', id: 'Perekat latar' },
@@ -461,7 +513,17 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
       select('borderRadius', { en: 'Corners', id: 'Sudut' }, CORNERS),
       select('borderWidth', { en: 'Border width', id: 'Tebal garis' }, BORDER_WIDTHS),
       select('borderStyle', { en: 'Border style', id: 'Gaya garis' }, BORDER_STYLES),
-      { kind: 'color', key: 'borderColor', label: { en: 'Border colour', id: 'Warna garis' }, default: '' },
+      select('borderColorTheme', { en: 'Theme colour', id: 'Warna tema' }, THEME_COLOR_OPTIONS),
+      {
+        kind: 'color',
+        key: 'borderColor',
+        label: { en: 'Custom colour', id: 'Warna kustom' },
+        help: {
+          en: 'Used when no theme colour is picked.',
+          id: 'Dipakai bila tidak ada warna tema yang dipilih.',
+        },
+        default: '',
+      },
     ],
   },
   {
@@ -583,16 +645,6 @@ const FONT_SIZE: Record<string, string> = {
   '3xl': 'var(--chakra-font-sizes-3xl)',
   '4xl': 'var(--chakra-font-sizes-4xl)',
   '5xl': 'var(--chakra-font-sizes-5xl)',
-}
-
-const TEXT_COLOR: Record<string, string> = {
-  inherit: 'inherit',
-  fg: 'var(--chakra-colors-fg)',
-  'fg-muted': 'var(--chakra-colors-fg-muted)',
-  'fg-subtle': 'var(--chakra-colors-fg-subtle)',
-  brand: 'var(--chakra-colors-brand-solid)',
-  white: 'white',
-  black: 'black',
 }
 
 const FONT_FAMILY: Record<string, string> = {
@@ -769,6 +821,13 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   set('right', token(style, 'right', INSET))
   set('bottom', token(style, 'bottom', INSET))
   set('left', token(style, 'left', INSET))
+  // A sticky block with no vertical offset never leaves its static spot and
+  // scrolls away like any other, which reads as "sticky is broken". Sections
+  // default their own sticky to `top: 0` the same way; a chosen top, inset or
+  // bottom still wins.
+  if (out.position === 'sticky' && out.top === undefined && out.bottom === undefined) {
+    out.top = '0'
+  }
   set('width', token(style, 'width', PERCENT))
   set('height', token(style, 'height', HEIGHT))
   set('minHeight', token(style, 'minHeight', MIN_HEIGHT))
@@ -812,9 +871,13 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   set('marginTop', token(style, 'marginTop', SPACE))
   set('marginBottom', token(style, 'marginBottom', SPACE))
 
-  // Background
+  // Background. A theme token wins over the hex: it follows the page palette
+  // and the section scheme, which a raw colour cannot. The hex stays for
+  // layouts stored before the tokens existed.
+  const backgroundColorTheme = token(style, 'backgroundColorTheme', THEME_COLOR)
   const backgroundColor = readText(style, 'backgroundColor')
-  if (backgroundColor) out.backgroundColor = backgroundColor
+  if (backgroundColorTheme) out.backgroundColor = backgroundColorTheme
+  else if (backgroundColor) out.backgroundColor = backgroundColor
   set('backgroundSize', token(style, 'backgroundSize', BACKGROUND_SIZE))
   set('backgroundPosition', token(style, 'backgroundPosition', BOX_POSITION))
   set('backgroundRepeat', token(style, 'backgroundRepeat', BACKGROUND_REPEAT))
@@ -824,8 +887,10 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   set('borderRadius', token(style, 'borderRadius', RADIUS))
   set('borderWidth', token(style, 'borderWidth', BORDER_WIDTH))
   set('borderStyle', token(style, 'borderStyle', BORDER_STYLE))
+  const borderColorTheme = token(style, 'borderColorTheme', THEME_COLOR)
   const borderColor = readText(style, 'borderColor')
-  if (borderColor) out.borderColor = borderColor
+  if (borderColorTheme) out.borderColor = borderColorTheme
+  else if (borderColor) out.borderColor = borderColor
 
   // Effects
   const opacity = style.opacity

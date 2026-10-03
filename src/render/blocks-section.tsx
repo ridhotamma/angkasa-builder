@@ -112,11 +112,14 @@ function BlockList({
   gap,
   parentId = null,
   fieldKey = 'blocks',
+  justify,
 }: {
   blocks: BlockValue[]
   gap: string
   parentId?: string | null
   fieldKey?: string
+  /** Vertical packing, for a side of a Columns block whose row is taller. */
+  justify?: string
 }) {
   const empty = useEmptyText()
   const drop = useDropTarget(parentId, fieldKey)
@@ -131,7 +134,7 @@ function BlockList({
     )
   }
   return (
-    <Stack gap={gap} {...drop}>
+    <Stack gap={gap} justify={justify} {...drop}>
       {blockItems(blocks)}
     </Stack>
   )
@@ -424,7 +427,10 @@ function ButtonBlock({ block }: { block: BlockValue }) {
   const variant = readToken(block.settings, 'variant', BUTTON_VARIANTS, 'solid')
   const tone = readToken(block.settings, 'tone', BUTTON_TONES, 'brand')
   const hover = readToken(block.settings, 'hover', BUTTON_HOVERS, 'none')
-  const appearance = buttonAppearance(tone, variant, settings)
+  const appearance = buttonAppearance(tone, variant, settings, {
+    fill: readText(block.settings, 'toneColor'),
+    text: readText(block.settings, 'toneTextColor'),
+  })
   const layout = selfLayout(width, align)
   return (
     <Flex justify={layout.justify}>
@@ -644,7 +650,7 @@ const COLUMN_LAYOUT: Record<string, string> = {
   rightWide: '2fr 3fr',
 }
 
-const COLUMN_ALIGN: Record<string, string> = {
+const COLUMN_JUSTIFY: Record<string, string> = {
   start: 'flex-start',
   center: 'center',
   end: 'flex-end',
@@ -657,23 +663,30 @@ function ColumnsBlock({ block }: { block: BlockValue }) {
   const layout = readToken(block.settings, 'layout', COLUMN_LAYOUTS, 'equal')
   const align = readToken(block.settings, 'align', COLUMN_ALIGNS, 'start')
   const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'lg')]
+  const justify = COLUMN_JUSTIFY[align]
   return (
+    // The grid stretches, so each side's stack fills the tallest column's
+    // height — that height is what a sticky block inside a column travels
+    // within. The chosen alignment then packs the side's blocks in its stack
+    // rather than floating a content-height stack in the row.
     <Grid
       templateColumns={{ base: '1fr', md: COLUMN_LAYOUT[layout] }}
       gap={gap}
-      alignItems={COLUMN_ALIGN[align]}
+      alignItems="stretch"
     >
       <BlockList
         blocks={readBlocks(block.settings, 'left')}
         gap={gap}
         parentId={block.id}
         fieldKey="left"
+        justify={justify}
       />
       <BlockList
         blocks={readBlocks(block.settings, 'right')}
         gap={gap}
         parentId={block.id}
         fieldKey="right"
+        justify={justify}
       />
     </Grid>
   )

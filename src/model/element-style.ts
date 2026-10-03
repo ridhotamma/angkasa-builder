@@ -52,8 +52,8 @@ export type ButtonSize = (typeof BUTTON_SIZES)[number]
 export const BUTTON_VARIANTS = ['solid', 'outline', 'ghost'] as const
 export type ButtonVariant = (typeof BUTTON_VARIANTS)[number]
 
-/** What a button is made of: the page's brand, the accent, the dark band or a soft surface. */
-export const BUTTON_TONES = ['brand', 'accent', 'dark', 'light'] as const
+/** What a button is made of: the page's brand, the accent, the dark band, a soft surface — or a colour the seller picked. */
+export const BUTTON_TONES = ['brand', 'accent', 'dark', 'light', 'custom'] as const
 export type ButtonTone = (typeof BUTTON_TONES)[number]
 
 /** A button's side padding, on the same spacing scale as everything else. */
@@ -238,7 +238,25 @@ interface ToneSpec {
   border?: string
 }
 
-function toneSpec(tone: ButtonTone, settings: ThemeSettings): ToneSpec {
+/**
+ * A button's custom colours, as the seller entered them. Both are hex codes
+ * (the schema's `color` fields already bound them); `text` empty means the
+ * readable one is derived from the fill.
+ */
+export interface ButtonCustomColors {
+  fill?: string
+  text?: string
+}
+
+function hexOrNull(value: string | undefined): string | null {
+  return value && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null
+}
+
+function toneSpec(
+  tone: ButtonTone,
+  settings: ThemeSettings,
+  custom?: ButtonCustomColors,
+): ToneSpec {
   switch (tone) {
     case 'brand':
       return {
@@ -275,6 +293,15 @@ function toneSpec(tone: ButtonTone, settings: ThemeSettings): ToneSpec {
         tintContrast: 'var(--chakra-colors-bg)',
         border: 'var(--chakra-colors-border)',
       }
+    case 'custom': {
+      // An unset fill falls back to the brand token, and an unset label to the
+      // readable colour of the fill — same contract as the tone presets.
+      const fill = hexOrNull(custom?.fill) ?? 'var(--chakra-colors-brand-solid)'
+      const text =
+        hexOrNull(custom?.text) ??
+        (fill.startsWith('#') ? readableOn(fill) : 'var(--chakra-colors-brand-contrast)')
+      return { fill, contrast: text, tint: fill, tintContrast: text }
+    }
   }
 }
 
@@ -287,8 +314,9 @@ export function buttonAppearance(
   tone: ButtonTone,
   variant: ButtonVariant,
   settings: ThemeSettings,
+  custom?: ButtonCustomColors,
 ): ButtonAppearance {
-  const spec = toneSpec(tone, settings)
+  const spec = toneSpec(tone, settings, custom)
   switch (variant) {
     case 'solid':
       return {
@@ -392,6 +420,12 @@ const BUTTON_TONE_OPTIONS = [
   option('light', { en: 'Light', id: 'Terang' }),
 ]
 
+/** The block Button's extra tone: a colour the seller picks themselves. */
+export const BUTTON_CUSTOM_TONE_OPTION = option('custom', {
+  en: 'Custom colour…',
+  id: 'Warna kustom…',
+})
+
 const BUTTON_PADDING_OPTIONS = [
   option('default', { en: 'Auto (by size)', id: 'Otomatis (sesuai ukuran)' }),
   option('none', { en: 'None', id: 'Tidak ada' }),
@@ -489,12 +523,14 @@ export function buttonVariantField(): Field {
   }
 }
 
-export function buttonToneField(): Field {
+export function buttonToneField(options: { custom?: boolean } = {}): Field {
   return {
     kind: 'select',
     key: 'tone',
     label: { en: 'Button colour', id: 'Warna tombol' },
-    options: BUTTON_TONE_OPTIONS,
+    options: options.custom
+      ? [...BUTTON_TONE_OPTIONS, BUTTON_CUSTOM_TONE_OPTION]
+      : BUTTON_TONE_OPTIONS,
     default: 'brand',
   }
 }
@@ -742,12 +778,7 @@ export type TextElementTransform = (typeof TEXT_ELEMENT_TRANSFORMS)[number]
 export const TEXT_ELEMENT_STYLES = ['default', 'normal', 'italic'] as const
 export type TextElementFontStyle = (typeof TEXT_ELEMENT_STYLES)[number]
 
-export const TEXT_ELEMENT_DECORATIONS = [
-  'default',
-  'none',
-  'underline',
-  'line-through',
-] as const
+export const TEXT_ELEMENT_DECORATIONS = ['default', 'none', 'underline', 'line-through'] as const
 export type TextElementDecoration = (typeof TEXT_ELEMENT_DECORATIONS)[number]
 
 export const TEXT_ELEMENT_ALIGNS = ['default', 'left', 'center', 'right'] as const
@@ -1003,7 +1034,8 @@ export function textElementStyle(overrides: TextElementOverrides): TextElementSt
     out.fontFamily = TEXT_FONT_CSS[overrides.font]
   }
   if (overrides.weight !== 'default') out.fontWeight = TEXT_WEIGHT_CSS[overrides.weight]
-  if (overrides.lineHeight !== 'default') out.lineHeight = TEXT_LINE_HEIGHT_CSS[overrides.lineHeight]
+  if (overrides.lineHeight !== 'default')
+    out.lineHeight = TEXT_LINE_HEIGHT_CSS[overrides.lineHeight]
   if (overrides.letterSpacing !== 'default') {
     out.letterSpacing = TEXT_LETTER_SPACING_CSS[overrides.letterSpacing]
   }

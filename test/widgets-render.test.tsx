@@ -40,6 +40,54 @@ const TREE = [
     settings: { title: 'Break time', gridSize: 12, speed: 'fast' },
     style: { position: 'relative', zIndex: '10' },
   },
+  {
+    id: 'tabs',
+    type: 'widget-tabs',
+    settings: {
+      title: 'Details',
+      tab1Label: 'Overview',
+      tab1Blocks: [{ id: 'tab-heading', type: 'heading', settings: { text: 'Tab heading' } }],
+      tab2Label: 'Sizing',
+      tab2Blocks: [{ id: 'tab-text', type: 'text', settings: { body: 'Tab body' } }],
+    },
+  },
+  {
+    id: 'quiz',
+    type: 'widget-quiz',
+    settings: {
+      title: 'Quiz title',
+      questions: [{ id: 'q1', question: 'Which bean?', answers: 'Arabica\nRobusta', correct: 1 }],
+    },
+  },
+  {
+    id: 'estimate',
+    type: 'widget-estimate',
+    settings: {
+      title: 'Build your estimate',
+      options: [{ id: 'o1', label: 'Setup', detail: 'Onboarding', amount: 100000, selected: true }],
+      ctaLabel: 'Continue',
+    },
+  },
+  {
+    id: 'before-after',
+    type: 'widget-before-after',
+    settings: {
+      beforeImage: 'file-before',
+      afterImage: 'file-after',
+      beforeLabel: 'Before',
+      afterLabel: 'After',
+    },
+  },
+  {
+    id: 'countdown',
+    type: 'widget-countdown',
+    settings: { heading: 'Launch', endsAt: '2027-01-01T00:00:00.000Z' },
+  },
+  {
+    id: 'order-form',
+    type: 'widget-order-form',
+    settings: { title: 'Order on WhatsApp' },
+  },
 ]
 
 function section(): SectionInstance {
@@ -51,7 +99,7 @@ function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
     data: sampleStorefrontData('Widget Shop'),
     settings: DEFAULT_THEME_SETTINGS,
     mode: 'live',
-    imageUrl: () => null,
+    imageUrl: (fileId, _size) => `https://img.test/${fileId}`,
     formatPrice: (amount, currency) => `${amount} ${currency}`,
     now: new Date('2026-03-10T00:00:00.000Z'),
     ...overrides,
@@ -104,5 +152,53 @@ describe('the widget library on the storefront', () => {
       zIndex: '10',
     })
     expect(html).toMatch(/z-index:\s*10/)
+  })
+
+  test('tabs draw their labels and the first panel of real blocks', () => {
+    expect(html).toContain('data-widget="tabs"')
+    expect(html).toContain('Details')
+    expect(html).toContain('Overview')
+    expect(html).toContain('Sizing')
+    expect(html).toContain('Tab heading')
+  })
+
+  test('the quiz draws its question and choices', () => {
+    expect(html).toContain('data-widget="quiz"')
+    expect(html).toContain('Quiz title')
+    expect(html).toContain('Which bean?')
+    expect(html).toContain('Arabica')
+    expect(html).toContain('Robusta')
+    expect(html).toContain('Check answers')
+  })
+
+  test('the estimate draws its option, price and total', () => {
+    expect(html).toContain('data-widget="estimate"')
+    expect(html).toContain('Build your estimate')
+    expect(html).toContain('Setup')
+    expect(html).toContain('100000 IDR')
+    expect(html).toContain('Continue')
+  })
+
+  test('before / after draws both images and a labelled range control', () => {
+    expect(html).toContain('data-widget="before-after"')
+    expect(html).toContain('https://img.test/file-before')
+    expect(html).toContain('https://img.test/file-after')
+    expect(html).toContain('type="range"')
+  })
+
+  test('the countdown draws its units before the client ticks', () => {
+    expect(html).toContain('data-widget="countdown"')
+    expect(html).toContain('Launch')
+    expect(html).toContain('Days')
+    expect(html).toContain('Minutes')
+    // Server-rendered digits would hydrate seconds out of date.
+    expect(html).toContain('––')
+  })
+
+  test('the order form draws products and a wa.me link', () => {
+    expect(html).toContain('data-widget="order-form"')
+    expect(html).toContain('Order on WhatsApp')
+    expect(html).toContain('aria-label="Add one ')
+    expect(html).toContain('https://wa.me/6281234567890')
   })
 })

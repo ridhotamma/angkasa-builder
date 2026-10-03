@@ -256,7 +256,13 @@ function drawSnake(canvas: HTMLCanvasElement, state: SnakeState, size: number) {
 
   context.fillStyle = food
   context.beginPath()
-  context.arc(state.food.x * CELL + CELL / 2, state.food.y * CELL + CELL / 2, CELL * 0.34, 0, Math.PI * 2)
+  context.arc(
+    state.food.x * CELL + CELL / 2,
+    state.food.y * CELL + CELL / 2,
+    CELL * 0.34,
+    0,
+    Math.PI * 2,
+  )
   context.fill()
 
   state.snake.forEach((cell, index) => {
@@ -293,7 +299,10 @@ export function SnakeGame({ block }: BlockRendererProps) {
   // The tick.
   useEffect(() => {
     if (!running || state.over) return
-    const timer = setInterval(() => setState((current) => advanceSnake(current, size)), SNAKE_SPEEDS[speed])
+    const timer = setInterval(
+      () => setState((current) => advanceSnake(current, size)),
+      SNAKE_SPEEDS[speed],
+    )
     return () => clearInterval(timer)
   }, [running, state.over, speed, size])
 
@@ -344,7 +353,10 @@ export function SnakeGame({ block }: BlockRendererProps) {
         _focusVisible={{ boxShadow: '0 0 0 2px var(--chakra-colors-brand-solid)' }}
         onPointerDown={(event) => event.currentTarget.focus()}
         onKeyDown={(event) => {
-          if ((event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') && event.target === event.currentTarget) {
+          if (
+            (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') &&
+            event.target === event.currentTarget
+          ) {
             event.preventDefault()
             play()
             return

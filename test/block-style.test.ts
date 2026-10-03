@@ -115,6 +115,22 @@ describe('sanitising a block style', () => {
     })
     expect(block!.style).toBeUndefined()
   })
+
+  test('theme tokens and custom colours survive sanitising', () => {
+    const { block } = stored({
+      id: 'a',
+      type: 'column',
+      settings: {},
+      style: {
+        backgroundColorTheme: 'brand',
+        borderColorTheme: 'nonsense',
+        borderColor: '#ABCDEF',
+      },
+    })
+    // A known token and a valid hex stay; an invented token falls back to the
+    // field default and is not stored.
+    expect(block!.style).toEqual({ backgroundColorTheme: 'brand', borderColor: '#abcdef' })
+  })
 })
 
 describe('resolving a block style to CSS', () => {
@@ -150,6 +166,52 @@ describe('resolving a block style to CSS', () => {
   test('a style with nothing set resolves to the shared empty object', () => {
     expect(blockStyleCss(undefined)).toEqual({})
     expect(blockStyleCss({ position: 'default', opacity: 100 })).toEqual({})
+  })
+
+  test('theme colour tokens resolve to the theme variables', () => {
+    // Text can name the whole theme vocabulary, accent included.
+    expect(blockStyleCss({ color: 'accent' })).toMatchObject({ color: 'var(--pb-accent)' })
+    expect(blockStyleCss({ color: 'bg-panel' })).toMatchObject({
+      color: 'var(--chakra-colors-bg-panel)',
+    })
+    // Backgrounds and borders too, and a token wins over a stored hex.
+    expect(blockStyleCss({ backgroundColorTheme: 'brand' })).toMatchObject({
+      backgroundColor: 'var(--chakra-colors-brand-solid)',
+    })
+    expect(blockStyleCss({ backgroundColorTheme: 'brand-subtle' })).toMatchObject({
+      backgroundColor: 'var(--chakra-colors-brand-subtle)',
+    })
+    expect(blockStyleCss({ borderColorTheme: 'border' })).toMatchObject({
+      borderColor: 'var(--chakra-colors-border)',
+    })
+    expect(blockStyleCss({ backgroundColorTheme: 'bg', backgroundColor: '#123456' })).toMatchObject(
+      { backgroundColor: 'var(--chakra-colors-bg)' },
+    )
+    // A custom hex alone still applies (layouts stored before the tokens).
+    expect(blockStyleCss({ backgroundColor: '#123456' })).toMatchObject({
+      backgroundColor: '#123456',
+    })
+    expect(blockStyleCss({ borderColor: '#abcdef' })).toMatchObject({ borderColor: '#abcdef' })
+    // A transparent override is a token like any other.
+    expect(blockStyleCss({ backgroundColorTheme: 'transparent' })).toMatchObject({
+      backgroundColor: 'transparent',
+    })
+  })
+
+  test('sticky gets a top offset so it actually sticks', () => {
+    // Without an offset a sticky block never leaves its static spot.
+    expect(blockStyleCss({ position: 'sticky' })).toEqual({ position: 'sticky', top: '0' })
+    // A chosen top, inset or bottom still wins.
+    expect(blockStyleCss({ position: 'sticky', top: '4' })).toEqual({
+      position: 'sticky',
+      top: '1rem',
+    })
+    expect(blockStyleCss({ position: 'sticky', inset: '2' })).toMatchObject({ top: '0.5rem' })
+    const bottom = blockStyleCss({ position: 'sticky', bottom: '2' })
+    expect(bottom).toEqual({ position: 'sticky', bottom: '0.5rem' })
+    expect(bottom.top).toBeUndefined()
+    // Only sticky needs the default.
+    expect(blockStyleCss({ position: 'absolute' }).top).toBeUndefined()
   })
 
   test('typography and sizing tokens become plain CSS', () => {

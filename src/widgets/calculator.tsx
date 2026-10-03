@@ -66,11 +66,7 @@ export function formatNumber(value: number): string {
   return text.length > MAX_DIGITS + 2 ? value.toExponential(6) : text
 }
 
-function operate(
-  left: number,
-  right: number,
-  operator: CalculatorOperator,
-): number {
+function operate(left: number, right: number, operator: CalculatorOperator): number {
   switch (operator) {
     case '+':
       return left + right
@@ -210,7 +206,9 @@ export function Calculator({ block }: BlockRendererProps) {
           <Button
             key={key}
             size="sm"
-            variant={OPERATORS.includes(key) ? 'solid' : FUNCTIONS.includes(key) ? 'subtle' : 'outline'}
+            variant={
+              OPERATORS.includes(key) ? 'solid' : FUNCTIONS.includes(key) ? 'subtle' : 'outline'
+            }
             colorPalette={OPERATORS.includes(key) ? 'brand' : 'gray'}
             gridColumn={key === '=' ? 'span 2' : undefined}
             onClick={() => setState((current) => pressCalculator(current, key))}

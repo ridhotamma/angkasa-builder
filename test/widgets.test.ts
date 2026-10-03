@@ -4,35 +4,60 @@ import { readBlocks, registeredBlock, sanitizeValues, sectionSchema } from '../s
 import {
   addTodo,
   advanceSnake,
+  buildOrderMessage,
   clampGridSize,
+  clampPosition,
   createSnake,
   directionForKey,
+  estimateTotal,
   INITIAL_CALCULATOR,
+  normalizeWhatsappNumber,
+  parseQuizAnswers,
   parseTodoItems,
   pressCalculator,
+  readEstimateOptions,
+  readQuizQuestions,
+  readTabs,
   registerWidgets,
   remainingTodos,
   removeTodo,
+  scoreQuiz,
+  splitRemaining,
   toggleTodo,
   turnSnake,
+  whatsappOrderLink,
   type CalculatorKey,
   type CalculatorState,
   type Direction,
+  type EstimateOption,
   type SnakeState,
 } from '../src/widgets/index'
 
 registerWidgets()
 
+/** Every widget this entry ships, in registration order. */
+const WIDGET_TYPES = [
+  'widget-calculator',
+  'widget-todo-list',
+  'widget-snake',
+  'widget-tabs',
+  'widget-quiz',
+  'widget-estimate',
+  'widget-before-after',
+  'widget-countdown',
+  'widget-order-form',
+]
+
 describe('widget registration', () => {
   test('every widget is a first-class block after registering', () => {
-    for (const type of ['widget-calculator', 'widget-todo-list', 'widget-snake']) {
+    for (const type of WIDGET_TYPES) {
       expect(registeredBlock(type)).not.toBeNull()
     }
     const schema = sectionSchema('blocks')!
     const field = schema.fields.find((candidate) => candidate.key === 'blocks')!
     expect(field.kind).toBe('blocks')
     if (field.kind !== 'blocks') throw new Error('wrong field kind')
-    for (const type of ['widget-calculator', 'widget-todo-list', 'widget-snake']) {
+    for (const type of WIDGET_TYPES) {
       expect(field.blocks.some((block) => block.type === type)).toBe(true)
     }
   })
@@ -54,6 +79,18 @@ describe('widget registration', () => {
           type: 'widget-snake',
           settings: { title: 'Game', gridSize: 99, speed: 'fast', unknown: 'dropped' },
         },
+        {
+          id: 'tabs',
+          type: 'widget-tabs',
+          settings: {
+            tab1Label: 'Overview',
+            tab1Blocks: [
+              { id: 't1', type: 'heading', settings: { text: 'Hi' } },
+              { id: 't2', type: 'not-a-block', settings: {} },
+            ],
+            tab9Label: 'gone',
+          },
+        },
       ],
     })
     const blocks = readBlocks(values, 'blocks')
@@ -61,6 +98,7 @@ describe('widget registration', () => {
       'widget-calculator',
       'widget-todo-list',
       'widget-snake',
+      'widget-tabs',
     ])
     // Out of range numbers fall back to the field default; unknown keys vanish.
     expect(blocks[2]!.settings).toEqual({ title: 'Game', gridSize: 16, speed: 'fast' })
@@ -69,6 +107,11 @@ describe('widget registration', () => {
       initialItems: 'A\nB',
       allowAdd: true,
     })
+    // A tab's content is a real block tree: unknown types drop, the rest stays.
+    const tabs = readTabs(blocks[3]!.settings)
+    expect(tabs).toHaveLength(1)
+    expect(tabs[0]!.label).toBe('Overview')
+    expect(tabs[0]!.blocks.map((block) => block.type)).toEqual(['heading'])
   })
 })
 
@@ -228,5 +271,145 @@ describe('snake engine', () => {
   test('turns do nothing once the game is over', () => {
     const dead: SnakeState = { ...createSnake(8, fixed), over: true }
     expect(turnSnake(dead, 'up' as Direction)).toBe(dead)
+  })
+})
+
+describe('tabs', () => {
+  test('reads the filled slots, skipping empty ones', () => {
+    const tabs = readTabs({
+      tab1Label: 'Overview',
+      tab1Blocks: [{ id: 'a', type: 'text', settings: { body: 'Hi' } }],
+      tab2Label: 'Details',
+      tab2Blocks: [],
+      tab3Label: '',
+      tab3Blocks: [],
+      tab4Label: 'Sizing',
+      tab4Blocks: [{ id: 'b', type: 'heading', settings: { text: 'S' } }],
+    })
+    expect(tabs.map((tab) => tab.label)).toEqual(['Overview', 'Details', 'Sizing'])
+    expect(tabs[0]!.blocks).toHaveLength(1)
+    expect(tabs[1]!.blocks).toEqual([])
+  })
+
+  test('an all-empty widget has no tabs', () => {
+    expect(readTabs({})).toEqual([])
+    expect(readTabs({ tab1Label: '  ', tab1Blocks: [] })).toEqual([])
+  })
+})
+
+describe('quiz', () => {
+  test('parses one choice per line, capped', () => {
+    expect(parseQuizAnswers(' A \n\n B \nC')).toEqual(['A', 'B', 'C'])
+    expect(parseQuizAnswers('')).toEqual([])
+  })
+
+  test('reads questions and clamps the right answer', () => {
+    const questions = readQuizQuestions({
+      questions: [
+        { id: 'q1', question: 'Berapa?', answers: 'Satu\nDua', correct: 2, explanation: 'Dua.' },
+        { id: 'q2', question: 'Kosong?', answers: '', correct: 1 },
+        { id: 'q3', question: '', answers: 'A\nB', correct: 1 },
+      ],
+    })
+    // A question with no choices and one with no prompt are both dropped.
+    expect(questions).toHaveLength(1)
+    expect(questions[0]).toEqual({
+      id: 'q1',
+      question: 'Berapa?',
+      answers: ['Satu', 'Dua'],
+      correct: 1,
+      explanation: 'Dua.',
+    })
+  })
+
+  test('scores right, wrong and unanswered picks', () => {
+    const questions = readQuizQuestions({
+      questions: [
+        { id: 'q1', question: 'A?', answers: 'A\nB', correct: 1 },
+        { id: 'q2', question: 'B?', answers: 'A\nB', correct: 2 },
+      ],
+    })
+    expect(scoreQuiz(questions, [0, 1])).toEqual({ correct: 2, total: 2 })
+    expect(scoreQuiz(questions, [1, -1])).toEqual({ correct: 0, total: 2 })
+  })
+})
+
+describe('estimate', () => {
+  const options: EstimateOption[] = [
+    { id: 'a', label: 'Base', detail: '', amount: 100_000, selected: true },
+    { id: 'b', label: 'Extra', detail: '', amount: 25_000, selected: false },
+  ]
+
+  test('reads options and drops label-less rows', () => {
+    const read = readEstimateOptions({
+      options: [
+        { id: 'a', label: 'Base', amount: 100_000, selected: true },
+        { id: 'b', label: '', amount: 50_000 },
+      ],
+    })
+    expect(read).toHaveLength(1)
+    expect(read[0]!.amount).toBe(100_000)
+  })
+
+  test('sums the picked options, times the quantity', () => {
+    expect(estimateTotal(options, [true, true])).toBe(125_000)
+    expect(estimateTotal(options, [true, false])).toBe(100_000)
+    expect(estimateTotal(options, [true, true], 3)).toBe(375_000)
+    expect(estimateTotal(options, [false, false], 9)).toBe(0)
+  })
+})
+
+describe('before / after', () => {
+  test('keeps the divider between 0 and 100', () => {
+    expect(clampPosition(-10)).toBe(0)
+    expect(clampPosition(140)).toBe(100)
+    expect(clampPosition(37)).toBe(37)
+    expect(clampPosition(Number.NaN)).toBe(50)
+  })
+})
+
+describe('countdown', () => {
+  test('splits a duration into whole units', () => {
+    expect(splitRemaining(90_061_000)).toEqual({ days: 1, hours: 1, minutes: 1, seconds: 1 })
+    expect(splitRemaining(-5)).toEqual({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  })
+})
+
+describe('order form', () => {
+  test('normalises an Indonesian number for wa.me', () => {
+    expect(normalizeWhatsappNumber('0812-3456-7890')).toBe('6281234567890')
+    expect(normalizeWhatsappNumber('+62 812 3456 7890')).toBe('6281234567890')
+    expect(normalizeWhatsappNumber('no digits')).toBeNull()
+  })
+
+  test('builds the chat message with lines, total and note', () => {
+    const message = buildOrderMessage(
+      'Kopi Senja',
+      [
+        { name: 'Es Kopi', quantity: 2, totalLabel: 'Rp 20.000' },
+        { name: 'Tote', quantity: 1, totalLabel: 'Rp 50.000' },
+      ],
+      ' Tanpa gula ',
+      'Rp 70.000',
+    )
+    expect(message.split('\n')).toEqual([
+      'Hello Kopi Senja, I would like to order:',
+      '',
+      '- 2x Es Kopi — Rp 20.000',
+      '- 1x Tote — Rp 50.000',
+      '',
+      'Total: Rp 70.000',
+      '',
+      'Note: Tanpa gula',
+    ])
+  })
+
+  test('omits an empty note and builds the link', () => {
+    const message = buildOrderMessage('Toko', [], '', 'Rp 0')
+    expect(message).not.toContain('Note:')
+    expect(whatsappOrderLink('0812 3456 7890', 'Halo')).toBe(
+      `https://wa.me/6281234567890?text=${encodeURIComponent('Halo')}`,
+    )
+    expect(whatsappOrderLink('', 'Halo')).toBeNull()
   })
 })

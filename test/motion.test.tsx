@@ -139,6 +139,26 @@ describe('stacked-cards section', () => {
     expect(html).toContain('01')
     expect(html).toContain('02')
   })
+
+  test('a flat theme still paints an opaque card, so the pile hides its cards', () => {
+    const html = page(
+      [
+        createSection('stacked-cards', {
+          heading: 'Why us',
+          items: [
+            { title: 'First card', text: 'One', image: '' },
+            { title: 'Second card', text: 'Two', image: '' },
+          ],
+        }),
+      ],
+      env({ settings: { ...DEFAULT_THEME_SETTINGS, cardStyle: 'flat' } }),
+    )
+    // Transparent cards would show every card's text through the next; the
+    // surface is forced opaque and given an edge for the peeking strips.
+    expect(html).toContain('--chakra-colors-bg-panel')
+    expect(html).toContain('background:var(--chakra-colors-bg-panel)')
+    expect(html).toContain('border-width:1px')
+  })
 })
 
 describe('scrolling-text extras', () => {

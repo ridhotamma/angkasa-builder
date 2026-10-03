@@ -132,6 +132,11 @@ export interface StorefrontRenderData {
     currency: string
     /** From shop settings, for the contact section's email button. */
     email?: string | null
+    /**
+     * From shop settings, for widgets that hand an order to WhatsApp (the
+     * order form). Guests never see it; the number travels in the link.
+     */
+    phone?: string | null
   }
   categories: StorefrontCategoryData[]
   /** Active collections in sort order, each with its first products. */
@@ -277,6 +282,7 @@ export function sampleStorefrontData(shopName = 'Your shop'): StorefrontRenderDa
       logoUrl: null,
       bannerUrl: null,
       currency: 'IDR',
+      phone: '+62 812-3456-7890',
     },
     categories: ['Apparel', 'Bags', 'Accessories', 'Home', 'Gifts', 'Sale'].map((name, i) => ({
       id: `sample-category-${i}`,

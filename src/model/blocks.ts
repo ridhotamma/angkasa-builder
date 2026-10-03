@@ -115,8 +115,8 @@ const button: BlockSchema = {
   type: 'button',
   name: { en: 'Button', id: 'Tombol' },
   description: {
-    en: 'A call to action, in the brand, accent, dark or light tone.',
-    id: 'Ajakan bertindak dengan warna brand, aksen, gelap, atau terang.',
+    en: 'A call to action, in the brand, accent, dark or light tone — or a colour of your own.',
+    id: 'Ajakan bertindak dengan warna brand, aksen, gelap, terang, atau warna pilihan Anda.',
   },
   fields: [
     {
@@ -132,7 +132,25 @@ const button: BlockSchema = {
     selfWidthField(),
     alignmentField(),
     buttonVariantField(),
-    buttonToneField(),
+    buttonToneField({ custom: true }),
+    {
+      kind: 'color',
+      key: 'toneColor',
+      label: { en: 'Custom colour', id: 'Warna kustom' },
+      default: '',
+      showWhen: { key: 'tone', is: ['custom'] },
+    },
+    {
+      kind: 'color',
+      key: 'toneTextColor',
+      label: { en: 'Label colour', id: 'Warna label' },
+      help: {
+        en: 'Optional — a readable colour is picked automatically when empty.',
+        id: 'Opsional — warna yang terbaca dipilih otomatis bila kosong.',
+      },
+      default: '',
+      showWhen: { key: 'tone', is: ['custom'] },
+    },
     buttonHoverField(),
   ],
 }
@@ -307,7 +325,10 @@ const grid: BlockSchema = {
       kind: 'select',
       key: 'columns',
       label: { en: 'Columns on desktop', id: 'Kolom di desktop' },
-      options: [1, 2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: { en: String(n), id: String(n) } })),
+      options: [1, 2, 3, 4, 5, 6].map((n) => ({
+        value: String(n),
+        label: { en: String(n), id: String(n) },
+      })),
       default: '2',
     },
     spaceField('gap', { en: 'Gap', id: 'Jarak' }, 'md'),
@@ -670,14 +691,28 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'icon', settings: { icon: 'leaf', size: 'lg', tone: 'brand', align: 'left' } },
+                    {
+                      type: 'icon',
+                      settings: { icon: 'leaf', size: 'lg', tone: 'brand', align: 'left' },
+                    },
                     {
                       type: 'heading',
-                      settings: { text: 'Alami', level: 'h3', size: 'md', align: 'left', width: 'full' },
+                      settings: {
+                        text: 'Alami',
+                        level: 'h3',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
                     },
                     {
                       type: 'text',
-                      settings: { body: 'Bahan yang bisa dilacak asalnya.', size: 'md', align: 'left', width: 'full' },
+                      settings: {
+                        body: 'Bahan yang bisa dilacak asalnya.',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
                     },
                   ],
                 },
@@ -690,14 +725,28 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'icon', settings: { icon: 'truck', size: 'lg', tone: 'brand', align: 'left' } },
+                    {
+                      type: 'icon',
+                      settings: { icon: 'truck', size: 'lg', tone: 'brand', align: 'left' },
+                    },
                     {
                       type: 'heading',
-                      settings: { text: 'Kirim cepat', level: 'h3', size: 'md', align: 'left', width: 'full' },
+                      settings: {
+                        text: 'Kirim cepat',
+                        level: 'h3',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
                     },
                     {
                       type: 'text',
-                      settings: { body: 'Dikirim di hari yang sama.', size: 'md', align: 'left', width: 'full' },
+                      settings: {
+                        body: 'Dikirim di hari yang sama.',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
                     },
                   ],
                 },
@@ -710,14 +759,28 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'icon', settings: { icon: 'shield', size: 'lg', tone: 'brand', align: 'left' } },
+                    {
+                      type: 'icon',
+                      settings: { icon: 'shield', size: 'lg', tone: 'brand', align: 'left' },
+                    },
                     {
                       type: 'heading',
-                      settings: { text: 'Aman', level: 'h3', size: 'md', align: 'left', width: 'full' },
+                      settings: {
+                        text: 'Aman',
+                        level: 'h3',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
                     },
                     {
                       type: 'text',
-                      settings: { body: 'Dana ditahan sampai barang tiba.', size: 'md', align: 'left', width: 'full' },
+                      settings: {
+                        body: 'Dana ditahan sampai barang tiba.',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
                     },
                   ],
                 },
@@ -749,7 +812,12 @@ const BLOCK_PRESETS = [
             blocks: [
               {
                 type: 'column',
-                style: { borderWidth: '1', borderColor: '#e5e5e5', borderRadius: 'lg', padding: 'md' },
+                style: {
+                  borderWidth: '1',
+                  borderColor: '#e5e5e5',
+                  borderRadius: 'lg',
+                  padding: 'md',
+                },
                 settings: {
                   gap: 'sm',
                   padding: 'none',
@@ -761,14 +829,27 @@ const BLOCK_PRESETS = [
                     { type: 'text', settings: { body: 'Untuk toko yang baru membuka.' } },
                     {
                       type: 'button',
-                      settings: { label: 'Pilih paket', link: { kind: 'none' }, variant: 'outline', tone: 'brand', width: 'full', align: 'left' },
+                      settings: {
+                        label: 'Pilih paket',
+                        link: { kind: 'none' },
+                        variant: 'outline',
+                        tone: 'brand',
+                        width: 'full',
+                        align: 'left',
+                      },
                     },
                   ],
                 },
               },
               {
                 type: 'column',
-                style: { borderWidth: '2', borderColor: '#111111', borderRadius: 'lg', padding: 'md', backgroundColor: '#f7f7f2' },
+                style: {
+                  borderWidth: '2',
+                  borderColor: '#111111',
+                  borderRadius: 'lg',
+                  padding: 'md',
+                  backgroundColor: '#f7f7f2',
+                },
                 settings: {
                   gap: 'sm',
                   padding: 'none',
@@ -780,14 +861,27 @@ const BLOCK_PRESETS = [
                     { type: 'text', settings: { body: 'Untuk toko yang sedang naik.' } },
                     {
                       type: 'button',
-                      settings: { label: 'Pilih paket', link: { kind: 'none' }, variant: 'solid', tone: 'brand', width: 'full', align: 'left', hover: 'fill-up' },
+                      settings: {
+                        label: 'Pilih paket',
+                        link: { kind: 'none' },
+                        variant: 'solid',
+                        tone: 'brand',
+                        width: 'full',
+                        align: 'left',
+                        hover: 'fill-up',
+                      },
                     },
                   ],
                 },
               },
               {
                 type: 'column',
-                style: { borderWidth: '1', borderColor: '#e5e5e5', borderRadius: 'lg', padding: 'md' },
+                style: {
+                  borderWidth: '1',
+                  borderColor: '#e5e5e5',
+                  borderRadius: 'lg',
+                  padding: 'md',
+                },
                 settings: {
                   gap: 'sm',
                   padding: 'none',
@@ -799,7 +893,14 @@ const BLOCK_PRESETS = [
                     { type: 'text', settings: { body: 'Untuk tim dan banyak produk.' } },
                     {
                       type: 'button',
-                      settings: { label: 'Hubungi kami', link: { kind: 'none' }, variant: 'outline', tone: 'brand', width: 'full', align: 'left' },
+                      settings: {
+                        label: 'Hubungi kami',
+                        link: { kind: 'none' },
+                        variant: 'outline',
+                        tone: 'brand',
+                        width: 'full',
+                        align: 'left',
+                      },
                     },
                   ],
                 },
@@ -836,8 +937,24 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'heading', settings: { text: 'Berapa lama pengirimannya?', level: 'h3', size: 'md', align: 'left', width: 'full' } },
-                    { type: 'text', settings: { body: 'Diproses 1×24 jam, tiba 1–4 hari tergantung kota.', align: 'left', width: 'full' } },
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: 'Berapa lama pengirimannya?',
+                        level: 'h3',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: {
+                        body: 'Diproses 1×24 jam, tiba 1–4 hari tergantung kota.',
+                        align: 'left',
+                        width: 'full',
+                      },
+                    },
                   ],
                 },
               },
@@ -849,8 +966,24 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'heading', settings: { text: 'Apakah bisa COD?', level: 'h3', size: 'md', align: 'left', width: 'full' } },
-                    { type: 'text', settings: { body: 'Bisa, untuk area yang didukung kurir.', align: 'left', width: 'full' } },
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: 'Apakah bisa COD?',
+                        level: 'h3',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: {
+                        body: 'Bisa, untuk area yang didukung kurir.',
+                        align: 'left',
+                        width: 'full',
+                      },
+                    },
                   ],
                 },
               },
@@ -862,8 +995,24 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'heading', settings: { text: 'Bagaimana cara retur?', level: 'h3', size: 'md', align: 'left', width: 'full' } },
-                    { type: 'text', settings: { body: 'Ajukan dalam 7 hari lewat halaman pesanan.', align: 'left', width: 'full' } },
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: 'Bagaimana cara retur?',
+                        level: 'h3',
+                        size: 'md',
+                        align: 'left',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: {
+                        body: 'Ajukan dalam 7 hari lewat halaman pesanan.',
+                        align: 'left',
+                        width: 'full',
+                      },
+                    },
                   ],
                 },
               },
@@ -893,7 +1042,13 @@ const BLOCK_PRESETS = [
             blocks: [
               {
                 type: 'heading',
-                settings: { text: 'Siap mulai?', level: 'h2', size: '2xl', align: 'center', width: 'full' },
+                settings: {
+                  text: 'Siap mulai?',
+                  level: 'h2',
+                  size: '2xl',
+                  align: 'center',
+                  width: 'full',
+                },
               },
               {
                 type: 'text',
@@ -952,8 +1107,20 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'center',
                   blocks: [
-                    { type: 'heading', settings: { text: '10rb+', level: 'h2', size: '2xl', align: 'center', width: 'full' } },
-                    { type: 'text', settings: { body: 'Pesanan dikirim', align: 'center', width: 'full' } },
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: '10rb+',
+                        level: 'h2',
+                        size: '2xl',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: { body: 'Pesanan dikirim', align: 'center', width: 'full' },
+                    },
                   ],
                 },
               },
@@ -965,8 +1132,20 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'center',
                   blocks: [
-                    { type: 'heading', settings: { text: '4,9/5', level: 'h2', size: '2xl', align: 'center', width: 'full' } },
-                    { type: 'text', settings: { body: 'Rating pembeli', align: 'center', width: 'full' } },
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: '4,9/5',
+                        level: 'h2',
+                        size: '2xl',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: { body: 'Rating pembeli', align: 'center', width: 'full' },
+                    },
                   ],
                 },
               },
@@ -978,8 +1157,20 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'center',
                   blocks: [
-                    { type: 'heading', settings: { text: '24 jam', level: 'h2', size: '2xl', align: 'center', width: 'full' } },
-                    { type: 'text', settings: { body: 'Balasan tim kami', align: 'center', width: 'full' } },
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: '24 jam',
+                        level: 'h2',
+                        size: '2xl',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: { body: 'Balasan tim kami', align: 'center', width: 'full' },
+                    },
                   ],
                 },
               },
@@ -1007,10 +1198,19 @@ const BLOCK_PRESETS = [
             width: 'medium',
             align: 'center',
             blocks: [
-              { type: 'badge', settings: { text: 'Kabar terbaru', tone: 'subtle', size: 'sm', align: 'center' } },
+              {
+                type: 'badge',
+                settings: { text: 'Kabar terbaru', tone: 'subtle', size: 'sm', align: 'center' },
+              },
               {
                 type: 'heading',
-                settings: { text: 'Satu pernyataan yang jelas', level: 'h2', size: '3xl', align: 'center', width: 'full' },
+                settings: {
+                  text: 'Satu pernyataan yang jelas',
+                  level: 'h2',
+                  size: '3xl',
+                  align: 'center',
+                  width: 'full',
+                },
               },
               {
                 type: 'richtext',
@@ -1022,7 +1222,17 @@ const BLOCK_PRESETS = [
               },
               {
                 type: 'button',
-                settings: { label: 'Baca selengkapnya', link: { kind: 'none' }, size: 'lg', padding: 'default', width: 'auto', align: 'center', variant: 'outline', tone: 'brand', hover: 'fill-up' },
+                settings: {
+                  label: 'Baca selengkapnya',
+                  link: { kind: 'none' },
+                  size: 'lg',
+                  padding: 'default',
+                  width: 'auto',
+                  align: 'center',
+                  variant: 'outline',
+                  tone: 'brand',
+                  hover: 'fill-up',
+                },
               },
             ],
           },
@@ -1052,7 +1262,14 @@ const BLOCK_PRESETS = [
             blocks: [
               {
                 type: 'image',
-                settings: { image: '', alt: 'Foto produk', ratio: '4/3', rounded: 'lg', width: 'full', align: 'left' },
+                settings: {
+                  image: '',
+                  alt: 'Foto produk',
+                  ratio: '4/3',
+                  rounded: 'lg',
+                  width: 'full',
+                  align: 'left',
+                },
               },
               {
                 type: 'column',
@@ -1062,14 +1279,31 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'heading', settings: { text: 'Judul bagian', level: 'h2', size: 'xl' } },
+                    {
+                      type: 'heading',
+                      settings: { text: 'Judul bagian', level: 'h2', size: 'xl' },
+                    },
                     {
                       type: 'richtext',
-                      settings: { body: 'Ceritakan bahan, proses, atau alasan barang ini dibuat.', align: 'left', width: 'full' },
+                      settings: {
+                        body: 'Ceritakan bahan, proses, atau alasan barang ini dibuat.',
+                        align: 'left',
+                        width: 'full',
+                      },
                     },
                     {
                       type: 'button',
-                      settings: { label: 'Selengkapnya', link: { kind: 'none' }, size: 'md', padding: 'default', width: 'auto', align: 'left', variant: 'solid', tone: 'brand', hover: 'fill-up' },
+                      settings: {
+                        label: 'Selengkapnya',
+                        link: { kind: 'none' },
+                        size: 'md',
+                        padding: 'default',
+                        width: 'auto',
+                        align: 'left',
+                        variant: 'solid',
+                        tone: 'brand',
+                        hover: 'fill-up',
+                      },
                     },
                   ],
                 },
@@ -1101,7 +1335,12 @@ const BLOCK_PRESETS = [
             blocks: [
               {
                 type: 'column',
-                style: { padding: 'md', borderRadius: 'lg', borderWidth: '1', borderColor: '#e5e5e5' },
+                style: {
+                  padding: 'md',
+                  borderRadius: 'lg',
+                  borderWidth: '1',
+                  borderColor: '#e5e5e5',
+                },
                 settings: {
                   gap: 'sm',
                   padding: 'none',
@@ -1115,7 +1354,12 @@ const BLOCK_PRESETS = [
               },
               {
                 type: 'column',
-                style: { padding: 'md', borderRadius: 'lg', borderWidth: '1', borderColor: '#e5e5e5' },
+                style: {
+                  padding: 'md',
+                  borderRadius: 'lg',
+                  borderWidth: '1',
+                  borderColor: '#e5e5e5',
+                },
                 settings: {
                   gap: 'sm',
                   padding: 'none',
@@ -1129,7 +1373,12 @@ const BLOCK_PRESETS = [
               },
               {
                 type: 'column',
-                style: { padding: 'md', borderRadius: 'lg', borderWidth: '1', borderColor: '#e5e5e5' },
+                style: {
+                  padding: 'md',
+                  borderRadius: 'lg',
+                  borderWidth: '1',
+                  borderColor: '#e5e5e5',
+                },
                 settings: {
                   gap: 'sm',
                   padding: 'none',
@@ -1175,7 +1424,10 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'text', settings: { body: '“Kualitasnya melebihi ekspektasi.”', size: 'lg' } },
+                    {
+                      type: 'text',
+                      settings: { body: '“Kualitasnya melebihi ekspektasi.”', size: 'lg' },
+                    },
                     { type: 'heading', settings: { text: 'Rina', level: 'h3', size: 'md' } },
                     { type: 'text', settings: { body: 'Jakarta' } },
                   ],
@@ -1190,7 +1442,10 @@ const BLOCK_PRESETS = [
                   width: 'full',
                   align: 'left',
                   blocks: [
-                    { type: 'text', settings: { body: '“Sampainya cepat dan packing rapi.”', size: 'lg' } },
+                    {
+                      type: 'text',
+                      settings: { body: '“Sampainya cepat dan packing rapi.”', size: 'lg' },
+                    },
                     { type: 'heading', settings: { text: 'Bagas', level: 'h3', size: 'md' } },
                     { type: 'text', settings: { body: 'Bandung' } },
                   ],
@@ -1538,7 +1793,9 @@ function insertInto(
           }
           return { ...values, [field.key]: next as unknown as JsonValue }
         }
-        const schema = field.blocks.find((candidateSchema) => candidateSchema.type === candidate.type)
+        const schema = field.blocks.find(
+          (candidateSchema) => candidateSchema.type === candidate.type,
+        )
         if (!schema) continue
         const nested = insertInto(
           schema.fields,

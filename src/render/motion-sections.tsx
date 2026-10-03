@@ -100,11 +100,16 @@ export function StackedCards({ settings }: SectionProps) {
               top={`calc(var(${HEADER_HEIGHT_VAR}, 76px) + ${16 + index * 28}px)`}
             >
               <Box
-                bg="bg.panel"
                 rounded="l3"
                 overflow="hidden"
                 p={{ base: '5', md: '8' }}
                 {...frame}
+                // A pile only reads when a card hides the one under it. A flat
+                // theme would leave every card see-through and the whole stack
+                // would show its text at once, so the surface is forced opaque
+                // and flat gets an edge for the peeking strips.
+                bg="bg.panel"
+                {...(flat && { borderWidth: '1px', borderColor: 'border.subtle' })}
               >
                 <Flex
                   direction={{ base: 'column', md: src ? 'row' : 'column' }}
