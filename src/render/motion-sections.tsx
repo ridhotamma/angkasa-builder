@@ -18,6 +18,7 @@ import { readLink, readList, readRichText, readText, type FieldValues } from '..
 import { isRichDocEmpty } from '../model/rich-text'
 import { resolveScheme, schemeCssVars } from '../model/settings'
 import { HEADER_HEIGHT_VAR } from './chrome'
+import { SectionColumn } from './column'
 import { useRenderEnvironment } from './context'
 import { schemeCss } from './frame'
 import { requestMotionRefresh, useMotionEffect } from './motion/engine'
@@ -82,9 +83,11 @@ export function StackedCards({ settings }: SectionProps) {
 
   return (
     <Stack gap="6">
-      <SectionHeading align={align} field="heading">
-        {readText(settings, 'heading')}
-      </SectionHeading>
+      <SectionColumn>
+        <SectionHeading align={align} field="heading">
+          {readText(settings, 'heading')}
+        </SectionHeading>
+      </SectionColumn>
       <Stack ref={stack} gap="6">
         {items.map((item, index) => {
           const fileId = readText(item, 'image')
@@ -315,7 +318,9 @@ export function PinnedScroll({ settings }: SectionProps) {
 
   return (
     <Stack gap="6">
-      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      <SectionColumn>
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      </SectionColumn>
       <Box position="relative">
         {/* The pinned stage FIRST: it sticks at the top while the track below
             scrolls past, giving it one screen of stick range per panel.
@@ -476,7 +481,9 @@ export function ScrollRail({ settings }: SectionProps) {
         overflow="hidden"
         gap="6"
       >
-        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+        <SectionColumn>
+          <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+        </SectionColumn>
         <Box overflowX={driving ? 'hidden' : 'auto'} pb={driving ? '0' : '2'}>
           <Flex ref={track} data-rail="track" gap="5" w="max-content">
             {items.map((item) => {

@@ -11,6 +11,7 @@ import {
   Box,
   Button,
   Card,
+  Container,
   Heading,
   HStack,
   IconButton,
@@ -816,6 +817,20 @@ export const PAGE_WIDTH_CONTAINER = { containerType: 'inline-size' } as const
 /** Runs edge to edge across the page, from inside the centred column. */
 export function FullBleed(props: BoxProps) {
   return <Box w="100cqw" marginInline="calc(50% - 50cqw)" {...props} />
+}
+
+/**
+ * The page's own content column: the width and gutters the header and every
+ * contained section use.
+ *
+ * A full-bleed section (`width: full` or `edge`) paints its background and
+ * media across the viewport, but its **words** still belong here — lined up
+ * with the header's logo and the sections above and below. The frame supplies
+ * this column for `full`; an `edge` renderer that draws text adds it itself
+ * (see `SectionColumn` in `./column` for the width-aware wrapper).
+ */
+export function PageColumn(props: BoxProps) {
+  return <Container maxW="6xl" px={{ base: '4', md: '6' }} w="full" {...props} />
 }
 
 /** Shown in a preview where the live storefront would render nothing. */

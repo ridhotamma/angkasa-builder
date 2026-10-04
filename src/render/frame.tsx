@@ -24,6 +24,7 @@ import {
   resolveEntrance,
   type EntrancePreset,
   type ResolvedSectionStyle,
+  type SectionContentWidth,
   type SectionHeadline,
   type SectionSpacing,
   type SectionWidth,
@@ -75,10 +76,13 @@ export function useSectionStyle(style: FieldValues): ResolvedSectionStyle {
  */
 const SectionLayoutContext = createContext<{
   width: SectionWidth
+  /** The cap the section's content runs at; renderers add the column for `edge`. */
+  contentWidth: SectionContentWidth
   banded: boolean
   headline: SectionHeadline
 }>({
   width: 'contained',
+  contentWidth: '6xl',
   banded: false,
   headline: 'none',
 })
@@ -206,7 +210,14 @@ export function SectionFrame({
     ) : null
 
   const inner = (
-    <SectionLayoutContext.Provider value={{ width: style.width, banded, headline: style.headline }}>
+    <SectionLayoutContext.Provider
+      value={{
+        width: style.width,
+        contentWidth: style.contentWidth,
+        banded,
+        headline: style.headline,
+      }}
+    >
       <HeadlineContext.Provider value={style.headline}>
         <Reveal entrance={entrance} stagger={style.stagger}>
           {children}
@@ -231,10 +242,10 @@ export function SectionFrame({
       <FullBleed {...display} {...surface}>
         {layers}
         {dividerTop}
-        {/* The page's own column, inside a band that runs edge to edge. The
+        {/* The content column, inside a band that runs edge to edge. The
             padding matches the storefront shell's, so a band's content lines
-            up with the sections around it. */}
-        <Container maxW="6xl" px={{ base: '4', md: '6' }} position="relative">
+            up with the sections around it; the max width is the section's. */}
+        <Container maxW={style.contentWidth} px={{ base: '4', md: '6' }} position="relative">
           {inner}
         </Container>
         {dividerBottom}
@@ -243,6 +254,17 @@ export function SectionFrame({
   }
 
   // Page width: a band is a rounded panel in the column, padded on all sides.
+  // A content width narrower than the page centres inside the host column; no
+  // extra gutter, because the host already supplies it.
+  const content =
+    style.contentWidth === '6xl' ? (
+      inner
+    ) : (
+      <Container maxW={style.contentWidth} position="relative">
+        {inner}
+      </Container>
+    )
+
   return (
     <Box
       {...display}
@@ -251,7 +273,7 @@ export function SectionFrame({
     >
       {layers}
       {dividerTop}
-      {inner}
+      {content}
       {dividerBottom}
     </Box>
   )

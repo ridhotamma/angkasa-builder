@@ -38,6 +38,7 @@ import {
   type FieldValues,
 } from '../model/fields'
 import { textElementKey } from '../model/element-style'
+import { SectionColumn } from './column'
 import { findProductCard, useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
@@ -74,17 +75,19 @@ export function VideoSection({ settings }: SectionProps) {
   return (
     <Stack as="section" gap="5" align={align === 'center' ? 'center' : 'stretch'}>
       {(readText(settings, 'heading') || readText(settings, 'subheading')) && (
-        <Stack gap="2" textAlign={align} maxW="3xl" mx={align === 'center' ? 'auto' : undefined}>
-          <SectionHeading align={align} field="heading">
-            {readText(settings, 'heading')}
-          </SectionHeading>
-          <EditableText
-            as="p"
-            field="subheading"
-            value={readText(settings, 'subheading')}
-            color="fg.muted"
-          />
-        </Stack>
+        <SectionColumn>
+          <Stack gap="2" textAlign={align} maxW="3xl" mx={align === 'center' ? 'auto' : undefined}>
+            <SectionHeading align={align} field="heading">
+              {readText(settings, 'heading')}
+            </SectionHeading>
+            <EditableText
+              as="p"
+              field="subheading"
+              value={readText(settings, 'subheading')}
+              color="fg.muted"
+            />
+          </Stack>
+        </SectionColumn>
       )}
       {video ? (
         <Box w="full" maxW={vertical ? 'sm' : undefined} mx={vertical ? 'auto' : undefined}>
@@ -173,7 +176,9 @@ export function VideoReels({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="4">
-      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      <SectionColumn>
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      </SectionColumn>
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
@@ -457,15 +462,16 @@ export function Lookbook({ settings }: SectionProps) {
   if (!showList && !readText(settings, 'heading')) return <Box as="section">{photo}</Box>
 
   return (
-    <Grid
-      as="section"
-      templateColumns={{ base: '1fr', md: imageRight ? '2fr 3fr' : '3fr 2fr' }}
-      gap={{ base: '6', md: '10' }}
-      alignItems="center"
-    >
-      <Box order={{ base: 0, md: imageRight ? 1 : 0 }}>{photo}</Box>
-      {copy}
-    </Grid>
+    <SectionColumn>
+      <Grid
+        templateColumns={{ base: '1fr', md: imageRight ? '2fr 3fr' : '3fr 2fr' }}
+        gap={{ base: '6', md: '10' }}
+        alignItems="center"
+      >
+        <Box order={{ base: 0, md: imageRight ? 1 : 0 }}>{photo}</Box>
+        {copy}
+      </Grid>
+    </SectionColumn>
   )
 }
 
@@ -506,14 +512,16 @@ export function BeforeAfter({ settings }: SectionProps) {
   return (
     <Stack as="section" gap="5">
       {(readText(settings, 'heading') || readRichText(settings, 'body').content.length > 0) && (
-        <Stack gap="2" maxW="3xl">
-          <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-          <RichTextView
-            doc={readRichText(settings, 'body')}
-            elementKey={textElementKey('body')}
-            field="body"
-          />
-        </Stack>
+        <SectionColumn>
+          <Stack gap="2" maxW="3xl">
+            <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+            <RichTextView
+              doc={readRichText(settings, 'body')}
+              elementKey={textElementKey('body')}
+              field="body"
+            />
+          </Stack>
+        </SectionColumn>
       )}
       {beforeSrc && afterSrc ? (
         <Box position="relative" rounded="l3" overflow="hidden" userSelect="none">
@@ -620,9 +628,11 @@ export function LogoList({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="5">
-      <SectionHeading align="center" field="heading">
-        {readText(settings, 'heading')}
-      </SectionHeading>
+      <SectionColumn>
+        <SectionHeading align="center" field="heading">
+          {readText(settings, 'heading')}
+        </SectionHeading>
+      </SectionColumn>
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : readText(settings, 'layout') === 'marquee' ? (

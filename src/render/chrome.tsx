@@ -36,6 +36,7 @@ import { ImageWithFallback, Tooltip } from '@repo/theme'
 
 import { readBoolean, readLink, readList, readText, type FieldValues } from '../model/fields'
 import { isMegaMenu, type MenuItem } from '../model/menus'
+import { isContentWidth } from '../model/section-style'
 import { resolveScheme, schemeCssVars, SCHEME_KEYS, type SchemeKey } from '../model/settings'
 import { useRenderEnvironment } from './context'
 import { schemeCss } from './frame'
@@ -56,6 +57,12 @@ export interface ChromeShop {
 
 function isScheme(value: string): value is SchemeKey {
   return (SCHEME_KEYS as readonly string[]).includes(value)
+}
+
+/** The layout's content width, or the page column when it is missing or unknown. */
+function contentWidthOf(values: FieldValues): string {
+  const value = readText(values, 'contentWidth')
+  return isContentWidth(value) ? value : '6xl'
 }
 
 /** A scheme's variables as a style, or nothing for the page's own colours. */
@@ -541,7 +548,7 @@ export function StoreHeader({
           see-through header is already known to take no room. */}
       {transparent && <style>{`:root{${HEADER_HEIGHT_VAR}:0px}`}</style>}
       <AnnouncementStrip header={header} />
-      <Container maxW="6xl" px={{ base: '4', md: '6' }} py="3">
+      <Container maxW={contentWidthOf(header)} px={{ base: '4', md: '6' }} py="3">
         {bar}
       </Container>
     </Box>
@@ -639,7 +646,11 @@ export function StoreFooter({
       borderColor="border"
       {...(isScheme(schemeValue) ? scheme : { bg: 'bg' })}
     >
-      <Container maxW="6xl" px={{ base: '4', md: '6' }} py={{ base: '10', md: '14' }}>
+      <Container
+        maxW={contentWidthOf(footer)}
+        px={{ base: '4', md: '6' }}
+        py={{ base: '10', md: '14' }}
+      >
         <Stack gap="10">
           <Grid
             templateColumns={{

@@ -62,6 +62,7 @@ import {
   EmptyNotice,
   FullBleed,
   gridColumns,
+  PageColumn,
   Paragraphs,
   ProductGrid,
   SectionHeading,
@@ -166,7 +167,7 @@ export function overlayProps(
  */
 export function BannerCopy({ settings, onImage }: { settings: FieldValues; onImage: boolean }) {
   const { mode } = useRenderEnvironment()
-  const { headline, width: sectionWidth, banded } = useSectionLayout()
+  const { headline, width: sectionWidth, contentWidth, banded } = useSectionLayout()
   const heading = readText(settings, 'heading')
   const subheading = readText(settings, 'subheading')
   const align = alignOf(settings)
@@ -226,11 +227,11 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
       {edge ? (
         // The page's own column, so the words start where the header's logo
         // and the sections below do.
-        <Container maxW="6xl" px={{ base: '4', md: '6' }} w="full">
+        <PageColumn maxW={contentWidth}>
           <Flex w="full" justify={align === 'center' ? 'center' : 'start'}>
             {copy}
           </Flex>
-        </Container>
+        </PageColumn>
       ) : (
         copy
       )}

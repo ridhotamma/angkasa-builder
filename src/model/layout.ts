@@ -12,6 +12,7 @@
 
 import { sanitizeValues, type Field, type FieldValues } from './fields'
 import type { Localized } from './localized'
+import { CONTENT_WIDTHS } from './section-style'
 import { SCHEME_KEYS, SCHEME_LABELS } from './settings'
 
 export const HEADER_FIELDS: readonly Field[] = [
@@ -34,6 +35,17 @@ export const HEADER_FIELDS: readonly Field[] = [
       },
     ],
     default: 'classic',
+  },
+  {
+    kind: 'select',
+    key: 'contentWidth',
+    label: { en: 'Content width', id: 'Lebar konten' },
+    options: CONTENT_WIDTHS,
+    help: {
+      en: 'The width the logo, search and menu line up in. Page width matches the sections below it.',
+      id: 'Lebar tempat logo, pencarian, dan menu sejajar. Lebar halaman sama dengan bagian di bawahnya.',
+    },
+    default: '6xl',
   },
   {
     kind: 'boolean',
@@ -101,6 +113,17 @@ export const FOOTER_FIELDS: readonly Field[] = [
       label: SCHEME_LABELS[value],
     })),
     default: 'default',
+  },
+  {
+    kind: 'select',
+    key: 'contentWidth',
+    label: { en: 'Content width', id: 'Lebar konten' },
+    options: CONTENT_WIDTHS,
+    help: {
+      en: 'The width the footer columns line up in. Page width matches the sections above it.',
+      id: 'Lebar tempat kolom footer sejajar. Lebar halaman sama dengan bagian di atasnya.',
+    },
+    default: '6xl',
   },
   {
     kind: 'textarea',

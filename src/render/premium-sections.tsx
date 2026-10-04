@@ -41,6 +41,7 @@ import {
 import type { SectionType } from '../model/sections'
 import { resolveScheme, schemeCssVars, themeCssVarGroups } from '../model/settings'
 import { textElementKey } from '../model/element-style'
+import { SectionColumn } from './column'
 import { whatsappHref } from './content-sections'
 import { useRenderEnvironment } from './context'
 import { schemeCss, useSectionLayout } from './frame'
@@ -49,6 +50,7 @@ import { BackgroundVideo, VideoFrame } from './media'
 import {
   ButtonRow,
   EmptyNotice,
+  PageColumn,
   SectionHeading,
   SmartLink,
   ThemeText,
@@ -115,18 +117,57 @@ const BAND_POSITION: Record<string, 'flex-start' | 'center' | 'flex-end'> = {
 
 export function BackgroundVideoSection({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
-  const { width } = useSectionLayout()
+  const { width, contentWidth } = useSectionLayout()
   const video = readVideo(settings, 'video')
   const posterId = readText(settings, 'poster')
   const poster = posterId ? imageUrl(posterId, { width: 1920, height: 1080 }) : null
   const height = heroHeight(settings)
   const align = alignOf(settings)
   const middle = readText(settings, 'contentPosition') === 'middle'
+  const edge = width === 'edge'
+
+  const copy = (
+    <Stack
+      gap="4"
+      maxW="3xl"
+      textAlign={align}
+      align={align === 'center' ? 'center' : 'flex-start'}
+      color="white"
+    >
+      {readText(settings, 'heading') && (
+        <ThemeText
+          as="h2"
+          elementKey={textElementKey('heading')}
+          field="heading"
+          value={readText(settings, 'heading')}
+          fontSize={{ base: '3xl', md: '5xl' }}
+          letterSpacing="-0.025em"
+        />
+      )}
+      {readText(settings, 'subheading') && (
+        <ThemeText
+          as="p"
+          elementKey={textElementKey('subheading')}
+          field="subheading"
+          value={readText(settings, 'subheading')}
+          fontSize={{ base: 'md', md: 'xl' }}
+          opacity={0.92}
+        />
+      )}
+      <RichTextView
+        doc={readRichText(settings, 'body')}
+        elementKey={textElementKey('body')}
+        field="body"
+        inheritColor
+      />
+      {!middle && <ButtonRow settings={settings} align={align} onImage />}
+    </Stack>
+  )
 
   return (
     <Box
       position="relative"
-      rounded={width === 'edge' ? 'none' : 'l3'}
+      rounded={edge ? 'none' : 'l3'}
       overflow="hidden"
       minH={height}
       bg="gray.900"
@@ -137,44 +178,19 @@ export function BackgroundVideoSection({ settings }: SectionProps) {
         minH={height}
         align={BAND_POSITION[readText(settings, 'contentPosition')] ?? 'flex-end'}
         justify={align === 'center' ? 'center' : 'start'}
-        p={{ base: '6', md: '12' }}
+        px={edge ? '0' : { base: '6', md: '12' }}
+        py={{ base: '6', md: '12' }}
         {...overlayProps(readText(settings, 'overlay'))}
       >
-        <Stack
-          gap="4"
-          maxW="3xl"
-          textAlign={align}
-          align={align === 'center' ? 'center' : 'flex-start'}
-          color="white"
-        >
-          {readText(settings, 'heading') && (
-            <ThemeText
-              as="h2"
-              elementKey={textElementKey('heading')}
-              field="heading"
-              value={readText(settings, 'heading')}
-              fontSize={{ base: '3xl', md: '5xl' }}
-              letterSpacing="-0.025em"
-            />
-          )}
-          {readText(settings, 'subheading') && (
-            <ThemeText
-              as="p"
-              elementKey={textElementKey('subheading')}
-              field="subheading"
-              value={readText(settings, 'subheading')}
-              fontSize={{ base: 'md', md: 'xl' }}
-              opacity={0.92}
-            />
-          )}
-          <RichTextView
-            doc={readRichText(settings, 'body')}
-            elementKey={textElementKey('body')}
-            field="body"
-            inheritColor
-          />
-          {!middle && <ButtonRow settings={settings} align={align} onImage />}
-        </Stack>
+        {edge ? (
+          <PageColumn maxW={contentWidth}>
+            <Flex w="full" justify={align === 'center' ? 'center' : 'start'}>
+              {copy}
+            </Flex>
+          </PageColumn>
+        ) : (
+          copy
+        )}
         {middle && <Box />}
       </Flex>
     </Box>
@@ -199,7 +215,9 @@ export function MasonryGallery({ settings }: SectionProps) {
 
   return (
     <Stack gap="6">
-      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      <SectionColumn>
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      </SectionColumn>
       <Box
         columns={{ base: 1, sm: 2, md: readColumns(settings, 3) }}
         columnGap="4"
@@ -322,7 +340,9 @@ export function VideoTestimonials({ settings }: SectionProps) {
 
   return (
     <Stack gap="6">
-      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      <SectionColumn>
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      </SectionColumn>
       <SimpleGrid columns={{ base: 1, md: readColumns(settings, 3) }} gap="5">
         {items.map((item) => {
           const itemVideo = readVideo(item, 'video')
@@ -423,14 +443,16 @@ export function Team({ settings }: SectionProps) {
 
   return (
     <Stack gap="6">
-      <SectionHeading align={align} field="heading">
-        {readText(settings, 'heading')}
-      </SectionHeading>
-      <RichTextView
-        doc={readRichText(settings, 'body')}
-        elementKey={textElementKey('body')}
-        field="body"
-      />
+      <SectionColumn>
+        <SectionHeading align={align} field="heading">
+          {readText(settings, 'heading')}
+        </SectionHeading>
+        <RichTextView
+          doc={readRichText(settings, 'body')}
+          elementKey={textElementKey('body')}
+          field="body"
+        />
+      </SectionColumn>
       <SimpleGrid columns={{ base: 1, sm: 2, md: readColumns(settings, 3) }} gap="5">
         {items.map((item) => {
           const photo = readText(item, 'photo')
@@ -523,7 +545,9 @@ export function Press({ settings }: SectionProps) {
 
   return (
     <Stack gap="6">
-      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      <SectionColumn>
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      </SectionColumn>
       {list ? (
         <Stack gap="3">{items.map(card)}</Stack>
       ) : (
@@ -541,14 +565,61 @@ export function Press({ settings }: SectionProps) {
 
 export function EditorialStatement({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
+  const { width, contentWidth } = useSectionLayout()
   const align = alignOf(settings)
   const fileId = readText(settings, 'image')
   const src = fileId ? imageUrl(fileId, { width: 1920, height: 1200 }) : null
   const eyebrow = readText(settings, 'eyebrow')
   const heading = readText(settings, 'heading')
+  const edge = width === 'edge'
+
+  const copy = (
+    <Stack
+      gap="4"
+      maxW="4xl"
+      textAlign={align}
+      align={align === 'center' ? 'center' : 'flex-start'}
+      color={src ? 'white' : 'fg'}
+    >
+      {eyebrow && (
+        <ThemeText
+          elementKey={textElementKey('eyebrow')}
+          field="eyebrow"
+          value={eyebrow}
+          fontSize="sm"
+          fontWeight="semibold"
+          letterSpacing="0.14em"
+          textTransform="uppercase"
+          opacity={0.85}
+        />
+      )}
+      {heading && (
+        <ThemeText
+          as="h2"
+          elementKey={textElementKey('heading')}
+          field="heading"
+          value={heading}
+          fontSize={{ base: '3xl', md: '5xl' }}
+          letterSpacing="-0.03em"
+          lineHeight="1.02"
+          textWrap="balance"
+        />
+      )}
+      <ThemeText
+        as="div"
+        elementKey={textElementKey('body')}
+        field="body"
+        inline={false}
+        css={{ '& *': { color: 'inherit' } }}
+      >
+        <RichTextView doc={readRichText(settings, 'body')} />
+      </ThemeText>
+      <ButtonRow settings={settings} align={align} onImage={Boolean(src)} />
+    </Stack>
+  )
 
   return (
-    <Box position="relative" overflow="hidden" rounded="l3">
+    <Box position="relative" overflow="hidden" rounded={edge ? 'none' : 'l3'}>
       {src && (
         <Box position="absolute" inset={0}>
           <ImageWithFallback src={src} alt="" w="full" h="full" objectFit="cover" loading="lazy" />
@@ -559,51 +630,19 @@ export function EditorialStatement({ settings }: SectionProps) {
         minH={{ base: '24rem', md: '34rem' }}
         align="center"
         justify={align === 'center' ? 'center' : 'flex-start'}
-        p={{ base: '6', md: '14' }}
+        px={edge ? '0' : { base: '6', md: '14' }}
+        py={{ base: '6', md: '14' }}
         {...overlayProps(src ? readText(settings, 'overlay') : 'none')}
       >
-        <Stack
-          gap="4"
-          maxW="4xl"
-          textAlign={align}
-          align={align === 'center' ? 'center' : 'flex-start'}
-          color={src ? 'white' : 'fg'}
-        >
-          {eyebrow && (
-            <ThemeText
-              elementKey={textElementKey('eyebrow')}
-              field="eyebrow"
-              value={eyebrow}
-              fontSize="sm"
-              fontWeight="semibold"
-              letterSpacing="0.14em"
-              textTransform="uppercase"
-              opacity={0.85}
-            />
-          )}
-          {heading && (
-            <ThemeText
-              as="h2"
-              elementKey={textElementKey('heading')}
-              field="heading"
-              value={heading}
-              fontSize={{ base: '3xl', md: '5xl' }}
-              letterSpacing="-0.03em"
-              lineHeight="1.02"
-              textWrap="balance"
-            />
-          )}
-          <ThemeText
-            as="div"
-            elementKey={textElementKey('body')}
-            field="body"
-            inline={false}
-            css={{ '& *': { color: 'inherit' } }}
-          >
-            <RichTextView doc={readRichText(settings, 'body')} />
-          </ThemeText>
-          <ButtonRow settings={settings} align={align} onImage={Boolean(src)} />
-        </Stack>
+        {edge ? (
+          <PageColumn maxW={contentWidth}>
+            <Flex w="full" justify={align === 'center' ? 'center' : 'flex-start'}>
+              {copy}
+            </Flex>
+          </PageColumn>
+        ) : (
+          copy
+        )}
       </Flex>
     </Box>
   )
@@ -617,6 +656,7 @@ const SPLIT_MIN_H = { md: '22rem', lg: '32rem', screen: '100svh' } as const
 
 export function SplitScreen({ settings }: SectionProps) {
   const { settings: theme, imageUrl } = useRenderEnvironment()
+  const { contentWidth } = useSectionLayout()
   const fileId = readText(settings, 'image')
   const src = fileId ? imageUrl(fileId, { width: 1400, height: 1400 }) : null
   const imageRight = readText(settings, 'imagePosition') === 'right'
@@ -626,38 +666,58 @@ export function SplitScreen({ settings }: SectionProps) {
   const minH = SPLIT_MIN_H[(readText(settings, 'minHeight') as keyof typeof SPLIT_MIN_H) ?? 'lg']
 
   return (
-    <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} minH={{ md: minH }}>
+    <Box
+      position="relative"
+      minH={{ md: minH }}
+      bg="bg"
+      color="fg"
+      css={
+        scheme
+          ? schemeCss(tone as 'subtle' | 'inverse' | 'brand', schemeCssVars(scheme))
+          : undefined
+      }
+    >
+      {/* The photo half runs to the viewport edge... */}
       <Box
-        order={{ base: 0, md: imageRight ? 1 : 0 }}
-        minH={{ base: '18rem', md: 'auto' }}
+        position={{ base: 'relative', md: 'absolute' }}
+        insetBlock={{ md: 0 }}
+        {...(imageRight ? { insetInlineEnd: { md: 0 } } : { insetInlineStart: { md: 0 } })}
+        w={{ base: 'full', md: '50cqw' }}
+        h={{ base: '18rem', md: 'auto' }}
+        minH={{ base: '18rem', md: minH }}
         bg="bg.subtle"
+        overflow="hidden"
       >
         {src && (
           <ImageWithFallback src={src} alt="" w="full" h="full" objectFit="cover" loading="lazy" />
         )}
       </Box>
-      <Flex
-        align="center"
-        p={{ base: '6', md: '12' }}
-        bg="bg"
-        color="fg"
-        css={
-          scheme
-            ? schemeCss(tone as 'subtle' | 'inverse' | 'brand', schemeCssVars(scheme))
-            : undefined
-        }
-      >
-        <Stack gap="4" maxW="xl">
-          <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-          <RichTextView
-            doc={readRichText(settings, 'body')}
-            elementKey={textElementKey('body')}
-            field="body"
-          />
-          <ButtonRow settings={settings} align="left" />
-        </Stack>
-      </Flex>
-    </Grid>
+
+      {/* ...while the words stay in the page column, in the half the photo
+          does not occupy. The page column is centred, so its midpoint is the
+          viewport's: text and photo always meet exactly on the fold. */}
+      <PageColumn maxW={contentWidth} position="relative">
+        <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} minH={{ md: minH }}>
+          <Flex
+            gridColumn={{ md: imageRight ? '1' : '2' }}
+            align="center"
+            py={{ base: '6', md: '12' }}
+            pe={{ base: '0', md: imageRight ? '10' : '0' }}
+            ps={{ base: '0', md: imageRight ? '0' : '10' }}
+          >
+            <Stack gap="4" maxW="xl">
+              <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+              <RichTextView
+                doc={readRichText(settings, 'body')}
+                elementKey={textElementKey('body')}
+                field="body"
+              />
+              <ButtonRow settings={settings} align="left" />
+            </Stack>
+          </Flex>
+        </Grid>
+      </PageColumn>
+    </Box>
   )
 }
 
@@ -674,14 +734,16 @@ export function SocialWall({ settings }: SectionProps) {
 
   return (
     <Stack gap="6">
-      <Stack gap="1" textAlign="center" align="center">
-        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-        {handle && (
-          <Text color="fg.muted" fontWeight="medium">
-            {handle}
-          </Text>
-        )}
-      </Stack>
+      <SectionColumn>
+        <Stack gap="1" textAlign="center" align="center">
+          <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+          {handle && (
+            <Text color="fg.muted" fontWeight="medium">
+              {handle}
+            </Text>
+          )}
+        </Stack>
+      </SectionColumn>
       <SimpleGrid columns={{ base: 2, md: readColumns(settings, 4, '4') }} gap="2">
         {items.map((item) => {
           const src = imageUrl(readText(item, 'image'), { width: 600, height: 600 })

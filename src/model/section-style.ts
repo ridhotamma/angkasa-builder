@@ -35,6 +35,38 @@ const SPACING = [
   { value: 'xl', label: { en: 'Extra large', id: 'Sangat besar' } },
 ] as const
 
+/**
+ * How wide a section's content may run, centred in the page.
+ *
+ * Chakra container sizes, so the vocabulary matches the rest of the system: a
+ * hero can run `md`, a product or collection grid `6xl` (the page column the
+ * header and footer use), a text column `3xl`, and `full` removes the cap.
+ * The default is the page column, so nothing moves until a seller chooses.
+ */
+export const CONTENT_WIDTHS = [
+  { value: 'sm', label: { en: 'Container sm (24rem)', id: 'Kontainer sm (24rem)' } },
+  { value: 'md', label: { en: 'Container md (28rem)', id: 'Kontainer md (28rem)' } },
+  { value: 'lg', label: { en: 'Container lg (32rem)', id: 'Kontainer lg (32rem)' } },
+  { value: 'xl', label: { en: 'Container xl (36rem)', id: 'Kontainer xl (36rem)' } },
+  { value: '2xl', label: { en: 'Container 2xl (42rem)', id: 'Kontainer 2xl (42rem)' } },
+  { value: '3xl', label: { en: 'Container 3xl (48rem)', id: 'Kontainer 3xl (48rem)' } },
+  { value: '4xl', label: { en: 'Container 4xl (56rem)', id: 'Kontainer 4xl (56rem)' } },
+  { value: '5xl', label: { en: 'Container 5xl (64rem)', id: 'Kontainer 5xl (64rem)' } },
+  {
+    value: '6xl',
+    label: { en: 'Page width (6xl, 72rem)', id: 'Lebar halaman (6xl, 72rem)' },
+  },
+  { value: '7xl', label: { en: 'Container 7xl (80rem)', id: 'Kontainer 7xl (80rem)' } },
+  { value: 'full', label: { en: 'No limit', id: 'Tanpa batas' } },
+] as const
+export type SectionContentWidth = (typeof CONTENT_WIDTHS)[number]['value']
+
+const CONTENT_WIDTH_VALUES = CONTENT_WIDTHS.map((option) => option.value)
+
+export function isContentWidth(value: unknown): value is SectionContentWidth {
+  return typeof value === 'string' && (CONTENT_WIDTH_VALUES as readonly string[]).includes(value)
+}
+
 export const BACKGROUND_TYPES = ['default', 'gradient', 'pattern', 'image', 'video'] as const
 export type BackgroundType = (typeof BACKGROUND_TYPES)[number]
 
@@ -334,6 +366,17 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
   },
   {
     kind: 'select',
+    key: 'contentWidth',
+    label: { en: 'Content width', id: 'Lebar konten' },
+    options: CONTENT_WIDTHS,
+    help: {
+      en: 'How wide the content may run, centred in the page. Page width lines up with the header; a narrower column suits a hero, a form or a reading section.',
+      id: 'Seberapa lebar konten, dipusatkan di halaman. Lebar halaman sejajar dengan header; kolom lebih sempit cocok untuk hero, formulir, atau bagian bacaan.',
+    },
+    default: '6xl',
+  },
+  {
+    kind: 'select',
     key: 'paddingTop',
     label: { en: 'Space above', id: 'Jarak atas' },
     options: SPACING,
@@ -409,6 +452,8 @@ export interface ResolvedSectionStyle {
   headline: SectionHeadline
   stagger: boolean
   width: SectionWidth
+  /** The cap on the content's width, inside whatever the section's `width` paints. */
+  contentWidth: SectionContentWidth
   paddingTop: SectionSpacing
   paddingBottom: SectionSpacing
   visibility: SectionVisibility
@@ -511,6 +556,7 @@ export function readSectionStyle(style: FieldValues): ResolvedSectionStyle {
     ),
     stagger: readBoolean(style, 'stagger'),
     width: width === 'full' || width === 'edge' ? width : 'contained',
+    contentWidth: readOption(style, 'contentWidth', CONTENT_WIDTH_VALUES, '6xl'),
     paddingTop: readOption(
       style,
       'paddingTop',
