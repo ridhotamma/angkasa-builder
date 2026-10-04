@@ -267,7 +267,7 @@ function MobileMenu({ items, shop }: { items: MenuItem[]; shop: ChromeShop }) {
         <IconButton
           aria-label="Menu"
           variant="ghost"
-          size="sm"
+          size="md"
           rounded="full"
           hideFrom="md"
           color="inherit"
@@ -470,9 +470,34 @@ export function StoreHeader({
   // absolute if it should scroll away with the banner.
   const position = transparent ? (sticky ? 'fixed' : 'absolute') : sticky ? 'sticky' : 'relative'
   const search = showSearch ? searchButton : null
+  // On a phone the search gets its own row under the bar. A real field is more
+  // useful than an icon squeezed between the brand and the cart, and it leaves
+  // the top row to the logo and the actions — the crowded, uneven look the
+  // inline and classic bars had on a narrow screen.
+  //
+  // A see-through header over a banner keeps its single slim row instead: a
+  // floating search field would sit on the hero's words, and a row that only
+  // appeared after scrolling would make the header jump. The icon stays in
+  // the right cluster there.
+  const mobileSearch =
+    showSearch && searchField && !transparent ? (
+      <Box hideFrom="md" pb="1">
+        {searchField}
+      </Box>
+    ) : null
   const right = (
-    <HStack gap="0.5" justifySelf="end" flexShrink="0">
-      {layout === 'classic' ? <Box hideFrom="md">{search}</Box> : search}
+    <HStack gap="1" justifySelf="end" ms="auto" flexShrink="0">
+      {layout === 'classic' ? (
+        // Classic's desktop carries the full box in its middle column.
+        <Box hideFrom="md">{mobileSearch ? null : search}</Box>
+      ) : (
+        <>
+          {/* Desktop keeps the icon; on a phone the row replaces it whenever
+              the host supplied a field, and the icon stays as the fallback. */}
+          <Box hideBelow="md">{search}</Box>
+          {mobileSearch ? null : search}
+        </>
+      )}
       {actions}
     </HStack>
   )
@@ -493,19 +518,25 @@ export function StoreHeader({
           <Logo shop={shop} centered />
           {right}
         </Grid>
+        {mobileSearch}
         <DesktopMenu items={menu} justify="center" />
       </Stack>
     ) : layout === 'inline' ? (
-      <Flex align="center" gap="6">
-        <MobileMenu items={menu} shop={shop} />
-        <Box flexShrink="0" maxW={{ base: '60%', md: '16rem' }} minW="0">
-          <Logo shop={shop} />
-        </Box>
-        <Box flex="1" minW="0">
-          <DesktopMenu items={menu} justify="start" />
-        </Box>
-        {right}
-      </Flex>
+      <Stack gap="2">
+        <Flex align="center" gap={{ base: '2', md: '6' }}>
+          <MobileMenu items={menu} shop={shop} />
+          <Box flexShrink="0" maxW={{ base: '60%', md: '16rem' }} minW="0">
+            <Logo shop={shop} />
+          </Box>
+          {/* Hidden on a phone, so the desktop menu's slot does not leave an
+              empty gap between the logo and the icons. */}
+          <Box flex="1" minW="0" hideBelow="md">
+            <DesktopMenu items={menu} justify="start" />
+          </Box>
+          {right}
+        </Flex>
+        {mobileSearch}
+      </Stack>
     ) : (
       <Stack gap="2">
         <Grid
@@ -523,6 +554,7 @@ export function StoreHeader({
           <Box hideBelow="md">{showSearch ? searchField : null}</Box>
           {right}
         </Grid>
+        {mobileSearch}
         <DesktopMenu items={menu} justify="start" />
       </Stack>
     )
