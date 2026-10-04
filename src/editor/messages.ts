@@ -45,6 +45,8 @@ const MESSAGES = {
   typography: { en: 'Typography', id: 'Tipografi' },
   headingFont: { en: 'Heading font', id: 'Font judul' },
   bodyFont: { en: 'Body font', id: 'Font isi' },
+  fontSearch: { en: 'Search fonts…', id: 'Cari font…' },
+  fontNone: { en: 'No font matches.', id: 'Tidak ada font yang cocok.' },
   shape: { en: 'Shape', id: 'Bentuk' },
   radius: { en: 'Corner radius', id: 'Sudut' },
   buttonStyle: { en: 'Buttons', id: 'Tombol' },

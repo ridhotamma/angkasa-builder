@@ -13,62 +13,73 @@
 
 import { z } from 'zod'
 
+import { findFont, isFontFamily, type FontFallback } from './font-library'
 import type { Localized } from './localized'
+
+export {
+  FEATURED_FONTS,
+  FONT_OPTIONS,
+  findFont,
+  isFontFamily,
+  type FontCategory,
+  type FontFallback,
+  type FontOption,
+} from './font-library'
 
 /* -------------------------------------------------------------------------- */
 /* Fonts                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export interface FontOption {
-  family: string
-  /** The CSS fallback stack after the family itself. */
-  fallback: 'sans-serif' | 'serif'
+/**
+ * A font family, validated against the library rather than typed as a union:
+ * the catalogue holds hundreds of families and a union of that size would
+ * slow every file that touches a theme down. `isFontFamily` is the gate.
+ */
+export type FontFamily = string
+
+const GENERIC_STACK: Record<FontFallback, string> = {
+  'sans-serif': 'ui-sans-serif, system-ui, -apple-system, sans-serif',
+  serif: "ui-serif, Georgia, 'Times New Roman', serif",
+  monospace: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+  cursive: "ui-rounded, 'Segoe UI', cursive",
+}
+
+/** The CSS stack for a family: the family itself, then its generic fallback. */
+export function fontStack(family: FontFamily): string {
+  const option = findFont(family) ?? findFont('Poppins')!
+  return `'${option.family}', ${GENERIC_STACK[option.fallback]}`
 }
 
 /**
- * The curated Google Fonts list.
+ * The Google Fonts stylesheet URL for a theme's heading and body faces.
  *
- * A list rather than a text box: every entry is known to exist on Google
- * Fonts with the weights the sections use, and a typo cannot silently fall
- * back to Times New Roman on a live storefront.
+ * Only the chosen families are requested — the library's size never reaches
+ * the storefront. The weights come from each family's own entry: Google's
+ * CSS2 API rejects the whole request when one named weight does not exist, so
+ * a family that ships only 400 and 700 asks for only those.
  */
-export const FONT_OPTIONS = [
-  { family: 'Poppins', fallback: 'sans-serif' },
-  { family: 'Inter', fallback: 'sans-serif' },
-  { family: 'DM Sans', fallback: 'sans-serif' },
-  { family: 'Plus Jakarta Sans', fallback: 'sans-serif' },
-  { family: 'Manrope', fallback: 'sans-serif' },
-  { family: 'Outfit', fallback: 'sans-serif' },
-  { family: 'Space Grotesk', fallback: 'sans-serif' },
-  { family: 'Nunito', fallback: 'sans-serif' },
-  { family: 'Work Sans', fallback: 'sans-serif' },
-  { family: 'Playfair Display', fallback: 'serif' },
-  { family: 'Lora', fallback: 'serif' },
-  { family: 'Merriweather', fallback: 'serif' },
-  { family: 'Libre Baskerville', fallback: 'serif' },
-  { family: 'Fraunces', fallback: 'serif' },
-] as const satisfies readonly FontOption[]
-
-export type FontFamily = (typeof FONT_OPTIONS)[number]['family']
-
-const FONT_FAMILIES = FONT_OPTIONS.map((font) => font.family) as [FontFamily, ...FontFamily[]]
-
-export function fontStack(family: FontFamily): string {
-  const option = FONT_OPTIONS.find((font) => font.family === family) ?? FONT_OPTIONS[0]
-  const generic =
-    option.fallback === 'serif'
-      ? "ui-serif, Georgia, 'Times New Roman', serif"
-      : 'ui-sans-serif, system-ui, -apple-system, sans-serif'
-  return `'${option.family}', ${generic}`
-}
-
-/** The Google Fonts stylesheet URL for a theme's heading and body faces. */
 export function googleFontsHref(settings: ThemeSettings): string {
   const families = [...new Set([settings.fonts.heading, settings.fonts.body])]
   const query = families
-    .map((family) => `family=${family.replace(/ /g, '+')}:wght@400;500;600;700`)
+    .flatMap((family) => {
+      // An unknown family is not requestable (and `fontStack` falls back to
+      // Poppins anyway); skip it rather than 400 the whole stylesheet.
+      const part = fontHref(family)
+      return part ? [part] : []
+    })
     .join('&')
   return `https://fonts.googleapis.com/css2?${query}&display=swap`
+}
+
+/**
+ * One family's `family=…` query part, weights included, or `null` for a family
+ * the library does not know. The editor's lazy previews use this too.
+ */
+export function fontHref(family: FontFamily): string | null {
+  const option = findFont(family)
+  if (!option) return null
+  const weights = option.weights.length > 0 ? option.weights : [400]
+  return `family=${family.replace(/ /g, '+')}:wght@${weights.join(';')}`
 }
 
 /* -------------------------------------------------------------------------- */
@@ -293,8 +304,8 @@ const settingsSchema = z.object({
     .catch(DEFAULT_THEME_SETTINGS.colors),
   fonts: z
     .object({
-      heading: z.enum(FONT_FAMILIES).catch(DEFAULT_THEME_SETTINGS.fonts.heading),
-      body: z.enum(FONT_FAMILIES).catch(DEFAULT_THEME_SETTINGS.fonts.body),
+      heading: z.string().trim().refine(isFontFamily).catch(DEFAULT_THEME_SETTINGS.fonts.heading),
+      body: z.string().trim().refine(isFontFamily).catch(DEFAULT_THEME_SETTINGS.fonts.body),
     })
     .catch(DEFAULT_THEME_SETTINGS.fonts),
   radius: z.enum(RADIUS_OPTIONS).catch(DEFAULT_THEME_SETTINGS.radius),

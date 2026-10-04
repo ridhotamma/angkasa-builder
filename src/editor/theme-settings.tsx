@@ -24,7 +24,6 @@ import {
   BUTTON_STYLES,
   CARD_STYLES,
   contrastIssues,
-  FONT_OPTIONS,
   OPTION_LABELS,
   POPUP_KIND_LABELS,
   POPUP_KINDS,
@@ -47,6 +46,7 @@ import {
 import { SitePopup } from '../render/popup'
 import { SplashScreen, type SplashShop } from '../render/splash'
 import { ColorInput, Labeled, SelectInput } from './controls'
+import { FontSelect } from './font-select'
 import { LookPickerDialog } from './look-picker-dialog'
 import { useEditorText, type EditorMessage } from './messages'
 import { PaletteStrip } from './palette-swatch'
@@ -116,8 +116,6 @@ export function ThemeSettingsPanel({
       onChange={(value) => onChange({ ...settings, colors: { ...settings.colors, [key]: value } })}
     />
   )
-
-  const fontOptions = FONT_OPTIONS.map((font) => ({ value: font.family, label: font.family }))
 
   return (
     <Stack gap="6">
@@ -459,9 +457,8 @@ export function ThemeSettingsPanel({
       <Stack gap="3">
         <Heading>{t('typography')}</Heading>
         <Labeled label={t('headingFont')}>
-          <SelectInput
+          <FontSelect
             value={settings.fonts.heading}
-            options={fontOptions}
             onChange={(heading) =>
               onChange({
                 ...settings,
@@ -471,9 +468,8 @@ export function ThemeSettingsPanel({
           />
         </Labeled>
         <Labeled label={t('bodyFont')}>
-          <SelectInput
+          <FontSelect
             value={settings.fonts.body}
-            options={fontOptions}
             onChange={(body) =>
               onChange({ ...settings, fonts: { ...settings.fonts, body: body as FontFamily } })
             }

@@ -15,7 +15,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "clean": "rimraf .turbo *.tsbuildinfo"
+    "clean": "rimraf .turbo *.tsbuildinfo",
+    "generate:fonts": "bun run scripts/generate-fonts.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

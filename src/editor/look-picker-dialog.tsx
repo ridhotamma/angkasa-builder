@@ -1,7 +1,7 @@
 /**
  * Look & Palette Picker Dialog.
  *
- * Lets merchants browse 12 curated brand Looks and 18 Palettes, search by mood
+ * Lets merchants browse 18 curated brand Looks and 32 Palettes, search by mood
  * ("warm", "hangat", "bold", "mewah", "minimal"), and apply one in a single
  * undo step. Applying only ever writes existing theme settings, so every
  * choice stays editable afterwards.
@@ -107,13 +107,7 @@ function LookCard({ look, onApply }: { look: Look; onApply: (look: Look) => void
         </HStack>
       </Stack>
 
-      <Button
-        size="xs"
-        colorPalette="brand"
-        variant="solid"
-        w="100%"
-        onClick={() => onApply(look)}
-      >
+      <Button size="xs" colorPalette="brand" variant="solid" w="100%" onClick={() => onApply(look)}>
         <Icon as={LuCheck} />
         <span>{t('applyLook')}</span>
       </Button>
@@ -307,7 +301,6 @@ export function LookPickerDialog({
                   ))}
                 </SimpleGrid>
               )}
-
             </Dialog.Body>
           </Dialog.Content>
         </Dialog.Positioner>

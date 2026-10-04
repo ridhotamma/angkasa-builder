@@ -12,9 +12,12 @@
  * stored layout raw.
  */
 
+import { isStockPhoto } from '@repo/appwrite-config'
+
 import {
   collectFieldValues,
   defaultValues,
+  isMediaFileId,
   isRecord,
   mapFieldValues,
   newId,
@@ -357,7 +360,9 @@ function sectionValues(
 export function imageFileIds(sections: readonly SectionInstance[]): string[] {
   const ids = new Set<string>()
   for (const value of sectionValues(sections, ['image'])) {
-    if (typeof value === 'string' && value) ids.add(value)
+    // A hotlinked stock photo is not a file in the shop's bucket, so it has
+    // nothing to copy and must not be read as an id.
+    if (isMediaFileId(value)) ids.add(value)
   }
   return [...ids]
 }
@@ -404,8 +409,13 @@ function remapSections(
   images: ReadonlyMap<string, string>,
   videos: ReadonlyMap<string, string>,
 ): SectionInstance[] {
-  const swapImage = (id: JsonValue): JsonValue =>
-    typeof id === 'string' && id ? (images.get(id) ?? '') : id
+  const swapImage = (id: JsonValue): JsonValue => {
+    if (typeof id !== 'string' || !id) return id
+    const copy = images.get(id)
+    if (copy) return copy
+    // A stock photo is not a bucket file: it survives a copy untouched.
+    return isStockPhoto(id) ? id : ''
+  }
   const swapVideo = (value: JsonValue): JsonValue => {
     if (!isRecord(value) || value.source !== 'upload' || typeof value.id !== 'string') return value
     const copy = videos.get(value.id)

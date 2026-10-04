@@ -11,6 +11,8 @@
  * still renders, and a hand-crafted payload can only ever produce a valid one.
  */
 
+import { sanitizeStockPhoto } from '@repo/appwrite-config'
+
 import { sanitizeLink, NO_LINK, type Link } from './links'
 import { EMPTY_RICH_DOC, sanitizeRichDoc, type RichDoc } from './rich-text'
 import type { Localized } from './localized'
@@ -221,6 +223,21 @@ export type FieldValues = { [key: string]: JsonValue }
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/
 const HEX_COLOR = /^#[0-9a-f]{6}$/i
+
+/** Whether a value is a media file id (as opposed to a stock photo URL). */
+export function isMediaFileId(value: unknown): value is string {
+  return typeof value === 'string' && ID.test(value)
+}
+
+/**
+ * An image field holds one of exactly two things: a media file id in the
+ * shop's own bucket, or a hotlinked stock photo (see `stock-image` in
+ * `@repo/appwrite-config`). Nothing else — a free-form URL is still refused.
+ */
+function sanitizeImage(value: unknown): string {
+  if (isMediaFileId(value)) return value
+  return sanitizeStockPhoto(value)
+}
 
 function text(value: unknown, max: number, fallback: string): string {
   return typeof value === 'string' ? value.slice(0, max) : fallback
@@ -454,9 +471,7 @@ function sanitizeBlocks(
     let id = typeof raw.id === 'string' && ID.test(raw.id) ? raw.id : newId()
     if (budget.ids.has(id)) id = newId()
     budget.ids.add(id)
-    const style = field.styleFields
-      ? sanitizeOverrides(field.styleFields, raw.style)
-      : undefined
+    const style = field.styleFields ? sanitizeOverrides(field.styleFields, raw.style) : undefined
     out.push({
       id,
       type: schema.type,
@@ -510,6 +525,7 @@ function sanitizeField(
         ? value.toLowerCase()
         : field.default
     case 'image':
+      return sanitizeImage(value)
     case 'collection':
     case 'category':
     case 'voucher':

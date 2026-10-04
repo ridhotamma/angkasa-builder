@@ -14,7 +14,6 @@
 
 import type { Localized } from './localized'
 import {
-  FONT_OPTIONS,
   type AnimationStyle,
   type ButtonStyle,
   type CardStyle,
@@ -91,7 +90,10 @@ export interface Look {
   animation: AnimationStyle
   schemes?: Partial<Record<SchemeKey, SchemeColors>>
   /** Optional seeds for section defaults when installing or aligning templates. */
-  sectionDefaults?: Record<string, { style?: Record<string, unknown>; settings?: Record<string, unknown> }>
+  sectionDefaults?: Record<
+    string,
+    { style?: Record<string, unknown>; settings?: Record<string, unknown> }
+  >
 }
 
 /* -------------------------------------------------------------------------- */
@@ -237,6 +239,86 @@ export const FONT_PAIRS: readonly FontPair[] = [
     description: {
       en: 'Vibrant modern geometric sans with supreme digital clarity.',
       id: 'Sans geometris modern yang lincah dengan kejelasan digital prima.',
+    },
+  },
+  {
+    key: 'sora-inter',
+    name: { en: 'Tech Clarity', id: 'Kejelasan Teknologi' },
+    heading: 'Sora',
+    body: 'Inter',
+    description: {
+      en: 'Geometric display sans over a neutral workhorse body.',
+      id: 'Sans display geometris di atas body netral yang andal.',
+    },
+  },
+  {
+    key: 'quicksand-nunito',
+    name: { en: 'Soft Rounded', id: 'Bulat Lembut' },
+    heading: 'Quicksand',
+    body: 'Nunito',
+    description: {
+      en: 'Rounded, friendly faces for playful and family brands.',
+      id: 'Huruf bulat dan ramah untuk brand yang ceria dan keluarga.',
+    },
+  },
+  {
+    key: 'garamond-lato',
+    name: { en: 'Classic Book', id: 'Buku Klasik' },
+    heading: 'EB Garamond',
+    body: 'Lato',
+    description: {
+      en: 'Old-style serif headings with a quiet humanist body.',
+      id: 'Judul serif klasik dengan body humanis yang tenang.',
+    },
+  },
+  {
+    key: 'bebas-inter',
+    name: { en: 'Poster Impact', id: 'Dampak Poster' },
+    heading: 'Bebas Neue',
+    body: 'Inter',
+    description: {
+      en: 'Condensed poster caps for bold, high-impact headlines.',
+      id: 'Huruf kapital padat untuk judul yang tegas dan berdampak.',
+    },
+  },
+  {
+    key: 'playfair-lato',
+    name: { en: 'Editorial Contrast', id: 'Kontras Editorial' },
+    heading: 'Playfair Display',
+    body: 'Lato',
+    description: {
+      en: 'High-contrast serif headings against a restrained body.',
+      id: 'Judul serif kontras tinggi dengan body yang terkendali.',
+    },
+  },
+  {
+    key: 'space-dm',
+    name: { en: 'Technical Modern', id: 'Modern Teknis' },
+    heading: 'Space Grotesk',
+    body: 'DM Sans',
+    description: {
+      en: 'Quirky technical display over a soft geometric body.',
+      id: 'Display teknis yang unik di atas body geometris yang lembut.',
+    },
+  },
+  {
+    key: 'syne-work',
+    name: { en: 'Studio Expressive', id: 'Ekspresif Studio' },
+    heading: 'Syne',
+    body: 'Work Sans',
+    description: {
+      en: 'Art-house display type for studios, galleries and agencies.',
+      id: 'Huruf display art-house untuk studio, galeri, dan agensi.',
+    },
+  },
+  {
+    key: 'urbanist-inter',
+    name: { en: 'Geometric Clean', id: 'Geometris Bersih' },
+    heading: 'Urbanist',
+    body: 'Inter',
+    description: {
+      en: 'Low-contrast geometric sans, calm and contemporary.',
+      id: 'Sans geometris kontras rendah, tenang dan kontemporer.',
     },
   },
 ]
@@ -516,6 +598,160 @@ export const PALETTES: readonly Palette[] = [
       accent: '#ff3d8b',
     },
   },
+  {
+    key: 'plum-cream',
+    name: { en: 'Plum & Cream', id: 'Plum & Krim' },
+    tags: ['luxury', 'bold'],
+    colors: {
+      brand: '#6d28d9',
+      background: '#faf7ff',
+      text: '#241a33',
+      accent: '#db2777',
+    },
+  },
+  {
+    key: 'ocean-sand',
+    name: { en: 'Ocean & Sand', id: 'Laut & Pasir' },
+    tags: ['calm', 'natural'],
+    colors: {
+      brand: '#0f766e',
+      background: '#f7faf9',
+      text: '#0f1f1d',
+      accent: '#f59e0b',
+    },
+  },
+  {
+    key: 'berry-milk',
+    name: { en: 'Berry & Milk', id: 'Beri & Susu' },
+    tags: ['vibrant', 'playful'],
+    colors: {
+      brand: '#be123c',
+      background: '#fff7f8',
+      text: '#2a0b12',
+      accent: '#7c3aed',
+    },
+  },
+  {
+    key: 'moss-cream',
+    name: { en: 'Moss & Cream', id: 'Lumut & Krim' },
+    tags: ['natural', 'warm'],
+    colors: {
+      brand: '#4d7c0f',
+      background: '#fbfdf6',
+      text: '#1a2410',
+      accent: '#d97706',
+    },
+  },
+  {
+    key: 'navy-gold',
+    name: { en: 'Navy & Gold', id: 'Navy & Emas' },
+    tags: ['luxury', 'cool'],
+    colors: {
+      brand: '#1e3a8a',
+      background: '#f8faff',
+      text: '#0b1220',
+      accent: '#b45309',
+    },
+  },
+  {
+    key: 'rosewood',
+    name: { en: 'Rosewood', id: 'Kayu Mawar' },
+    tags: ['warm', 'luxury'],
+    colors: {
+      brand: '#9f1239',
+      background: '#fffaf7',
+      text: '#2b120f',
+      accent: '#0f766e',
+    },
+  },
+  {
+    key: 'lavender-ink',
+    name: { en: 'Lavender & Ink', id: 'Lavender & Tinta' },
+    tags: ['pastel', 'cool'],
+    colors: {
+      brand: '#7c3aed',
+      background: '#fbfaff',
+      text: '#1c1530',
+      accent: '#06b6d4',
+    },
+  },
+  {
+    key: 'copper-slate',
+    name: { en: 'Copper & Slate', id: 'Tembaga & Slate' },
+    tags: ['warm', 'cool'],
+    colors: {
+      brand: '#b45309',
+      background: '#f8fafc',
+      text: '#0f172a',
+      accent: '#0ea5e9',
+    },
+  },
+  {
+    key: 'emerald-charcoal',
+    name: { en: 'Emerald & Charcoal', id: 'Emerald & Arang' },
+    tags: ['natural', 'bold'],
+    colors: {
+      brand: '#047857',
+      background: '#f6fbf8',
+      text: '#111827',
+      accent: '#f59e0b',
+    },
+  },
+  {
+    key: 'midnight-neon',
+    name: { en: 'Midnight Neon', id: 'Midnight Neon' },
+    tags: ['dark', 'vibrant'],
+    colors: {
+      brand: '#22d3ee',
+      background: '#0b1020',
+      text: '#e5e7eb',
+      accent: '#a3e635',
+    },
+  },
+  {
+    key: 'blush-graphite',
+    name: { en: 'Blush & Graphite', id: 'Blush & Grafit' },
+    tags: ['playful', 'mono'],
+    colors: {
+      brand: '#db2777',
+      background: '#fafafa',
+      text: '#18181b',
+      accent: '#7c3aed',
+    },
+  },
+  {
+    key: 'teal-coral',
+    name: { en: 'Teal & Coral', id: 'Teal & Koral' },
+    tags: ['calm', 'playful'],
+    colors: {
+      brand: '#0d9488',
+      background: '#f0fdfa',
+      text: '#134e4a',
+      accent: '#fb7185',
+    },
+  },
+  {
+    key: 'mustard-ink',
+    name: { en: 'Mustard & Ink', id: 'Mustard & Tinta' },
+    tags: ['warm', 'bold'],
+    colors: {
+      brand: '#ca8a04',
+      background: '#fffdf5',
+      text: '#1c1917',
+      accent: '#dc2626',
+    },
+  },
+  {
+    key: 'sky-chocolate',
+    name: { en: 'Sky & Chocolate', id: 'Langit & Cokelat' },
+    tags: ['cool', 'warm'],
+    colors: {
+      brand: '#0284c7',
+      background: '#f8fbff',
+      text: '#0c1a2b',
+      accent: '#92400e',
+    },
+  },
 ]
 
 /* -------------------------------------------------------------------------- */
@@ -703,6 +939,96 @@ export const LOOKS: readonly Look[] = [
     cardStyle: 'flat',
     animation: 'subtle',
   },
+  {
+    key: 'sora-clean',
+    name: { en: 'Sora Clean', id: 'Sora Bersih' },
+    description: {
+      en: 'Crisp geometric tech for SaaS, gadgets and modern services.',
+      id: 'Teknologi geometris yang tajam untuk SaaS, gadget, dan jasa modern.',
+    },
+    tags: ['futuristic', 'minimal'],
+    palette: 'lavender-ink',
+    fontPair: 'sora-inter',
+    radius: 'md',
+    buttonStyle: 'solid',
+    cardStyle: 'shadow',
+    animation: 'subtle',
+  },
+  {
+    key: 'soft-candy',
+    name: { en: 'Soft Candy', id: 'Permen Lembut' },
+    description: {
+      en: 'Rounded and friendly for bakeries, kids brands and gifts.',
+      id: 'Bulat dan ramah untuk toko kue, brand anak, dan hadiah.',
+    },
+    tags: ['playful', 'warm'],
+    palette: 'candy-sky',
+    fontPair: 'quicksand-nunito',
+    radius: 'lg',
+    buttonStyle: 'pill',
+    cardStyle: 'flat',
+    animation: 'subtle',
+  },
+  {
+    key: 'classic-book',
+    name: { en: 'Classic Book', id: 'Buku Klasik' },
+    description: {
+      en: 'Old-style serif authority for publishers, law and heritage.',
+      id: 'Kewibawaan serif klasik untuk penerbit, hukum, dan warisan.',
+    },
+    tags: ['editorial', 'luxury'],
+    palette: 'navy-gold',
+    fontPair: 'garamond-lato',
+    radius: 'sm',
+    buttonStyle: 'solid',
+    cardStyle: 'border',
+    animation: 'none',
+  },
+  {
+    key: 'poster-pop',
+    name: { en: 'Poster Pop', id: 'Poster Pop' },
+    description: {
+      en: 'Condensed poster caps for streetwear, events and F&B promos.',
+      id: 'Huruf poster padat untuk streetwear, acara, dan promo F&B.',
+    },
+    tags: ['bold', 'brutalist'],
+    palette: 'mustard-ink',
+    fontPair: 'bebas-inter',
+    radius: 'none',
+    buttonStyle: 'solid',
+    cardStyle: 'flat',
+    animation: 'expressive',
+  },
+  {
+    key: 'editorial-rose',
+    name: { en: 'Editorial Rose', id: 'Editorial Mawar' },
+    description: {
+      en: 'High-contrast serif and rose tones for fashion and beauty.',
+      id: 'Serif kontras tinggi dengan nuansa mawar untuk fashion dan kecantikan.',
+    },
+    tags: ['editorial', 'luxury'],
+    palette: 'rosewood',
+    fontPair: 'playfair-lato',
+    radius: 'sm',
+    buttonStyle: 'outline',
+    cardStyle: 'border',
+    animation: 'none',
+  },
+  {
+    key: 'neon-midnight',
+    name: { en: 'Neon Midnight', id: 'Neon Tengah Malam' },
+    description: {
+      en: 'Dark, electric and expressive for nightlife, music and gaming.',
+      id: 'Gelap, elektrik, dan ekspresif untuk hiburan malam, musik, dan game.',
+    },
+    tags: ['futuristic', 'bold'],
+    palette: 'midnight-neon',
+    fontPair: 'syne-work',
+    radius: 'md',
+    buttonStyle: 'solid',
+    cardStyle: 'shadow',
+    animation: 'expressive',
+  },
 ]
 
 /* -------------------------------------------------------------------------- */
@@ -850,5 +1176,3 @@ export function searchPalettes(query: string): readonly Palette[] {
     (palette) => matchesLocalized(palette.name, terms) || matchesTags(palette.tags, terms),
   )
 }
-
-
