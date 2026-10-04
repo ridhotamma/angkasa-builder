@@ -324,7 +324,10 @@ export function AddPalette({
         <SegmentGroup.Root
           size="xs"
           value={mode}
-          minW="44"
+          // Hug the two labels: a fixed minimum stretched the indicator past
+          // the text on a narrow panel.
+          w="fit-content"
+          flexShrink="0"
           onValueChange={({ value }) => {
             if (value !== 'sections' && value !== 'blocks') return
             setMode(value)
