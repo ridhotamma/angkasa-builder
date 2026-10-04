@@ -24,6 +24,8 @@ import {
   BUTTON_STYLES,
   CARD_STYLES,
   contrastIssues,
+  DENSITIES,
+  DENSITY_LABELS,
   OPTION_LABELS,
   POPUP_KIND_LABELS,
   POPUP_KINDS,
@@ -36,6 +38,8 @@ import {
   SPLASH_STYLES,
   SPLASH_TONE_LABELS,
   SPLASH_TONES,
+  TYPE_SCALE_LABELS,
+  TYPE_SCALES,
   type FontFamily,
   type PopupKind,
   type SchemeColors,
@@ -503,6 +507,28 @@ export function ThemeSettingsPanel({
             options={CARD_STYLES.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
             onChange={(cardStyle) =>
               onChange({ ...settings, cardStyle: cardStyle as ThemeSettings['cardStyle'] })
+            }
+          />
+        </Labeled>
+      </Stack>
+
+      <Stack gap="3">
+        <Heading>{t('size')}</Heading>
+        <Labeled label={t('typeScale')} help={t('typeScaleHelp')}>
+          <SelectInput
+            value={settings.typeScale}
+            options={TYPE_SCALES.map((value) => ({ value, label: l(TYPE_SCALE_LABELS[value]) }))}
+            onChange={(typeScale) =>
+              onChange({ ...settings, typeScale: typeScale as ThemeSettings['typeScale'] })
+            }
+          />
+        </Labeled>
+        <Labeled label={t('density')} help={t('densityHelp')}>
+          <SelectInput
+            value={settings.density}
+            options={DENSITIES.map((value) => ({ value, label: l(DENSITY_LABELS[value]) }))}
+            onChange={(density) =>
+              onChange({ ...settings, density: density as ThemeSettings['density'] })
             }
           />
         </Labeled>

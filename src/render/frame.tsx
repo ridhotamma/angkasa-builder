@@ -14,7 +14,7 @@
  */
 
 import { Box, Container, type BoxProps } from '@chakra-ui/react'
-import { createContext, useContext, useRef, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -22,7 +22,6 @@ import {
   isWithinSchedule,
   readSectionStyle,
   resolveEntrance,
-  type EntrancePreset,
   type ResolvedSectionStyle,
   type SectionContentWidth,
   type SectionHeadline,
@@ -41,7 +40,7 @@ import {
 } from './dividers'
 import type { SectionBackground } from './section-background'
 import { BackgroundVideo } from './media'
-import { revealRootMargin, useMotionEffect } from './motion/engine'
+import { ScrollReveal } from './motion'
 import { FullBleed, HeadlineContext } from './primitives'
 import type { FieldValues } from '../model/fields'
 
@@ -240,9 +239,9 @@ export function SectionFrame({
       }}
     >
       <HeadlineContext.Provider value={style.headline}>
-        <Reveal entrance={entrance} stagger={style.stagger}>
+        <ScrollReveal entrance={entrance} stagger={style.stagger}>
           {children}
-        </Reveal>
+        </ScrollReveal>
       </HeadlineContext.Provider>
     </SectionLayoutContext.Provider>
   )
@@ -296,101 +295,6 @@ export function SectionFrame({
       {dividerTop}
       {content}
       {dividerBottom}
-    </Box>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
-/* Scroll reveal                                                              */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Fades — and, when the entrance says so, lifts, zooms, blurs, settles — a
- * section as it scrolls into view, tweened by GSAP.
- *
- * Nothing is ever hidden in the server-rendered HTML: a section starts
- * visible, and only one that is *below the fold* when the page comes alive is
- * tucked away to be revealed. So the first screen never flashes, a page
- * without JavaScript shows everything, and a shopper who asks the system for
- * less motion gets none.
- */
-function Reveal({
-  entrance,
-  stagger = false,
-  children,
-}: {
-  entrance: EntrancePreset | null
-  stagger?: boolean
-  children: ReactNode
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  useMotionEffect(
-    ref,
-    ({ gsap }) => {
-      const element = ref.current
-      const view = element?.ownerDocument.defaultView
-      if (!entrance || !element || !view) return
-      // A window with no height yet (an iframe still being sized) has no fold
-      // to be below; everything would be tucked away and never come back.
-      if (view.innerHeight === 0) return
-      if (element.getBoundingClientRect().top < view.innerHeight * 0.9) return
-
-      const targets = stagger ? Array.from(element.children) : [element]
-      if (targets.length === 0) return
-
-      gsap.set(targets, {
-        opacity: entrance.opacity,
-        y: entrance.y,
-        scale: entrance.scale,
-        ...(entrance.blur > 0 && { filter: `blur(${entrance.blur}px)` }),
-      })
-      const images = entrance.imageScale !== 1 ? element.querySelectorAll('img') : []
-      if (images.length > 0) gsap.set(images, { scale: entrance.imageScale })
-
-      const timeline = gsap.timeline({ paused: true })
-      timeline.to(
-        targets,
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          ...(entrance.blur > 0 && { filter: 'blur(0px)' }),
-          duration: entrance.duration,
-          ease: entrance.ease,
-          stagger: entrance.stagger,
-        },
-        entrance.delay,
-      )
-      if (images.length > 0) {
-        timeline.to(
-          images,
-          { scale: 1, duration: Math.max(entrance.duration, 1.2), ease: 'power2.out' },
-          entrance.delay,
-        )
-      }
-
-      element.dataset.reveal = 'waiting'
-      const observer = new view.IntersectionObserver(
-        ([entry]) => {
-          if (!entry?.isIntersecting) return
-          element.dataset.reveal = 'shown'
-          timeline.play()
-          observer.disconnect()
-        },
-        { rootMargin: revealRootMargin(view, element) },
-      )
-      observer.observe(element)
-      return () => observer.disconnect()
-    },
-    [entrance?.key, stagger],
-  )
-
-  if (!entrance) return <>{children}</>
-
-  return (
-    <Box ref={ref} data-stagger={stagger || undefined} position="relative" zIndex={1}>
-      {children}
     </Box>
   )
 }

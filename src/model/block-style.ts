@@ -23,7 +23,17 @@
  */
 
 import { readText, type Field, type FieldValues } from './fields'
+import { readToken } from './element-style'
 import type { Localized } from './localized'
+import {
+  MOTION_DELAYS,
+  MOTION_DISTANCES,
+  MOTION_DURATIONS,
+  MOTION_ENTRANCES,
+  entrancePreset,
+  type EntrancePreset,
+  type SectionMotion,
+} from './section-style'
 
 const option = (value: string, label: Localized): { value: string; label: Localized } => ({
   value,
@@ -412,6 +422,29 @@ const select = (
 ): Field => ({ kind: 'select', key, label, options: [DEFAULT, ...options], default: 'default' })
 
 /**
+ * A tuning control that only applies while an entrance is picked. The value
+ * is still stored when hidden, so switching the entrance off and back
+ * restores what the seller had chosen.
+ */
+const motionSelect = (
+  key: string,
+  label: Localized,
+  options: ReadonlyArray<{ value: string; label: Localized }>,
+): Field => ({
+  kind: 'select',
+  key,
+  label,
+  options: [DEFAULT, ...options],
+  default: 'default',
+  showWhen: { key: 'motion', is: MOTION_ENTRANCES.map((entry) => entry.value) },
+})
+
+const PARALLAXES = [
+  option('soft', { en: 'Soft', id: 'Halus' }),
+  option('strong', { en: 'Strong', id: 'Kuat' }),
+]
+
+/**
  * The overridable properties, grouped for the editor. Every property is a
  * fixed token list (or a bounded number or hex colour), so a stored style can
  * never carry arbitrary CSS.
@@ -549,6 +582,25 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
     ],
   },
   {
+    key: 'motion',
+    label: { en: 'Motion', id: 'Animasi' },
+    fields: [
+      select('motion', { en: 'Entrance', id: 'Animasi masuk' }, MOTION_ENTRANCES),
+      motionSelect(
+        'motionDuration',
+        { en: 'Entrance speed', id: 'Kecepatan animasi' },
+        MOTION_DURATIONS,
+      ),
+      motionSelect(
+        'motionDistance',
+        { en: 'Entrance distance', id: 'Jarak animasi' },
+        MOTION_DISTANCES,
+      ),
+      motionSelect('motionDelay', { en: 'Entrance delay', id: 'Jeda animasi' }, MOTION_DELAYS),
+      select('parallax', { en: 'Scroll parallax', id: 'Paralaks gulir' }, PARALLAXES),
+    ],
+  },
+  {
     key: 'hover',
     label: { en: 'Hover', id: 'Hover' },
     fields: [
@@ -558,7 +610,10 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
         label: { en: 'React when', id: 'Bereaksi saat' },
         options: [
           option('self', { en: 'This block is hovered', id: 'Blok ini di-hover' }),
-          option('group', { en: 'Its card or container is hovered', id: 'Kartu/wadahnya di-hover' }),
+          option('group', {
+            en: 'Its card or container is hovered',
+            id: 'Kartu/wadahnya di-hover',
+          }),
         ],
         help: {
           en: 'The group trigger lets one hover move several parts at once — a card that scales its image and underlines its caption.',
@@ -862,6 +917,61 @@ export function readBlockBleed(style: FieldValues | undefined): BlockBleed | nul
   return value === 'full' || value === 'band' ? value : null
 }
 
+/* -------------------------------------------------------------------------- */
+/* Motion                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/** How far a parallaxed block travels each way, in pixels. */
+const PARALLAX_TRAVEL: Record<string, number> = { soft: 36, strong: 84 }
+
+/** The entrances a block may pick — the section scale, without the theme. */
+const BLOCK_MOTIONS = MOTION_ENTRANCES.map((entry) => entry.value)
+type BlockMotion = Exclude<SectionMotion, 'default' | 'none'>
+
+export interface BlockMotionPreset {
+  /** The block's own entrance, or `null` when it has none. */
+  entrance: EntrancePreset | null
+  /** Pixels the block travels each way as the page scrolls; 0 for none. */
+  parallax: number
+}
+
+const NO_MOTION: BlockMotionPreset = { entrance: null, parallax: 0 }
+
+/**
+ * The entrance and parallax a stored block style asks for. Both are opt-in:
+ * a block with no motion overrides reads exactly as before, and a value
+ * outside the allowlist resolves to none.
+ */
+export function readBlockMotion(style: FieldValues | undefined): BlockMotionPreset {
+  if (!style) return NO_MOTION
+  const motion = readText(style, 'motion')
+  const entrance = (BLOCK_MOTIONS as readonly string[]).includes(motion)
+    ? entrancePreset(
+        motion as BlockMotion,
+        readToken(
+          style,
+          'motionDuration',
+          MOTION_DURATIONS.map((entry) => entry.value),
+          'normal',
+        ),
+        readToken(
+          style,
+          'motionDistance',
+          MOTION_DISTANCES.map((entry) => entry.value),
+          'medium',
+        ),
+        readToken(
+          style,
+          'motionDelay',
+          MOTION_DELAYS.map((entry) => entry.value),
+          'none',
+        ),
+      )
+    : null
+  const parallax = PARALLAX_TRAVEL[readText(style, 'parallax')] ?? 0
+  return { entrance, parallax }
+}
+
 /**
  * The CSS a stored block style stands for. Tokens outside the allowlist are
  * ignored — the sanitiser should have dropped them already, and a renderer
@@ -1003,9 +1113,7 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
 
   if (Object.keys(hover).length > 0) {
     out[
-      readText(style, 'hoverTrigger') === 'group'
-        ? '[data-block-hover-group]:hover &'
-        : '&:hover'
+      readText(style, 'hoverTrigger') === 'group' ? '[data-block-hover-group]:hover &' : '&:hover'
     ] = hover
     out.transition = HOVER_TRANSITION
   }

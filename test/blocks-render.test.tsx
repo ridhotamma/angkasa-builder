@@ -7,7 +7,13 @@ import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
 import { createSection, DEFAULT_THEME_SETTINGS, type SectionInstance } from '../src/index'
-import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
+import {
+  drawnSections,
+  pageEdges,
+  sampleStorefrontData,
+  SectionsRenderer,
+  type RenderEnvironment,
+} from '../src/render/index'
 
 const TREE = [
   {
@@ -228,6 +234,38 @@ describe('blocks section, empty', () => {
       />,
     )
     expect(preview).toContain('Add items in the section settings.')
+  })
+})
+
+describe('linked sections', () => {
+  test('a linked copy draws the original’s content under its own id', () => {
+    const master = createSection('rich-text', { heading: 'Original', body: 'Shared body' })
+    const copy = { ...master, id: 'copy-1', linkedTo: master.id }
+    const html = render(<SectionsRenderer sections={[master, copy]} env={env()} />)
+    expect((html.match(/Shared body/g) ?? []).length).toBe(2)
+  })
+
+  test('drawnSections resolves links and pageEdges reads the original', () => {
+    const master = createSection('rich-text', { heading: 'Original' }, { width: 'edge' })
+    const copy = { ...master, id: 'copy-1', linkedTo: master.id }
+    const drawn = drawnSections([copy], 'live', new Date())
+    expect(drawn[0]!.style.width).toBe('edge')
+    expect(pageEdges(drawn).flushTop).toBe(true)
+    expect(pageEdges(drawn).bannerFirst).toBe(true)
+  })
+
+  test('a copy’s overrides render over the original’s content', () => {
+    const master = createSection('rich-text', { heading: 'Original', body: 'Shared body' })
+    const copy = {
+      ...master,
+      id: 'copy-2',
+      linkedTo: master.id,
+      overrides: { fields: { heading: 'My own' } },
+    }
+    const html = render(<SectionsRenderer sections={[master, copy]} env={env()} />)
+    expect(html).toContain('Original')
+    expect(html).toContain('My own')
+    expect((html.match(/Shared body/g) ?? []).length).toBe(2)
   })
 })
 

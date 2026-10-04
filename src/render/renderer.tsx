@@ -20,7 +20,7 @@ import {
 
 import { useLocale } from '@repo/i18n'
 
-import type { SectionInstance } from '../model/content'
+import { resolveLinkedSections, type SectionInstance } from '../model/content'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
 import { effectCss, themeCssVars, type ThemeSettings } from '../model/settings'
@@ -87,16 +87,18 @@ export function liveSections(sections: readonly SectionInstance[], now: Date): S
 
 /**
  * The sections a renderer in `mode` draws: live ones on the storefront,
- * everything not hidden in the editor.
+ * everything not hidden in the editor. Linked copies are resolved to their
+ * originals first, so a copy draws — and is measured — as what it shows.
  */
 export function drawnSections(
   sections: readonly SectionInstance[],
   mode: RenderEnvironment['mode'],
   now: Date,
 ): SectionInstance[] {
+  const resolved = resolveLinkedSections(sections)
   return mode === 'live'
-    ? liveSections(sections, now)
-    : sections.filter((section) => !section.hidden)
+    ? liveSections(resolved, now)
+    : resolved.filter((section) => !section.hidden)
 }
 
 /** A section that runs past the page column — edge to edge, or on a full-width band. */
@@ -125,8 +127,9 @@ export interface PageEdges {
 export const NO_PAGE_EDGES: PageEdges = { flushTop: false, flushBottom: false, bannerFirst: false }
 
 export function pageEdges(drawn: readonly SectionInstance[]): PageEdges {
-  const first = drawn[0]
-  const last = drawn[drawn.length - 1]
+  const resolved = resolveLinkedSections(drawn)
+  const first = resolved[0]
+  const last = resolved[resolved.length - 1]
   return {
     flushTop: first !== undefined && isFullBleed(first),
     flushBottom: last !== undefined && isFullBleed(last),

@@ -692,6 +692,33 @@ const DELAY_SECONDS: Record<MotionDelay, number> = { none: 0, short: 0.1, medium
 const STAGGER_SECONDS = 0.08
 
 /**
+ * An entrance's numbers, from its name and the seller's tuning. Shared by
+ * sections and blocks: a block's own entrance follows the same scale, so a
+ * card and the band around it cannot disagree on what "slow" means.
+ */
+export function entrancePreset(
+  motion: Exclude<SectionMotion, 'default' | 'none'>,
+  duration: MotionDuration,
+  distance: MotionDistance,
+  delay: MotionDelay,
+  stagger = false,
+): EntrancePreset {
+  const spec = ENTRANCES[motion]
+  return {
+    key: [motion, duration, distance, delay, stagger ? 'stagger' : 'plain'].join(':'),
+    opacity: spec.opacity,
+    y: spec.y * DISTANCE_FACTOR[distance],
+    scale: spec.scale,
+    blur: spec.blur,
+    imageScale: spec.imageScale,
+    duration: spec.duration * DURATION_FACTOR[duration],
+    delay: DELAY_SECONDS[delay],
+    stagger: stagger ? STAGGER_SECONDS : 0,
+    ease: spec.ease,
+  }
+}
+
+/**
  * The entrance a section should play, or `null` for none: the section's own
  * motion when set, the theme's otherwise. Staggering implies an entrance — a
  * section that opted out still needs one for its blocks to cascade through.
@@ -709,23 +736,11 @@ export function resolveEntrance(
     entrance = 'subtle'
   }
 
-  const spec = ENTRANCES[entrance]
-  return {
-    key: [
-      entrance,
-      style.motionDuration,
-      style.motionDistance,
-      style.motionDelay,
-      style.stagger ? 'stagger' : 'plain',
-    ].join(':'),
-    opacity: spec.opacity,
-    y: spec.y * DISTANCE_FACTOR[style.motionDistance],
-    scale: spec.scale,
-    blur: spec.blur,
-    imageScale: spec.imageScale,
-    duration: spec.duration * DURATION_FACTOR[style.motionDuration],
-    delay: DELAY_SECONDS[style.motionDelay],
-    stagger: style.stagger ? STAGGER_SECONDS : 0,
-    ease: spec.ease,
-  }
+  return entrancePreset(
+    entrance,
+    style.motionDuration,
+    style.motionDistance,
+    style.motionDelay,
+    style.stagger,
+  )
 }

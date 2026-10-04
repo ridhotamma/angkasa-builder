@@ -6,14 +6,17 @@
  */
 
 import { Box, HStack, IconButton } from '@chakra-ui/react'
-import { LuArrowDown, LuArrowUp, LuCopy, LuLock, LuTrash2 } from 'react-icons/lu'
+import { LuArrowDown, LuArrowUp, LuCopy, LuLink, LuLock, LuTrash2, LuUnlink } from 'react-icons/lu'
 
 import { Tooltip } from '@repo/theme'
 
 import {
   canDuplicateSection,
+  detachSection,
+  duplicateLinkedSection,
   duplicateSection,
   moveSection,
+  removeSection,
   type SectionInstance,
 } from '../model/content'
 import { sectionSchema } from '../model/sections'
@@ -103,6 +106,36 @@ export function SectionToolbar({
           <LuCopy />
         </IconButton>
       </Tooltip>
+      <Tooltip content={t('linkedCopy')} wrap>
+        <IconButton
+          {...button}
+          aria-label={t('linkedCopy')}
+          disabled={!canDuplicateSection(sections, section.id)}
+          onClick={() => {
+            const result = duplicateLinkedSection(sections, section.id)
+            if (!result) return
+            onChange(result.sections)
+            onSelect(result.copy.id)
+          }}
+        >
+          <LuLink />
+        </IconButton>
+      </Tooltip>
+      {section.linkedTo && (
+        <Tooltip content={t('detach')} wrap>
+          <IconButton
+            {...button}
+            aria-label={t('detach')}
+            onClick={() => {
+              onChange(detachSection(sections, section.id))
+              onSelect(section.id)
+            }}
+          >
+            <LuUnlink />
+          </IconButton>
+        </Tooltip>
+      )}
+      <Box w="1px" h="4" bg="whiteAlpha.400" mx="0.5" />
       {required ? (
         <Tooltip content={t('required')} wrap>
           <IconButton {...button} aria-label={t('required')} disabled>
@@ -116,7 +149,7 @@ export function SectionToolbar({
             aria-label={t('remove')}
             onClick={() => {
               onRemoved()
-              onChange(sections.filter((other) => other.id !== section.id))
+              onChange(removeSection(sections, section.id))
             }}
           >
             <LuTrash2 />

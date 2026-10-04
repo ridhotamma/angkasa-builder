@@ -35,6 +35,7 @@ import {
   LuEye,
   LuEyeOff,
   LuGripVertical,
+  LuLink,
   LuLock,
   LuMonitor,
   LuPlus,
@@ -47,8 +48,10 @@ import { Tooltip } from '@repo/theme'
 import {
   canDuplicateSection,
   createSection,
+  duplicateLinkedSection,
   duplicateSection,
   MAX_SECTIONS,
+  removeSection,
   sanitizeSections,
   type SectionInstance,
 } from '../model/content'
@@ -133,6 +136,11 @@ function RowBadges({ section }: { section: SectionInstance }) {
   const schedule = scheduleState(style, new Date())
   return (
     <>
+      {section.linkedTo && (
+        <Badge size="xs" variant="subtle" colorPalette="brand">
+          {t('linkedBadge')}
+        </Badge>
+      )}
       {section.hidden && (
         <Badge size="xs" variant="subtle">
           {t('hidden')}
@@ -165,6 +173,7 @@ function Row({
   onSelect,
   onToggleHidden,
   onDuplicate,
+  onLinkedCopy,
   onCopy,
   onRemove,
   canDuplicate,
@@ -174,6 +183,7 @@ function Row({
   onSelect: () => void
   onToggleHidden: () => void
   onDuplicate: () => void
+  onLinkedCopy: () => void
   onCopy: () => void
   onRemove: () => void
   canDuplicate: boolean
@@ -255,6 +265,15 @@ function Row({
       >
         <IconButton aria-label={t('copySection')} size="2xs" variant="ghost" onClick={onCopy}>
           <LuClipboardCopy />
+        </IconButton>
+        <IconButton
+          aria-label={t('linkedCopy')}
+          size="2xs"
+          variant="ghost"
+          disabled={!canDuplicate}
+          onClick={onLinkedCopy}
+        >
+          <LuLink />
         </IconButton>
         <IconButton
           aria-label={t('duplicate')}
@@ -470,10 +489,14 @@ export function SectionList({
                     const result = duplicateSection(sections, section.id)
                     if (result) onChange(result.sections)
                   }}
+                  onLinkedCopy={() => {
+                    const result = duplicateLinkedSection(sections, section.id)
+                    if (result) onChange(result.sections)
+                  }}
                   onCopy={() => {
                     if (writeClipboard(section)) onNotice?.(t('sectionCopied'))
                   }}
-                  onRemove={() => onChange(sections.filter((other) => other.id !== section.id))}
+                  onRemove={() => onChange(removeSection(sections, section.id))}
                 />
               ))}
             </Stack>

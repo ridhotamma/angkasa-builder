@@ -289,6 +289,36 @@ describe('motion entrances', () => {
   })
 })
 
+describe('block motion', () => {
+  test('a block entrance and parallax render their own wrappers', () => {
+    const section = createSection('blocks', {
+      blocks: [
+        { id: 'plain', type: 'text', settings: { body: 'Plain block' } },
+        {
+          id: 'move',
+          type: 'heading',
+          settings: { text: 'Moving block' },
+          style: { motion: 'slide-up' },
+        },
+        {
+          id: 'drift',
+          type: 'heading',
+          settings: { text: 'Drifting block' },
+          style: { parallax: 'strong' },
+        },
+      ],
+    })
+    const html = page([section])
+    expect(html).toContain('data-block-motion="slide-up:normal:medium:none:plain"')
+    // Only the block that asked for one carries each wrapper.
+    expect(html.match(/data-block-motion=/g) ?? []).toHaveLength(1)
+    expect(html.match(/data-parallax=""/g) ?? []).toHaveLength(1)
+    expect(html).toContain('Plain block')
+    expect(html).toContain('Moving block')
+    expect(html).toContain('Drifting block')
+  })
+})
+
 describe('pinned scroll length', () => {
   test('maps the setting to viewport heights, defaulting to comfortable', () => {
     expect(scrollRoomHeight('compact')).toBe('60svh')

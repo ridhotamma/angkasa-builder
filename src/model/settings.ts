@@ -92,6 +92,33 @@ export const CARD_STYLES = ['border', 'shadow', 'flat'] as const
 
 export const ANIMATION_STYLES = ['none', 'subtle', 'expressive'] as const
 
+/**
+ * One step for every text size in the storefront. A token scale, not a free
+ * multiplier: the values move every Chakra font-size token by a fixed step, so
+ * a heading, a paragraph and a button label stay in proportion.
+ */
+export const TYPE_SCALES = ['compact', 'default', 'large'] as const
+export type TypeScale = (typeof TYPE_SCALES)[number]
+
+/**
+ * One step for every gap, padding and control size. Tight packs a catalogue,
+ * airy gives a boutique room to breathe — without touching a single section.
+ */
+export const DENSITIES = ['tight', 'cozy', 'airy'] as const
+export type Density = (typeof DENSITIES)[number]
+
+export const TYPE_SCALE_LABELS: Record<TypeScale, Localized> = {
+  compact: { en: 'Compact', id: 'Ringkas' },
+  default: { en: 'Default', id: 'Bawaan' },
+  large: { en: 'Large', id: 'Besar' },
+}
+
+export const DENSITY_LABELS: Record<Density, Localized> = {
+  tight: { en: 'Tight', id: 'Rapat' },
+  cozy: { en: 'Cozy', id: 'Nyaman' },
+  airy: { en: 'Airy', id: 'Lega' },
+}
+
 /* -------------------------------------------------------------------------- */
 /* Splash screen                                                              */
 /* -------------------------------------------------------------------------- */
@@ -248,6 +275,10 @@ export interface ThemeSettings {
   radius: RadiusOption
   buttonStyle: ButtonStyle
   cardStyle: CardStyle
+  /** One step for every text size: compact, default or large. */
+  typeScale: TypeScale
+  /** One step for every gap, padding and control size: tight, cozy or airy. */
+  density: Density
   /**
    * The seller's own colours for a scheme. A scheme without one follows the
    * theme's colours (see `resolveScheme`), so changing the brand colour
@@ -274,6 +305,10 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   radius: 'md',
   buttonStyle: 'solid',
   cardStyle: 'border',
+  // The middle of each scale is the storefront as it always was, so a theme
+  // saved before these knobs existed reads exactly the same.
+  typeScale: 'default',
+  density: 'cozy',
   schemes: {},
   // Off for a theme that never chose: a storefront that did not move yesterday
   // should not start moving after a deploy.
@@ -311,6 +346,8 @@ const settingsSchema = z.object({
   radius: z.enum(RADIUS_OPTIONS).catch(DEFAULT_THEME_SETTINGS.radius),
   buttonStyle: z.enum(BUTTON_STYLES).catch(DEFAULT_THEME_SETTINGS.buttonStyle),
   cardStyle: z.enum(CARD_STYLES).catch(DEFAULT_THEME_SETTINGS.cardStyle),
+  typeScale: z.enum(TYPE_SCALES).catch(DEFAULT_THEME_SETTINGS.typeScale),
+  density: z.enum(DENSITIES).catch(DEFAULT_THEME_SETTINGS.density),
   schemes: z
     .object(
       Object.fromEntries(
@@ -466,6 +503,76 @@ const RADII: Record<RadiusOption, [string, string, string]> = {
   lg: ['8px', '12px', '16px'],
 }
 
+/** How far each text scale moves Chakra's font-size tokens. */
+const TYPE_SCALE_FACTOR: Record<TypeScale, number> = {
+  compact: 0.9,
+  default: 1,
+  large: 1.125,
+}
+
+/** How far each density moves Chakra's spacing tokens. */
+const DENSITY_FACTOR: Record<Density, number> = {
+  tight: 0.85,
+  cozy: 1,
+  airy: 1.18,
+}
+
+/** Chakra's default font sizes, in rem — the base each scale multiplies. */
+const FONT_SIZE_REM: Record<string, number> = {
+  '2xs': 0.625,
+  xs: 0.75,
+  sm: 0.875,
+  md: 1,
+  lg: 1.125,
+  xl: 1.25,
+  '2xl': 1.5,
+  '3xl': 1.875,
+  '4xl': 2.25,
+  '5xl': 3,
+  '6xl': 3.75,
+  '7xl': 4.5,
+  '8xl': 6,
+  '9xl': 8,
+}
+
+/** Chakra's default spacing scale, in quarter-rem units. */
+const SPACING_UNITS = [
+  0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+  44, 48, 52, 56, 60, 64, 72, 80, 96,
+] as const
+
+/** `spacing.0.5` is the CSS variable `--chakra-spacing-0\.5` — Chakra escapes the dot. */
+function spacingVar(unit: number): string {
+  return `--chakra-spacing-${String(unit).replace('.', '\\.')}`
+}
+
+function rem(value: number): string {
+  return `${Math.round(value * 10_000) / 10_000}rem`
+}
+
+/**
+ * The type and density scales, as the Chakra token overrides that move every
+ * text size and every gap at once. The middle of each scale emits nothing, so
+ * a theme that never touched them declares exactly the variables it did
+ * before. Every value is computed from a fixed base — no free-form CSS.
+ */
+function scaleCssVars(settings: ThemeSettings): Record<string, string> {
+  const vars: Record<string, string> = {}
+  const type = TYPE_SCALE_FACTOR[settings.typeScale]
+  if (type !== 1) {
+    for (const [token, base] of Object.entries(FONT_SIZE_REM)) {
+      vars[`--chakra-font-sizes-${token}`] = rem(base * type)
+    }
+  }
+  const density = DENSITY_FACTOR[settings.density]
+  if (density !== 1) {
+    for (const unit of SPACING_UNITS) {
+      vars[spacingVar(unit)] = rem(unit * 0.25 * density)
+    }
+  }
+  return vars
+}
+
 /**
  * The Chakra CSS variables a theme overrides, for a wrapping element.
  *
@@ -517,6 +624,10 @@ export function themeCssVarGroups(settings: ThemeSettings): {
 
     '--pb-accent': settings.colors.accent,
   })
+
+  // Type and density scale Chakra's own tokens, so every section — and the
+  // chrome around it — follows without a renderer knowing the setting exists.
+  Object.assign(always, scaleCssVars(settings))
 
   const surfaces: Record<string, string> = {
     '--chakra-colors-brand-fg': contrastRatio(brand, background) >= 3 ? brand : ramp[700],

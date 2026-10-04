@@ -7,18 +7,29 @@ import {
 } from '../src/editor/table-control'
 
 import {
+  applyInstanceEdit,
+  clearOverrides,
   contrastIssues,
   contrastRatio,
   darkModeBrandFg,
   themeStylesheet,
   canDuplicateSection,
   createSection,
+  detachSection,
+  duplicateLinkedSection,
   duplicateSection,
   isLookKey,
+  linkedCopyCount,
+  linkedMaster,
   MAX_RECOMMENDED_LOOKS,
   MAX_SECTIONS,
   menuFormSchema,
   moveSection,
+  readBlocks,
+  removeSection,
+  resolveLinkedSections,
+  setBlockOverrides,
+  setSectionOverrides,
   type MenuItem,
   DEFAULT_THEME_SETTINGS,
   imageFileIds,
@@ -181,11 +192,15 @@ describe('theme content', () => {
       colors: { brand: 'red', background: '#FFFFFF', text: '#000000', accent: '#123456' },
       fonts: { heading: 'Comic Sans', body: 'Inter' },
       radius: 'huge',
+      typeScale: 'enormous',
+      density: 'packed',
     })
     expect(settings.colors.brand).toBe(DEFAULT_THEME_SETTINGS.colors.brand)
     expect(settings.colors.background).toBe('#ffffff')
     expect(settings.fonts).toEqual({ heading: 'Poppins', body: 'Inter' })
     expect(settings.radius).toBe('md')
+    expect(settings.typeScale).toBe('default')
+    expect(settings.density).toBe('cozy')
   })
 
   test('the built-in library is empty — templates are designed from scratch', () => {
@@ -285,6 +300,25 @@ describe('colour', () => {
     expect(vars['--chakra-colors-brand-solid']).toBe('#0055ff')
     expect(vars['--chakra-colors-brand-contrast']).toBe('#ffffff')
   })
+
+  test('type scale and density move every font size and spacing token', () => {
+    // The middle of each scale emits nothing: the storefront as it always was.
+    const base = themeCssVars(DEFAULT_THEME_SETTINGS)
+    expect(base['--chakra-font-sizes-md']).toBeUndefined()
+    expect(base['--chakra-spacing-4']).toBeUndefined()
+
+    const scaled = themeCssVars({
+      ...DEFAULT_THEME_SETTINGS,
+      typeScale: 'large',
+      density: 'airy',
+    })
+    expect(scaled['--chakra-font-sizes-md']).toBe('1.125rem')
+    expect(scaled['--chakra-font-sizes-3xl']).toBe('2.1094rem')
+    expect(scaled['--chakra-spacing-4']).toBe('1.18rem')
+    expect(scaled['--chakra-spacing-6']).toBe('1.77rem')
+    // A fractional token keeps Chakra's escaped dot in the variable name.
+    expect(scaled['--chakra-spacing-0\\.5']).toBe('0.1475rem')
+  })
 })
 
 describe('editing a section list', () => {
@@ -316,6 +350,174 @@ describe('editing a section list', () => {
 
     const full = Array.from({ length: MAX_SECTIONS }, () => createSection('faq'))
     expect(canDuplicateSection(full, full[0]!.id)).toBe(false)
+  })
+})
+
+describe('linked sections', () => {
+  test('a copy draws its original and keeps its own id and hidden flag', () => {
+    const master = createSection('faq', { heading: 'Tanya' })
+    const copy = { ...master, id: 'copy-1', hidden: true, linkedTo: master.id }
+    const [, , resolved] = resolveLinkedSections([master, createSection('faq'), copy])
+    expect(resolved!.id).toBe('copy-1')
+    expect(resolved!.hidden).toBe(true)
+    expect(resolved!.linkedTo).toBe(master.id)
+    expect(resolved!.settings.heading).toBe('Tanya')
+    expect(resolved!.settings).not.toBe(master.settings)
+  })
+
+  test('sanitising keeps a real link and clears a broken one', () => {
+    const master = createSection('faq', { heading: 'Asli' })
+    const linked = sanitizeSections([
+      { ...master, id: 'm' },
+      { ...master, id: 'copy', linkedTo: 'm' },
+      { ...master, id: 'dangling', linkedTo: 'missing' },
+      { ...master, id: 'self', linkedTo: 'self' },
+    ])
+    expect(linked.find((section) => section.id === 'copy')?.linkedTo).toBe('m')
+    expect(linked.find((section) => section.id === 'dangling')?.linkedTo).toBeUndefined()
+    expect(linked.find((section) => section.id === 'self')?.linkedTo).toBeUndefined()
+  })
+
+  test('a loop between two copies is cleared', () => {
+    const master = createSection('faq', {})
+    const sections = sanitizeSections([
+      { ...master, id: 'a', linkedTo: 'b' },
+      { ...master, id: 'b', linkedTo: 'a' },
+    ])
+    expect(sections.every((section) => section.linkedTo === undefined)).toBe(true)
+  })
+
+  test('duplicating as linked points at the same original, even from a copy', () => {
+    const master = createSection('faq', { heading: 'Asli' })
+    const first = duplicateLinkedSection([master], master.id)!
+    expect(first.copy.linkedTo).toBe(master.id)
+    const second = duplicateLinkedSection(first.sections, first.copy.id)!
+    expect(second.copy.linkedTo).toBe(master.id)
+    expect(linkedCopyCount(second.sections, master.id)).toBe(2)
+  })
+
+  test('detaching copies the original in and drops the link', () => {
+    const master = createSection('faq', { heading: 'Asli' })
+    const linked = { ...master, id: 'copy', linkedTo: master.id }
+    const next = detachSection([master, linked], 'copy')
+    const detached = next.find((section) => section.id === 'copy')!
+    expect(detached.linkedTo).toBeUndefined()
+    expect(detached.settings.heading).toBe('Asli')
+    // And the original is untouched.
+    expect(next.find((section) => section.id === master.id)).toBe(master)
+  })
+
+  test('removing an original detaches its copies instead of emptying them', () => {
+    const master = createSection('faq', { heading: 'Asli' })
+    const linked = { ...master, id: 'copy', linkedTo: master.id }
+    const next = removeSection([master, linked], master.id)
+    expect(next.map((section) => section.id)).toEqual(['copy'])
+    expect(next[0]!.linkedTo).toBeUndefined()
+    expect(next[0]!.settings.heading).toBe('Asli')
+  })
+
+  test('a chain resolves through to the final original', () => {
+    const master = createSection('faq', { heading: 'Ujung' })
+    const middle = { ...master, id: 'mid', linkedTo: master.id }
+    const end = { ...master, id: 'end', linkedTo: 'mid' }
+    expect(linkedMaster(end, [master, middle, end])?.id).toBe(master.id)
+    const resolved = resolveLinkedSections([master, middle, end])
+    expect(resolved[2]!.settings.heading).toBe('Ujung')
+  })
+})
+
+describe('per-instance overrides', () => {
+  test('a copy draws its own words over the original’s', () => {
+    const master = createSection('rich-text', { heading: 'Asli', body: 'Badan' })
+    const copy = {
+      ...master,
+      id: 'copy',
+      linkedTo: master.id,
+      overrides: { fields: { heading: 'Sendiri' } },
+    }
+    const [, resolved] = resolveLinkedSections([master, copy])
+    expect(resolved!.settings.heading).toBe('Sendiri')
+    expect(resolved!.settings.body).toEqual(master.settings.body)
+  })
+
+  test('sanitising keeps overridable overrides and drops the rest', () => {
+    const master = createSection('rich-text', { heading: 'Asli', body: 'Badan' })
+    const clean = sanitizeSections([
+      { ...master, id: 'm' },
+      {
+        ...master,
+        id: 'copy',
+        linkedTo: 'm',
+        overrides: { fields: { heading: 'Sendiri', width: 'narrow', sneaky: 'x' } },
+      },
+    ])[1]!
+    expect(clean.overrides?.fields).toEqual({ heading: 'Sendiri' })
+  })
+
+  test('setting a value back to the original drops the override', () => {
+    const master = createSection('rich-text', { heading: 'Asli', body: 'Badan' })
+    const copy = {
+      ...master,
+      id: 'copy',
+      linkedTo: master.id,
+      overrides: { fields: { heading: 'Sendiri' } },
+    }
+    const sections = setSectionOverrides([master, copy], 'copy', {
+      heading: 'Asli',
+      body: 'Badan',
+    })
+    expect(sections[1]!.overrides).toBeUndefined()
+  })
+
+  test('a block override layers over the original and resets cleanly', () => {
+    const master = createSection('custom', {
+      blocks: [{ id: 'h', type: 'heading', settings: { text: 'Asli' } }],
+    })
+    const copy = { ...master, id: 'copy', linkedTo: master.id }
+    const withOverride = setBlockOverrides([master, copy], 'copy', 'h', { text: 'Sendiri' })
+    expect(withOverride[1]!.overrides?.blocks?.h).toEqual({ text: 'Sendiri' })
+
+    const [, resolved] = resolveLinkedSections(withOverride)
+    expect(readBlocks(resolved!.settings, 'blocks')[0]!.settings.text).toBe('Sendiri')
+
+    const reset = clearOverrides(withOverride, 'copy', { blockId: 'h' })
+    expect(reset[1]!.overrides).toBeUndefined()
+  })
+
+  test('a structural block change updates the original instead', () => {
+    const master = createSection('custom', {
+      blocks: [{ id: 'h', type: 'heading', settings: { text: 'Asli', align: 'left' } }],
+    })
+    const copy = { ...master, id: 'copy', linkedTo: master.id }
+    const sections = setBlockOverrides([master, copy], 'copy', 'h', { align: 'center' })
+    expect(readBlocks(sections[0]!.settings, 'blocks')[0]!.settings.align).toBe('center')
+    expect(sections[1]!.overrides).toBeUndefined()
+  })
+
+  test('applyInstanceEdit splits content to the copy and structure to the original', () => {
+    const master = createSection('rich-text', { heading: 'Asli', body: 'Badan' })
+    const copy = { ...master, id: 'copy', linkedTo: master.id }
+    const resolved = resolveLinkedSections([master, copy]).find((section) => section.id === 'copy')!
+    const edited = {
+      ...resolved,
+      settings: { ...resolved.settings, heading: 'Sendiri', width: 'narrow' },
+    }
+    const sections = applyInstanceEdit([master, copy], 'copy', edited)
+    expect(sections[1]!.overrides?.fields).toEqual({ heading: 'Sendiri' })
+    expect(sections[0]!.settings.width).toBe('narrow')
+  })
+
+  test('detaching keeps the copy’s own words', () => {
+    const master = createSection('rich-text', { heading: 'Asli', body: 'Badan' })
+    const copy = {
+      ...master,
+      id: 'copy',
+      linkedTo: master.id,
+      overrides: { fields: { heading: 'Sendiri' } },
+    }
+    const detached = detachSection([master, copy], 'copy')[1]!
+    expect(detached.linkedTo).toBeUndefined()
+    expect(detached.settings.heading).toBe('Sendiri')
   })
 })
 

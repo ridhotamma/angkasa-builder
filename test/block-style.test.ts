@@ -8,6 +8,7 @@ import {
   defineBlock,
   duplicateBlock,
   findBlock,
+  readBlockMotion,
   readBlocks,
   registeredBlock,
   sanitizeValues,
@@ -72,6 +73,12 @@ describe('the block style allowlist', () => {
       'hoverColorCustom',
       'hoverBackgroundTheme',
       'hoverBackgroundColor',
+      // Per-block motion, on the same scale as a section's.
+      'motion',
+      'motionDuration',
+      'motionDistance',
+      'motionDelay',
+      'parallax',
     ]) {
       expect(keys).toContain(key)
     }
@@ -274,6 +281,61 @@ describe('resolving a block style to CSS', () => {
       style: { bleed: 'default' },
     })
     expect(dropped.block!.style).toBeUndefined()
+  })
+})
+
+describe('block motion', () => {
+  test('entrance and parallax tokens survive sanitising, defaults are dropped', () => {
+    const { block } = stored({
+      id: 'm',
+      type: 'text',
+      settings: { body: 'x' },
+      style: {
+        motion: 'slide-up',
+        motionDuration: 'slow',
+        motionDistance: 'long',
+        parallax: 'soft',
+      },
+    })
+    expect(block!.style).toEqual({
+      motion: 'slide-up',
+      motionDuration: 'slow',
+      motionDistance: 'long',
+      parallax: 'soft',
+    })
+
+    const plain = stored({
+      id: 'm',
+      type: 'text',
+      settings: { body: 'x' },
+      style: { motion: 'default', parallax: 'default' },
+    })
+    expect(plain.block!.style).toBeUndefined()
+  })
+
+  test('an entrance resolves on the shared section scale, parallax to pixels', () => {
+    const slide = readBlockMotion({
+      motion: 'slide-up',
+      motionDuration: 'slow',
+      motionDistance: 'long',
+    })
+    expect(slide.entrance?.key).toBe('slide-up:slow:long:none:plain')
+    // 48px base × 1.75 (long), 0.7s × 1.6 (slow).
+    expect(slide.entrance?.y).toBeCloseTo(84)
+    expect(slide.entrance?.duration).toBeCloseTo(1.12)
+    expect(slide.entrance?.stagger).toBe(0)
+
+    expect(readBlockMotion({ parallax: 'soft' })).toEqual({ entrance: null, parallax: 36 })
+    expect(readBlockMotion({ parallax: 'strong' })).toEqual({ entrance: null, parallax: 84 })
+  })
+
+  test('unknown or unset motion resolves to none', () => {
+    expect(readBlockMotion(undefined)).toEqual({ entrance: null, parallax: 0 })
+    expect(readBlockMotion({})).toEqual({ entrance: null, parallax: 0 })
+    expect(readBlockMotion({ motion: 'explode', parallax: 'wild' })).toEqual({
+      entrance: null,
+      parallax: 0,
+    })
   })
 })
 

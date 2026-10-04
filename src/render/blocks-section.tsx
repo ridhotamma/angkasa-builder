@@ -28,7 +28,12 @@ import { useLocale } from '@repo/i18n'
 import { ImageWithFallback } from '@repo/theme'
 
 import { blockSchema } from '../model/blocks'
-import { blockStyleCss, readBlockBleed, type BlockStyleCss } from '../model/block-style'
+import {
+  blockStyleCss,
+  readBlockBleed,
+  readBlockMotion,
+  type BlockStyleCss,
+} from '../model/block-style'
 import {
   ALIGN_JUSTIFY,
   BUTTON_HOVERS,
@@ -73,6 +78,7 @@ import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
 import { featureIcon } from './icons'
 import { VideoFrame } from './media'
+import { Parallax, ScrollReveal } from './motion'
 import {
   buttonHoverCss,
   EditableText,
@@ -273,6 +279,26 @@ function BlockPlaceholder({ label }: { label: Localized }) {
  * `:has([data-block-id]:hover)` guard keeps the outline on the innermost
  * block under the pointer rather than every ancestor.
  */
+/**
+ * A block's own entrance and parallax, resolved from its style overrides and
+ * rendered only when the block asked for one — a plain block keeps exactly
+ * the markup it had before. The wrappers nest so the reveal and the scroll
+ * drift never fight over the same transform.
+ */
+function BlockMotion({ block, children }: { block: BlockValue; children: ReactNode }) {
+  const { entrance, parallax } = readBlockMotion(block.style)
+  let content = children
+  if (parallax > 0) content = <Parallax amount={parallax}>{content}</Parallax>
+  if (entrance) {
+    content = (
+      <ScrollReveal entrance={entrance} data-block-motion={entrance.key}>
+        {content}
+      </ScrollReveal>
+    )
+  }
+  return <>{content}</>
+}
+
 function BlockShell({ block, children }: { block: BlockValue; children: ReactNode }) {
   const { mode, editing } = useRenderEnvironment()
   const sectionId = useContext(SectionIdContext)
@@ -292,14 +318,15 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
     ) : (
       children
     )
+  const motion = <BlockMotion block={block}>{content}</BlockMotion>
 
   if (mode !== 'preview' || !editing?.onSelectBlock || !sectionId) {
     return styled ? (
       <Box css={css} data-block-hover-group="">
-        {content}
+        {motion}
       </Box>
     ) : (
-      <>{content}</>
+      <>{motion}</>
     )
   }
   const selected = editing.selectedBlockId === block.id
@@ -330,7 +357,7 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
         editing.onSelectBlock?.(sectionId, block.id)
       }}
     >
-      {content}
+      {motion}
       {schema && (
         <Box
           data-block-label=""

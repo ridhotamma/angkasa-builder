@@ -13,6 +13,7 @@
 import { Box, Flex, type BoxProps } from '@chakra-ui/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
+import type { EntrancePreset } from '../model/section-style'
 import { revealRootMargin, useMotionEffect } from './motion/engine'
 
 /**
@@ -149,6 +150,148 @@ export function Tilt({
 
   return (
     <Box ref={ref} willChange="transform" {...props}>
+      {children}
+    </Box>
+  )
+}
+
+/**
+ * Fades — and, when the entrance says so, lifts, zooms, blurs, settles — an
+ * element as it scrolls into view, tweened by GSAP. Shared by sections and
+ * blocks: a section reveals as one band, a block steps out on its own.
+ *
+ * Nothing is ever hidden in the server-rendered HTML: an element starts
+ * visible, and only one that is *below the fold* when the page comes alive is
+ * tucked away to be revealed. So the first screen never flashes, a page
+ * without JavaScript shows everything, and a shopper who asks the system for
+ * less motion gets none.
+ */
+export function ScrollReveal({
+  entrance,
+  stagger = false,
+  children,
+  ...props
+}: {
+  entrance: EntrancePreset | null
+  /** Cascade an element's children instead of animating it as one. */
+  stagger?: boolean
+  children: ReactNode
+} & BoxProps) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useMotionEffect(
+    ref,
+    ({ gsap }) => {
+      const element = ref.current
+      const view = element?.ownerDocument.defaultView
+      if (!entrance || !element || !view) return
+      // A window with no height yet (an iframe still being sized) has no fold
+      // to be below; everything would be tucked away and never come back.
+      if (view.innerHeight === 0) return
+      if (element.getBoundingClientRect().top < view.innerHeight * 0.9) return
+
+      const targets = stagger ? Array.from(element.children) : [element]
+      if (targets.length === 0) return
+
+      gsap.set(targets, {
+        opacity: entrance.opacity,
+        y: entrance.y,
+        scale: entrance.scale,
+        ...(entrance.blur > 0 && { filter: `blur(${entrance.blur}px)` }),
+      })
+      const images = entrance.imageScale !== 1 ? element.querySelectorAll('img') : []
+      if (images.length > 0) gsap.set(images, { scale: entrance.imageScale })
+
+      const timeline = gsap.timeline({ paused: true })
+      timeline.to(
+        targets,
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          ...(entrance.blur > 0 && { filter: 'blur(0px)' }),
+          duration: entrance.duration,
+          ease: entrance.ease,
+          stagger: entrance.stagger,
+        },
+        entrance.delay,
+      )
+      if (images.length > 0) {
+        timeline.to(
+          images,
+          { scale: 1, duration: Math.max(entrance.duration, 1.2), ease: 'power2.out' },
+          entrance.delay,
+        )
+      }
+
+      element.dataset.reveal = 'waiting'
+      const observer = new view.IntersectionObserver(
+        ([entry]) => {
+          if (!entry?.isIntersecting) return
+          element.dataset.reveal = 'shown'
+          timeline.play()
+          observer.disconnect()
+        },
+        { rootMargin: revealRootMargin(view, element) },
+      )
+      observer.observe(element)
+      return () => observer.disconnect()
+    },
+    [entrance?.key, stagger],
+  )
+
+  if (!entrance) return <>{children}</>
+
+  return (
+    <Box ref={ref} data-stagger={stagger || undefined} position="relative" zIndex={1} {...props}>
+      {children}
+    </Box>
+  )
+}
+
+/**
+ * A block drifting against the page as it scrolls — the parallax a freeform
+ * tool offers, as one token. Travel is vertical only, so layout and
+ * horizontal overflow are untouched; reduced motion and no JavaScript show
+ * the block in its natural place.
+ */
+export function Parallax({
+  amount,
+  children,
+  ...props
+}: {
+  /** Pixels travelled each way across the viewport. */
+  amount: number
+  children: ReactNode
+} & BoxProps) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useMotionEffect(
+    ref,
+    ({ gsap }) => {
+      const element = ref.current
+      const view = element?.ownerDocument.defaultView
+      if (!element || !view || amount === 0 || view.innerHeight === 0) return
+      gsap.fromTo(
+        element,
+        { y: amount },
+        {
+          y: -amount,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: element,
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: true,
+          },
+        },
+      )
+    },
+    [amount],
+  )
+
+  return (
+    <Box ref={ref} data-parallax="" willChange="transform" {...props}>
       {children}
     </Box>
   )

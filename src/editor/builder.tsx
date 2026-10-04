@@ -68,15 +68,18 @@ import {
   LuChevronLeft,
   LuCopy,
   LuEye,
+  LuLink,
   LuMonitor,
   LuRedo2,
   LuShoppingBag,
   LuSmartphone,
   LuTablet,
   LuTrash2,
+  LuUnlink,
   LuUser,
   LuSearch,
   LuUndo2,
+  LuX,
 } from 'react-icons/lu'
 
 import { Tooltip } from '@repo/theme'
@@ -92,7 +95,14 @@ import {
   updateBlocksIn,
 } from '../model/blocks'
 import {
+  clearOverrides,
   createSection,
+  detachSection,
+  linkedMaster,
+  overridableFields,
+  resolveLinkedSections,
+  setBlockOverrides,
+  setSectionOverrides,
   TEMPLATE_KEYS,
   type SectionInstance,
   type TemplateKey,
@@ -347,6 +357,17 @@ const TEMPLATE_LABELS = {
   article: 'templateArticle',
 } as const satisfies Record<TemplateKey, string>
 
+/**
+ * The section an edit should land on: a linked copy edits its original, so
+ * every copy updates together — the component behaviour, not a silent write
+ * to a section that draws nothing.
+ */
+function editTargetId(sections: readonly SectionInstance[], id: string): string {
+  const section = sections.find((other) => other.id === id)
+  if (!section?.linkedTo) return id
+  return linkedMaster(section, sections)?.id ?? id
+}
+
 export function PageBuilder(props: PageBuilderProps) {
   return (
     <PaletteDragProvider>
@@ -405,10 +426,17 @@ function Builder({
 
   const editableLayout = Boolean(layout && onLayoutChange)
   const selected = sections.find((section) => section.id === selectedId) ?? null
-  const schema = selected ? sectionSchema(selected.type) : null
+  // A linked copy edits through its original for structure and through its
+  // own overrides for content: `source` is the original (schema and master
+  // values), `resolvedSelected` is what the copy actually draws.
+  const source = selected?.linkedTo ? (linkedMaster(selected, sections) ?? selected) : selected
+  const resolvedSelected = selected?.linkedTo
+    ? (resolveLinkedSections(sections).find((section) => section.id === selected.id) ?? selected)
+    : selected
+  const schema = source ? sectionSchema(source.type) : null
   const selectedBlock =
-    selected && schema && selectedBlockId
-      ? findBlock(schema.fields, selected.settings, selectedBlockId)
+    resolvedSelected && schema && selectedBlockId
+      ? findBlock(schema.fields, resolvedSelected.settings, selectedBlockId)
       : null
 
   useHistoryKeys(
@@ -450,7 +478,11 @@ function Builder({
 
   const updateSection = useCallback(
     (id: string, change: (section: SectionInstance) => SectionInstance) =>
-      onSectionsChange(sections.map((section) => (section.id === id ? change(section) : section))),
+      onSectionsChange(
+        sections.map((section) =>
+          section.id === editTargetId(sections, id) ? change(section) : section,
+        ),
+      ),
     [sections, onSectionsChange],
   )
 
@@ -463,9 +495,15 @@ function Builder({
   latest.current = { sections, onSectionsChange }
   const onEditText = useCallback((sectionId: string, key: string, value: string) => {
     const { sections: current, onSectionsChange: change } = latest.current
+    // A linked copy's words are its own override; the original keeps its own.
+    if (current.find((section) => section.id === sectionId)?.linkedTo) {
+      change(setSectionOverrides(current, sectionId, { [key]: value }))
+      return
+    }
+    const target = editTargetId(current, sectionId)
     change(
       current.map((section) =>
-        section.id === sectionId
+        section.id === target
           ? { ...section, settings: { ...section.settings, [key]: value } }
           : section,
       ),
@@ -504,7 +542,7 @@ function Builder({
     const created = readBlocks(donor.settings, 'blocks')
 
     if (target.kind === 'blocks') {
-      const host = current.find((section) => section.id === target.sectionId)
+      const host = current.find((section) => section.id === editTargetId(current, target.sectionId))
       const shape = host ? sectionSchema(host.type) : null
       if (host && shape && created.length > 0) {
         let values = host.settings
@@ -539,9 +577,15 @@ function Builder({
   const onEditBlockText = useCallback(
     (sectionId: string, blockId: string, key: string, value: string) => {
       const { sections: current, onSectionsChange: change } = latest.current
+      // A linked copy's block words are its own override.
+      if (current.find((section) => section.id === sectionId)?.linkedTo) {
+        change(setBlockOverrides(current, sectionId, blockId, { [key]: value }))
+        return
+      }
+      const target = editTargetId(current, sectionId)
       change(
         current.map((section) => {
-          if (section.id !== sectionId) return section
+          if (section.id !== target) return section
           const shape = sectionSchema(section.type)
           if (!shape) return section
           const settings = updateBlocksIn(
@@ -693,7 +737,11 @@ function Builder({
               return next ? { ...section, settings: next } : section
             }),
           duplicate: () => {
-            const result = duplicateBlock(schema.fields, selected.settings, selectedBlock.block.id)
+            const result = duplicateBlock(
+              schema.fields,
+              source?.settings ?? selected.settings,
+              selectedBlock.block.id,
+            )
             if (!result) return
             updateSection(selected.id, (section) => ({ ...section, settings: result.values }))
             setSelectedBlockId(result.copy.id)
@@ -802,6 +850,14 @@ function Builder({
           values={selectedBlock.block.settings}
           services={services}
           onChange={(values) => {
+            // A linked copy's block content is its own; structure still
+            // belongs to the original, which `setBlockOverrides` routes.
+            if (selected.linkedTo) {
+              onSectionsChange(
+                setBlockOverrides(sections, selected.id, selectedBlock.block.id, values),
+              )
+              return
+            }
             updateSection(selected.id, (section) => {
               const settings = updateBlockSettings(
                 schema.fields,
@@ -855,7 +911,7 @@ function Builder({
         <FieldsForm
           fields={selectedElementKind === 'text' ? TEXT_ELEMENT_FIELDS : BUTTON_ELEMENT_FIELDS}
           values={
-            selected.elements?.[selectedElementId] ??
+            source?.elements?.[selectedElementId] ??
             (selectedElementKind === 'text'
               ? { ...TEXT_ELEMENT_DEFAULTS }
               : { ...BUTTON_ELEMENT_DEFAULTS })
@@ -888,6 +944,102 @@ function Builder({
         >
           {t('resetToTheme')}
         </Button>
+      </Stack>
+    ) : selected && schema && selected.linkedTo ? (
+      <Stack gap="4">
+        {back}
+        <Stack gap="1">
+          <HStack gap="2">
+            <Icon as={LuLink} color="brand.solid" />
+            <Text fontWeight="semibold">{l(schema.name)}</Text>
+          </HStack>
+          <Text fontSize="xs" color="fg.muted">
+            {t('linkedHelp')}
+          </Text>
+        </Stack>
+        {overridableFields(schema.fields).length > 0 && (
+          <FieldsForm
+            fields={overridableFields(schema.fields)}
+            values={resolvedSelected?.settings ?? selected.settings}
+            services={services}
+            onChange={(values) =>
+              onSectionsChange(setSectionOverrides(sections, selected.id, values))
+            }
+          />
+        )}
+        {selected.overrides && (
+          <Stack gap="1" borderTopWidth="1px" borderColor="border.subtle" pt="3">
+            <Text fontSize="xs" fontWeight="semibold">
+              {t('overridesTitle')}
+            </Text>
+            {Object.keys(selected.overrides.fields ?? {}).map((key) => {
+              const field = overridableFields(schema.fields).find((entry) => entry.key === key)
+              return (
+                <HStack key={key} gap="2" justify="space-between">
+                  <Text fontSize="xs" color="fg.muted" truncate>
+                    {field ? l(field.label) : key}
+                  </Text>
+                  <IconButton
+                    aria-label={t('resetOverride')}
+                    size="2xs"
+                    variant="ghost"
+                    onClick={() =>
+                      onSectionsChange(clearOverrides(sections, selected.id, { field: key }))
+                    }
+                  >
+                    <LuX />
+                  </IconButton>
+                </HStack>
+              )
+            })}
+            {Object.keys(selected.overrides.blocks ?? {}).map((blockId) => {
+              const found = source ? findBlock(schema.fields, source.settings, blockId) : null
+              return (
+                <HStack key={blockId} gap="2" justify="space-between">
+                  <Text fontSize="xs" color="fg.muted" truncate>
+                    {found ? l(found.schema.name) : blockId}
+                  </Text>
+                  <IconButton
+                    aria-label={t('resetOverride')}
+                    size="2xs"
+                    variant="ghost"
+                    onClick={() =>
+                      onSectionsChange(clearOverrides(sections, selected.id, { blockId }))
+                    }
+                  >
+                    <LuX />
+                  </IconButton>
+                </HStack>
+              )
+            })}
+          </Stack>
+        )}
+        <HStack gap="2" wrap="wrap">
+          {sections.some((section) => section.id === selected.linkedTo) && (
+            <Button size="xs" variant="outline" onClick={() => select(selected.linkedTo!, true)}>
+              <Icon as={LuLink} />
+              {t('editMaster')}
+            </Button>
+          )}
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => onSectionsChange(detachSection(sections, selected.id))}
+          >
+            <Icon as={LuUnlink} />
+            {t('detach')}
+          </Button>
+          {selected.overrides && (
+            <Button
+              size="xs"
+              variant="ghost"
+              colorPalette="danger"
+              onClick={() => onSectionsChange(clearOverrides(sections, selected.id))}
+            >
+              {t('resetAll')}
+            </Button>
+          )}
+        </HStack>
       </Stack>
     ) : selected && schema ? (
       <Stack gap="4">
