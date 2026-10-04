@@ -9,7 +9,6 @@
     "./render": "./src/render/index.ts",
     "./editor": "./src/editor/index.ts",
     "./snapshot": "./src/snapshot/index.ts",
-    "./widgets": "./src/widgets/index.ts",
     "./package.json": "./package.json"
   },
   "scripts": {

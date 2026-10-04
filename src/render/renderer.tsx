@@ -29,6 +29,7 @@ import { SectionFrame } from './frame'
 import { requestMotionRefresh } from './motion/engine'
 import { SectionElementsContext, SectionIdContext } from './primitives'
 import { SECTION_RENDERERS } from './registry'
+import { sectionBackground } from './section-background'
 
 /** One shared empty map, so a section without overrides never re-renders on identity. */
 const NO_ELEMENTS: Record<string, never> = {}
@@ -219,7 +220,7 @@ const SectionItem = memo(function SectionItem({
   const rendered = (
     <SectionIdContext.Provider value={section.id}>
       <SectionElementsContext.Provider value={section.elements ?? NO_ELEMENTS}>
-        <SectionFrame style={section.style}>
+        <SectionFrame style={section.style} background={sectionBackground(section)}>
           <Section settings={section.settings} />
         </SectionFrame>
       </SectionElementsContext.Provider>

@@ -239,9 +239,7 @@ describe('premium backgrounds', () => {
     )
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(html).toContain('Over a photo')
-    expect(html).toContain(
-      'text-shadow:0 1px 3px rgba(0, 0, 0, 0.8),0 2px 12px rgba(0, 0, 0, 0.5)',
-    )
+    expect(html).toContain('text-shadow:0 1px 3px rgba(0, 0, 0, 0.8),0 2px 12px rgba(0, 0, 0, 0.5)')
   })
 })
 
@@ -276,6 +274,25 @@ describe('section chrome', () => {
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(html).toContain('mask-image')
     expect(/background(-color)?:var\(--chakra-colors-bg\)/.test(html)).toBe(true)
+  })
+
+  test('a banner divider carries the banner photo, not the page colour', () => {
+    const section = createSection(
+      'hero',
+      { heading: 'Photo', image: 'hero-photo' },
+      { dividerTop: 'wave', dividerBottom: 'wave' },
+    )
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('mask-image')
+    // The hero's own photo, plus one photo slice per divider: before this,
+    // the dividers were page-coloured and only the hero had an image.
+    expect((html.match(/<img/g) ?? []).length).toBe(3)
+  })
+
+  test('a photo-less hero divider mirrors its own wash', () => {
+    const section = createSection('hero', { heading: 'Wash' }, { dividerTop: 'wave' })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(/background(-color)?:var\(--chakra-colors-brand-subtle\)/.test(html)).toBe(true)
   })
 
   test('a testimonial photo is a plain visible image, never a hidden avatar', () => {

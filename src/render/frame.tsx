@@ -31,7 +31,15 @@ import {
 } from '../model/section-style'
 import { resolveScheme, schemeCssVars, type SchemeKey } from '../model/settings'
 import { useRenderEnvironment } from './context'
-import { PANEL_PX, PATTERNS, SectionDivider, surfacePaint, surfaceShade } from './dividers'
+import {
+  PANEL_PX,
+  PATTERNS,
+  SectionDivider,
+  surfacePaint,
+  surfaceShade,
+  type SurfacePaint,
+} from './dividers'
+import type { SectionBackground } from './section-background'
 import { BackgroundVideo } from './media'
 import { revealRootMargin, useMotionEffect } from './motion/engine'
 import { FullBleed, HeadlineContext } from './primitives'
@@ -98,9 +106,12 @@ export function isSectionScheduledIn(style: FieldValues, now: Date): boolean {
 
 export function SectionFrame({
   style: stored,
+  background,
   children,
 }: {
   style: FieldValues
+  /** The section's own background when its renderer paints one (see `sectionBackground`). */
+  background?: SectionBackground | null
   children: ReactNode
 }) {
   const { settings, imageUrl } = useRenderEnvironment()
@@ -111,6 +122,16 @@ export function SectionFrame({
   // The section's paint, mirrored by its dividers so they can never mismatch
   // it — scheme, gradient, pattern or plain page alike.
   const paint = surfacePaint(style)
+  // A banner's background is its content, not its style: the divider mirrors
+  // what the renderer paints. An explicit style background still wins.
+  const dividerPaint: SurfacePaint =
+    background && style.backgroundType === 'default'
+      ? {
+          ...paint,
+          bg: background.bg ?? paint.bg,
+          media: background.media ?? paint.media,
+        }
+      : paint
 
   const display = {
     ...(style.visibility === 'mobile' && { hideFrom: 'md' }),
@@ -195,7 +216,7 @@ export function SectionFrame({
       <SectionDivider
         shape={style.dividerTop}
         position="top"
-        paint={paint}
+        paint={dividerPaint}
         tone={style.dividerTone}
       />
     ) : null
@@ -204,7 +225,7 @@ export function SectionFrame({
       <SectionDivider
         shape={style.dividerBottom}
         position="bottom"
-        paint={paint}
+        paint={dividerPaint}
         tone={style.dividerTone}
       />
     ) : null
