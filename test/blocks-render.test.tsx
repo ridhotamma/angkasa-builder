@@ -230,3 +230,77 @@ describe('blocks section, empty', () => {
     expect(preview).toContain('Add items in the section settings.')
   })
 })
+
+describe('the photo card block', () => {
+  function card() {
+    return createSection('blocks', {
+      blocks: [
+        {
+          id: 'card',
+          type: 'media-card',
+          settings: {
+            image: 'file-photo_1',
+            alt: 'Es kopi susu',
+            overlay: 'gradient',
+            contentPosition: 'middle',
+            height: 'lg',
+            padding: 'lg',
+            gap: 'sm',
+            rounded: 'lg',
+            blocks: [
+              {
+                id: 'h',
+                type: 'heading',
+                settings: {
+                  text: 'Minuman Soda',
+                  level: 'h3',
+                  size: 'lg',
+                  align: 'center',
+                  width: 'full',
+                },
+              },
+              {
+                id: 't',
+                type: 'text',
+                settings: { body: 'Fizzy favourites', align: 'center', width: 'full' },
+              },
+            ],
+          },
+        },
+      ],
+    })
+  }
+
+  test('draws the photo as a full cover layer under the words', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[card()]}
+        env={env({ imageUrl: () => 'https://cdn.example/photo.jpg' })}
+      />,
+    )
+    expect(html).toContain('https://cdn.example/photo.jpg')
+    expect(html).toMatch(/object-fit:\s*cover/)
+    expect(html).toContain('Minuman Soda')
+    expect(html).toContain('Fizzy favourites')
+    // The words sit on a shade and read light without being restyled.
+    expect(html).toContain('--chakra-colors-fg:white')
+    expect(html).toMatch(/color:\s*var\(--chakra-colors-fg\)/)
+    expect(html).toMatch(/linear-gradient/)
+  })
+
+  test('an empty card shows a placeholder in the preview and nothing live', () => {
+    const empty = createSection('blocks', {
+      blocks: [{ id: 'mc', type: 'media-card', settings: {} }],
+    })
+    const live = render(<SectionsRenderer sections={[empty]} env={env()} />)
+    expect(live).not.toContain('Upload your image')
+
+    const preview = render(
+      <SectionsRenderer
+        sections={[empty]}
+        env={env({ mode: 'preview', editing: { onEditText: () => undefined } })}
+      />,
+    )
+    expect(preview).toContain('Upload your image')
+  })
+})

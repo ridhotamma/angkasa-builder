@@ -537,6 +537,92 @@ const badge: BlockSchema = {
   ],
 }
 
+/**
+ * A card whose whole face is a photo, with its words on top. The block the
+ * ready-made sections did not draw: a `column` can wear a background colour
+ * but not a background image, and an `image` is a sibling of its text, never
+ * a layer under it — so "three cards, each a full photo with the text
+ * centred inside" had no answer before this type. Children nest, so a card
+ * holds a heading, a paragraph or a button like any container; the overlay
+ * shade and the height keep the words readable on a bright photo.
+ */
+const mediaCard: BlockSchema = {
+  type: 'media-card',
+  name: { en: 'Photo card', id: 'Kartu foto' },
+  description: {
+    en: 'A card filled by a background photo, with its words on top.',
+    id: 'Kartu berlatar foto penuh, dengan teks di atasnya.',
+  },
+  fields: [
+    { kind: 'image', key: 'image', label: { en: 'Background image', id: 'Gambar latar' } },
+    {
+      kind: 'text',
+      key: 'alt',
+      label: { en: 'Image description', id: 'Keterangan gambar' },
+      help: {
+        en: 'Read out to shoppers who cannot see the image, and used to pick a stock photo.',
+        id: 'Dibacakan untuk pembeli yang tidak bisa melihat gambar, dan dipakai memilih foto stok.',
+      },
+      max: 160,
+      default: '',
+    },
+    {
+      kind: 'select',
+      key: 'overlay',
+      label: { en: 'Shade over the image', id: 'Bayangan di atas gambar' },
+      help: {
+        en: 'Keeps the words readable on a bright photo.',
+        id: 'Menjaga teks tetap terbaca di foto yang terang.',
+      },
+      options: [
+        { value: 'gradient', label: { en: 'Fade from the bottom', id: 'Memudar dari bawah' } },
+        { value: 'dark', label: { en: 'Dark', id: 'Gelap' } },
+        { value: 'light', label: { en: 'Light', id: 'Tipis' } },
+        { value: 'none', label: { en: 'None', id: 'Tanpa bayangan' } },
+      ],
+      default: 'gradient',
+    },
+    {
+      kind: 'select',
+      key: 'contentPosition',
+      label: { en: 'Text position', id: 'Posisi teks' },
+      options: [
+        { value: 'middle', label: { en: 'Middle', id: 'Tengah' } },
+        { value: 'bottom', label: { en: 'Bottom', id: 'Bawah' } },
+      ],
+      default: 'middle',
+    },
+    {
+      kind: 'select',
+      key: 'height',
+      label: { en: 'Height', id: 'Tinggi' },
+      options: [
+        { value: 'sm', label: { en: 'Short', id: 'Pendek' } },
+        { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+        { value: 'lg', label: { en: 'Tall', id: 'Tinggi' } },
+        { value: 'xl', label: { en: 'Extra tall', id: 'Sangat tinggi' } },
+      ],
+      default: 'md',
+    },
+    spaceField('padding', { en: 'Padding', id: 'Jarak dalam' }, 'md'),
+    spaceField('gap', { en: 'Spacing', id: 'Jarak' }, 'sm'),
+    {
+      kind: 'select',
+      key: 'rounded',
+      label: { en: 'Corners', id: 'Sudut' },
+      options: [
+        { value: 'none', label: { en: 'Square', id: 'Siku' } },
+        { value: 'sm', label: { en: 'Small', id: 'Kecil' } },
+        { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+        { value: 'lg', label: { en: 'Large', id: 'Besar' } },
+        { value: 'full', label: { en: 'Round', id: 'Bulat' } },
+      ],
+      default: 'md',
+    },
+    nested('blocks', { en: 'Content', id: 'Konten' }, 20),
+  ],
+}
+
 BLOCK_TYPES.push(
   heading,
   text,
@@ -552,6 +638,7 @@ BLOCK_TYPES.push(
   divider,
   video,
   badge,
+  mediaCard,
 )
 
 export function blockSchema(type: string): BlockSchema | null {
@@ -1387,6 +1474,143 @@ const BLOCK_PRESETS = [
                   blocks: [
                     { type: 'heading', settings: { text: 'Judul kartu', level: 'h3', size: 'md' } },
                     { type: 'text', settings: { body: 'Satu-dua baris penjelasan singkat.' } },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+  {
+    key: 'photo-cards',
+    name: { en: 'Cards — photos with text', id: 'Kartu — foto dengan teks' },
+    description: {
+      en: 'Three cards, each a full photo with a title and a line centred on it.',
+      id: 'Tiga kartu, masing-masing foto penuh dengan judul dan satu baris teks di tengahnya.',
+    },
+    settings: {
+      gap: 'lg',
+      blocks: [
+        {
+          type: 'heading',
+          settings: {
+            text: 'Pilih favoritmu',
+            level: 'h2',
+            size: 'xl',
+            align: 'center',
+            width: 'full',
+          },
+        },
+        {
+          type: 'grid',
+          settings: {
+            columns: '3',
+            gap: 'lg',
+            align: 'stretch',
+            stackOnMobile: true,
+            padding: 'none',
+            blocks: [
+              {
+                type: 'media-card',
+                settings: {
+                  image: '',
+                  alt: '',
+                  overlay: 'gradient',
+                  contentPosition: 'middle',
+                  height: 'md',
+                  padding: 'md',
+                  gap: 'sm',
+                  rounded: 'lg',
+                  blocks: [
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: 'Judul kartu',
+                        level: 'h3',
+                        size: 'lg',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: {
+                        body: 'Satu-dua baris penjelasan singkat.',
+                        size: 'md',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                type: 'media-card',
+                settings: {
+                  image: '',
+                  alt: '',
+                  overlay: 'gradient',
+                  contentPosition: 'middle',
+                  height: 'md',
+                  padding: 'md',
+                  gap: 'sm',
+                  rounded: 'lg',
+                  blocks: [
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: 'Judul kartu',
+                        level: 'h3',
+                        size: 'lg',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: {
+                        body: 'Satu-dua baris penjelasan singkat.',
+                        size: 'md',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                type: 'media-card',
+                settings: {
+                  image: '',
+                  alt: '',
+                  overlay: 'gradient',
+                  contentPosition: 'middle',
+                  height: 'md',
+                  padding: 'md',
+                  gap: 'sm',
+                  rounded: 'lg',
+                  blocks: [
+                    {
+                      type: 'heading',
+                      settings: {
+                        text: 'Judul kartu',
+                        level: 'h3',
+                        size: 'lg',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
+                    {
+                      type: 'text',
+                      settings: {
+                        body: 'Satu-dua baris penjelasan singkat.',
+                        size: 'md',
+                        align: 'center',
+                        width: 'full',
+                      },
+                    },
                   ],
                 },
               },

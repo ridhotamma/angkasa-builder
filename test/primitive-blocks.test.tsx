@@ -37,9 +37,19 @@ const TREE = [
   {
     id: 'dv',
     type: 'divider',
-    settings: { spacing: 'md', thickness: 'thin', tone: 'border', width: 'narrow', align: 'center' },
+    settings: {
+      spacing: 'md',
+      thickness: 'thin',
+      tone: 'border',
+      width: 'narrow',
+      align: 'center',
+    },
   },
-  { id: 'bd', type: 'badge', settings: { text: 'Baru', tone: 'subtle', size: 'sm', align: 'left' } },
+  {
+    id: 'bd',
+    type: 'badge',
+    settings: { text: 'Baru', tone: 'subtle', size: 'sm', align: 'left' },
+  },
   {
     id: 'vd',
     type: 'video',
@@ -128,6 +138,7 @@ describe('the ready-made primitive layouts', () => {
       'statement',
       'image-text',
       'cards-three',
+      'photo-cards',
       'reviews-three',
     ])
     for (const preset of presets) {
@@ -193,7 +204,12 @@ describe('the new primitives, rendered', () => {
   test('a full-bleed block escapes the page column', () => {
     const section = createSection('custom', {
       blocks: [
-        { id: 'hero', type: 'heading', settings: { text: 'Lebar penuh' }, style: { bleed: 'full' } },
+        {
+          id: 'hero',
+          type: 'heading',
+          settings: { text: 'Lebar penuh' },
+          style: { bleed: 'full' },
+        },
       ],
     })
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)

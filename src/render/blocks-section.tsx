@@ -82,7 +82,7 @@ import {
   type BlockTextOverrideProps,
 } from './primitives'
 import { RichTextView } from './rich-text'
-import { useEmptyText, type SectionProps } from './sections'
+import { useEmptyText, overlayProps, type SectionProps } from './sections'
 
 /* -------------------------------------------------------------------------- */
 /* The section                                                                */
@@ -166,6 +166,7 @@ const BUILT_IN_BLOCKS: Record<string, BlockRenderer> = {
   text: TextBlock,
   button: ButtonBlock,
   image: ImageBlock,
+  'media-card': MediaCardBlock,
   spacer: SpacerBlock,
   column: ColumnBlock,
   columns: ColumnsBlock,
@@ -231,9 +232,11 @@ function blockTextOverrides(block: BlockValue): BlockTextOverrideProps {
   const group = css['[data-block-hover-group]:hover &'] as BlockStyleCss | undefined
   const hover = self ?? group
   if (hover && typeof hover.color === 'string') {
-    out.css = (self
-      ? { '&:hover': { color: hover.color } }
-      : { '[data-block-hover-group]:hover &': { color: hover.color } }) as BlockTextOverrideProps['css']
+    out.css = (
+      self
+        ? { '&:hover': { color: hover.color } }
+        : { '[data-block-hover-group]:hover &': { color: hover.color } }
+    ) as BlockTextOverrideProps['css']
   }
   return out
 }
@@ -513,6 +516,103 @@ function ImageBlock({ block }: { block: BlockValue }) {
       ) : (
         <ImageWithFallback src={src} alt={alt} w="full" rounded={rounded} loading="lazy" />
       )}
+    </Box>
+  )
+}
+
+const MEDIA_CARD_HEIGHTS = ['sm', 'md', 'lg', 'xl'] as const
+
+/** Card heights step with the shared spacing rhythm, not fixed pixels. */
+const MEDIA_CARD_HEIGHT: Record<(typeof MEDIA_CARD_HEIGHTS)[number], { base: string; md: string }> =
+  {
+    sm: { base: '10rem', md: '12rem' },
+    md: { base: '14rem', md: '18rem' },
+    lg: { base: '18rem', md: '24rem' },
+    xl: { base: '24rem', md: '32rem' },
+  }
+
+const MEDIA_CARD_POSITIONS = ['middle', 'bottom'] as const
+const MEDIA_CARD_ALIGN: Record<(typeof MEDIA_CARD_POSITIONS)[number], string> = {
+  middle: 'center',
+  bottom: 'flex-end',
+}
+
+const MEDIA_CARD_OVERLAYS = ['gradient', 'dark', 'light', 'none'] as const
+
+/**
+ * Words on a photo read light. Remapping the theme's text tokens inside the
+ * card — the same variables a dark scheme sets on a section — turns every
+ * child block light at once, so a heading and a paragraph dropped in stay
+ * readable without either being restyled; a block that picks its own colour
+ * still wins, since it sets `color` explicitly.
+ */
+const ON_PHOTO_TEXT = {
+  '--chakra-colors-fg': 'white',
+  '--chakra-colors-fg-muted': 'rgba(255, 255, 255, 0.85)',
+  '--chakra-colors-fg-subtle': 'rgba(255, 255, 255, 0.7)',
+} as const
+
+/**
+ * A card whose full face is a photo, with the nested blocks on top. The image
+ * is a background layer (absolutely positioned and cropped to cover), the
+ * shade sits over it, and the content is centred or bottom-packed by the same
+ * spacing tokens every other block reads.
+ */
+function MediaCardBlock({ block }: { block: BlockValue }) {
+  const { imageUrl, mode } = useRenderEnvironment()
+  const children = readBlocks(block.settings, 'blocks')
+  const fileId = readText(block.settings, 'image')
+  const src = fileId ? imageUrl(fileId, { width: 1200, height: 1200 }) : null
+  if (!src && children.length === 0) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.image} />
+  const overlay = readToken(block.settings, 'overlay', MEDIA_CARD_OVERLAYS, 'gradient')
+  const position = readToken(block.settings, 'contentPosition', MEDIA_CARD_POSITIONS, 'middle')
+  const height = MEDIA_CARD_HEIGHT[readToken(block.settings, 'height', MEDIA_CARD_HEIGHTS, 'md')]
+  const padding = SPACE_PADDING_Y[readToken(block.settings, 'padding', SPACES, 'md')]
+  const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'sm')]
+  const rounded = IMAGE_ROUNDED[readToken(block.settings, 'rounded', IMAGE_ROUNDING, 'md')]
+  return (
+    <Box
+      position="relative"
+      minH={height}
+      rounded={rounded}
+      overflow="hidden"
+      bg="bg.subtle"
+      {...(mode === 'preview' &&
+        !src && {
+          borderWidth: '1px',
+          borderStyle: 'dashed',
+          borderColor: 'border',
+        })}
+      data-block-hover-group=""
+    >
+      {src && (
+        <ImageWithFallback
+          src={src}
+          alt={readText(block.settings, 'alt')}
+          position="absolute"
+          inset={0}
+          w="full"
+          h="full"
+          objectFit="cover"
+        />
+      )}
+      {overlay !== 'none' && <Box position="absolute" inset={0} {...overlayProps(overlay)} />}
+      <Flex
+        position="relative"
+        direction="column"
+        minH={height}
+        justify={MEDIA_CARD_ALIGN[position]}
+        p={padding}
+        // The colour must be set here, not only as a variable: a heading
+        // inherits the resolved body colour, so overriding `--chakra-colors-fg`
+        // alone would leave it dark.
+        color={overlay === 'none' ? undefined : 'fg'}
+        css={overlay === 'none' ? undefined : ON_PHOTO_TEXT}
+      >
+        <Box w="full">
+          <BlockList blocks={children} gap={gap} parentId={block.id} />
+        </Box>
+      </Flex>
     </Box>
   )
 }
