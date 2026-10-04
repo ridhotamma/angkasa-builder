@@ -582,6 +582,8 @@ export function readToken<T extends string>(
  * keeps its theme look and one button can step out on its own.
  */
 export interface ButtonElementOverrides {
+  /** Overrides the section's own label when set; empty keeps the section text. */
+  label: string
   variant: ButtonVariant | 'default'
   tone: ButtonTone | 'default'
   size: ButtonSize | 'default'
@@ -592,6 +594,7 @@ export interface ButtonElementOverrides {
 }
 
 export const BUTTON_ELEMENT_DEFAULTS: ButtonElementOverrides = {
+  label: '',
   variant: 'default',
   tone: 'default',
   size: 'default',
@@ -603,6 +606,17 @@ export const BUTTON_ELEMENT_DEFAULTS: ButtonElementOverrides = {
 
 /** The panel a button element opens when the seller clicks it in the preview. */
 export const BUTTON_ELEMENT_FIELDS: readonly Field[] = [
+  {
+    kind: 'text',
+    key: 'label',
+    label: { en: 'Button label', id: 'Label tombol' },
+    help: {
+      en: 'The words on the button. Empty keeps the section’s own text.',
+      id: 'Tulisan pada tombol. Kosong berarti memakai teks bagian itu sendiri.',
+    },
+    max: 60,
+    default: '',
+  },
   {
     kind: 'select',
     key: 'variant',
@@ -666,6 +680,7 @@ export const BUTTON_ELEMENT_FIELDS: readonly Field[] = [
 export function readButtonElement(values?: FieldValues): ButtonElementOverrides {
   const source = values ?? {}
   return {
+    label: readText(source, 'label').slice(0, 60),
     variant: readToken(source, 'variant', ['default', ...BUTTON_VARIANTS], 'default'),
     tone: readToken(source, 'tone', ['default', ...BUTTON_TONES], 'default'),
     size: readToken(source, 'size', ['default', ...BUTTON_SIZES], 'default'),

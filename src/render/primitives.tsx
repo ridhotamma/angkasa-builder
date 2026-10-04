@@ -277,10 +277,12 @@ export function ThemeButton({
 }) {
   const { settings, editing } = useRenderEnvironment()
   const elements = useContext(SectionElementsContext)
-  if (!label) return null
+  const override = readButtonElement(elements[elementKey])
+  // The settings panel's label override wins over the section's own text.
+  const text = override.label || label
+  if (!text) return null
 
   const look = buttonLook(settings.buttonStyle)
-  const override = readButtonElement(elements[elementKey])
   const themeVariant = secondary ? 'outline' : look.variant
   const variant = override.variant !== 'default' ? override.variant : themeVariant
   const configured = override.variant !== 'default' || override.tone !== 'default'
@@ -316,7 +318,7 @@ export function ThemeButton({
   const imageSolid = onImage && !(secondary || variant === 'outline')
   const button = configured ? (
     <ConfiguredButton
-      label={label}
+      label={text}
       link={link}
       variant={variant}
       appearance={appearance}
@@ -326,7 +328,7 @@ export function ThemeButton({
     />
   ) : (
     <LinkButton
-      label={label}
+      label={text}
       link={link}
       variant={variant}
       {...shape}
@@ -660,6 +662,10 @@ export function EditableText({
   const overrides = useTextElementStyle(element ? key : undefined)
   const ref = useRef<HTMLElement>(null)
   const focused = useRef(false)
+  // The text the DOM held when the seller started typing. While focused React
+  // renders this frozen string, so the children prop never changes and React
+  // never rewrites the contentEditable — rewriting it moves the caret.
+  const committed = useRef(value)
 
   // Keep the DOM in step with edits from the settings panel, except while the
   // seller is typing here.
@@ -668,14 +674,19 @@ export function EditableText({
     if (node && !focused.current && node.textContent !== value) node.textContent = value
   }, [value])
 
-  if (!value) return null
-
   const interactive = mode === 'preview' && Boolean(editing) && Boolean(sectionId)
   const elementAware = element && interactive && Boolean(editing?.onSelectElement)
   const selected = editing?.selectedElementId === key
   // The first click picks the element; the next places the caret.
   const canEdit = interactive && editable && (!elementAware || selected)
+
+  // Hidden only where it can never be edited: an empty editable element stays
+  // mounted, so Ctrl+A + Delete leaves the caret in place instead of unmounting
+  // the field under the seller.
+  if (!value && !canEdit) return null
+
   const style = { ...props, ...overrides }
+  const shown = focused.current ? committed.current : value
 
   const text = canEdit ? (
     <Box
@@ -694,7 +705,10 @@ export function EditableText({
       // An empty heading still needs somewhere to click.
       minW="4ch"
       css={{ '&:empty::before': { content: '"…"', opacity: 0.4 } }}
-      onFocus={() => (focused.current = true)}
+      onFocus={() => {
+        focused.current = true
+        committed.current = ref.current?.textContent ?? value
+      }}
       onBlur={() => (focused.current = false)}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
@@ -715,7 +729,7 @@ export function EditableText({
       }}
       {...style}
     >
-      {value}
+      {shown}
     </Box>
   ) : (
     <Box as={as} {...style}>

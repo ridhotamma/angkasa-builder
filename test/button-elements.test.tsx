@@ -76,6 +76,7 @@ describe('element overrides, as stored', () => {
     })
     expect(Object.keys(elements).sort()).toEqual(['button', 'panel.a.button'])
     expect(elements.button).toEqual({
+      label: '',
       variant: 'outline',
       tone: 'accent',
       size: 'default',
@@ -96,6 +97,10 @@ describe('element overrides, as stored', () => {
       hover: 'fill-up',
     })
     expect(readButtonElement({ hover: 'wobble' })).toEqual(BUTTON_ELEMENT_DEFAULTS)
+    expect(readButtonElement({ label: 'Beli sekarang' })).toEqual({
+      ...BUTTON_ELEMENT_DEFAULTS,
+      label: 'Beli sekarang',
+    })
   })
 
   test('sections keep them through sanitising and copying', () => {
@@ -127,6 +132,16 @@ describe('an overridden button', () => {
     expect(html).toContain('prefers-reduced-motion: no-preference')
     // No editor affordance on a live page.
     expect(html).not.toContain('data-element-id')
+  })
+
+  test('draws the panel label override instead of the section text', () => {
+    const section: SectionInstance = {
+      ...accentButton(),
+      elements: { button: { label: 'Beli sekarang' } },
+    }
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('Beli sekarang')
+    expect(html).not.toContain('Shop now')
   })
 
   test('is selectable in the editor preview', () => {
