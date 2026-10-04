@@ -62,6 +62,16 @@ describe('the block style allowlist', () => {
       'fontStyle',
       'textDecoration',
       'textAlign',
+      // Hover reactions, self or group-triggered.
+      'hoverTrigger',
+      'hoverTransform',
+      'hoverFilter',
+      'hoverShadow',
+      'hoverDecoration',
+      'hoverColor',
+      'hoverColorCustom',
+      'hoverBackgroundTheme',
+      'hoverBackgroundColor',
     ]) {
       expect(keys).toContain(key)
     }
@@ -376,5 +386,57 @@ describe('layout blocks', () => {
     expect(findBlock([field], values, 'r-child')?.block.type).toBe('text')
     expect(findBlock([field], values, 'g-child')?.block.type).toBe('heading')
     expect(createSection('blocks', { blocks: [] })).toBeTruthy()
+  })
+})
+
+describe('hover reactions', () => {
+  test('a self trigger becomes a :hover rule with an explicit transition', () => {
+    const css = blockStyleCss({
+      hoverTransform: 'scale-105',
+      hoverFilter: 'grayscale',
+      hoverShadow: 'lg',
+      hoverDecoration: 'underline',
+      hoverColor: 'brand',
+    })
+    expect(css['&:hover']).toEqual({
+      transform: 'scale(1.05)',
+      filter: 'grayscale(1)',
+      boxShadow: '0 8px 24px rgb(0 0 0 / 0.12)',
+      textDecoration: 'underline',
+      color: 'var(--chakra-colors-brand-solid)',
+    })
+    expect(String(css.transition)).toContain('transform 200ms')
+    // Never `all`: it animates layout and janks.
+    expect(String(css.transition)).not.toContain('all')
+  })
+
+  test('the group trigger waits for the card around the block', () => {
+    const css = blockStyleCss({ hoverTransform: 'scale-110', hoverTrigger: 'group' })
+    expect(css['[data-block-hover-group]:hover &']).toEqual({ transform: 'scale(1.1)' })
+    expect(css['&:hover']).toBeUndefined()
+  })
+
+  test('custom colours and background reach the rule', () => {
+    const css = blockStyleCss({
+      hoverColor: 'custom',
+      hoverColorCustom: '#ff0000',
+      hoverBackgroundColor: '#00ff00',
+    })
+    expect(css['&:hover']).toEqual({ color: '#ff0000', backgroundColor: '#00ff00' })
+  })
+
+  test('hover tokens survive sanitising and defaults are dropped', () => {
+    const { block } = stored({
+      id: 'h',
+      type: 'text',
+      settings: { body: 'x' },
+      style: { hoverTransform: 'scale-105', hoverTrigger: 'self', hoverColor: 'default' },
+    })
+    expect(block!.style).toEqual({ hoverTransform: 'scale-105' })
+  })
+
+  test('unknown hover tokens resolve to nothing', () => {
+    expect(blockStyleCss({ hoverTransform: 'scale-999' })).toEqual({})
+    expect(blockStyleCss({ hoverTrigger: 'group' })).toEqual({})
   })
 })

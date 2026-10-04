@@ -16,7 +16,7 @@ import {
   type RichInline,
   type RichListItem,
 } from '../model/rich-text'
-import { ThemeText, useTextElementStyle } from './primitives'
+import { ThemeText, useTextElementStyle, type BlockTextOverrideProps } from './primitives'
 
 /**
  * A stored rich document. Given an `elementKey` and `field`, the whole body is
@@ -39,7 +39,7 @@ export function RichTextView({
   /** Take the surrounding colour (a white-on-photo band) instead of the muted page ink. */
   inheritColor?: boolean
   /** Typography a block's own style overrides set, winning over the defaults. */
-  style?: Record<string, string>
+  style?: BlockTextOverrideProps
 }) {
   const overrides = useTextElementStyle(elementKey)
   if (isRichDocEmpty(doc)) return null

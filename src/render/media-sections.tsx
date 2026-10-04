@@ -63,7 +63,7 @@ function ratioOf(value: string, fallback = 16 / 9): number {
 /* -------------------------------------------------------------------------- */
 
 export function VideoSection({ settings }: SectionProps) {
-  const { imageUrl } = useRenderEnvironment()
+  const { imageUrl, mode } = useRenderEnvironment()
   const text = useRenderText()
   const video = readVideo(settings, 'video')
   const align = alignOf(settings)
@@ -74,7 +74,9 @@ export function VideoSection({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="5" align={align === 'center' ? 'center' : 'stretch'}>
-      {(readText(settings, 'heading') || readText(settings, 'subheading')) && (
+      {(readText(settings, 'heading') ||
+        readText(settings, 'subheading') ||
+        mode === 'preview') && (
         <SectionColumn>
           <Stack gap="2" textAlign={align} maxW="3xl" mx={align === 'center' ? 'auto' : undefined}>
             <SectionHeading align={align} field="heading">

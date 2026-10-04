@@ -39,7 +39,7 @@ import { alignOf, useEmptyText, type SectionProps } from './sections'
 /* -------------------------------------------------------------------------- */
 
 export function FeaturedProduct({ settings }: SectionProps) {
-  const { data, formatPrice } = useRenderEnvironment()
+  const { data, formatPrice, mode } = useRenderEnvironment()
   const text = useRenderText()
   const product = findProductCard(data, readText(settings, 'productId'))
   const [active, setActive] = useState(0)
@@ -96,7 +96,7 @@ export function FeaturedProduct({ settings }: SectionProps) {
         )}
       </Stack>
       <Stack gap="4" align="start">
-        {eyebrow && (
+        {(eyebrow || mode === 'preview') && (
           <Text
             fontSize="sm"
             fontWeight="semibold"

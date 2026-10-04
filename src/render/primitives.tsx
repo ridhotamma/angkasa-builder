@@ -301,6 +301,8 @@ export function ThemeButton({
   const hoverCss = buttonHoverCss(hover, appearance)
 
   const press = {
+    // `manipulation` drops the double-tap zoom delay on touch controls.
+    touchAction: 'manipulation',
     transition: 'transform 180ms ease, background-color 150ms ease',
     _hover: { transform: 'translateY(-1px)' },
     _active: { transform: 'translateY(0) scale(0.98)' },
@@ -627,6 +629,22 @@ export const HeadlineContext = createContext<SectionHeadline>('none')
  * click selects the block and the next places the caret; `onCommit` sends the
  * typed text wherever the block tree stores it.
  */
+/** The style-only props a block's overrides pass down to its inner text. */
+export type BlockTextOverrideProps = Pick<
+  BoxProps,
+  | 'fontFamily'
+  | 'fontSize'
+  | 'fontWeight'
+  | 'lineHeight'
+  | 'letterSpacing'
+  | 'textTransform'
+  | 'fontStyle'
+  | 'textDecoration'
+  | 'textAlign'
+  | 'color'
+  | 'css'
+>
+
 export function EditableText({
   field,
   value,
@@ -704,7 +722,6 @@ export function EditableText({
       _focus={{ boxShadow: '0 0 0 2px var(--chakra-colors-brand-solid)' }}
       // An empty heading still needs somewhere to click.
       minW="4ch"
-      css={{ '&:empty::before': { content: '"…"', opacity: 0.4 } }}
       onFocus={() => {
         focused.current = true
         committed.current = ref.current?.textContent ?? value
@@ -728,6 +745,13 @@ export function EditableText({
         else editing!.onEditText(sectionId!, field, next)
       }}
       {...style}
+      // Merge the caller's css (a block's hover colour) under the empty
+      // placeholder: the caller's object must not wipe the ellipsis an
+      // emptied heading needs.
+      css={{
+        '&:empty::before': { content: '"…"', opacity: 0.4 },
+        ...((style as { css?: Record<string, unknown> }).css ?? {}),
+      }}
     >
       {shown}
     </Box>
@@ -779,14 +803,24 @@ export function SectionHeading({
 }) {
   const { mode } = useRenderEnvironment()
   const headline = useContext(HeadlineContext)
-  if (!children) return null
+  // In the preview an empty heading that has a field stays mounted: swapping
+  // it out would unmount the inline editor the moment the seller clears it.
+  // The live storefront still hides an empty heading.
+  const keepEmpty = mode === 'preview' && Boolean(field)
+  if (!children && !keepEmpty) return null
   // Split words animate on the storefront; the preview keeps editable text,
   // so the seller can still click and type. A section without a field — a
   // status line, not a setting — animates in both.
   const animated =
     headline === 'rise' && typeof children === 'string' && (mode === 'live' || !field)
   return (
-    <Heading as="h2" size={{ base: 'lg', md: 'xl' }} textAlign={align} letterSpacing="-0.01em">
+    <Heading
+      as="h2"
+      size={{ base: 'lg', md: 'xl' }}
+      textAlign={align}
+      letterSpacing="-0.01em"
+      textWrap="balance"
+    >
       {animated ? (
         <SplitText text={children} />
       ) : field && typeof children === 'string' ? (
@@ -809,7 +843,13 @@ export function Paragraphs({ text, align = 'left' }: { text: string; align?: 'le
   return (
     <Stack gap="3" textAlign={align}>
       {paragraphs.map((paragraph, index) => (
-        <Text key={index} color="fg.muted" whiteSpace="pre-line" lineHeight="tall">
+        <Text
+          key={index}
+          color="fg.muted"
+          whiteSpace="pre-line"
+          lineHeight="tall"
+          textWrap="pretty"
+        >
           {paragraph}
         </Text>
       ))}

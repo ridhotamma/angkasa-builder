@@ -548,7 +548,71 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
       select('visibility', { en: 'Visibility', id: 'Visibilitas' }, VISIBILITIES),
     ],
   },
+  {
+    key: 'hover',
+    label: { en: 'Hover', id: 'Hover' },
+    fields: [
+      {
+        kind: 'select',
+        key: 'hoverTrigger',
+        label: { en: 'React when', id: 'Bereaksi saat' },
+        options: [
+          option('self', { en: 'This block is hovered', id: 'Blok ini di-hover' }),
+          option('group', { en: 'Its card or container is hovered', id: 'Kartu/wadahnya di-hover' }),
+        ],
+        help: {
+          en: 'The group trigger lets one hover move several parts at once — a card that scales its image and underlines its caption.',
+          id: 'Pemicu grup membuat satu hover menggerakkan beberapa bagian sekaligus — kartu yang memperbesar gambarnya dan menggarisbawahi teksnya.',
+        },
+        default: 'self',
+      },
+      select('hoverTransform', { en: 'Scale / move', id: 'Skala / geser' }, [
+        option('none', { en: 'None', id: 'Tidak ada' }),
+        option('scale-105', { en: 'Scale 105%', id: 'Skala 105%' }),
+        option('scale-110', { en: 'Scale 110%', id: 'Skala 110%' }),
+        option('-translate-y-1', { en: 'Rise slightly', id: 'Naik sedikit' }),
+        option('-translate-y-2', { en: 'Rise more', id: 'Naik lebih' }),
+      ]),
+      select('hoverFilter', { en: 'Image filter', id: 'Filter gambar' }, [
+        option('none', { en: 'None', id: 'Tidak ada' }),
+        option('grayscale', { en: 'Greyscale', id: 'Abu-abu' }),
+        option('grayscale-50', { en: 'Half greyscale', id: 'Abu-abu separuh' }),
+      ]),
+      select('hoverShadow', { en: 'Shadow', id: 'Bayangan' }, SHADOWS),
+      select('hoverDecoration', { en: 'Text decoration', id: 'Garis teks' }, TEXT_DECORATIONS),
+      select('hoverColor', { en: 'Text colour', id: 'Warna teks' }, TEXT_COLORS),
+      {
+        kind: 'color',
+        key: 'hoverColorCustom',
+        label: { en: 'Custom text colour', id: 'Warna teks kustom' },
+        default: '',
+        showWhen: { key: 'hoverColor', is: ['custom'] },
+      },
+      select(
+        'hoverBackgroundTheme',
+        { en: 'Background colour', id: 'Warna latar' },
+        THEME_COLOR_OPTIONS,
+      ),
+      {
+        kind: 'color',
+        key: 'hoverBackgroundColor',
+        label: { en: 'Custom background', id: 'Latar kustom' },
+        help: {
+          en: 'Used when no theme colour is picked.',
+          id: 'Dipakai bila tidak ada warna tema yang dipilih.',
+        },
+        default: '',
+      },
+    ],
+  },
 ]
+
+/**
+ * The properties a hover reaction may move, listed explicitly — never
+ * `transition: all`, which animates layout and janks.
+ */
+const HOVER_TRANSITION =
+  'transform 200ms ease, filter 200ms ease, color 150ms ease, background-color 150ms ease, box-shadow 200ms ease, text-decoration-color 150ms ease'
 
 /** Every overridable property, flattened. What a `BlocksField.styleFields` gets. */
 export const BLOCK_STYLE_FIELDS: readonly Field[] = BLOCK_STYLE_GROUPS.flatMap(
@@ -559,8 +623,14 @@ export const BLOCK_STYLE_FIELDS: readonly Field[] = BLOCK_STYLE_GROUPS.flatMap(
 /* Reading                                                                    */
 /* -------------------------------------------------------------------------- */
 
-/** A plain CSS object, ready for a Chakra `css` prop or a `style` attribute. */
-export type BlockStyleCss = Record<string, string | number>
+/**
+ * A plain CSS object, ready for a Chakra `css` prop or a `style` attribute.
+ * Values may nest: hover reactions are stored under `&:hover` (or the group
+ * selector) as a sub-object.
+ */
+export interface BlockStyleCss {
+  [property: string]: string | number | BlockStyleCss
+}
 
 const NO_STYLE: BlockStyleCss = {}
 
@@ -707,6 +777,7 @@ const TRANSFORM: Record<string, string> = {
   none: 'none',
   'scale-95': 'scale(0.95)',
   'scale-105': 'scale(1.05)',
+  'scale-110': 'scale(1.1)',
   'rotate-1': 'rotate(1deg)',
   '-rotate-1': 'rotate(-1deg)',
   'rotate-2': 'rotate(2deg)',
@@ -903,6 +974,41 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   set('isolation', token(style, 'isolation', ISOLATION))
   set('pointerEvents', token(style, 'pointerEvents', POINTER))
   set('visibility', token(style, 'visibility', VISIBILITY))
+
+  // Hover. The tokens describe the rest state's reaction to a pointer: on the
+  // block itself, or — with `hoverTrigger: group` — on the card/container
+  // around it, so one hover can scale an image and underline its caption
+  // together.
+  const hover: BlockStyleCss = {}
+  const hoverTransform = token(style, 'hoverTransform', TRANSFORM)
+  if (hoverTransform) hover.transform = hoverTransform
+  const hoverFilter = token(style, 'hoverFilter', FILTER)
+  if (hoverFilter) hover.filter = hoverFilter
+  const hoverShadow = token(style, 'hoverShadow', SHADOW)
+  if (hoverShadow) hover.boxShadow = hoverShadow
+  const hoverDecoration = token(style, 'hoverDecoration', TEXT_DECORATION)
+  if (hoverDecoration) hover.textDecoration = hoverDecoration
+  const hoverColor = readText(style, 'hoverColor')
+  if (hoverColor === 'custom') {
+    const custom = readText(style, 'hoverColorCustom')
+    if (/^#[0-9a-f]{6}$/i.test(custom)) hover.color = custom.toLowerCase()
+  } else {
+    const value = token(style, 'hoverColor', TEXT_COLOR)
+    if (value) hover.color = value
+  }
+  const hoverBackgroundTheme = token(style, 'hoverBackgroundTheme', THEME_COLOR)
+  const hoverBackground = readText(style, 'hoverBackgroundColor')
+  if (hoverBackgroundTheme) hover.backgroundColor = hoverBackgroundTheme
+  else if (hoverBackground) hover.backgroundColor = hoverBackground
+
+  if (Object.keys(hover).length > 0) {
+    out[
+      readText(style, 'hoverTrigger') === 'group'
+        ? '[data-block-hover-group]:hover &'
+        : '&:hover'
+    ] = hover
+    out.transition = HOVER_TRANSITION
+  }
 
   // A style holding only defaults resolves to nothing: share the empty object
   // so an unstyled block and a no-op style behave identically.

@@ -28,7 +28,7 @@ import { useLocale } from '@repo/i18n'
 import { ImageWithFallback } from '@repo/theme'
 
 import { blockSchema } from '../model/blocks'
-import { blockStyleCss, readBlockBleed } from '../model/block-style'
+import { blockStyleCss, readBlockBleed, type BlockStyleCss } from '../model/block-style'
 import {
   ALIGN_JUSTIFY,
   BUTTON_HOVERS,
@@ -79,6 +79,7 @@ import {
   EmptyNotice,
   LinkButton,
   SectionIdContext,
+  type BlockTextOverrideProps,
 } from './primitives'
 import { RichTextView } from './rich-text'
 import { useEmptyText, type SectionProps } from './sections'
@@ -203,9 +204,9 @@ const BLOCK_PLACEHOLDERS = {
  * element so it beats the block's own size/alignment settings — a wrapper
  * alone cannot, since the text sets its size explicitly.
  */
-function blockTextOverrides(block: BlockValue): Record<string, string> {
+function blockTextOverrides(block: BlockValue): BlockTextOverrideProps {
   const css = blockStyleCss(block.style)
-  const out: Record<string, string> = {}
+  const out: BlockTextOverrideProps = {}
   for (const key of [
     'fontFamily',
     'fontSize',
@@ -219,7 +220,20 @@ function blockTextOverrides(block: BlockValue): Record<string, string> {
     'color',
   ] as const) {
     const value = css[key]
-    if (value !== undefined) out[key] = String(value)
+    if (typeof value === 'string' || typeof value === 'number') {
+      ;(out as Record<string, unknown>)[key] = value
+    }
+  }
+  // A hover colour has to live on the text element itself: a colour the text
+  // sets explicitly (a muted paragraph) beats one inherited from the block's
+  // wrapper, so the wrapper alone would never turn red.
+  const self = css['&:hover'] as BlockStyleCss | undefined
+  const group = css['[data-block-hover-group]:hover &'] as BlockStyleCss | undefined
+  const hover = self ?? group
+  if (hover && typeof hover.color === 'string') {
+    out.css = (self
+      ? { '&:hover': { color: hover.color } }
+      : { '[data-block-hover-group]:hover &': { color: hover.color } }) as BlockTextOverrideProps['css']
   }
   return out
 }
@@ -277,13 +291,20 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
     )
 
   if (mode !== 'preview' || !editing?.onSelectBlock || !sectionId) {
-    return styled ? <Box css={css}>{content}</Box> : <>{content}</>
+    return styled ? (
+      <Box css={css} data-block-hover-group="">
+        {content}
+      </Box>
+    ) : (
+      <>{content}</>
+    )
   }
   const selected = editing.selectedBlockId === block.id
 
   return (
     <Box
       data-block-id={block.id}
+      data-block-hover-group=""
       // The editor's outline and label need a positioned ancestor; a style
       // override of the block's own position is applied instead.
       position={css.position === undefined ? 'relative' : undefined}
@@ -375,8 +396,18 @@ function BlockText({
 }
 
 function HeadingBlock({ block }: { block: BlockValue }) {
+  const { mode, editing } = useRenderEnvironment()
+  const sectionId = useContext(SectionIdContext)
   const value = readText(block.settings, 'text')
-  if (!value) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.heading} />
+  // While this block is the one being edited in the preview, the field stays
+  // mounted even when emptied — swapping in the placeholder would unmount the
+  // caret the moment the seller clears the text.
+  const editingThis =
+    mode === 'preview' &&
+    Boolean(editing?.onEditBlockText) &&
+    Boolean(sectionId) &&
+    editing?.selectedBlockId === block.id
+  if (!value && !editingThis) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.heading} />
   const level = readToken(block.settings, 'level', HEADING_LEVELS, 'h2')
   const size = HEADING_FONT_SIZE[readToken(block.settings, 'size', HEADING_SIZES, 'lg')]
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
@@ -395,8 +426,15 @@ function HeadingBlock({ block }: { block: BlockValue }) {
 }
 
 function TextBlock({ block }: { block: BlockValue }) {
+  const { mode, editing } = useRenderEnvironment()
+  const sectionId = useContext(SectionIdContext)
   const value = readText(block.settings, 'body')
-  if (!value) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.text} />
+  const editingThis =
+    mode === 'preview' &&
+    Boolean(editing?.onEditBlockText) &&
+    Boolean(sectionId) &&
+    editing?.selectedBlockId === block.id
+  if (!value && !editingThis) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.text} />
   const size = TEXT_FONT_SIZE[readToken(block.settings, 'size', TEXT_SIZES, 'md')]
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
@@ -638,7 +676,7 @@ function ColumnBlock({ block }: { block: BlockValue }) {
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   return (
-    <Box py={paddingY} {...contentLayout(width, align)}>
+    <Box py={paddingY} data-block-hover-group="" {...contentLayout(width, align)}>
       <BlockList blocks={readBlocks(block.settings, 'blocks')} gap={gap} parentId={block.id} />
     </Box>
   )
@@ -673,6 +711,7 @@ function ColumnsBlock({ block }: { block: BlockValue }) {
       templateColumns={{ base: '1fr', md: COLUMN_LAYOUT[layout] }}
       gap={gap}
       alignItems="stretch"
+      data-block-hover-group=""
     >
       <BlockList
         blocks={readBlocks(block.settings, 'left')}
@@ -741,6 +780,7 @@ function RowBlock({ block }: { block: BlockValue }) {
       justify={ROW_JUSTIFY[justify]}
       gap={gap}
       p={padding}
+      data-block-hover-group=""
       {...drop}
     >
       {blockItems(readBlocks(block.settings, 'blocks'))}
@@ -776,6 +816,7 @@ function GridBlock({ block }: { block: BlockValue }) {
       gap={gap}
       alignItems={ROW_ALIGN[align]}
       p={padding}
+      data-block-hover-group=""
       {...drop}
     >
       {blockItems(readBlocks(block.settings, 'blocks'))}

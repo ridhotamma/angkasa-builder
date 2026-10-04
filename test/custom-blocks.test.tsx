@@ -182,4 +182,34 @@ describe('custom blocks and widgets', () => {
     expect(html).toMatch(/background-size:\s*cover/)
     expect(html).toMatch(/position:\s*absolute/)
   })
+
+  test('a group hover on a card reaches the CSS and the marker', () => {
+    const hovered = createSection('blocks', {
+      blocks: [
+        {
+          id: 'card',
+          type: 'column',
+          settings: {
+            blocks: [
+              {
+                id: 'caption',
+                type: 'text',
+                settings: { body: 'Hover the card' },
+                style: {
+                  hoverTrigger: 'group',
+                  hoverTransform: 'scale-105',
+                  hoverDecoration: 'underline',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    })
+    const html = render(<SectionsRenderer sections={[hovered]} env={env()} />)
+    expect(html).toContain('data-block-hover-group')
+    expect(html).toContain('[data-block-hover-group]:hover')
+    expect(html).toMatch(/scale\(1\.05\)/)
+    expect(html).toMatch(/text-decoration:\s*underline/)
+  })
 })

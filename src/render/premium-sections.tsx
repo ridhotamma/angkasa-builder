@@ -564,7 +564,7 @@ export function Press({ settings }: SectionProps) {
 /* -------------------------------------------------------------------------- */
 
 export function EditorialStatement({ settings }: SectionProps) {
-  const { imageUrl } = useRenderEnvironment()
+  const { imageUrl, mode } = useRenderEnvironment()
   const { width, contentWidth } = useSectionLayout()
   const align = alignOf(settings)
   const fileId = readText(settings, 'image')
@@ -581,7 +581,7 @@ export function EditorialStatement({ settings }: SectionProps) {
       align={align === 'center' ? 'center' : 'flex-start'}
       color={src ? 'white' : 'fg'}
     >
-      {eyebrow && (
+      {(eyebrow || mode === 'preview') && (
         <ThemeText
           elementKey={textElementKey('eyebrow')}
           field="eyebrow"
@@ -593,7 +593,7 @@ export function EditorialStatement({ settings }: SectionProps) {
           opacity={0.85}
         />
       )}
-      {heading && (
+      {(heading || mode === 'preview') && (
         <ThemeText
           as="h2"
           elementKey={textElementKey('heading')}

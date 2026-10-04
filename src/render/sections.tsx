@@ -190,7 +190,9 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
       align={align === 'center' ? 'center' : 'start'}
       color={onImage ? 'white' : 'fg'}
     >
-      {heading && (
+      {/* The preview keeps an empty heading mounted so clearing the text does
+          not unmount the caret; the live storefront hides it as before. */}
+      {(heading || mode === 'preview') && (
         <Heading
           as="h1"
           size={{ base: '3xl', md: '5xl' }}
@@ -205,7 +207,7 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
           )}
         </Heading>
       )}
-      {subheading && (
+      {(subheading || mode === 'preview') && (
         <Text fontSize={{ base: 'md', md: 'xl' }} opacity={0.9} textWrap="pretty">
           <EditableText field="subheading" value={subheading} />
         </Text>
