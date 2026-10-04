@@ -470,17 +470,16 @@ export function StoreHeader({
   // absolute if it should scroll away with the banner.
   const position = transparent ? (sticky ? 'fixed' : 'absolute') : sticky ? 'sticky' : 'relative'
   const search = showSearch ? searchButton : null
-  // On a phone the search gets its own row under the bar. A real field is more
-  // useful than an icon squeezed between the brand and the cart, and it leaves
-  // the top row to the logo and the actions — the crowded, uneven look the
-  // inline and classic bars had on a narrow screen.
-  //
-  // A see-through header over a banner keeps its single slim row instead: a
-  // floating search field would sit on the hero's words, and a row that only
-  // appeared after scrolling would make the header jump. The icon stays in
-  // the right cluster there.
+  // On a phone the search gets its own row under the bar, on every page and in
+  // every header state: a real field is more useful than an icon squeezed
+  // between the brand and the cart, and it leaves the top row to the logo and
+  // the actions. A see-through header over a banner draws the same row — the
+  // slotted field is styled in the translucent palette there (`CLEAR_VARS`) —
+  // so the layout a shopper learns on the home page is the layout on the next
+  // page too. Only a host that supplies a button and no field (the editor and
+  // snapshot stand-ins) falls back to the icon.
   const mobileSearch =
-    showSearch && searchField && !transparent ? (
+    showSearch && searchField ? (
       <Box hideFrom="md" pb="1">
         {searchField}
       </Box>
