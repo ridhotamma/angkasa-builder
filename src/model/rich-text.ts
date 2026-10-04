@@ -76,6 +76,358 @@ export function richDocFromPlainText(text: string): RichDoc {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Simple HTML                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Models sometimes answer a rich-text field with HTML (`<p>…</p>`) instead of
+ * words. Stored as-is it would show the tags literally, so a string that
+ * *looks* like HTML is parsed into the vocabulary above instead of being kept
+ * as text. The parser understands exactly the tags this module allows and
+ * ignores everything else — an unknown tag is transparent, a `<script>` is
+ * dropped with its contents — so a crafted answer cannot smuggle markup in.
+ */
+export function looksLikeHtml(value: string): boolean {
+  return HTML_TAG.test(value)
+}
+
+const HTML_TAG =
+  /<\/?(?:p|h[1-6]|ul|ol|li|blockquote|strong|b|em|i|u|s|strike|del|a|br)(?:\s[^>]*)?\/?>/i
+const HTML_BLOCK_TAG = /<\/?(?:p|h[1-6]|ul|ol|li|blockquote|div|section|br)(?:\s[^>]*)?\/?>/i
+const DROPPED_TAGS = new Set(['script', 'style', 'head', 'title', 'iframe', 'svg'])
+
+const INLINE_TAGS: Record<string, RichMark['type']> = {
+  strong: 'bold',
+  b: 'bold',
+  em: 'italic',
+  i: 'italic',
+  u: 'underline',
+  s: 'strike',
+  strike: 'strike',
+  del: 'strike',
+}
+
+const ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  mdash: '—',
+  ndash: '–',
+  hellip: '…',
+}
+
+interface HtmlToken {
+  tag?: string
+  closing?: boolean
+  attrs?: Record<string, string>
+  text?: string
+}
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, code: string) => {
+    if (code.startsWith('#')) {
+      const point = code.startsWith('#x')
+        ? Number.parseInt(code.slice(2), 16)
+        : Number.parseInt(code.slice(1), 10)
+      return Number.isFinite(point) && point > 0 && point <= 0x10ffff
+        ? String.fromCodePoint(point)
+        : match
+    }
+    return ENTITIES[code.toLowerCase()] ?? match
+  })
+}
+
+function parseAttrs(source: string): Record<string, string> {
+  const attrs: Record<string, string> = {}
+  const re = /([a-zA-Z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g
+  let match: RegExpExecArray | null
+  while ((match = re.exec(source))) {
+    attrs[match[1]!.toLowerCase()] = decodeEntities(match[2] ?? match[3] ?? match[4] ?? '')
+  }
+  return attrs
+}
+
+function tokenizeHtml(html: string): HtmlToken[] {
+  const tokens: HtmlToken[] = []
+  const re = /<!--[\s\S]*?-->|<[^>]*>|[^<]+/g
+  let match: RegExpExecArray | null
+  while ((match = re.exec(html))) {
+    const raw = match[0]
+    if (raw.startsWith('<!--')) continue
+    if (!raw.startsWith('<')) {
+      tokens.push({ text: raw })
+      continue
+    }
+    const tagMatch = /^<\s*(\/?)\s*([a-zA-Z][a-zA-Z0-9-]*)([\s\S]*?)\/?\s*>$/.exec(raw)
+    if (!tagMatch) continue
+    tokens.push({
+      tag: tagMatch[2]!.toLowerCase(),
+      closing: tagMatch[1] === '/',
+      attrs: parseAttrs(tagMatch[3] ?? ''),
+    })
+  }
+  return tokens
+}
+
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, ' ')
+}
+
+/** Drop empty text nodes and trim the block's outer whitespace. */
+function trimInline(content: RichInline[]): RichInline[] {
+  const out = content.filter((node) => node.type === 'hardBreak' || node.text !== '')
+  const first = out[0]
+  if (first && first.type === 'text') first.text = first.text.replace(/^\s+/, '')
+  const last = out[out.length - 1]
+  if (last && last.type === 'text') last.text = last.text.replace(/\s+$/, '')
+  return out.filter((node) => node.type === 'hardBreak' || node.text !== '')
+}
+
+/** Skip a `<script>`/`<style>` and its contents whole. */
+function skipDropped(tokens: readonly HtmlToken[], start: number): number {
+  const tag = tokens[start]!.tag!
+  let depth = 0
+  for (let i = start; i < tokens.length; i += 1) {
+    const token = tokens[i]!
+    if (token.tag !== tag) continue
+    if (token.closing) {
+      depth -= 1
+      if (depth === 0) return i + 1
+    } else {
+      depth += 1
+    }
+  }
+  return tokens.length
+}
+
+function inlineMarks(marks: Set<string>, href: string | null): RichMark[] {
+  const out: RichMark[] = []
+  for (const mark of ['bold', 'italic', 'underline', 'strike'] as const) {
+    if (marks.has(mark)) out.push({ type: mark })
+  }
+  if (href) out.push({ type: 'link', attrs: { href } })
+  return out
+}
+
+function parseInlines(
+  tokens: readonly HtmlToken[],
+  start: number,
+  stopTag: string | null,
+): { content: RichInline[]; next: number } {
+  const content: RichInline[] = []
+  const marks = new Set<string>()
+  let href: string | null = null
+  let i = start
+
+  while (i < tokens.length) {
+    const token = tokens[i]!
+    if (token.tag !== undefined) {
+      if (token.closing) {
+        if (stopTag && token.tag === stopTag) return { content, next: i + 1 }
+        // A block closing that is not ours ends this inline run; the caller
+        // owns it. An inline closing (`</strong>`) falls through to the marks.
+        if (HTML_BLOCK_TAG.test(`<${token.tag}>`)) return { content, next: i }
+      }
+      if (!stopTag && !token.closing && HTML_BLOCK_TAG.test(`<${token.tag}>`)) {
+        return { content, next: i }
+      }
+      if (!token.closing && DROPPED_TAGS.has(token.tag)) {
+        i = skipDropped(tokens, i)
+        continue
+      }
+      if (token.tag === 'br') {
+        content.push({ type: 'hardBreak' })
+        i += 1
+        continue
+      }
+      const mark = INLINE_TAGS[token.tag]
+      if (mark) {
+        if (token.closing) marks.delete(mark)
+        else marks.add(mark)
+        i += 1
+        continue
+      }
+      if (token.tag === 'a') {
+        const candidate = token.attrs?.href?.trim() ?? ''
+        href =
+          !token.closing && candidate && candidate.length <= 2000 && isSafeRichHref(candidate)
+            ? candidate
+            : null
+        i += 1
+        continue
+      }
+      // An unknown inline tag (`span`, `font`, …) is transparent.
+      i += 1
+      continue
+    }
+
+    const text = collapseWhitespace(decodeEntities(token.text ?? ''))
+    if (text) {
+      const list = inlineMarks(marks, href)
+      content.push(list.length > 0 ? { type: 'text', text, marks: list } : { type: 'text', text })
+    }
+    i += 1
+  }
+
+  return { content, next: i }
+}
+
+function parseBlocks(
+  tokens: readonly HtmlToken[],
+  start: number,
+  stopTag: string | null,
+): { blocks: RichBlock[]; next: number } {
+  const blocks: RichBlock[] = []
+  let i = start
+
+  while (i < tokens.length) {
+    const token = tokens[i]!
+    if (token.tag !== undefined) {
+      if (token.closing) {
+        if (stopTag && token.tag === stopTag) return { blocks, next: i + 1 }
+        // An ancestor's closing tag: hand it back rather than swallowing it.
+        if (stopTag) return { blocks, next: i }
+        i += 1
+        continue
+      }
+
+      switch (token.tag) {
+        case 'p':
+        case 'h1':
+        case 'h2':
+        case 'h3':
+        case 'h4':
+        case 'h5':
+        case 'h6': {
+          const parsed = parseInlines(tokens, i + 1, token.tag)
+          const content = trimInline(parsed.content)
+          if (content.length > 0) {
+            if (token.tag === 'p') blocks.push({ type: 'paragraph', content })
+            else {
+              const level = token.tag === 'h1' || token.tag === 'h2' ? 2 : 3
+              blocks.push({ type: 'heading', attrs: { level }, content })
+            }
+          }
+          i = parsed.next
+          continue
+        }
+        case 'ul':
+        case 'ol': {
+          const parsed = parseList(tokens, i + 1, token.tag)
+          if (parsed.items.length > 0) {
+            blocks.push({
+              type: token.tag === 'ul' ? 'bulletList' : 'orderedList',
+              content: parsed.items,
+            })
+          }
+          i = parsed.next
+          continue
+        }
+        case 'blockquote': {
+          const parsed = parseBlocks(tokens, i + 1, 'blockquote')
+          if (parsed.blocks.length > 0) {
+            blocks.push({ type: 'blockquote', content: parsed.blocks })
+          }
+          i = parsed.next
+          continue
+        }
+        case 'br':
+          i += 1
+          continue
+        default:
+          // A dropped tag takes its contents with it; anything else is transparent.
+          i = DROPPED_TAGS.has(token.tag) ? skipDropped(tokens, i) : i + 1
+          continue
+      }
+    }
+
+    // Loose text outside any tag becomes its own paragraph.
+    const parsed = parseInlines(tokens, i, null)
+    const content = trimInline(parsed.content)
+    if (content.length > 0) blocks.push({ type: 'paragraph', content })
+    i = parsed.next > i ? parsed.next : i + 1
+  }
+
+  return { blocks, next: i }
+}
+
+function parseList(
+  tokens: readonly HtmlToken[],
+  start: number,
+  listTag: string,
+): { items: RichListItem[]; next: number } {
+  const items: RichListItem[] = []
+  let i = start
+
+  while (i < tokens.length) {
+    const token = tokens[i]!
+    if (token.tag !== undefined) {
+      if (token.closing) {
+        if (token.tag === listTag) return { items, next: i + 1 }
+        return { items, next: i }
+      }
+      if (token.tag === 'li') {
+        const parsed = parseBlocks(tokens, i + 1, 'li')
+        if (parsed.blocks.length > 0) items.push({ type: 'listItem', content: parsed.blocks })
+        i = parsed.next
+        continue
+      }
+      i = DROPPED_TAGS.has(token.tag) ? skipDropped(tokens, i) : i + 1
+      continue
+    }
+
+    const parsed = parseInlines(tokens, i, null)
+    const content = trimInline(parsed.content)
+    if (content.length > 0) {
+      items.push({ type: 'listItem', content: [{ type: 'paragraph', content }] })
+    }
+    i = parsed.next > i ? parsed.next : i + 1
+  }
+
+  return { items, next: i }
+}
+
+/** A simple HTML answer as the document vocabulary, dropping everything else. */
+export function richDocFromHtml(html: string): RichDoc {
+  return { type: 'doc', content: parseBlocks(tokenizeHtml(html), 0, null).blocks }
+}
+
+/**
+ * The same repair for a document that was saved before this parser existed:
+ * a paragraph whose whole text is HTML is replaced by what that HTML says.
+ */
+function repairHtml(value: Record<string, unknown>): unknown[] {
+  if (!Array.isArray(value.content)) return []
+  return value.content.flatMap((node): unknown[] => {
+    if (!isObject(node) || (node.type !== 'paragraph' && node.type !== 'heading')) return [node]
+    const text = inlineText(node.content)
+    if (!text || !looksLikeHtml(text)) return [node]
+    const parsed = richDocFromHtml(text).content
+    if (parsed.length === 0) return [node]
+    if (!HTML_BLOCK_TAG.test(text)) {
+      const first = parsed[0]
+      if (first && (first.type === 'paragraph' || first.type === 'heading')) {
+        return [{ ...node, content: first.content }]
+      }
+      return [node]
+    }
+    return parsed
+  })
+}
+
+function inlineText(content: unknown): string {
+  if (!Array.isArray(content)) return ''
+  return content
+    .map((node) =>
+      isObject(node) && node.type === 'text' && typeof node.text === 'string' ? node.text : '',
+    )
+    .join('')
+}
+
 /** The words in a document, for measuring it and for places that want plain text. */
 export function richDocText(doc: RichDoc): string {
   const blockText = (block: RichBlock | RichListItem): string => {
@@ -101,13 +453,19 @@ export function isRichDocEmpty(doc: RichDoc): boolean {
  * layout that went through an older or newer editor still renders.
  */
 export function sanitizeRichDoc(value: unknown, maxChars: number): RichDoc {
-  if (typeof value === 'string') return sanitizeRichDoc(richDocFromPlainText(value), maxChars)
+  if (typeof value === 'string') {
+    // A model sometimes answers with HTML; parse it rather than showing tags.
+    const doc = looksLikeHtml(value) ? richDocFromHtml(value) : richDocFromPlainText(value)
+    return sanitizeRichDoc(doc, maxChars)
+  }
   if (!isObject(value) || value.type !== 'doc' || !Array.isArray(value.content)) {
     return { type: 'doc', content: [] }
   }
 
   const budget = { left: maxChars }
-  return { type: 'doc', content: blocks(value.content, 0, budget) }
+  // A document saved before the HTML parser existed may hold tags as text;
+  // repairing here means a stored theme heals on its next read or save.
+  return { type: 'doc', content: blocks(repairHtml(value), 0, budget) }
 }
 
 type Budget = { left: number }

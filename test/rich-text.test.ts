@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
-import { richDocFromPlainText, richDocText, sanitizeRichDoc, sanitizeSections } from '../src'
+import {
+  richDocFromHtml,
+  richDocFromPlainText,
+  richDocText,
+  sanitizeRichDoc,
+  sanitizeSections,
+} from '../src'
 
 const MAX = 5000
 
@@ -139,5 +145,73 @@ describe('rich text', () => {
       { id: 't', type: 'rich-text', settings: { heading: 'Our story', body: 'Hello\n\nWorld' } },
     ])
     expect(richDocText(section!.settings.body as never)).toBe('Hello\n\nWorld')
+  })
+})
+
+describe('HTML answers from a model', () => {
+  test('paragraphs, headings and inline marks parse into the vocabulary', () => {
+    const doc = sanitizeRichDoc(
+      '<h2>Care</h2><p>Wash <strong>cold</strong> and <em>gentle</em></p>',
+      MAX,
+    )
+    expect(doc).toEqual({
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Care' }] },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Wash ' },
+            { type: 'text', text: 'cold', marks: [{ type: 'bold' }] },
+            { type: 'text', text: ' and ' },
+            { type: 'text', text: 'gentle', marks: [{ type: 'italic' }] },
+          ],
+        },
+      ],
+    })
+  })
+
+  test('lists, quotes and line breaks survive; script contents do not', () => {
+    const doc = richDocFromHtml(
+      '<ul><li>One</li><li>Two</li></ul><blockquote><p>Q</p></blockquote><p>a<br>b<script>alert(1)</script></p>',
+    )
+    expect(doc.content.map((block) => block.type)).toEqual([
+      'bulletList',
+      'blockquote',
+      'paragraph',
+    ])
+    expect(JSON.stringify(doc)).not.toContain('alert')
+    expect(richDocText(doc)).toContain('a\nb')
+  })
+
+  test('an unsafe link keeps its words and loses the href', () => {
+    const doc = richDocFromHtml('<p><a href="javascript:alert(1)">x</a></p>')
+    expect(doc.content[0]).toEqual({ type: 'paragraph', content: [{ type: 'text', text: 'x' }] })
+  })
+
+  test('a stored document whose paragraph holds tags is repaired on read', () => {
+    const stored = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: '<p>Hello <strong>world</strong></p>' }],
+        },
+      ],
+    }
+    const doc = sanitizeRichDoc(stored, MAX)
+    expect(richDocText(doc)).toBe('Hello world')
+    expect(JSON.stringify(doc)).not.toContain('<p>')
+    expect(doc.content[0]).toEqual({
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Hello ' },
+        { type: 'text', text: 'world', marks: [{ type: 'bold' }] },
+      ],
+    })
+  })
+
+  test('plain text with angle brackets is not mistaken for HTML', () => {
+    expect(richDocText(sanitizeRichDoc('5 < 6 and 7 > 2', MAX))).toBe('5 < 6 and 7 > 2')
   })
 })
