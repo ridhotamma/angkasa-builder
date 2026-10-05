@@ -1087,7 +1087,8 @@ function ProductSlider({
       allowMouseDrag
       gap="4"
     >
-      {/* Positioned around the cards only, so the arrows centre on them. */}
+      {/* Positioned around the cards only, so each arrow straddles the row's
+          outer edge — half over the card, half over the page margin. */}
       <Box position="relative">
         <Carousel.ItemGroup alignItems="stretch">
           {products.map((product, index) => (
@@ -1100,12 +1101,12 @@ function ProductSlider({
         {paged && (
           <>
             <Carousel.PrevTrigger asChild>
-              <IconButton {...OVERLAY_ARROW} left="3">
+              <IconButton {...OVERLAY_ARROW} left="-5">
                 <LuChevronLeft />
               </IconButton>
             </Carousel.PrevTrigger>
             <Carousel.NextTrigger asChild>
-              <IconButton {...OVERLAY_ARROW} right="3">
+              <IconButton {...OVERLAY_ARROW} right="-5">
                 <LuChevronRight />
               </IconButton>
             </Carousel.NextTrigger>

@@ -89,6 +89,13 @@ describe('product list layouts', () => {
     expect(html).not.toContain('data-part="prev-trigger"')
   })
 
+  test('the arrows straddle the row edges, half over the page margin', () => {
+    const html = renderLatest({ heading: 'New in', limit: 8, layout: 'slider' })
+    // Half of the 40px arrow, so its centre sits on the first/last card's edge.
+    expect(html).toMatch(/left:calc\(var\(--chakra-spacing-5\) \* -1\)/)
+    expect(html).toMatch(/right:calc\(var\(--chakra-spacing-5\) \* -1\)/)
+  })
+
   test('every card fills its slide, so no card shrinks to its own text', () => {
     const html = renderLatest({ heading: 'New in', limit: 8, layout: 'slider' })
     // The carousel item is a flex box; without a width the card sizes to its
