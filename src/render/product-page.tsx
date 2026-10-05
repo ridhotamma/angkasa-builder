@@ -52,7 +52,7 @@ import { featureIcon } from './icons'
 import {
   EmptyNotice,
   Paragraphs,
-  ProductGrid,
+  ProductList,
   SectionHeading,
   SmartLink,
   useOverlayProps,
@@ -827,7 +827,11 @@ export function RelatedProducts({ settings }: SectionProps) {
   return (
     <Stack as="section" gap="4">
       <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-      <ProductGrid products={related} columns={readText(settings, 'columns')} />
+      <ProductList
+        products={related}
+        layout={readText(settings, 'layout')}
+        columns={readText(settings, 'columns')}
+      />
     </Stack>
   )
 }

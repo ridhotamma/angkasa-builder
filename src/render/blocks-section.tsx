@@ -12,6 +12,7 @@
  */
 
 import {
+  Accordion,
   AspectRatio,
   Box,
   Container,
@@ -20,9 +21,11 @@ import {
   Heading,
   Icon,
   Stack,
+  Text,
   type BoxProps,
 } from '@chakra-ui/react'
 import { useContext, type ReactNode } from 'react'
+import { LuStar } from 'react-icons/lu'
 
 import { useLocale } from '@repo/i18n'
 import { ImageWithFallback } from '@repo/theme'
@@ -67,6 +70,7 @@ import {
   readBlocks,
   readBoolean,
   readLink,
+  readNumber,
   readRichText,
   readText,
   readVideo,
@@ -76,6 +80,7 @@ import { localize, type Localized } from '../model/localized'
 import { isRichDocEmpty } from '../model/rich-text'
 import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
+import { useRenderText } from './copy'
 import { featureIcon } from './icons'
 import { VideoFrame } from './media'
 import { Parallax, ScrollReveal } from './motion'
@@ -183,6 +188,8 @@ const BUILT_IN_BLOCKS: Record<string, BlockRenderer> = {
   divider: DividerBlock,
   video: VideoBlock,
   badge: BadgeBlock,
+  rating: RatingBlock,
+  collapsible: CollapsibleBlock,
 }
 
 function blockContent(block: BlockValue): ReactNode {
@@ -203,6 +210,8 @@ const BLOCK_PLACEHOLDERS = {
   image: { en: 'Upload your image', id: 'Unggah gambar Anda' },
   video: { en: 'Pick a video', id: 'Pilih video' },
   badge: { en: 'Write a badge label', id: 'Tulis label lencana' },
+  collapsible: { en: 'Write a question and its answer', id: 'Tulis pertanyaan dan jawabannya' },
+  collapsibleBody: { en: 'Write the answer', id: 'Tulis jawabannya' },
   drop: { en: 'Drag a block here', id: 'Seret blok ke sini' },
 } as const satisfies Record<string, Localized>
 
@@ -790,6 +799,126 @@ function BadgeBlock({ block }: { block: BlockValue }) {
         {label}
       </Box>
     </Flex>
+  )
+}
+
+const RATING_SIZES = ['sm', 'md', 'lg'] as const
+
+const RATING_STAR_SIZE: Record<(typeof RATING_SIZES)[number], string> = {
+  sm: '3.5',
+  md: '4',
+  lg: '5.5',
+}
+
+const RATING_TONES = ['yellow', 'brand', 'accent', 'dark'] as const
+
+const RATING_TONE: Record<(typeof RATING_TONES)[number], string> = {
+  yellow: 'yellow.solid',
+  brand: 'brand.solid',
+  accent: 'var(--pb-accent)',
+  dark: 'var(--chakra-colors-fg)',
+}
+
+/**
+ * The five stars a rating is read from. A score between stars fills the next
+ * one faintly, exactly like the product page's own rating, so a custom rating
+ * and a product's rating never disagree on what 4.8 looks like.
+ */
+function RatingStars({ score, size, color }: { score: number; size: string; color: string }) {
+  return (
+    <Flex gap="0.5" color={color} role="img" aria-label={`${score.toFixed(1)}/5`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Icon
+          key={star}
+          as={LuStar}
+          boxSize={size}
+          fill={score >= star - 0.25 ? 'currentColor' : 'none'}
+          opacity={score >= star - 0.75 ? 1 : 0.35}
+        />
+      ))}
+    </Flex>
+  )
+}
+
+/**
+ * The seller's own rating: stars, the average and how many reviews it stands
+ * on. Nothing here reads shop data — the numbers are settings — so the block
+ * can sit beside a testimonial the seller wrote themselves.
+ */
+function RatingBlock({ block }: { block: BlockValue }) {
+  const text = useRenderText()
+  const score = Math.min(5, Math.max(0, readNumber(block.settings, 'score', 5)))
+  const count = Math.max(0, readNumber(block.settings, 'count', 0))
+  const size = readToken(block.settings, 'size', RATING_SIZES, 'md')
+  const tone = readToken(block.settings, 'tone', RATING_TONES, 'yellow')
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
+  const label = readText(block.settings, 'label')
+  return (
+    <Box {...contentLayout(width, align)}>
+      <Flex align="center" justify={ALIGN_JUSTIFY[align]} gap="2" wrap="wrap">
+        <RatingStars score={score} size={RATING_STAR_SIZE[size]} color={RATING_TONE[tone]} />
+        {readBoolean(block.settings, 'showScore') && (
+          <Text fontWeight="semibold" {...blockTextOverrides(block)}>
+            {score.toFixed(1)}
+          </Text>
+        )}
+        {count > 0 && (
+          <Text color="fg.muted" fontSize="sm">
+            {`(${text('reviews', { n: count })})`}
+          </Text>
+        )}
+      </Flex>
+      {label && (
+        <BlockText
+          block={block}
+          field="label"
+          value={label}
+          as="p"
+          fontSize="sm"
+          color="fg.muted"
+          mt="1"
+        />
+      )}
+    </Box>
+  )
+}
+
+/**
+ * A heading that folds open to reveal its answer: the FAQ item, the shipping
+ * note, anything explained on demand. Every collapsible block is its own
+ * fold, so a stack of them reads as an FAQ list.
+ */
+function CollapsibleBlock({ block }: { block: BlockValue }) {
+  const heading = readText(block.settings, 'heading')
+  const doc = readRichText(block.settings, 'body')
+  const empty = isRichDocEmpty(doc)
+  if (!heading && empty) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.collapsible} />
+  return (
+    <Accordion.Root
+      collapsible
+      variant="plain"
+      borderColor="border"
+      defaultValue={readBoolean(block.settings, 'open') ? [block.id] : undefined}
+    >
+      <Accordion.Item value={block.id} borderBottomWidth="1px" borderColor="border">
+        <Accordion.ItemTrigger fontWeight="medium" py="4" textAlign="left">
+          <Box flex="1" {...blockTextOverrides(block)}>
+            {heading}
+          </Box>
+          <Accordion.ItemIndicator color="fg.muted" />
+        </Accordion.ItemTrigger>
+        <Accordion.ItemContent>
+          <Accordion.ItemBody pt="0">
+            {empty ? (
+              <BlockPlaceholder label={BLOCK_PLACEHOLDERS.collapsibleBody} />
+            ) : (
+              <RichTextView doc={doc} style={blockTextOverrides(block)} />
+            )}
+          </Accordion.ItemBody>
+        </Accordion.ItemContent>
+      </Accordion.Item>
+    </Accordion.Root>
   )
 }
 

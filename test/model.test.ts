@@ -84,7 +84,12 @@ describe('sections', () => {
       },
     ])
     expect(sections).toHaveLength(1)
-    expect(sections[0]!.settings).toEqual({ heading: 'New arrivals', limit: 12, columns: '3' })
+    expect(sections[0]!.settings).toEqual({
+      heading: 'New arrivals',
+      layout: 'grid',
+      limit: 12,
+      columns: '3',
+    })
     expect(sections[0]!.settings).not.toHaveProperty('style')
   })
 

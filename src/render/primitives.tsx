@@ -11,7 +11,10 @@ import {
   Box,
   Button,
   Card,
+  Carousel,
   Container,
+  Grid,
+  GridItem,
   Heading,
   HStack,
   IconButton,
@@ -32,7 +35,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react'
-import { LuHeart } from 'react-icons/lu'
+import { LuChevronLeft, LuChevronRight, LuHeart } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -54,6 +57,7 @@ import type { ButtonStyle, CardStyle } from '../model/settings'
 import type { SectionHeadline } from '../model/section-style'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
+import { useResponsive } from './hooks'
 import { SplitText } from './motion'
 
 /**
@@ -957,6 +961,7 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
   return (
     <Card.Root
       position="relative"
+      w="full"
       h="full"
       bg="bg.panel"
       rounded="l3"
@@ -1028,10 +1033,272 @@ export function ProductGrid({
   columns?: string
 }) {
   return (
-    <SimpleGrid columns={gridColumns(columns)} gap={{ base: '3', md: '5' }}>
+    <SimpleGrid
+      data-product-layout="grid"
+      columns={gridColumns(columns)}
+      gap={{ base: '3', md: '5' }}
+    >
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
     </SimpleGrid>
   )
+}
+
+/** Round arrows laid over a slider's edges; phones swipe instead. */
+export const OVERLAY_ARROW = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: '1',
+  rounded: 'full',
+  size: { base: 'sm', md: 'md' },
+  variant: 'subtle',
+  bg: 'bg/85',
+  shadow: 'md',
+  _hover: { bg: 'bg' },
+  hideBelow: 'md',
+} as const
+
+/**
+ * The shop's products in one row the shopper swipes, drags or pages with the
+ * arrows floating over its edges. A short list is simply a still row.
+ */
+function ProductSlider({
+  products,
+  columns,
+}: {
+  products: StorefrontProductCard[]
+  columns: string
+}) {
+  // Two cards on a phone, three on a tablet and the chosen count on a
+  // desktop, never more than the list itself.
+  const desktop = Math.min(6, Math.max(2, Number(columns) || 4))
+  const perPage = Math.min(useResponsive({ base: 2, md: 3, lg: desktop }), products.length)
+  const paged = products.length > perPage
+
+  return (
+    <Carousel.Root
+      data-product-layout="slider"
+      slideCount={products.length}
+      slidesPerPage={perPage}
+      spacing="1rem"
+      loop
+      allowMouseDrag
+      gap="4"
+    >
+      {/* Positioned around the cards only, so the arrows centre on them. */}
+      <Box position="relative">
+        <Carousel.ItemGroup alignItems="stretch">
+          {products.map((product, index) => (
+            <Carousel.Item key={product.id} index={index} display="flex" alignItems="stretch">
+              <ProductCard product={product} />
+            </Carousel.Item>
+          ))}
+        </Carousel.ItemGroup>
+
+        {paged && (
+          <>
+            <Carousel.PrevTrigger asChild>
+              <IconButton {...OVERLAY_ARROW} left="3">
+                <LuChevronLeft />
+              </IconButton>
+            </Carousel.PrevTrigger>
+            <Carousel.NextTrigger asChild>
+              <IconButton {...OVERLAY_ARROW} right="3">
+                <LuChevronRight />
+              </IconButton>
+            </Carousel.NextTrigger>
+          </>
+        )}
+      </Box>
+    </Carousel.Root>
+  )
+}
+
+/**
+ * A tile's place in the desktop bento, repeating every eight: a big square,
+ * two small ones and a wide one, then the same mirrored. Auto-placement puts
+ * each group of four into exactly two rows of the four-column grid.
+ */
+export const BENTO_PATTERN = [
+  'big',
+  'small',
+  'small',
+  'wide',
+  'small',
+  'small',
+  'big',
+  'wide',
+] as const
+
+export type BentoShape = (typeof BENTO_PATTERN)[number] | 'full'
+
+/**
+ * The desktop shape of tile `index` of `count`. A last group short of four
+ * would leave holes beside its big square, so it is laid out as one full row
+ * instead: one tile across, two halves, or a half and two quarters.
+ */
+export function bentoShape(index: number, count: number): BentoShape {
+  const groupStart = index - (index % 4)
+  const inGroup = count - groupStart
+  if (inGroup >= 4) return BENTO_PATTERN[index % BENTO_PATTERN.length]!
+  if (inGroup === 1) return 'full'
+  if (inGroup === 2) return 'wide'
+  return index === groupStart ? 'wide' : 'small'
+}
+
+export const BENTO_COLUMNS: Record<BentoShape, number> = {
+  big: 2,
+  wide: 2,
+  small: 1,
+  full: 4,
+}
+
+/**
+ * Phones repeat a full-width tile then two halves. A last pair would leave its
+ * second half alone, so a short final group of two is laid out as two halves.
+ */
+export function bentoPhoneColumns(index: number, count: number): number {
+  const groupStart = index - (index % 3)
+  return index === groupStart && count - groupStart !== 2 ? 2 : 1
+}
+
+/**
+ * A product as a background tile, name and price over a faded bottom edge —
+ * the bento counterpart of `ProductCard`, which a mixed-size tile cannot hold.
+ */
+function ProductBentoCard({
+  product,
+  shape,
+}: {
+  product: StorefrontProductCard
+  shape: BentoShape
+}) {
+  const { data, formatPrice } = useRenderEnvironment()
+  const { frame } = useCardStyle()
+  const big = shape === 'big'
+
+  return (
+    <Card.Root
+      position="relative"
+      h="full"
+      bg="bg.subtle"
+      rounded="l3"
+      overflow="hidden"
+      css={{
+        '&:hover img': { transform: 'scale(1.05)' },
+        '@media (prefers-reduced-motion: reduce)': {
+          '&:hover img': { transform: 'none' },
+        },
+      }}
+      {...frame}
+    >
+      <SmartLink
+        link={{ kind: 'product', slug: product.slug }}
+        display="block"
+        position="absolute"
+        inset="0"
+      >
+        <ImageWithFallback
+          src={product.imageUrl ?? undefined}
+          alt={product.name}
+          position="absolute"
+          inset="0"
+          w="full"
+          h="full"
+          objectFit="cover"
+          loading="lazy"
+          transition="transform 600ms ease"
+        />
+        <Box
+          position="absolute"
+          inset="0"
+          bgGradient="to-t"
+          gradientFrom="blackAlpha.700"
+          gradientTo="transparent"
+        />
+        <Stack position="absolute" insetX="0" bottom="0" gap="0.5" p={big ? '4' : '3'}>
+          <Text
+            color="white"
+            fontWeight="semibold"
+            lineClamp={2}
+            fontSize={big ? { base: 'sm', md: 'lg' } : { base: 'sm', md: 'md' }}
+          >
+            {product.name}
+          </Text>
+          <HStack gap="2" align="baseline" wrap="wrap">
+            <Text
+              color="white"
+              fontWeight="bold"
+              fontVariantNumeric="tabular-nums"
+              fontSize={big ? { base: 'sm', md: 'lg' } : 'md'}
+            >
+              {formatPrice(product.price, data.shop.currency)}
+            </Text>
+            {product.compareAtPrice !== null && (
+              <Text color="whiteAlpha.800" fontSize="sm" textDecoration="line-through">
+                {formatPrice(product.compareAtPrice, data.shop.currency)}
+              </Text>
+            )}
+          </HStack>
+        </Stack>
+      </SmartLink>
+      <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
+    </Card.Root>
+  )
+}
+
+/**
+ * Products in a bento: tiles of mixed sizes, the image behind the name and
+ * price, four columns of paired rows on a desktop and repeating halves on a
+ * phone.
+ */
+function ProductBento({ products }: { products: StorefrontProductCard[] }) {
+  return (
+    <Grid
+      data-product-layout="bento"
+      templateColumns={{ base: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }}
+      autoRows={{ base: '9.5rem', md: '12rem' }}
+      autoFlow="dense"
+      gap="3"
+    >
+      {products.map((product, index) => {
+        const shape = bentoShape(index, products.length)
+        return (
+          <GridItem
+            key={product.id}
+            colSpan={{
+              base: bentoPhoneColumns(index, products.length),
+              md: BENTO_COLUMNS[shape],
+            }}
+            rowSpan={{ base: 1, md: shape === 'big' ? 2 : 1 }}
+            minW="0"
+          >
+            <ProductBentoCard product={product} shape={shape} />
+          </GridItem>
+        )
+      })}
+    </Grid>
+  )
+}
+
+/**
+ * A product list in the layout the seller picked: the plain grid, a slider
+ * with arrows over its edges, or a bento of mixed tiles. Every section that
+ * draws products from the catalogue renders through this, so the three
+ * layouts stay the same wherever the list comes from.
+ */
+export function ProductList({
+  products,
+  layout = 'grid',
+  columns = '4',
+}: {
+  products: StorefrontProductCard[]
+  layout?: string
+  columns?: string
+}) {
+  if (layout === 'slider') return <ProductSlider products={products} columns={columns} />
+  if (layout === 'bento') return <ProductBento products={products} />
+  return <ProductGrid products={products} columns={columns} />
 }

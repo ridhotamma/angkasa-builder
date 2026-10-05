@@ -57,14 +57,18 @@ import { SplitText } from './motion'
 import { isPatternKey, patternStyle } from './patterns'
 import { RichTextView } from './rich-text'
 import {
+  BENTO_COLUMNS,
+  bentoPhoneColumns,
+  bentoShape,
   ButtonRow,
   EditableText,
   EmptyNotice,
   FullBleed,
   gridColumns,
+  OVERLAY_ARROW,
   PageColumn,
   Paragraphs,
-  ProductGrid,
+  ProductList,
   SectionHeading,
   SmartLink,
   ThemeButton,
@@ -286,21 +290,6 @@ function Hero({ settings }: SectionProps) {
     </Box>
   )
 }
-
-/** Round arrows laid over the slider's edges; phones swipe instead. */
-const OVERLAY_ARROW = {
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  zIndex: '1',
-  rounded: 'full',
-  size: { base: 'sm', md: 'md' },
-  variant: 'subtle',
-  bg: 'bg/85',
-  shadow: 'md',
-  _hover: { bg: 'bg' },
-  hideBelow: 'md',
-} as const
 
 /**
  * Image banners in a row, each optionally a link. Swiped on a phone and
@@ -620,40 +609,6 @@ function CategoryRail({ settings }: SectionProps) {
   )
 }
 
-/**
- * A tile's place in the desktop bento, repeating every eight: a big square,
- * two small ones and a wide one, then the same mirrored. Auto-placement puts
- * each group of four into exactly two rows of the four-column grid.
- */
-const BENTO_PATTERN = ['big', 'small', 'small', 'wide', 'small', 'small', 'big', 'wide'] as const
-
-type BentoShape = (typeof BENTO_PATTERN)[number] | 'full'
-
-/**
- * The desktop shape of tile `index` of `count`. A last group short of four
- * would leave holes beside its big square, so it is laid out as one full row
- * instead: one tile across, two halves, or a half and two quarters.
- */
-function bentoShape(index: number, count: number): BentoShape {
-  const groupStart = index - (index % 4)
-  const inGroup = count - groupStart
-  if (inGroup >= 4) return BENTO_PATTERN[index % BENTO_PATTERN.length]!
-  if (inGroup === 1) return 'full'
-  if (inGroup === 2) return 'wide'
-  return index === groupStart ? 'wide' : 'small'
-}
-
-const BENTO_COLUMNS: Record<BentoShape, number> = { big: 2, wide: 2, small: 1, full: 4 }
-
-/**
- * Phones repeat a full-width tile then two halves. A last pair would leave its
- * second half alone, so a short final group of two is laid out as two halves.
- */
-function bentoPhoneColumns(index: number, count: number): number {
-  const groupStart = index - (index % 3)
-  return index === groupStart && count - groupStart !== 2 ? 2 : 1
-}
-
 function CategoryBento({ categories }: { categories: StorefrontCategoryData[] }) {
   const { frame } = useCardStyle()
 
@@ -786,7 +741,11 @@ function FeaturedCollection({ settings }: SectionProps) {
       {products.length === 0 ? (
         <EmptyNotice>{empty('products')}</EmptyNotice>
       ) : (
-        <ProductGrid products={products} columns={readText(settings, 'columns')} />
+        <ProductList
+          products={products}
+          layout={readText(settings, 'layout')}
+          columns={readText(settings, 'columns')}
+        />
       )}
     </Stack>
   )
@@ -805,8 +764,9 @@ function CollectionShelves({ settings }: SectionProps) {
       {shelves.map((shelf) => (
         <Stack as="section" key={shelf.id} gap="4">
           <ShelfHeader title={shelf.name} description={shelf.description} slug={shelf.slug} />
-          <ProductGrid
+          <ProductList
             products={shelf.products.slice(0, limit)}
+            layout={readText(settings, 'layout')}
             columns={readText(settings, 'columns')}
           />
         </Stack>
@@ -826,7 +786,11 @@ function LatestProducts({ settings }: SectionProps) {
       {products.length === 0 ? (
         <EmptyNotice>{empty('products')}</EmptyNotice>
       ) : (
-        <ProductGrid products={products} columns={readText(settings, 'columns')} />
+        <ProductList
+          products={products}
+          layout={readText(settings, 'layout')}
+          columns={readText(settings, 'columns')}
+        />
       )}
     </Stack>
   )

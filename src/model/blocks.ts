@@ -538,6 +538,123 @@ const badge: BlockSchema = {
 }
 
 /**
+ * A customer rating the seller writes themselves: five stars, an average and
+ * a review count. The product page's own rating is data-driven — it counts
+ * the shop's reviews — so a composed page had no way to show a rating beside
+ * a custom testimonial. This block stores the numbers as plain settings, and
+ * the renderer draws the stars the same way the product page does.
+ */
+const rating: BlockSchema = {
+  type: 'rating',
+  name: { en: 'Rating', id: 'Rating' },
+  description: {
+    en: 'Five stars with an average and a review count — your own numbers.',
+    id: 'Lima bintang dengan rata-rata dan jumlah ulasan — angka Anda sendiri.',
+  },
+  fields: [
+    {
+      kind: 'number',
+      key: 'score',
+      label: { en: 'Average score', id: 'Nilai rata-rata' },
+      min: 0,
+      max: 5,
+      step: 0.1,
+      default: 5,
+    },
+    {
+      kind: 'number',
+      key: 'count',
+      label: { en: 'Reviews', id: 'Ulasan' },
+      help: {
+        en: 'Shown beside the score; 0 leaves it out.',
+        id: 'Tampil di samping nilai; 0 menyembunyikannya.',
+      },
+      min: 0,
+      max: 1_000_000,
+      default: 0,
+    },
+    {
+      kind: 'text',
+      key: 'label',
+      label: { en: 'Caption', id: 'Keterangan' },
+      help: {
+        en: 'An optional line under the stars, e.g. "From verified buyers".',
+        id: 'Baris opsional di bawah bintang, mis. "Dari pembeli terverifikasi".',
+      },
+      max: 80,
+      default: '',
+    },
+    {
+      kind: 'select',
+      key: 'size',
+      label: { en: 'Star size', id: 'Ukuran bintang' },
+      options: [
+        { value: 'sm', label: { en: 'Small', id: 'Kecil' } },
+        { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+        { value: 'lg', label: { en: 'Large', id: 'Besar' } },
+      ],
+      default: 'md',
+    },
+    {
+      kind: 'select',
+      key: 'tone',
+      label: { en: 'Star colour', id: 'Warna bintang' },
+      options: [
+        { value: 'yellow', label: { en: 'Yellow', id: 'Kuning' } },
+        { value: 'brand', label: { en: 'Brand', id: 'Brand' } },
+        { value: 'accent', label: { en: 'Accent', id: 'Aksen' } },
+        { value: 'dark', label: { en: 'Page text', id: 'Teks halaman' } },
+      ],
+      default: 'yellow',
+    },
+    {
+      kind: 'boolean',
+      key: 'showScore',
+      label: { en: 'Show the number', id: 'Tampilkan angka' },
+      default: true,
+    },
+    alignmentField(),
+    contentWidthField(),
+  ],
+}
+
+/**
+ * A heading that folds open to reveal its answer — one FAQ item, a shipping
+ * note, anything explained on demand. Neighbouring collapsible blocks each
+ * fold on their own, so stacking a few builds an FAQ without a list field.
+ */
+const collapsible: BlockSchema = {
+  type: 'collapsible',
+  name: { en: 'Collapsible', id: 'Lipatan' },
+  description: {
+    en: 'A heading that opens to show its answer — an FAQ item, or anything explained on demand.',
+    id: 'Judul yang membuka untuk menampilkan jawabannya — item tanya jawab, atau apa pun yang dijelaskan saat dibutuhkan.',
+  },
+  fields: [
+    {
+      kind: 'text',
+      key: 'heading',
+      label: { en: 'Heading', id: 'Judul' },
+      max: 120,
+      default: '',
+    },
+    {
+      kind: 'richtext',
+      key: 'body',
+      label: { en: 'Answer', id: 'Jawaban' },
+      max: 3000,
+      default: '',
+    },
+    {
+      kind: 'boolean',
+      key: 'open',
+      label: { en: 'Open by default', id: 'Terbuka di awal' },
+      default: false,
+    },
+  ],
+}
+
+/**
  * A card whose whole face is a photo, with its words on top. The block the
  * ready-made sections did not draw: a `column` can wear a background colour
  * but not a background image, and an `image` is a sibling of its text, never
@@ -638,6 +755,8 @@ BLOCK_TYPES.push(
   divider,
   video,
   badge,
+  rating,
+  collapsible,
   mediaCard,
 )
 
@@ -1704,8 +1823,8 @@ export const blocksSectionSchema = {
   type: 'blocks',
   name: { en: 'Blocks', id: 'Blok' },
   description: {
-    en: 'Every layout, built from blocks: headings, text, buttons, images, icons, badges, video, rows, columns and grids — each one styleable on its own.',
-    id: 'Semua tata letak, dibangun dari blok: judul, teks, tombol, gambar, ikon, lencana, video, baris, kolom, dan kisi — masing-masing bisa diatur gayanya.',
+    en: 'Every layout, built from blocks: headings, text, buttons, images, icons, badges, video, ratings, collapsibles, rows, columns and grids — each one styleable on its own.',
+    id: 'Semua tata letak, dibangun dari blok: judul, teks, tombol, gambar, ikon, lencana, video, rating, lipatan, baris, kolom, dan kisi — masing-masing bisa diatur gayanya.',
   },
   category: 'layout',
   icon: 'blocks',
@@ -1734,8 +1853,8 @@ export const customSectionSchema = {
   type: 'custom',
   name: { en: 'Custom layout', id: 'Tata letak kustom' },
   description: {
-    en: 'A blank canvas: compose anything from headings, text, buttons, images, video, icons, badges, rows, columns and grids.',
-    id: 'Kanvas kosong: susun apa pun dari judul, teks, tombol, gambar, video, ikon, lencana, baris, kolom, dan kisi.',
+    en: 'A blank canvas: compose anything from headings, text, buttons, images, video, icons, badges, ratings, collapsibles, rows, columns and grids.',
+    id: 'Kanvas kosong: susun apa pun dari judul, teks, tombol, gambar, video, ikon, lencana, rating, lipatan, baris, kolom, dan kisi.',
   },
   category: 'layout',
   icon: 'blocks',

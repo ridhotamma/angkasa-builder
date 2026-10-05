@@ -37,6 +37,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  LuChevronDown,
   LuChevronLeft,
   LuColumns3,
   LuGrid2X2,
@@ -52,6 +53,7 @@ import {
   LuSearch,
   LuSparkles,
   LuSquare,
+  LuStar,
   LuTag,
   LuText,
   LuType,
@@ -121,6 +123,8 @@ const BLOCK_GLYPHS: Record<string, typeof LuType> = {
   video: LuPlay,
   icon: LuSparkles,
   badge: LuTag,
+  rating: LuStar,
+  collapsible: LuChevronDown,
   divider: LuMinus,
   spacer: LuSquare,
   column: LuColumns3,

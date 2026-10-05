@@ -215,6 +215,23 @@ const columns = (fallback: number, from = 2): ItemField => ({
   default: String(fallback),
 })
 
+/** How a product list arranges its cards: the plain grid, a slider or a bento. */
+const productLayout = (): ItemField => ({
+  kind: 'select',
+  key: 'layout',
+  label: { en: 'Layout', id: 'Tampilan' },
+  options: [
+    { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
+    { value: 'slider', label: { en: 'Slider', id: 'Slider (geser)' } },
+    { value: 'bento', label: { en: 'Bento grid', id: 'Kisi bento' } },
+  ],
+  default: 'grid',
+  help: {
+    en: 'Slider lays the cards in one row with arrows over its edges; bento mixes tile sizes with the name and price on the image.',
+    id: 'Slider menaruh kartu dalam satu baris dengan panah di tepinya; bento mencampur ukuran ubin dengan nama dan harga di atas gambar.',
+  },
+})
+
 const subheading = (fallback = ''): ItemField => ({
   kind: 'textarea',
   key: 'subheading',
@@ -865,6 +882,7 @@ export const SECTION_SCHEMAS = [
           id: 'Kosongkan untuk memakai nama koleksi.',
         },
       },
+      productLayout(),
       limit(8),
       columns(4),
     ],
@@ -879,7 +897,7 @@ export const SECTION_SCHEMAS = [
       id: 'Satu rak untuk setiap koleksi aktif, sesuai urutan.',
     },
     usesCatalogue: true,
-    fields: [limit(8), columns(4)],
+    fields: [productLayout(), limit(8), columns(4)],
   },
   {
     type: 'latest-products',
@@ -892,7 +910,7 @@ export const SECTION_SCHEMAS = [
       id: 'Produk yang terakhir terbit.',
     },
     usesCatalogue: true,
-    fields: [heading('New arrivals'), limit(12), columns(4)],
+    fields: [heading('New arrivals'), productLayout(), limit(12), columns(4)],
   },
   {
     type: 'rich-text',
@@ -1199,6 +1217,7 @@ export const SECTION_SCHEMAS = [
     usesCatalogue: true,
     fields: [
       heading('Shop the edit'),
+      productLayout(),
       {
         kind: 'list',
         key: 'tabs',
@@ -2333,7 +2352,7 @@ export const SECTION_SCHEMAS = [
     scopes: PRODUCT_ONLY,
     max: 1,
     usesCatalogue: true,
-    fields: [heading('You may also like'), limit(4, 12), columns(4)],
+    fields: [heading('You may also like'), productLayout(), limit(4, 12), columns(4)],
   },
 
   /* ---------------------------------------------------------------------- */

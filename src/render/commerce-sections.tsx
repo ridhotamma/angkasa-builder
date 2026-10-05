@@ -26,7 +26,7 @@ import {
   ButtonRow,
   EditableText,
   EmptyNotice,
-  ProductGrid,
+  ProductList,
   SectionHeading,
   ThemeButton,
   useCardStyle,
@@ -204,8 +204,9 @@ export function CollectionTabs({ settings }: SectionProps) {
               {tab.shelf.products.length === 0 ? (
                 <EmptyNotice>{empty('products')}</EmptyNotice>
               ) : (
-                <ProductGrid
+                <ProductList
                   products={tab.shelf.products.slice(0, limit)}
+                  layout={readText(settings, 'layout')}
                   columns={readText(settings, 'columns')}
                 />
               )}

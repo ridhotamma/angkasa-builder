@@ -17,7 +17,15 @@ import {
 } from '../src/index'
 import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
 
-const PRIMITIVES = ['richtext', 'icon', 'divider', 'video', 'badge'] as const
+const PRIMITIVES = [
+  'richtext',
+  'icon',
+  'divider',
+  'video',
+  'badge',
+  'rating',
+  'collapsible',
+] as const
 
 function blocksField() {
   const schema = sectionSchema('blocks')
@@ -296,5 +304,79 @@ describe('the new primitives, rendered', () => {
       const presetHtml = render(<SectionsRenderer sections={[built]} env={env()} />)
       expect(presetHtml.length, preset.key).toBeGreaterThan(500)
     }
+  })
+})
+
+describe('the rating and collapsible primitives', () => {
+  test('a rating block draws its stars, score, count and caption', () => {
+    const built = createSection('blocks', {
+      blocks: [
+        {
+          id: 'rate',
+          type: 'rating',
+          settings: {
+            score: 4.8,
+            count: 126,
+            label: 'From verified buyers',
+            size: 'lg',
+            tone: 'yellow',
+            showScore: true,
+            align: 'center',
+            width: 'full',
+          },
+        },
+      ],
+    })
+    const html = render(<SectionsRenderer sections={[built]} env={env()} />)
+    expect(html).toContain('aria-label="4.8/5"')
+    expect(html).toContain('var(--chakra-colors-yellow-solid)')
+    expect(html).toContain('4.8')
+    expect(html).toContain('126 reviews')
+    expect(html).toContain('From verified buyers')
+  })
+
+  test('a zero review count leaves the count out', () => {
+    const built = createSection('blocks', {
+      blocks: [{ id: 'rate', type: 'rating', settings: { score: 5, count: 0 } }],
+    })
+    const html = render(<SectionsRenderer sections={[built]} env={env()} />)
+    expect(html).toContain('5.0')
+    expect(html).not.toContain('reviews')
+  })
+
+  test('a collapsible folds its answer and can start open', () => {
+    const built = createSection('blocks', {
+      blocks: [
+        {
+          id: 'q1',
+          type: 'collapsible',
+          settings: {
+            heading: 'Berapa lama pengirimannya?',
+            body: 'Diproses 1×24 jam, tiba 1–4 hari tergantung kota.',
+            open: true,
+          },
+        },
+      ],
+    })
+    const html = render(<SectionsRenderer sections={[built]} env={env()} />)
+    expect(html).toContain('Berapa lama pengirimannya?')
+    expect(html).toContain('Diproses 1×24 jam')
+    expect(html).toContain('data-state="open"')
+  })
+
+  test('an empty collapsible shows its placeholder in the preview, and nothing live', () => {
+    const built = createSection('blocks', {
+      blocks: [{ id: 'q', type: 'collapsible', settings: {} }],
+    })
+    const live = render(<SectionsRenderer sections={[built]} env={env()} />)
+    expect(live).not.toContain('Write a question')
+
+    const preview = render(
+      <SectionsRenderer
+        sections={[built]}
+        env={env({ mode: 'preview', editing: { onEditText: () => undefined } })}
+      />,
+    )
+    expect(preview).toContain('Write a question and its answer')
   })
 })
