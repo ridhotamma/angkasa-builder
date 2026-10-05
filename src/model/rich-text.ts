@@ -441,6 +441,61 @@ export function richDocText(doc: RichDoc): string {
   return doc.content.map(blockText).join('\n\n')
 }
 
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+}
+const escapeHtml = (text: string) => text.replace(/[&<>"]/g, (char) => HTML_ESCAPES[char] ?? char)
+
+const MARK_TAGS: Record<Exclude<RichMark['type'], 'link'>, string> = {
+  bold: 'strong',
+  italic: 'em',
+  underline: 'u',
+  strike: 's',
+}
+
+/**
+ * A document as the simple HTML `richDocFromHtml` reads back — the compact
+ * form an AI prompt shows a stored body in, and the form the model answers
+ * in. Only this module's tags are written, and text is escaped, so the round
+ * trip is lossless for anything `sanitizeRichDoc` keeps.
+ */
+export function richDocToHtml(doc: RichDoc): string {
+  const inline = (content: readonly RichInline[] | undefined): string =>
+    (content ?? [])
+      .map((node) => {
+        if (node.type === 'hardBreak') return '<br>'
+        let html = escapeHtml(node.text)
+        for (const mark of node.marks ?? []) {
+          html =
+            mark.type === 'link'
+              ? `<a href="${escapeHtml(mark.attrs.href)}">${html}</a>`
+              : `<${MARK_TAGS[mark.type]}>${html}</${MARK_TAGS[mark.type]}>`
+        }
+        return html
+      })
+      .join('')
+  const block = (node: RichBlock): string => {
+    switch (node.type) {
+      case 'paragraph':
+        return `<p>${inline(node.content)}</p>`
+      case 'heading':
+        return `<h${node.attrs.level}>${inline(node.content)}</h${node.attrs.level}>`
+      case 'bulletList':
+      case 'orderedList': {
+        const tag = node.type === 'bulletList' ? 'ul' : 'ol'
+        const items = node.content.map((item) => `<li>${item.content.map(block).join('')}</li>`)
+        return `<${tag}>${items.join('')}</${tag}>`
+      }
+      case 'blockquote':
+        return `<blockquote>${node.content.map(block).join('')}</blockquote>`
+    }
+  }
+  return doc.content.map(block).join('')
+}
+
 export function isRichDocEmpty(doc: RichDoc): boolean {
   return richDocText(doc).trim() === ''
 }

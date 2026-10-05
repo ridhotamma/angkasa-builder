@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   richDocFromHtml,
+  richDocToHtml,
   richDocFromPlainText,
   richDocText,
   sanitizeRichDoc,
@@ -213,5 +214,27 @@ describe('HTML answers from a model', () => {
 
   test('plain text with angle brackets is not mistaken for HTML', () => {
     expect(richDocText(sanitizeRichDoc('5 < 6 and 7 > 2', MAX))).toBe('5 < 6 and 7 > 2')
+  })
+})
+
+describe('richDocToHtml', () => {
+  test('writes what the parser reads back, losslessly', () => {
+    const doc = sanitizeRichDoc(
+      '<h2>Choosing the fish</h2><p>Pick <strong>firm</strong> flesh &amp; <a href="/products/x">clear eyes</a>.<br>Ask the seller.</p><h3>At the market</h3><ol><li><p>Smell it</p></li></ol><ul><li><p>Salt</p></li></ul><blockquote><p>Fresh is best.</p></blockquote>',
+      5000,
+    )
+    const html = richDocToHtml(doc)
+    expect(html).toContain('<h2>Choosing the fish</h2>')
+    expect(html).toContain('flesh &amp; <a href="/products/x">clear eyes</a>')
+    expect(sanitizeRichDoc(html, 5000)).toEqual(doc)
+  })
+
+  test('escapes text, so stored words never turn into markup', () => {
+    const html = richDocToHtml({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a < b & "c" > d' }] }],
+    })
+    expect(html).toBe('<p>a &lt; b &amp; &quot;c&quot; &gt; d</p>')
+    expect(richDocText(sanitizeRichDoc(html, 100))).toBe('a < b & "c" > d')
   })
 })
