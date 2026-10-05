@@ -1,10 +1,10 @@
 /**
- * The storefront header's mobile search: one layout on every page.
+ * The storefront header's search: one control per screen size.
  *
- * A phone used to get the field row on solid headers but only the icon on a
- * see-through one, so the home page (transparent over its banner) and every
- * other page showed different bars. The field row is the layout now, whatever
- * the header state; the icon stays only for a host that supplies no field.
+ * The phone bar carries the icon beside the cart — one bar on every page and
+ * in every header state — while the classic layout's desktop keeps the full
+ * box in its middle column. The icon is whatever the host slots in; a theme
+ * that hides search draws neither.
  */
 
 import { describe, expect, test } from 'bun:test'
@@ -49,36 +49,49 @@ function render(node: ReactNode): string {
 
 function headerHtml({
   transparent,
-  field = true,
+  layout = 'centered',
+  showSearch = true,
 }: {
   transparent: boolean
-  field?: boolean
+  layout?: string
+  showSearch?: boolean
 }): string {
   return render(
     <StoreHeader
-      header={{ layout: 'centered', showSearch: true, sticky: true }}
+      header={{ layout, showSearch, sticky: true }}
       shop={shop}
       menu={[]}
-      searchField={field ? <span>FIELD</span> : undefined}
+      searchField={<span>FIELD</span>}
       searchButton={<span>ICON</span>}
-      actions={<span>ACTIONS</span>}
+      cart={<span>CART</span>}
+      account={<span>ACCOUNT</span>}
       transparent={transparent}
     />,
   )
 }
 
 describe('the mobile header search', () => {
-  test('a solid header carries the field row', () => {
-    expect(headerHtml({ transparent: false })).toContain('FIELD')
-  })
-
-  test('a see-through header carries the same field row', () => {
-    expect(headerHtml({ transparent: true })).toContain('FIELD')
-  })
-
-  test('a host that supplies only a button keeps the icon', () => {
-    const html = headerHtml({ transparent: false, field: false })
-    expect(html).not.toContain('FIELD')
+  test('the phone bar carries the icon', () => {
+    const html = headerHtml({ transparent: false })
     expect(html).toContain('ICON')
+    expect(html).not.toContain('FIELD')
+  })
+
+  test('a see-through header draws the same bar', () => {
+    const html = headerHtml({ transparent: true })
+    expect(html).toContain('ICON')
+    expect(html).not.toContain('FIELD')
+  })
+
+  test('the classic desktop keeps the full field, the phone the icon', () => {
+    const html = headerHtml({ transparent: false, layout: 'classic' })
+    expect(html).toContain('FIELD')
+    expect(html).toContain('ICON')
+  })
+
+  test('a theme that hides search draws neither', () => {
+    const html = headerHtml({ transparent: false, showSearch: false })
+    expect(html).not.toContain('ICON')
+    expect(html).not.toContain('FIELD')
   })
 })

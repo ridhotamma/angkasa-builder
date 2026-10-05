@@ -74,12 +74,8 @@ export function TemplateSnapshotPage({
             header={content.layout.header}
             shop={shop}
             menu={[]}
-            actions={
-              <>
-                {standIn(LuShoppingBag)}
-                {standIn(LuUser)}
-              </>
-            }
+            cart={standIn(LuShoppingBag)}
+            account={standIn(LuUser)}
             searchButton={standIn(LuSearch)}
             transparent={transparent}
           />

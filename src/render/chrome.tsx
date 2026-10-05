@@ -227,11 +227,23 @@ function DesktopMenu({ items, justify }: { items: MenuItem[]; justify: 'start' |
   )
 }
 
-/** The whole main menu in a drawer on a phone, nested levels as accordions. */
-function MobileMenu({ items, shop }: { items: MenuItem[]; shop: ChromeShop }) {
+/**
+ * The whole main menu in a drawer on a phone, nested levels as accordions,
+ * with the account pinned at its bottom — out of the top bar, where there is
+ * room to write its name out.
+ */
+function MobileMenu({
+  items,
+  shop,
+  account,
+}: {
+  items: MenuItem[]
+  shop: ChromeShop
+  account?: ReactNode
+}) {
   const [open, setOpen] = useState(false)
   const overlay = useOverlayProps()
-  if (items.length === 0) return null
+  if (items.length === 0 && !account) return null
 
   const entry = (item: MenuItem, depth: number): ReactNode =>
     item.children.length === 0 ? (
@@ -264,14 +276,7 @@ function MobileMenu({ items, shop }: { items: MenuItem[]; shop: ChromeShop }) {
       size="xs"
     >
       <Drawer.Trigger asChild>
-        <IconButton
-          aria-label="Menu"
-          variant="ghost"
-          size="md"
-          rounded="full"
-          hideFrom="md"
-          color="inherit"
-        >
+        <IconButton aria-label="Menu" variant="ghost" size="md" rounded="full" color="inherit">
           <LuMenu />
         </IconButton>
       </Drawer.Trigger>
@@ -287,6 +292,18 @@ function MobileMenu({ items, shop }: { items: MenuItem[]; shop: ChromeShop }) {
                 {items.map((item) => entry(item, 0))}
               </Accordion.Root>
             </Drawer.Body>
+            {account && (
+              <Box
+                data-mobile-account=""
+                borderTopWidth="1px"
+                borderColor="border"
+                px="6"
+                py="3"
+                onClick={() => setOpen(false)}
+              >
+                {account}
+              </Box>
+            )}
           </Drawer.Content>
         </Drawer.Positioner>
       </Portal>
@@ -350,10 +367,19 @@ export interface StoreHeaderProps {
   menu: MenuItem[]
   /** The search box, for the classic layout's middle column on a desktop. */
   searchField?: ReactNode
-  /** A search icon that opens the search — phones, and the other layouts. */
+  /** A search icon that opens the search — the phone bar gets it, and the non-classic desktops too. */
   searchButton?: ReactNode
-  /** Cart and account. */
-  actions: ReactNode
+  /** The cart. In the bar at every width. */
+  cart?: ReactNode
+  /** The account. In the desktop bar; on a phone it moves into the menu. */
+  account?: ReactNode
+  /**
+   * The account as a full-width row for the phone menu's bottom. Falls back
+   * to `account`, so a host with one control still gets it down there.
+   */
+  drawerAccount?: ReactNode
+  /** Trailing controls for a host that has no separate cart and account slots. */
+  actions?: ReactNode
   /**
    * See-through over the page's first section, until the shopper scrolls.
    * The host decides — the setting asks for it, but only a home page that
@@ -422,6 +448,9 @@ export function StoreHeader({
   menu,
   searchField,
   searchButton,
+  cart,
+  account,
+  drawerAccount: drawerAccountProp,
   actions,
   transparent = false,
 }: StoreHeaderProps) {
@@ -470,40 +499,54 @@ export function StoreHeader({
   // absolute if it should scroll away with the banner.
   const position = transparent ? (sticky ? 'fixed' : 'absolute') : sticky ? 'sticky' : 'relative'
   const search = showSearch ? searchButton : null
-  // On a phone the search gets its own row under the bar, on every page and in
-  // every header state: a real field is more useful than an icon squeezed
-  // between the brand and the cart, and it leaves the top row to the logo and
-  // the actions. A see-through header over a banner draws the same row — the
-  // slotted field is styled in the translucent palette there (`CLEAR_VARS`) —
-  // so the layout a shopper learns on the home page is the layout on the next
-  // page too. Only a host that supplies a button and no field (the editor and
-  // snapshot stand-ins) falls back to the icon.
-  const mobileSearch =
-    showSearch && searchField ? (
-      <Box hideFrom="md" pb="1">
-        {searchField}
-      </Box>
-    ) : null
-  const right = (
-    <HStack gap="1" justifySelf="end" ms="auto" flexShrink="0">
-      {layout === 'classic' ? (
-        // Classic's desktop carries the full box in its middle column.
-        <Box hideFrom="md">{mobileSearch ? null : search}</Box>
-      ) : (
-        <>
-          {/* Desktop keeps the icon; on a phone the row replaces it whenever
-              the host supplied a field, and the icon stays as the fallback. */}
-          <Box hideBelow="md">{search}</Box>
-          {mobileSearch ? null : search}
-        </>
-      )}
-      {actions}
-    </HStack>
+
+  // A host with separate cart and account slots gets the cart in the phone
+  // bar and the account down in the menu; a host that only fills `actions`
+  // keeps the single trailing row it always had.
+  const desktopTrailing =
+    cart || account ? (
+      <>
+        {cart}
+        {account}
+      </>
+    ) : (
+      actions
+    )
+  const drawerAccount = drawerAccountProp ?? account
+
+  // The phone bar is one design in every layout: a menu button with the brand
+  // beside it, and search and the cart on the right. The account is not here —
+  // it waits at the bottom of the menu, where its name can be written out.
+  const mobileBar = (
+    <Grid
+      data-mobile-bar=""
+      templateColumns="minmax(0, 1fr) auto"
+      alignItems="center"
+      gap="2"
+      hideFrom="md"
+    >
+      <HStack gap="2.5" minW="0">
+        <MobileMenu items={menu} shop={shop} account={drawerAccount} />
+        <Box minW="0">
+          <Logo shop={shop} />
+        </Box>
+      </HStack>
+      <HStack gap="1" justifySelf="end" minW="0" flexShrink="0">
+        {cart ? (
+          <>
+            {search}
+            {cart}
+          </>
+        ) : (
+          actions
+        )}
+      </HStack>
+    </Grid>
   )
 
-  const bar =
+  const desktopBar =
     layout === 'centered' ? (
-      <Stack gap="2">
+      <Stack data-desktop-bar="" gap="2" hideBelow="md">
         {/* The middle track may shrink, so a long shop name truncates rather
             than running under the icons beside it. */}
         <Grid
@@ -511,52 +554,55 @@ export function StoreHeader({
           alignItems="center"
           gap="3"
         >
-          <HStack>
-            <MobileMenu items={menu} shop={shop} />
-          </HStack>
+          <HStack />
           <Logo shop={shop} centered />
-          {right}
+          <HStack gap="1" justifySelf="end" ms="auto" flexShrink="0">
+            {/* This layout has no middle column for the full field, so the
+                desktop keeps the icon beside the cart and the account. */}
+            {search}
+            {desktopTrailing}
+          </HStack>
         </Grid>
-        {mobileSearch}
         <DesktopMenu items={menu} justify="center" />
       </Stack>
     ) : layout === 'inline' ? (
-      <Stack gap="2">
-        <Flex align="center" gap={{ base: '2', md: '6' }}>
-          <MobileMenu items={menu} shop={shop} />
-          <Box flexShrink="0" maxW={{ base: '60%', md: '16rem' }} minW="0">
-            <Logo shop={shop} />
-          </Box>
-          {/* Hidden on a phone, so the desktop menu's slot does not leave an
-              empty gap between the logo and the icons. */}
-          <Box flex="1" minW="0" hideBelow="md">
-            <DesktopMenu items={menu} justify="start" />
-          </Box>
-          {right}
-        </Flex>
-        {mobileSearch}
-      </Stack>
+      <Flex data-desktop-bar="" align="center" gap="6" hideBelow="md">
+        <Box flexShrink="0" maxW="16rem" minW="0">
+          <Logo shop={shop} />
+        </Box>
+        <Box flex="1" minW="0">
+          <DesktopMenu items={menu} justify="start" />
+        </Box>
+        <HStack gap="1" ms="auto" flexShrink="0">
+          {search}
+          {desktopTrailing}
+        </HStack>
+      </Flex>
     ) : (
-      <Stack gap="2">
+      <Stack data-desktop-bar="" gap="2" hideBelow="md">
         <Grid
-          templateColumns={{
-            base: 'auto minmax(0, 1fr) auto',
-            md: 'minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)',
-          }}
+          templateColumns="minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)"
           alignItems="center"
-          gap={{ base: '2', md: '4' }}
+          gap="4"
         >
-          <HStack gap="1" minW="0">
-            <MobileMenu items={menu} shop={shop} />
+          <Box minW="0">
             <Logo shop={shop} />
+          </Box>
+          <Box>{showSearch ? searchField : null}</Box>
+          <HStack gap="1" justifySelf="end" ms="auto" flexShrink="0">
+            {desktopTrailing}
           </HStack>
-          <Box hideBelow="md">{showSearch ? searchField : null}</Box>
-          {right}
         </Grid>
-        {mobileSearch}
         <DesktopMenu items={menu} justify="start" />
       </Stack>
     )
+
+  const bar = (
+    <>
+      {mobileBar}
+      {desktopBar}
+    </>
+  )
 
   return (
     <Box

@@ -1293,12 +1293,8 @@ function Builder({
           </Box>
         }
         searchButton={standIn(LuSearch, t('standInSearch'))}
-        actions={
-          <>
-            {standIn(LuShoppingBag, t('standInCart'))}
-            {standIn(LuUser, t('standInAccount'))}
-          </>
-        }
+        cart={standIn(LuShoppingBag, t('standInCart'))}
+        account={standIn(LuUser, t('standInAccount'))}
         transparent={transparent}
       />,
       // A see-through header is fixed itself; only an in-flow one needs its
