@@ -40,9 +40,13 @@ import {
   LuChevronDown,
   LuChevronRight,
   LuImagePlus,
+  LuMonitor,
   LuPlus,
+  LuSmartphone,
   LuTrash2,
 } from 'react-icons/lu'
+
+import { readBlockDevices } from '../model/block-style'
 
 import {
   canAddBlock,
@@ -925,6 +929,19 @@ function BlocksControl({
         if (!schema) return null
         const hasFields = schema.fields.length > 0
         const expanded = open === block.id && hasFields
+        // A block narrowed to one kind of screen is missing from the other's
+        // preview; the row says so, the way a section's row does.
+        const devices = readBlockDevices(block.style)
+        const devicesIcon =
+          devices === 'all' ? null : (
+            <Icon
+              as={devices === 'mobile' ? LuSmartphone : LuMonitor}
+              boxSize="3.5"
+              color="fg.muted"
+              flexShrink="0"
+              aria-label={t(devices === 'mobile' ? 'onlyMobile' : 'onlyDesktop')}
+            />
+          )
         return (
           <Collapsible.Root
             key={block.id}
@@ -942,13 +959,17 @@ function BlocksControl({
                     <Button variant="ghost" size="xs" flex="1" justifyContent="start" minW="0">
                       <Icon as={expanded ? LuChevronDown : LuChevronRight} />
                       <Text truncate>{l(schema.name)}</Text>
+                      {devicesIcon}
                     </Button>
                   </Collapsible.Trigger>
                 ) : (
                   // Nothing to set: a label, not a button that opens nothing.
-                  <Text flex="1" minW="0" truncate fontSize="xs" fontWeight="medium" px="2.5">
-                    {l(schema.name)}
-                  </Text>
+                  <HStack flex="1" minW="0" gap="1.5" px="2.5">
+                    <Text truncate fontSize="xs" fontWeight="medium">
+                      {l(schema.name)}
+                    </Text>
+                    {devicesIcon}
+                  </HStack>
                 )}
                 <IconButton
                   aria-label={t('moveUp')}

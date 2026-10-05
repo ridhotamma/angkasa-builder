@@ -434,6 +434,28 @@ const CLEAR_VARS = {
   '--chakra-colors-border-emphasized': 'rgba(255, 255, 255, 0.6)',
 } as const
 
+/**
+ * What the header's own neutral controls paint their hover with: a tint of the
+ * header's ink.
+ *
+ * Chakra's ghost icon buttons read the `gray` palette, a colour-mode token
+ * pair that knows nothing about a shop theme's page — so on a dark theme a
+ * hover turned into Chakra's near-white pill and swallowed the pale icon.
+ * `currentColor` is white over a photo, cream over ink and charcoal over a
+ * light page: one rule for every theme, mode and scheme the header can wear,
+ * and it also covers a host's own slotted search, cart and account controls.
+ */
+const HEADER_CONTROL_VARS = {
+  '--chakra-colors-color-palette-fg': 'currentColor',
+  '--chakra-colors-color-palette-subtle': 'color-mix(in srgb, currentColor 14%, transparent)',
+  '--chakra-colors-color-palette-muted': 'color-mix(in srgb, currentColor 10%, transparent)',
+  '--chakra-colors-color-palette-emphasized': 'color-mix(in srgb, currentColor 18%, transparent)',
+  '--chakra-colors-gray-fg': 'currentColor',
+  '--chakra-colors-gray-subtle': 'color-mix(in srgb, currentColor 14%, transparent)',
+  '--chakra-colors-gray-muted': 'color-mix(in srgb, currentColor 10%, transparent)',
+  '--chakra-colors-gray-emphasized': 'color-mix(in srgb, currentColor 18%, transparent)',
+} as const
+
 /** The header's height as the page sees it; `StoreHeader` keeps it current. */
 export const HEADER_HEIGHT_VAR = '--store-header-height'
 
@@ -619,7 +641,9 @@ export function StoreHeader({
       color={clear ? 'white' : 'fg'}
       backdropFilter={clear ? undefined : 'blur(8px)'}
       data-transparent={clear ? '' : undefined}
-      css={clear ? CLEAR_VARS : undefined}
+      // The clear palette first, then the control tint: over a photo the two
+      // agree (white ink), and on a solid header the tint follows the theme.
+      css={clear ? { ...CLEAR_VARS, ...HEADER_CONTROL_VARS } : HEADER_CONTROL_VARS}
     >
       {/* Before the measurement above can run — the server's HTML — a
           see-through header is already known to take no room. */}

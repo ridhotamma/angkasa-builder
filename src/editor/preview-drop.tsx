@@ -86,9 +86,21 @@ function blockAt(
   if (!sectionId || !sectionIds.includes(sectionId)) return null
 
   const view = container.ownerDocument.defaultView
-  const axis = view?.getComputedStyle(container).flexDirection?.startsWith('row') ? 'x' : 'y'
+  // A carousel's track is a grid, which has no flex direction to read, so it
+  // names its axis itself.
+  const declared = container.dataset.blockAxis
+  const axis =
+    declared === 'x' || declared === 'y'
+      ? declared
+      : view?.getComputedStyle(container).flexDirection?.startsWith('row')
+        ? 'x'
+        : 'y'
+  // A slider's slides and a marquee's items wrap each block in a slot of
+  // their own (`data-block-slot`); the block is one level further in.
   const children = Array.from(
-    container.querySelectorAll<HTMLElement>(':scope > [data-block-id]'),
+    container.querySelectorAll<HTMLElement>(
+      ':scope > [data-block-id], :scope > [data-block-slot] > [data-block-id]',
+    ),
   )
 
   let index = children.length

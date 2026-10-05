@@ -456,15 +456,17 @@ export const PALETTES: readonly Palette[] = [
     name: { en: 'Ink & Champagne', id: 'Tinta & Sampanye' },
     tags: ['luxury', 'dark'],
     colors: {
-      brand: '#d4af37',
-      background: '#121214',
-      text: '#f4f4f5',
-      accent: '#e5c07b',
+      // Warm ink and cream, not neutral blue-black and cold white: the
+      // champagne only reads as champagne against a warm page.
+      brand: '#c9a24d',
+      background: '#141210',
+      text: '#f2ead9',
+      accent: '#dfc079',
     },
     schemes: {
-      subtle: { background: '#1a1a1e', text: '#f4f4f5', button: '#d4af37' },
-      inverse: { background: '#0a0a0c', text: '#f4f4f5', button: '#e5c07b' },
-      brand: { background: '#24211a', text: '#f4f4f5', button: '#d4af37' },
+      subtle: { background: '#1e1a15', text: '#f2ead9', button: '#c9a24d' },
+      inverse: { background: '#0b0a08', text: '#f2ead9', button: '#dfc079' },
+      brand: { background: '#2b2416', text: '#f6efe0', button: '#dfc079' },
     },
   },
   {

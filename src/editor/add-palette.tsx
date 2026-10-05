@@ -40,6 +40,7 @@ import {
   LuChevronDown,
   LuChevronLeft,
   LuColumns3,
+  LuGalleryHorizontal,
   LuGrid2X2,
   LuHeading,
   LuImage,
@@ -47,6 +48,7 @@ import {
   LuListTree,
   LuMinus,
   LuMousePointerClick,
+  LuMoveHorizontal,
   LuPilcrow,
   LuPlay,
   LuPlus,
@@ -131,6 +133,8 @@ const BLOCK_GLYPHS: Record<string, typeof LuType> = {
   columns: LuColumns3,
   row: LuListTree,
   grid: LuGrid2X2,
+  slider: LuGalleryHorizontal,
+  marquee: LuMoveHorizontal,
 }
 
 /** One draggable entry: a card that starts a drag, and adds when clicked. */

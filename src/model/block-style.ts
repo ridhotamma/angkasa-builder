@@ -455,6 +455,28 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
   fields: readonly Field[]
 }> = [
   {
+    key: 'devices',
+    label: { en: 'Show on', id: 'Tampil di' },
+    fields: [
+      {
+        kind: 'select',
+        key: 'showOn',
+        label: { en: 'Show on', id: 'Tampil di' },
+        help: {
+          en: 'Pair a phones-only block with a desktop-only one to give each screen its own layout.',
+          id: 'Pasangkan blok khusus ponsel dengan blok khusus desktop agar tiap layar punya tata letaknya sendiri.',
+        },
+        // The same split, and the same breakpoint, as a section's "Show on".
+        options: [
+          option('default', { en: 'All devices', id: 'Semua perangkat' }),
+          option('mobile', { en: 'Phones only', id: 'Hanya ponsel' }),
+          option('desktop', { en: 'Tablets and desktops only', id: 'Hanya tablet & desktop' }),
+        ],
+        default: 'default',
+      },
+    ],
+  },
+  {
     key: 'layout',
     label: { en: 'Layout', id: 'Tata letak' },
     fields: [
@@ -917,6 +939,14 @@ export function readBlockBleed(style: FieldValues | undefined): BlockBleed | nul
   return value === 'full' || value === 'band' ? value : null
 }
 
+/** Which screens a block draws on; `all` unless the seller narrowed it. */
+export type BlockDevices = 'all' | 'mobile' | 'desktop'
+
+export function readBlockDevices(style: FieldValues | undefined): BlockDevices {
+  const value = style ? readText(style, 'showOn') : ''
+  return value === 'mobile' || value === 'desktop' ? value : 'all'
+}
+
 /* -------------------------------------------------------------------------- */
 /* Motion                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -1026,6 +1056,12 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   set('display', token(style, 'display', DISPLAY))
   set('aspectRatio', token(style, 'aspectRatio', ASPECT))
   set('overflow', token(style, 'overflow', OVERFLOW))
+  // Which screens: the conditions Chakra's own `hideFrom` / `hideBelow` use,
+  // so a block and a section narrowed to phones switch at the same width.
+  // Added after `display`, so the hiding rule wins over a display override.
+  const devices = readBlockDevices(style)
+  if (devices === 'mobile') out.md = { display: 'none' }
+  if (devices === 'desktop') out.mdDown = { display: 'none' }
 
   // Text
   set('fontSize', token(style, 'fontSize', FONT_SIZE))

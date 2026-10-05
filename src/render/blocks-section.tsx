@@ -15,25 +15,41 @@ import {
   Accordion,
   AspectRatio,
   Box,
+  Carousel,
+  chakra,
   Container,
   Flex,
   Grid,
   Heading,
   Icon,
+  IconButton,
+  Marquee,
   Stack,
   Text,
+  useCarouselContext,
+  useMarqueeContext,
+  useMarqueeStyles,
   type BoxProps,
 } from '@chakra-ui/react'
-import { useContext, type ReactNode } from 'react'
-import { LuStar } from 'react-icons/lu'
+import { useContext, useEffect, type ReactNode } from 'react'
+import {
+  LuChevronDown,
+  LuChevronLeft,
+  LuChevronRight,
+  LuChevronUp,
+  LuPause,
+  LuPlay,
+  LuStar,
+} from 'react-icons/lu'
 
 import { useLocale } from '@repo/i18n'
 import { ImageWithFallback } from '@repo/theme'
 
-import { blockSchema } from '../model/blocks'
+import { blockSchema, findBlock } from '../model/blocks'
 import {
   blockStyleCss,
   readBlockBleed,
+  readBlockDevices,
   readBlockMotion,
   type BlockStyleCss,
 } from '../model/block-style'
@@ -65,6 +81,7 @@ import {
   contentLayout,
   readToken,
   selfLayout,
+  type Space,
 } from '../model/element-style'
 import {
   readBlocks,
@@ -81,6 +98,7 @@ import { isRichDocEmpty } from '../model/rich-text'
 import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
+import { useMounted, usePrefersReducedMotion, useResponsive } from './hooks'
 import { featureIcon } from './icons'
 import { VideoFrame } from './media'
 import { Parallax, ScrollReveal } from './motion'
@@ -114,7 +132,9 @@ export function BlocksSection({ settings }: SectionProps) {
  */
 function useDropTarget(parentId: string | null, fieldKey: string): Record<string, string> {
   const { mode } = useRenderEnvironment()
-  return mode === 'preview'
+  // No section id: a marquee's repeated copy, which is not somewhere to drop.
+  const sectionId = useContext(SectionIdContext)
+  return mode === 'preview' && sectionId
     ? { 'data-block-list': '', 'data-parent-id': parentId ?? '', 'data-field-key': fieldKey }
     : {}
 }
@@ -183,6 +203,8 @@ const BUILT_IN_BLOCKS: Record<string, BlockRenderer> = {
   columns: ColumnsBlock,
   row: RowBlock,
   grid: GridBlock,
+  slider: SliderBlock,
+  marquee: MarqueeBlock,
   richtext: RichTextBlock,
   icon: IconBlock,
   divider: DividerBlock,
@@ -339,6 +361,7 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
     )
   }
   const selected = editing.selectedBlockId === block.id
+  const devices = readBlockDevices(block.style)
 
   return (
     <Box
@@ -386,11 +409,18 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
           zIndex="1"
         >
           {localize(schema.name, locale)}
+          {devices !== 'all' && ` · ${localize(DEVICE_CHIPS[devices], locale)}`}
         </Box>
       )}
     </Box>
   )
 }
+
+/** The name chip's note on a block narrowed to one kind of screen. */
+const DEVICE_CHIPS = {
+  mobile: { en: 'Phones only', id: 'Hanya ponsel' },
+  desktop: { en: 'Desktop only', id: 'Hanya desktop' },
+} as const satisfies Record<string, Localized>
 
 /* -------------------------------------------------------------------------- */
 /* Content blocks                                                             */
@@ -1077,5 +1107,340 @@ function GridBlock({ block }: { block: BlockValue }) {
     >
       {blockItems(readBlocks(block.settings, 'blocks'))}
     </Grid>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Moving blocks                                                              */
+/* -------------------------------------------------------------------------- */
+
+/** The spacing scale as CSS lengths, for the carousel's and marquee's own `calc()`. */
+const SPACE_LENGTH: Record<Space, string> = {
+  none: '0px',
+  sm: '0.5rem',
+  md: '1rem',
+  lg: '1.5rem',
+  xl: '2.5rem',
+}
+
+const TRACK_HEIGHTS = ['sm', 'md', 'lg', 'xl'] as const
+
+/** The window a vertical slider or marquee scrolls inside. */
+const TRACK_HEIGHT: Record<(typeof TRACK_HEIGHTS)[number], BoxProps['h']> = {
+  sm: { base: '16rem', md: '20rem' },
+  md: { base: '22rem', md: '28rem' },
+  lg: { base: '28rem', md: '36rem' },
+  xl: { base: '34rem', md: '44rem' },
+}
+
+/**
+ * Whether `id` is `block` or sits anywhere inside it — the editor's question
+ * "is the selection in this slide?".
+ */
+function holdsBlock(block: BlockValue, id: string | null | undefined): boolean {
+  if (!id) return false
+  if (block.id === id) return true
+  const schema = blockSchema(block.type)
+  return schema ? findBlock(schema.fields, block.settings, id) !== null : false
+}
+
+const SLIDER_ORIENTATIONS = ['horizontal', 'vertical'] as const
+const SLIDER_ARROWS = ['overlay', 'none'] as const
+const SLIDER_INDICATORS = ['dots', 'count', 'none'] as const
+const SLIDER_INTERVALS = ['3', '5', '8'] as const
+
+/** A stored slides-per-page count, clamped to what the field offers. */
+function perPageOf(block: BlockValue, key: string, max: number): number {
+  const value = Number(readText(block.settings, key))
+  return Number.isInteger(value) ? Math.min(max, Math.max(1, value)) : 1
+}
+
+/** One slide's share of the track, the same sum the carousel itself does. */
+const slideSize = (count: number, spacing: string) =>
+  `calc(100% / ${count} - ${spacing} * ${count - 1} / ${count})`
+
+const SLIDER_ARROW = {
+  position: 'absolute',
+  zIndex: '1',
+  rounded: 'full',
+  size: 'sm',
+  variant: 'subtle',
+  bg: 'bg/85',
+  shadow: 'md',
+} as const
+
+/**
+ * Child blocks as slides. Until the page has hydrated it draws the first
+ * page as a plain track of the same geometry — what the server, a snapshot
+ * and a no-JS visitor see — so nothing jumps when the carousel takes over
+ * (the breakpoint is only known in the browser).
+ *
+ * In the editor, the slider follows the selection: picking a block on slide
+ * three scrolls slide three into view and holds autoplay there, so the
+ * seller is never editing something off-screen. The slide wrappers carry
+ * `data-block-slot`, which tells the palette's drop layer to look one level
+ * in for the blocks themselves.
+ */
+function SliderBlock({ block }: { block: BlockValue }) {
+  const drop = useDropTarget(block.id, 'blocks')
+  const { editing } = useRenderEnvironment()
+  const mounted = useMounted()
+  const reduced = usePrefersReducedMotion()
+  const slides = readBlocks(block.settings, 'blocks')
+  const vertical =
+    readToken(block.settings, 'orientation', SLIDER_ORIENTATIONS, 'horizontal') === 'vertical'
+  const desktop = perPageOf(block, 'perPage', 4)
+  const phone = perPageOf(block, 'perPageMobile', 2)
+  const perPage = Math.min(useResponsive({ base: phone, md: desktop }), Math.max(1, slides.length))
+  const spacing = SPACE_LENGTH[readToken(block.settings, 'gap', SPACES, 'md')]
+  const height = vertical
+    ? TRACK_HEIGHT[readToken(block.settings, 'height', TRACK_HEIGHTS, 'md')]
+    : undefined
+  const peek = readBoolean(block.settings, 'peek') ? '2rem' : undefined
+  const arrows = readToken(block.settings, 'arrows', SLIDER_ARROWS, 'overlay')
+  const indicator = readToken(block.settings, 'indicator', SLIDER_INDICATORS, 'dots')
+  const interval = Number(readToken(block.settings, 'interval', SLIDER_INTERVALS, '5'))
+  const autoplay = readBoolean(block.settings, 'autoplay') && !reduced
+  const selectedSlide = slides.findIndex((slide) => holdsBlock(slide, editing?.selectedBlockId))
+
+  if (slides.length === 0) {
+    return (
+      <Box {...drop}>
+        <BlockPlaceholder label={BLOCK_PLACEHOLDERS.drop} />
+      </Box>
+    )
+  }
+
+  if (!mounted) {
+    const count = (n: number) => Math.min(n, slides.length)
+    const size = { base: slideSize(count(phone), spacing), md: slideSize(count(desktop), spacing) }
+    return (
+      <Grid
+        gridAutoFlow={vertical ? 'row' : 'column'}
+        {...(vertical ? { gridAutoRows: size, h: height } : { gridAutoColumns: size })}
+        gap={spacing}
+        overflow="hidden"
+        {...(peek && (vertical ? { py: peek } : { px: peek }))}
+        data-block-hover-group=""
+        {...drop}
+      >
+        {blockItems(slides)}
+      </Grid>
+    )
+  }
+
+  const paged = slides.length > perPage
+  const Prev = vertical ? LuChevronUp : LuChevronLeft
+  const Next = vertical ? LuChevronDown : LuChevronRight
+
+  return (
+    <Carousel.Root
+      slideCount={slides.length}
+      slidesPerPage={perPage}
+      orientation={vertical ? 'vertical' : 'horizontal'}
+      spacing={spacing}
+      padding={peek}
+      loop={readBoolean(block.settings, 'loop')}
+      autoplay={autoplay ? { delay: interval * 1000 } : false}
+      allowMouseDrag
+      data-block-hover-group=""
+    >
+      <Box position="relative" flex="1" minW="0">
+        <Carousel.ItemGroup
+          h={height}
+          {...drop}
+          {...(Object.keys(drop).length > 0 && { 'data-block-axis': vertical ? 'y' : 'x' })}
+        >
+          {slides.map((slide, index) => (
+            <Carousel.Item
+              key={slide.id}
+              index={index}
+              data-block-slot=""
+              // Each slide fills its share of the track, so cards line up
+              // at one height and a vertical slide fills the window.
+              display="flex"
+              flexDirection="column"
+              css={{ '& > *': { flex: '1' } }}
+            >
+              <BlockView block={slide} />
+            </Carousel.Item>
+          ))}
+        </Carousel.ItemGroup>
+        {paged && arrows === 'overlay' && (
+          <>
+            <Carousel.PrevTrigger asChild>
+              <IconButton
+                {...SLIDER_ARROW}
+                {...(vertical
+                  ? { top: '2', left: '50%', transform: 'translateX(-50%)' }
+                  : { left: '2', top: '50%', transform: 'translateY(-50%)' })}
+              >
+                <Prev />
+              </IconButton>
+            </Carousel.PrevTrigger>
+            <Carousel.NextTrigger asChild>
+              <IconButton
+                {...SLIDER_ARROW}
+                {...(vertical
+                  ? { bottom: '2', left: '50%', transform: 'translateX(-50%)' }
+                  : { right: '2', top: '50%', transform: 'translateY(-50%)' })}
+              >
+                <Next />
+              </IconButton>
+            </Carousel.NextTrigger>
+          </>
+        )}
+      </Box>
+      {paged && (autoplay || indicator !== 'none') && (
+        <Flex direction={vertical ? 'column' : 'row'} align="center" justify="center" gap="3">
+          {autoplay && (
+            // Anything that moves on its own for more than five seconds
+            // needs a way to stop it (WCAG 2.2.2).
+            <Carousel.AutoplayTrigger asChild>
+              <IconButton size="2xs" variant="ghost" rounded="full" color="fg.muted">
+                <Carousel.AutoplayIndicator paused={<LuPause />} play={<LuPlay />} />
+              </IconButton>
+            </Carousel.AutoplayTrigger>
+          )}
+          {indicator === 'dots' && <Carousel.Indicators />}
+          {indicator === 'count' && (
+            <Carousel.ProgressText
+              fontSize="sm"
+              color="fg.muted"
+              fontVariantNumeric="tabular-nums"
+            />
+          )}
+        </Flex>
+      )}
+      <SliderFollowsSelection index={selectedSlide} autoplay={autoplay} />
+    </Carousel.Root>
+  )
+}
+
+/**
+ * Editor only: brings the slide holding the selected block into view and
+ * holds it there, then lets autoplay carry on once the selection leaves.
+ */
+function SliderFollowsSelection({ index, autoplay }: { index: number; autoplay: boolean }) {
+  const carousel = useCarouselContext()
+  useEffect(() => {
+    if (index < 0) {
+      if (autoplay) carousel.play()
+      return
+    }
+    carousel.pause()
+    carousel.scrollToIndex(index)
+    // The API object is new on every render; only a new selection should act.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, autoplay])
+  return null
+}
+
+const MARQUEE_DIRECTIONS = ['left', 'right', 'up', 'down'] as const
+const MARQUEE_SIDE = { left: 'start', right: 'end', up: 'top', down: 'bottom' } as const
+const MARQUEE_SPEEDS = ['slow', 'normal', 'fast'] as const
+/** Pixels per second — the same scale as the logo strip and the testimonials. */
+const MARQUEE_SPEED = { slow: 25, normal: 45, fast: 80 } as const
+const MARQUEE_ALIGNS = ['start', 'center', 'end'] as const
+
+/**
+ * Child blocks in an endless loop. The marquee repeats its content to fill
+ * the track; only the first copy is the seller's — the repeats are inert
+ * and hidden from assistive tech, and in the editor they render with no
+ * selection handles, so a block is never six click targets at once. A
+ * selection inside the marquee stops it, so the block holds still while it
+ * is edited. Reduced motion gets the row standing still (the recipe's own
+ * `_motionReduce`).
+ */
+function MarqueeBlock({ block }: { block: BlockValue }) {
+  const drop = useDropTarget(block.id, 'blocks')
+  const { editing } = useRenderEnvironment()
+  const items = readBlocks(block.settings, 'blocks')
+  const direction = readToken(block.settings, 'direction', MARQUEE_DIRECTIONS, 'left')
+  const vertical = direction === 'up' || direction === 'down'
+  const speed = MARQUEE_SPEED[readToken(block.settings, 'speed', MARQUEE_SPEEDS, 'normal')]
+  const spacing = SPACE_LENGTH[readToken(block.settings, 'gap', SPACES, 'lg')]
+  const align =
+    COLUMN_JUSTIFY[readToken(block.settings, 'align', MARQUEE_ALIGNS, 'center')] ?? 'center'
+  const editingInside = items.some((item) => holdsBlock(item, editing?.selectedBlockId))
+
+  if (items.length === 0) {
+    return (
+      <Box {...drop}>
+        <BlockPlaceholder label={BLOCK_PLACEHOLDERS.drop} />
+      </Box>
+    )
+  }
+
+  return (
+    <Marquee.Root
+      side={MARQUEE_SIDE[direction]}
+      speed={speed}
+      spacing={spacing}
+      autoFill
+      pauseOnInteraction={readBoolean(block.settings, 'pauseOnHover')}
+      {...(editingInside && { paused: true })}
+      h={
+        vertical
+          ? TRACK_HEIGHT[readToken(block.settings, 'height', TRACK_HEIGHTS, 'md')]
+          : undefined
+      }
+      minW="0"
+      overflow="hidden"
+      data-block-hover-group=""
+    >
+      {readBoolean(block.settings, 'fade') && (
+        <>
+          <Marquee.Edge side={vertical ? 'top' : 'start'} />
+          <Marquee.Edge side={vertical ? 'bottom' : 'end'} />
+        </>
+      )}
+      <Marquee.Viewport>
+        <MarqueeCopies alignItems={align} drop={drop}>
+          {items.map((item) => (
+            <Marquee.Item key={item.id} data-block-slot="">
+              <BlockView block={item} />
+            </Marquee.Item>
+          ))}
+        </MarqueeCopies>
+      </Marquee.Viewport>
+    </Marquee.Root>
+  )
+}
+
+/**
+ * `Marquee.Content`, drawn by hand so each copy can be told apart: the
+ * stock part renders the same children into every copy, which would give
+ * the editor the same block id several times over.
+ */
+function MarqueeCopies({
+  alignItems,
+  drop,
+  children,
+}: {
+  alignItems: string
+  drop: Record<string, string>
+  children: ReactNode
+}) {
+  const marquee = useMarqueeContext()
+  const styles = useMarqueeStyles()
+  return (
+    <>
+      {Array.from({ length: marquee.contentCount }, (_, index) => (
+        <chakra.div
+          key={index}
+          {...marquee.getContentProps({ index })}
+          css={{ ...styles.content, alignItems }}
+          {...(index === 0 ? drop : { inert: true })}
+        >
+          {index === 0 ? (
+            children
+          ) : (
+            // No section id, no editor handles: a repeat is scenery.
+            <SectionIdContext.Provider value={null}>{children}</SectionIdContext.Provider>
+          )}
+        </chakra.div>
+      ))}
+    </>
   )
 }

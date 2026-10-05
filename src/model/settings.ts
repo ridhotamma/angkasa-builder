@@ -623,6 +623,21 @@ export function themeCssVarGroups(settings: ThemeSettings): {
     '--button-radius': settings.buttonStyle === 'pill' ? '9999px' : l2,
 
     '--pb-accent': settings.colors.accent,
+
+    // Chakra's own neutral controls — the storefront header's ghost icon
+    // buttons above all, but tabs, menus and skeletons too — read the `gray`
+    // palette, never `fg`/`bg`. Left alone they keep their light-mode ink on a
+    // dark theme's black page, so a cart or account icon disappears, and a
+    // hover paints Chakra's near-white pill behind a pale icon. Point the
+    // palette at the theme's own ink and surfaces: those resolve per colour
+    // mode through the variables around them.
+    '--chakra-colors-gray-fg': 'var(--chakra-colors-fg)',
+    '--chakra-colors-gray-contrast': 'var(--chakra-colors-bg)',
+    '--chakra-colors-gray-subtle': 'var(--chakra-colors-bg-muted)',
+    '--chakra-colors-gray-muted': 'var(--chakra-colors-bg-subtle)',
+    '--chakra-colors-gray-emphasized': 'var(--chakra-colors-border)',
+    '--chakra-colors-gray-solid': 'var(--chakra-colors-fg)',
+    '--chakra-colors-gray-focus-ring': 'var(--chakra-colors-brand-focus-ring)',
   })
 
   // Type and density scale Chakra's own tokens, so every section — and the
@@ -636,7 +651,10 @@ export function themeCssVarGroups(settings: ThemeSettings): {
 
     '--chakra-colors-bg': background,
     '--chakra-colors-bg-subtle': mix(background, text, 0.04),
-    '--chakra-colors-bg-panel': background,
+    // Panels step off the page by a hair on both light and dark themes, so a
+    // card is visible without leaning on its border — the same lift a colour
+    // scheme band already gives its cards (`schemeCssVars`).
+    '--chakra-colors-bg-panel': mix(background, text, 0.03),
     '--chakra-colors-bg-muted': mix(background, text, 0.1),
 
     '--chakra-colors-fg': text,
@@ -718,6 +736,15 @@ export function schemeCssVars(scheme: SchemeColors): Record<string, string> {
     '--chakra-colors-brand-muted': mix(button, background, 0.7),
     '--chakra-colors-brand-subtle': mix(button, background, 0.85),
     '--chakra-colors-brand-focus-ring': button,
+    // The band's own neutral controls: an icon button on the band reads the
+    // `gray` palette, which would otherwise still point at the page's ink.
+    '--chakra-colors-gray-fg': text,
+    '--chakra-colors-gray-contrast': background,
+    '--chakra-colors-gray-subtle': mix(background, text, 0.1),
+    '--chakra-colors-gray-muted': mix(background, text, 0.05),
+    '--chakra-colors-gray-emphasized': mix(text, background, 0.6),
+    '--chakra-colors-gray-solid': text,
+    '--chakra-colors-gray-focus-ring': button,
   }
 }
 
@@ -747,19 +774,36 @@ function declarations(vars: Record<string, string>): string {
  *
  * Unlayered on purpose: Chakra declares its tokens inside `@layer tokens`, and
  * an unlayered rule beats a layered one whatever its specificity, so these
- * win without `!important`. Light-mode surfaces are keyed off the `dark` class
- * the colour-mode provider puts on `<html>`.
+ * win without `!important`.
+ *
+ * Which mode a theme's surfaces apply in is picked by the page it was designed
+ * on, not by an assumption that every theme is light. A light theme paints its
+ * page in light mode and takes the platform's dark surfaces in dark mode; a
+ * dark theme does the reverse, and its light mode is the same theme with page
+ * and ink swapped — warm cream behind the champagne, not a cold platform
+ * white. Without that split a dark theme was black in both modes, so the
+ * colour-mode switch changed nothing and its pale ink read on one page only.
  *
  * Every value comes out of `sanitizeThemeSettings` — hex colours, fonts from a
  * fixed list, radii from a fixed table — so the text is safe to inline.
  */
 export function themeStylesheet(settings: ThemeSettings): string {
   const { always, surfaces } = themeCssVarGroups(settings)
-  const dark = { '--chakra-colors-brand-fg': darkModeBrandFg(settings.colors.brand) }
+  const designedForDark = luminance(settings.colors.background) < 0.5
+  const alternateMode = designedForDark
+    ? themeCssVarGroups({
+        ...settings,
+        colors: {
+          ...settings.colors,
+          background: settings.colors.text,
+          text: settings.colors.background,
+        },
+      }).surfaces
+    : { '--chakra-colors-brand-fg': darkModeBrandFg(settings.colors.brand) }
   return (
     `:root{${declarations(always)}}` +
-    `html:not(.dark){${declarations(surfaces)}}` +
-    `html.dark{${declarations(dark)}}` +
+    `${designedForDark ? 'html.dark' : 'html:not(.dark)'}{${declarations(surfaces)}}` +
+    `${designedForDark ? 'html:not(.dark)' : 'html.dark'}{${declarations(alternateMode)}}` +
     effectCss(settings)
   )
 }

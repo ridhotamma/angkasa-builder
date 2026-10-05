@@ -740,6 +740,189 @@ const mediaCard: BlockSchema = {
   ],
 }
 
+/** How tall a vertical slider or marquee stands: it scrolls inside this window. */
+const trackHeightField = (showWhen: Field['showWhen']): Field => ({
+  kind: 'select',
+  key: 'height',
+  label: { en: 'Height', id: 'Tinggi' },
+  options: [
+    { value: 'sm', label: { en: 'Short', id: 'Pendek' } },
+    { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+    { value: 'lg', label: { en: 'Tall', id: 'Tinggi' } },
+    { value: 'xl', label: { en: 'Extra tall', id: 'Sangat tinggi' } },
+  ],
+  default: 'md',
+  showWhen,
+})
+
+const perPageOptions = (counts: readonly number[]) =>
+  counts.map((n) => ({ value: String(n), label: { en: String(n), id: String(n) } }))
+
+/**
+ * Blocks one after another in a swipeable track: every child is one slide,
+ * so a slide can be an image, a photo card or a whole column of content.
+ * Horizontal or vertical, several slides to a page, with arrows, dots or a
+ * counter. Autoplay has a floor of three seconds and always draws a pause
+ * control, and it never runs under reduced motion.
+ */
+const slider: BlockSchema = {
+  type: 'slider',
+  name: { en: 'Slider', id: 'Penggeser' },
+  description: {
+    en: 'Blocks as slides you swipe through, sideways or up and down.',
+    id: 'Blok sebagai slide yang digeser, ke samping atau ke atas-bawah.',
+  },
+  fields: [
+    nested('blocks', { en: 'Slides', id: 'Slide' }, 12),
+    {
+      kind: 'select',
+      key: 'orientation',
+      label: { en: 'Direction', id: 'Arah' },
+      options: [
+        { value: 'horizontal', label: { en: 'Sideways', id: 'Ke samping' } },
+        { value: 'vertical', label: { en: 'Up and down', id: 'Atas-bawah' } },
+      ],
+      default: 'horizontal',
+    },
+    {
+      kind: 'select',
+      key: 'perPage',
+      label: { en: 'Slides at a time on desktop', id: 'Slide sekaligus di desktop' },
+      options: perPageOptions([1, 2, 3, 4]),
+      default: '1',
+    },
+    {
+      kind: 'select',
+      key: 'perPageMobile',
+      label: { en: 'Slides at a time on phones', id: 'Slide sekaligus di ponsel' },
+      options: perPageOptions([1, 2]),
+      default: '1',
+    },
+    trackHeightField({ key: 'orientation', is: ['vertical'] }),
+    spaceField('gap', { en: 'Gap', id: 'Jarak' }, 'md'),
+    {
+      kind: 'boolean',
+      key: 'peek',
+      label: { en: 'Show the edges of the next slides', id: 'Tampilkan tepi slide berikutnya' },
+      default: false,
+    },
+    {
+      kind: 'boolean',
+      key: 'loop',
+      label: { en: 'Loop back to the start', id: 'Kembali ke awal' },
+      default: false,
+    },
+    {
+      kind: 'boolean',
+      key: 'autoplay',
+      label: { en: 'Play automatically', id: 'Putar otomatis' },
+      help: {
+        en: 'Shoppers get a pause button, and it stays still for anyone who turned motion off.',
+        id: 'Pembeli mendapat tombol jeda, dan diam bagi yang mematikan animasi.',
+      },
+      default: false,
+    },
+    {
+      kind: 'select',
+      key: 'interval',
+      label: { en: 'Time on each slide', id: 'Durasi tiap slide' },
+      options: [
+        { value: '3', label: { en: '3 seconds', id: '3 detik' } },
+        { value: '5', label: { en: '5 seconds', id: '5 detik' } },
+        { value: '8', label: { en: '8 seconds', id: '8 detik' } },
+      ],
+      default: '5',
+      showWhen: { key: 'autoplay', is: ['true'] },
+    },
+    {
+      kind: 'select',
+      key: 'arrows',
+      label: { en: 'Arrows', id: 'Panah' },
+      options: [
+        { value: 'overlay', label: { en: 'On the slides', id: 'Di atas slide' } },
+        { value: 'none', label: { en: 'None', id: 'Tanpa panah' } },
+      ],
+      default: 'overlay',
+    },
+    {
+      kind: 'select',
+      key: 'indicator',
+      label: { en: 'Position indicator', id: 'Penanda posisi' },
+      options: [
+        { value: 'dots', label: { en: 'Dots', id: 'Titik' } },
+        { value: 'count', label: { en: 'Counter (2 / 5)', id: 'Penghitung (2 / 5)' } },
+        { value: 'none', label: { en: 'None', id: 'Tanpa penanda' } },
+      ],
+      default: 'dots',
+    },
+  ],
+}
+
+/**
+ * Blocks running in an endless loop — logos, words, product photos, little
+ * cards — sideways or up and down. Pauses under the pointer, and stands
+ * still for shoppers who turned motion off.
+ */
+const marquee: BlockSchema = {
+  type: 'marquee',
+  name: { en: 'Marquee', id: 'Teks berjalan' },
+  description: {
+    en: 'Blocks running past in an endless loop, sideways or up and down.',
+    id: 'Blok yang terus berjalan tanpa henti, ke samping atau ke atas-bawah.',
+  },
+  fields: [
+    nested('blocks', { en: 'Items', id: 'Item' }, 20),
+    {
+      kind: 'select',
+      key: 'direction',
+      label: { en: 'Runs towards', id: 'Berjalan ke' },
+      options: [
+        { value: 'left', label: { en: 'Left', id: 'Kiri' } },
+        { value: 'right', label: { en: 'Right', id: 'Kanan' } },
+        { value: 'up', label: { en: 'Up', id: 'Atas' } },
+        { value: 'down', label: { en: 'Down', id: 'Bawah' } },
+      ],
+      default: 'left',
+    },
+    {
+      kind: 'select',
+      key: 'speed',
+      label: { en: 'Speed', id: 'Kecepatan' },
+      options: [
+        { value: 'slow', label: { en: 'Slow', id: 'Pelan' } },
+        { value: 'normal', label: { en: 'Normal', id: 'Normal' } },
+        { value: 'fast', label: { en: 'Fast', id: 'Cepat' } },
+      ],
+      default: 'normal',
+    },
+    trackHeightField({ key: 'direction', is: ['up', 'down'] }),
+    spaceField('gap', { en: 'Gap', id: 'Jarak' }, 'lg'),
+    {
+      kind: 'select',
+      key: 'align',
+      label: { en: 'Item alignment', id: 'Perataan item' },
+      options: [
+        { value: 'start', label: { en: 'Start', id: 'Awal' } },
+        { value: 'center', label: { en: 'Centre', id: 'Tengah' } },
+        { value: 'end', label: { en: 'End', id: 'Akhir' } },
+      ],
+      default: 'center',
+    },
+    {
+      kind: 'boolean',
+      key: 'pauseOnHover',
+      label: { en: 'Pause under the pointer', id: 'Berhenti saat disentuh kursor' },
+      default: true,
+    },
+    {
+      kind: 'boolean',
+      key: 'fade',
+      label: { en: 'Fade the edges', id: 'Pudarkan tepinya' },
+      default: true,
+    },
+  ],
+}
+
 BLOCK_TYPES.push(
   heading,
   text,
@@ -750,6 +933,8 @@ BLOCK_TYPES.push(
   columns,
   row,
   grid,
+  slider,
+  marquee,
   richText,
   icon,
   divider,

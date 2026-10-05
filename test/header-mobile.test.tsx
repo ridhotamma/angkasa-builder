@@ -106,6 +106,14 @@ describe('the phone bar', () => {
     expect(desktop).not.toContain('ICON')
   })
 
+  test('tints its controls from its own ink, not Chakra’s gray palette', () => {
+    // A ghost icon button hovered into Chakra's near-white pill on a dark
+    // theme; the header overrides the palette with a tint of its own colour.
+    const html = header({})
+    expect(html).toContain('--chakra-colors-gray-subtle:color-mix(in srgb, currentColor 14%')
+    expect(html).toContain('--chakra-colors-gray-fg:currentColor')
+  })
+
   test('a host with only an actions slot keeps it in both bars', () => {
     const html = render(
       <StoreHeader

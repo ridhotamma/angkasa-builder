@@ -339,6 +339,38 @@ describe('colour', () => {
     expect(css).toContain('html.dark{--chakra-colors-brand-fg:')
   })
 
+  test('a dark theme paints its page in dark mode and a swapped cream page in light', () => {
+    const dark = {
+      ...DEFAULT_THEME_SETTINGS,
+      colors: {
+        ...DEFAULT_THEME_SETTINGS.colors,
+        brand: '#c9a24d',
+        background: '#141210',
+        text: '#f2ead9',
+      },
+    }
+    const css = themeStylesheet(dark)
+    // The theme as designed is the dark mode; light mode swaps page and ink.
+    expect(css).toMatch(/html\.dark\{[^}]*--chakra-colors-bg:#141210/)
+    expect(css).toMatch(/html\.dark\{[^}]*--chakra-colors-fg:#f2ead9/)
+    expect(css).toMatch(/html:not\(\.dark\)\{[^}]*--chakra-colors-bg:#f2ead9/)
+    expect(css).toMatch(/html:not\(\.dark\)\{[^}]*--chakra-colors-fg:#141210/)
+  })
+
+  test('the neutral palette follows the theme, not Chakra’s baked-in gray', () => {
+    const vars = themeCssVars(DEFAULT_THEME_SETTINGS)
+    // Ghost icon buttons read `gray.fg` and hover `gray.subtle`; on a dark
+    // theme the baked-in pair is invisible ink and a near-white pill.
+    expect(vars['--chakra-colors-gray-fg']).toBe('var(--chakra-colors-fg)')
+    expect(vars['--chakra-colors-gray-subtle']).toBe('var(--chakra-colors-bg-muted)')
+    expect(vars['--chakra-colors-gray-solid']).toBe('var(--chakra-colors-fg)')
+  })
+
+  test('panels step off the page so a card is visible without its border', () => {
+    const vars = themeCssVars(DEFAULT_THEME_SETTINGS)
+    expect(vars['--chakra-colors-bg-panel']).not.toBe(DEFAULT_THEME_SETTINGS.colors.background)
+  })
+
   test('overrides semantic tokens, not only the ramp', () => {
     const vars = themeCssVars({
       ...DEFAULT_THEME_SETTINGS,
