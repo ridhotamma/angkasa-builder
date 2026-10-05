@@ -831,6 +831,7 @@ export function RelatedProducts({ settings }: SectionProps) {
         products={related}
         layout={readText(settings, 'layout')}
         columns={readText(settings, 'columns')}
+        mobileColumns={readText(settings, 'mobileColumns')}
       />
     </Stack>
   )

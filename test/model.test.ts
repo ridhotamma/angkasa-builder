@@ -40,6 +40,7 @@ import {
   sanitizeLink,
   sanitizeRecommendedLooks,
   sanitizeSections,
+  sectionSchema,
   sanitizeThemeContent,
   sanitizeThemeSettings,
   serializeContent,
@@ -89,8 +90,50 @@ describe('sections', () => {
       layout: 'grid',
       limit: 12,
       columns: '3',
+      mobileColumns: '2',
     })
     expect(sections[0]!.settings).not.toHaveProperty('style')
+  })
+
+  test('every columns setting also offers the phone choice', () => {
+    const types = [
+      'featured-collection',
+      'collection-shelves',
+      'latest-products',
+      'image-gallery',
+      'collection-tabs',
+      'multicolumn',
+      'icon-features',
+      'store-locations',
+      'related-products',
+      'masonry-gallery',
+      'video-testimonials',
+      'team',
+      'social-wall',
+    ]
+    for (const type of types) {
+      const schema = sectionSchema(type)
+      expect(schema, type).not.toBeNull()
+      expect(
+        schema!.fields.some((field) => field.key === 'columns'),
+        type,
+      ).toBe(true)
+      const mobile = schema!.fields.find((field) => field.key === 'mobileColumns')
+      expect(mobile?.kind, type).toBe('select')
+      if (mobile?.kind === 'select') {
+        expect(
+          mobile.options.map((option) => option.value),
+          type,
+        ).toEqual(['1', '2'])
+      }
+    }
+  })
+
+  test('text sections stack on phones, product lists keep two', () => {
+    expect(createSection('icon-features', {}).settings.mobileColumns).toBe('1')
+    expect(createSection('multicolumn', {}).settings.mobileColumns).toBe('1')
+    expect(createSection('featured-collection', {}).settings.mobileColumns).toBe('2')
+    expect(createSection('image-gallery', {}).settings.mobileColumns).toBe('2')
   })
 
   test('an FAQ saved before it had look settings stays centred and narrow', () => {

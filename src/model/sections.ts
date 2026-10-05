@@ -202,18 +202,35 @@ const limit = (fallback: number, max = 24): Field => ({
   default: fallback,
 })
 
-const columns = (fallback: number, from = 2): ItemField => ({
-  kind: 'select',
-  key: 'columns',
-  label: { en: 'Columns on desktop', id: 'Kolom di desktop' },
-  options: [1, 2, 3, 4, 5, 6]
-    .filter((n) => n >= from)
-    .map((n) => ({
-      value: String(n),
-      label: { en: String(n), id: String(n) },
-    })),
-  default: String(fallback),
-})
+/**
+ * A columns pair: how many the section draws on a desktop, and how many on a
+ * phone — one (a stack) or two. Every renderer reads both, so no section
+ * surprises a seller by squeezing two columns into a phone.
+ */
+const columns = (fallback: number, from = 2, mobile = 1): ItemField[] => [
+  {
+    kind: 'select',
+    key: 'columns',
+    label: { en: 'Columns on desktop', id: 'Kolom di desktop' },
+    options: [1, 2, 3, 4, 5, 6]
+      .filter((n) => n >= from)
+      .map((n) => ({
+        value: String(n),
+        label: { en: String(n), id: String(n) },
+      })),
+    default: String(fallback),
+  },
+  {
+    kind: 'select',
+    key: 'mobileColumns',
+    label: { en: 'Columns on phones', id: 'Kolom di ponsel' },
+    options: [
+      { value: '1', label: { en: 'One', id: 'Satu' } },
+      { value: '2', label: { en: 'Two', id: 'Dua' } },
+    ],
+    default: String(mobile),
+  },
+]
 
 /** How a product list arranges its cards: the plain grid, a slider or a bento. */
 const productLayout = (): ItemField => ({
@@ -884,7 +901,7 @@ export const SECTION_SCHEMAS = [
       },
       productLayout(),
       limit(8),
-      columns(4),
+      ...columns(4, 2, 2),
     ],
   },
   {
@@ -897,7 +914,7 @@ export const SECTION_SCHEMAS = [
       id: 'Satu rak untuk setiap koleksi aktif, sesuai urutan.',
     },
     usesCatalogue: true,
-    fields: [productLayout(), limit(8), columns(4)],
+    fields: [productLayout(), limit(8), ...columns(4, 2, 2)],
   },
   {
     type: 'latest-products',
@@ -910,7 +927,7 @@ export const SECTION_SCHEMAS = [
       id: 'Produk yang terakhir terbit.',
     },
     usesCatalogue: true,
-    fields: [heading('New arrivals'), productLayout(), limit(12), columns(4)],
+    fields: [heading('New arrivals'), productLayout(), limit(12), ...columns(4, 2, 2)],
   },
   {
     type: 'rich-text',
@@ -961,7 +978,7 @@ export const SECTION_SCHEMAS = [
     },
     fields: [
       heading(),
-      columns(3),
+      ...columns(3, 2, 2),
       {
         kind: 'list',
         key: 'items',
@@ -1245,7 +1262,7 @@ export const SECTION_SCHEMAS = [
         ],
       },
       limit(8),
-      columns(4),
+      ...columns(4, 2, 2),
     ],
   },
 
@@ -1639,7 +1656,7 @@ export const SECTION_SCHEMAS = [
     },
     fields: [
       heading('Why shop with us'),
-      columns(3),
+      ...columns(3, 2, 1),
       {
         kind: 'select',
         key: 'imageRatio',
@@ -2093,7 +2110,7 @@ export const SECTION_SCHEMAS = [
           },
         ],
       },
-      columns(4),
+      ...columns(4, 2, 1),
       {
         kind: 'select',
         key: 'iconStyle',
@@ -2193,7 +2210,7 @@ export const SECTION_SCHEMAS = [
           },
         ],
       },
-      columns(3, 1),
+      ...columns(3, 1, 1),
     ],
   },
   {
@@ -2352,7 +2369,7 @@ export const SECTION_SCHEMAS = [
     scopes: PRODUCT_ONLY,
     max: 1,
     usesCatalogue: true,
-    fields: [heading('You may also like'), productLayout(), limit(4, 12), columns(4)],
+    fields: [heading('You may also like'), productLayout(), limit(4, 12), ...columns(4, 2, 2)],
   },
 
   /* ---------------------------------------------------------------------- */

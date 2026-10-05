@@ -66,6 +66,11 @@ function readColumns(settings: FieldValues, fallback: number, fallbackKey = '3')
   return COLUMNS[readText(settings, 'columns') || fallbackKey] ?? fallback
 }
 
+/** The phone choice a columns field stores: one, or two. */
+function readMobileColumns(settings: FieldValues): number {
+  return readText(settings, 'mobileColumns') === '2' ? 2 : 1
+}
+
 /* -------------------------------------------------------------------------- */
 /* Newsletter                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -219,7 +224,7 @@ export function MasonryGallery({ settings }: SectionProps) {
         <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       </SectionColumn>
       <Box
-        columns={{ base: 1, sm: 2, md: readColumns(settings, 3) }}
+        columns={{ base: readMobileColumns(settings), sm: 2, md: readColumns(settings, 3) }}
         columnGap="4"
         css={{ '& > *': { breakInside: 'avoid', mb: '4' } }}
       >
@@ -343,7 +348,10 @@ export function VideoTestimonials({ settings }: SectionProps) {
       <SectionColumn>
         <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       </SectionColumn>
-      <SimpleGrid columns={{ base: 1, md: readColumns(settings, 3) }} gap="5">
+      <SimpleGrid
+        columns={{ base: readMobileColumns(settings), md: readColumns(settings, 3) }}
+        gap="5"
+      >
         {items.map((item) => {
           const itemVideo = readVideo(item, 'video')
           const posterId = readText(item, 'poster')
@@ -453,7 +461,10 @@ export function Team({ settings }: SectionProps) {
           field="body"
         />
       </SectionColumn>
-      <SimpleGrid columns={{ base: 1, sm: 2, md: readColumns(settings, 3) }} gap="5">
+      <SimpleGrid
+        columns={{ base: readMobileColumns(settings), sm: 2, md: readColumns(settings, 3) }}
+        gap="5"
+      >
         {items.map((item) => {
           const photo = readText(item, 'photo')
           const src = photo ? imageUrl(photo, { width: 700, height: 900 }) : null
@@ -744,7 +755,10 @@ export function SocialWall({ settings }: SectionProps) {
           )}
         </Stack>
       </SectionColumn>
-      <SimpleGrid columns={{ base: 2, md: readColumns(settings, 4, '4') }} gap="2">
+      <SimpleGrid
+        columns={{ base: readMobileColumns(settings), md: readColumns(settings, 4, '4') }}
+        gap="2"
+      >
         {items.map((item) => {
           const src = imageUrl(readText(item, 'image'), { width: 600, height: 600 })
           if (!src) return null

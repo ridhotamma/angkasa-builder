@@ -745,6 +745,7 @@ function FeaturedCollection({ settings }: SectionProps) {
           products={products}
           layout={readText(settings, 'layout')}
           columns={readText(settings, 'columns')}
+          mobileColumns={readText(settings, 'mobileColumns')}
         />
       )}
     </Stack>
@@ -768,6 +769,7 @@ function CollectionShelves({ settings }: SectionProps) {
             products={shelf.products.slice(0, limit)}
             layout={readText(settings, 'layout')}
             columns={readText(settings, 'columns')}
+            mobileColumns={readText(settings, 'mobileColumns')}
           />
         </Stack>
       ))}
@@ -790,6 +792,7 @@ function LatestProducts({ settings }: SectionProps) {
           products={products}
           layout={readText(settings, 'layout')}
           columns={readText(settings, 'columns')}
+          mobileColumns={readText(settings, 'mobileColumns')}
         />
       )}
     </Stack>
@@ -900,7 +903,10 @@ function ImageGallery({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <SimpleGrid columns={gridColumns(readText(settings, 'columns'))} gap="3">
+        <SimpleGrid
+          columns={gridColumns(readText(settings, 'columns'), readText(settings, 'mobileColumns'))}
+          gap="3"
+        >
           {items.map((item) => {
             const fileId = readText(item, 'image')
             const caption = readText(item, 'caption')

@@ -208,6 +208,7 @@ export function CollectionTabs({ settings }: SectionProps) {
                   products={tab.shelf.products.slice(0, limit)}
                   layout={readText(settings, 'layout')}
                   columns={readText(settings, 'columns')}
+                  mobileColumns={readText(settings, 'mobileColumns')}
                 />
               )}
             </Tabs.Content>

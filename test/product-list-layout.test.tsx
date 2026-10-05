@@ -8,7 +8,7 @@ import { system } from '@repo/theme'
 
 import { createSection, DEFAULT_THEME_SETTINGS, sectionSchema } from '../src/index'
 import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
-import { BENTO_COLUMNS, bentoPhoneColumns, bentoShape } from '../src/render/primitives'
+import { BENTO_COLUMNS, bentoPhoneColumns, bentoShape, gridColumns } from '../src/render/primitives'
 
 const IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"/>'
 
@@ -109,6 +109,23 @@ describe('product list layouts', () => {
     const html = renderLatest({ heading: 'New in', limit: 8, layout: 'bento' })
     expect(html).toContain('data-product-layout="bento"')
     expect(html).not.toContain('data-scope="carousel"')
+  })
+
+  test('the phone column choice reaches the grid', () => {
+    const one = renderLatest({ heading: 'New in', limit: 4, layout: 'grid', mobileColumns: '1' })
+    expect(one).toMatch(/grid-template-columns:repeat\(1,/)
+    const two = renderLatest({ heading: 'New in', limit: 4, layout: 'grid', mobileColumns: '2' })
+    expect(two).toMatch(/grid-template-columns:repeat\(2,/)
+    expect(two).not.toMatch(/grid-template-columns:repeat\(1, minmax\(0, 1fr\)\);/)
+  })
+})
+
+describe('gridColumns', () => {
+  test('the phone choice sets the base count', () => {
+    expect(gridColumns('4', '1')).toEqual({ base: 1, md: 3, lg: 4 })
+    expect(gridColumns('4', '2')).toEqual({ base: 2, md: 3, lg: 4 })
+    // A host that does not know the setting keeps the old phone default.
+    expect(gridColumns('4')).toEqual({ base: 2, md: 3, lg: 4 })
   })
 })
 

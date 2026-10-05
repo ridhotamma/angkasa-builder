@@ -128,13 +128,24 @@ const alignField = (fallback: 'left' | 'center' = 'center'): Field =>
     fallback,
   )
 
-const columnsField = (values: readonly string[], fallback: string): Field =>
+/** The desktop count and the phone choice (one or two), like the core sections. */
+const columnsField = (values: readonly string[], fallback: string, mobile = '1'): Field[] => [
   choice(
     'columns',
-    { en: 'Columns', id: 'Kolom' },
+    { en: 'Columns on desktop', id: 'Kolom di desktop' },
     values.map((value) => ({ value, label: { en: value, id: value } })),
     fallback,
-  )
+  ),
+  choice(
+    'mobileColumns',
+    { en: 'Columns on phones', id: 'Kolom di ponsel' },
+    [
+      { value: '1', label: { en: 'One', id: 'Satu' } },
+      { value: '2', label: { en: 'Two', id: 'Dua' } },
+    ],
+    mobile,
+  ),
+]
 
 /** Photos and videos over words: the shade that keeps the words readable. */
 const overlayField: Field = choice(
@@ -235,7 +246,7 @@ export const PREMIUM_SECTION_SCHEMAS = [
         text('alt', { en: 'Description', id: 'Deskripsi' }, 160),
         link('link', { en: 'Link (optional)', id: 'Tautan (opsional)' }),
       ]),
-      columnsField(['2', '3', '4'], '3'),
+      ...columnsField(['2', '3', '4'], '3'),
     ],
   },
   {
@@ -263,7 +274,7 @@ export const PREMIUM_SECTION_SCHEMAS = [
           image('poster', { en: 'Poster', id: 'Poster' }),
         ],
       ),
-      columnsField(['2', '3'], '3'),
+      ...columnsField(['2', '3'], '3'),
     ],
   },
   {
@@ -284,7 +295,7 @@ export const PREMIUM_SECTION_SCHEMAS = [
         text('role', { en: 'Role', id: 'Peran' }, 80),
         link('link', { en: 'Link (optional)', id: 'Tautan (opsional)' }),
       ]),
-      columnsField(['2', '3', '4'], '3'),
+      ...columnsField(['2', '3', '4'], '3'),
       alignField('center'),
     ],
   },
@@ -409,7 +420,7 @@ export const PREMIUM_SECTION_SCHEMAS = [
         text('caption', { en: 'Caption', id: 'Keterangan' }, 160),
         link('link', { en: 'Link', id: 'Tautan' }),
       ]),
-      columnsField(['3', '4', '6'], '4'),
+      ...columnsField(['3', '4', '6'], '4', '2'),
     ],
   },
   {

@@ -58,10 +58,14 @@ function ratioOf(value: string, fallback = 4 / 3): number {
   return width && height ? width / height : fallback
 }
 
-/** One to six columns: phones get one (or two for four or more), tablets up to three. */
-function columnsOf(value: string, count: number) {
+/**
+ * One to six columns: the phone choice (one or two, defaulting to the old
+ * one-or-two-by-width rule), tablets up to three.
+ */
+function columnsOf(value: string, count: number, mobileColumns?: string) {
   const n = Math.min(6, Math.max(1, Number(value) || 3), Math.max(1, count))
-  return { base: n >= 4 ? 2 : 1, md: Math.min(3, n), lg: n }
+  const base = mobileColumns === '1' ? 1 : mobileColumns === '2' ? 2 : n >= 4 ? 2 : 1
+  return { base, md: Math.min(3, n), lg: n }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -84,7 +88,14 @@ export function Multicolumn({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <SimpleGrid columns={columnsOf(readText(settings, 'columns'), items.length)} gap="5">
+        <SimpleGrid
+          columns={columnsOf(
+            readText(settings, 'columns'),
+            items.length,
+            readText(settings, 'mobileColumns'),
+          )}
+          gap="5"
+        >
           {items.map((item) => {
             const image = readText(item, 'image')
             const linkLabel = readText(item, 'linkLabel')
@@ -543,7 +554,7 @@ export function IconFeatures({ settings }: SectionProps) {
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
         <SimpleGrid
-          columns={{ ...gridColumns(readText(settings, 'columns')), base: 2 }}
+          columns={gridColumns(readText(settings, 'columns'), readText(settings, 'mobileColumns'))}
           gap={{ base: '6', md: '8' }}
         >
           {items.map((item) => (
@@ -603,7 +614,14 @@ export function StoreLocations({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <SimpleGrid columns={columnsOf(readText(settings, 'columns'), items.length)} gap="4">
+        <SimpleGrid
+          columns={columnsOf(
+            readText(settings, 'columns'),
+            items.length,
+            readText(settings, 'mobileColumns'),
+          )}
+          gap="4"
+        >
           {items.map((item) => {
             const image = readText(item, 'image')
             const tel = telHref(readText(item, 'phone'))

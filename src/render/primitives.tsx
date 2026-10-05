@@ -1020,22 +1020,28 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
   )
 }
 
-export function gridColumns(columns: string): { base: number; md: number; lg: number } {
+export function gridColumns(
+  columns: string,
+  mobileColumns = '2',
+): { base: number; md: number; lg: number } {
   const n = Math.min(6, Math.max(2, Number(columns) || 4))
-  return { base: 2, md: Math.min(3, n), lg: n }
+  return { base: mobileColumns === '1' ? 1 : 2, md: Math.min(3, n), lg: n }
 }
 
 export function ProductGrid({
   products,
   columns = '4',
+  mobileColumns,
 }: {
   products: StorefrontProductCard[]
   columns?: string
+  /** One or two columns on a phone; anything else keeps the phone default. */
+  mobileColumns?: string
 }) {
   return (
     <SimpleGrid
       data-product-layout="grid"
-      columns={gridColumns(columns)}
+      columns={gridColumns(columns, mobileColumns)}
       gap={{ base: '3', md: '5' }}
     >
       {products.map((product) => (
@@ -1067,14 +1073,17 @@ export const OVERLAY_ARROW = {
 function ProductSlider({
   products,
   columns,
+  mobileColumns,
 }: {
   products: StorefrontProductCard[]
   columns: string
+  mobileColumns?: string
 }) {
-  // Two cards on a phone, three on a tablet and the chosen count on a
-  // desktop, never more than the list itself.
+  // The chosen phone count, three cards on a tablet and the chosen desktop
+  // count, never more than the list itself.
   const desktop = Math.min(6, Math.max(2, Number(columns) || 4))
-  const perPage = Math.min(useResponsive({ base: 2, md: 3, lg: desktop }), products.length)
+  const base = mobileColumns === '1' ? 1 : 2
+  const perPage = Math.min(useResponsive({ base, md: 3, lg: desktop }), products.length)
   const paged = products.length > perPage
 
   return (
@@ -1294,12 +1303,16 @@ export function ProductList({
   products,
   layout = 'grid',
   columns = '4',
+  mobileColumns,
 }: {
   products: StorefrontProductCard[]
   layout?: string
   columns?: string
+  /** One or two columns/slides on a phone. */
+  mobileColumns?: string
 }) {
-  if (layout === 'slider') return <ProductSlider products={products} columns={columns} />
+  if (layout === 'slider')
+    return <ProductSlider products={products} columns={columns} mobileColumns={mobileColumns} />
   if (layout === 'bento') return <ProductBento products={products} />
-  return <ProductGrid products={products} columns={columns} />
+  return <ProductGrid products={products} columns={columns} mobileColumns={mobileColumns} />
 }
