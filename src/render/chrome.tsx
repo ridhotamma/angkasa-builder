@@ -133,7 +133,6 @@ function NavLink({
       fontWeight="medium"
       color="inherit"
       _hover={{ color: 'brand.fg' }}
-      data-sweep=""
       {...props}
     >
       {item.label}
@@ -845,7 +844,6 @@ export function StoreFooter({
                       key={page.slug}
                       link={{ kind: 'page', slug: page.slug }}
                       _hover={{ color: 'fg' }}
-                      data-sweep=""
                     >
                       {page.title}
                     </SmartLink>
