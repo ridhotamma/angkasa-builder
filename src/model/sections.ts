@@ -224,10 +224,10 @@ const columns = (fallback: number, from = 2, mobile = 1): ItemField[] => [
     kind: 'select',
     key: 'mobileColumns',
     label: { en: 'Columns on phones', id: 'Kolom di ponsel' },
-    options: [
-      { value: '1', label: { en: 'One', id: 'Satu' } },
-      { value: '2', label: { en: 'Two', id: 'Dua' } },
-    ],
+    options: [1, 2].map((n) => ({
+      value: String(n),
+      label: { en: String(n), id: String(n) },
+    })),
     default: String(mobile),
   },
 ]

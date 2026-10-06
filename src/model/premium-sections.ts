@@ -139,10 +139,7 @@ const columnsField = (values: readonly string[], fallback: string, mobile = '1')
   choice(
     'mobileColumns',
     { en: 'Columns on phones', id: 'Kolom di ponsel' },
-    [
-      { value: '1', label: { en: 'One', id: 'Satu' } },
-      { value: '2', label: { en: 'Two', id: 'Dua' } },
-    ],
+    [1, 2].map((n) => ({ value: String(n), label: { en: String(n), id: String(n) } })),
     mobile,
   ),
 ]
