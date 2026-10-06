@@ -13,7 +13,18 @@
  * is where unreadable combinations are repaired.
  */
 
-import { AspectRatio, Box, chakra, Flex, Grid, Heading, Icon, Image, Stack, Text } from '@chakra-ui/react'
+import {
+  AspectRatio,
+  Box,
+  chakra,
+  Flex,
+  Grid,
+  Heading,
+  Icon,
+  Image,
+  Stack,
+  Text,
+} from '@chakra-ui/react'
 import type { ComponentProps, ReactNode } from 'react'
 import {
   FaFacebookF,
@@ -131,6 +142,16 @@ const COPY = {
 
 type Copy = (typeof COPY)[keyof typeof COPY]
 
+/**
+ * Wider than a phone: a tablet or a desktop window on the live page.
+ *
+ * A container query, not a viewport breakpoint, on purpose: the same page is
+ * drawn inside the editor's 360px phone on a desktop screen, where a `md:`
+ * prop would wrongly switch it to its wide look. The container is the page's
+ * own width, wherever it is drawn.
+ */
+const WIDE = '@container (min-width: 768px)'
+
 const SOCIAL_ICONS: Record<QcSocialPlatform, IconType> = {
   instagram: FaInstagram,
   tiktok: FaTiktok,
@@ -161,7 +182,9 @@ export function QuickCheckoutPage(props: QuickCheckoutPageProps) {
   const { style } = content
   const palette = qcPalette(
     style,
-    style.background.kind === 'image' ? imageUrl(style.background.imageFileId, { width: 1200 }) : null,
+    style.background.kind === 'image'
+      ? imageUrl(style.background.imageFileId, { width: 1200 })
+      : null,
   )
   const frame: Frame = {
     style,
@@ -183,42 +206,56 @@ export function QuickCheckoutPage(props: QuickCheckoutPageProps) {
       color={palette.pageText}
       fontFamily={frame.fonts.body}
       style={{ background: palette.pageBackground }}
-      css={{ '& *:focus-visible': { outline: `2px solid ${palette.accent}`, outlineOffset: '2px' } }}
+      css={{
+        '& *:focus-visible': { outline: `2px solid ${palette.accent}`, outlineOffset: '2px' },
+      }}
     >
       {/* React hoists a stylesheet link with a precedence into <head>, on the
           server's first pass and in the editor alike. */}
       {fontsHref && <link rel="stylesheet" href={fontsHref} precedence="default" />}
 
-      <Box
-        maxW="480px"
-        mx="auto"
-        px={style.layout === 'hero' ? '0' : '5'}
-        pt={style.layout === 'hero' ? '0' : { base: '10', md: '14' }}
-        pb="12"
-      >
-        <ProfileHeader frame={frame} />
+      {/* The width the `WIDE` query measures. Nothing fixed-position lives
+          inside it: a size container is the containing block of a fixed
+          element, which would pin the WhatsApp bubble to the page's end. */}
+      <Box css={{ containerType: 'inline-size' }}>
+        <Box
+          maxW="480px"
+          mx="auto"
+          px={style.layout === 'hero' ? '0' : '5'}
+          pt={style.layout === 'hero' ? '0' : '10'}
+          pb="12"
+          css={{
+            [WIDE]: {
+              maxWidth: '600px',
+              paddingTop: style.layout === 'hero' ? '40px' : '64px',
+              paddingBottom: '64px',
+            },
+          }}
+        >
+          <ProfileHeader frame={frame} />
 
-        <Stack gap="5" mt="7" px={style.layout === 'hero' ? '5' : '0'}>
-          {blocks.map((block, index) => (
-            <Box
-              key={block.id}
-              animationName="fade-in, slide-from-bottom"
-              animationDuration="0.45s"
-              animationTimingFunction="ease-out"
-              animationFillMode="backwards"
-              animationDelay={`${Math.min(index, 8) * 60}ms`}
-              _motionReduce={{ animation: 'none' }}
-            >
-              <BlockView block={block} frame={frame} />
+          <Stack gap="5" mt="7" px={style.layout === 'hero' ? '5' : '0'}>
+            {blocks.map((block, index) => (
+              <Box
+                key={block.id}
+                animationName="fade-in, slide-from-bottom"
+                animationDuration="0.45s"
+                animationTimingFunction="ease-out"
+                animationFillMode="backwards"
+                animationDelay={`${Math.min(index, 8) * 60}ms`}
+                _motionReduce={{ animation: 'none' }}
+              >
+                <BlockView block={block} frame={frame} />
+              </Box>
+            ))}
+          </Stack>
+
+          {props.footer && (
+            <Box mt="12" textAlign="center" fontSize="xs" color={palette.pageMuted} px="5">
+              {props.footer}
             </Box>
-          ))}
-        </Stack>
-
-        {props.footer && (
-          <Box mt="12" textAlign="center" fontSize="xs" color={palette.pageMuted} px="5">
-            {props.footer}
-          </Box>
-        )}
+          )}
+        </Box>
       </Box>
 
       {floatingHref && (
@@ -318,7 +355,12 @@ function ProfileHeader({ frame }: { frame: Frame }) {
     return (
       <Box>
         <Box
-          h={{ base: '180px', md: '210px' }}
+          h="180px"
+          // On a wide page the banner is a card in the column, not a strip
+          // across the top of the window.
+          css={{
+            [WIDE]: { height: '240px', marginInline: '20px', borderRadius: frame.radius.card },
+          }}
           style={{
             background: cover
               ? `url("${cover.replace(/"/g, '%22')}") center / cover no-repeat`
@@ -362,7 +404,9 @@ function ProfileHeader({ frame }: { frame: Frame }) {
 
 function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean)
-  return (words.length > 1 ? `${words[0]![0]}${words[1]![0]}` : (words[0]?.slice(0, 2) ?? '')).toUpperCase()
+  return (
+    words.length > 1 ? `${words[0]![0]}${words[1]![0]}` : (words[0]?.slice(0, 2) ?? '')
+  ).toUpperCase()
 }
 
 /* -------------------------------------------------------------------------- */
@@ -423,7 +467,10 @@ function buttonProps(frame: Frame, emphasis = true) {
   switch (style.buttonStyle) {
     case 'soft': {
       const bg = mix(palette.accent, cardBase, 0.82)
-      const color = contrastRatio(palette.accent, bg) >= 4.5 ? palette.accent : mix(palette.accent, readableOn(bg), 0.6)
+      const color =
+        contrastRatio(palette.accent, bg) >= 4.5
+          ? palette.accent
+          : mix(palette.accent, readableOn(bg), 0.6)
       return { ...common, bg, color, _hover: { filter: 'brightness(0.97)' } }
     }
     case 'outline':
@@ -465,7 +512,9 @@ function BlockTitle({ frame, children }: { frame: Frame; children: ReactNode }) 
       fontSize="md"
       fontWeight="bold"
       color={frame.palette.pageText}
-      textAlign={frame.style.layout === 'minimal' || frame.style.layout === 'hero' ? 'left' : 'center'}
+      textAlign={
+        frame.style.layout === 'minimal' || frame.style.layout === 'hero' ? 'left' : 'center'
+      }
       mb="3"
     >
       {children}
@@ -473,7 +522,15 @@ function BlockTitle({ frame, children }: { frame: Frame; children: ReactNode }) 
   )
 }
 
-function EmptyHint({ frame, icon, children }: { frame: Frame; icon: IconType; children: ReactNode }) {
+function EmptyHint({
+  frame,
+  icon,
+  children,
+}: {
+  frame: Frame
+  icon: IconType
+  children: ReactNode
+}) {
   if (frame.props.mode !== 'preview') return null
   return (
     <Flex
@@ -518,7 +575,12 @@ function BlockView({ block, frame }: { block: QcBlock; frame: Frame }) {
             </Heading>
           )}
           {block.body && (
-            <Text fontSize="sm" lineHeight="1.7" color={frame.palette.pageMuted} whiteSpace="pre-line">
+            <Text
+              fontSize="sm"
+              lineHeight="1.7"
+              color={frame.palette.pageMuted}
+              whiteSpace="pre-line"
+            >
               {block.body}
             </Text>
           )}
@@ -526,7 +588,12 @@ function BlockView({ block, frame }: { block: QcBlock; frame: Frame }) {
       )
     case 'image': {
       const src = frame.props.imageUrl(block.imageFileId, { width: 960 })
-      if (!src) return <EmptyHint frame={frame} icon={LuImage}>{frame.copy.emptyImage}</EmptyHint>
+      if (!src)
+        return (
+          <EmptyHint frame={frame} icon={LuImage}>
+            {frame.copy.emptyImage}
+          </EmptyHint>
+        )
       const image = (
         <Image
           src={src}
@@ -551,7 +618,12 @@ function BlockView({ block, frame }: { block: QcBlock; frame: Frame }) {
         <Stack gap="0">
           {block.title && <BlockTitle frame={frame}>{block.title}</BlockTitle>}
           {id ? (
-            <AspectRatio ratio={16 / 9} borderRadius={frame.radius.card} overflow="hidden" bg="black">
+            <AspectRatio
+              ratio={16 / 9}
+              borderRadius={frame.radius.card}
+              overflow="hidden"
+              bg="black"
+            >
               <chakra.iframe
                 src={`https://www.youtube-nocookie.com/embed/${id}`}
                 title={block.title || 'YouTube'}
@@ -634,7 +706,11 @@ function ProductList({
 }) {
   if (layout === 'grid') {
     return (
-      <Grid templateColumns="repeat(2, minmax(0, 1fr))" gap="3">
+      <Grid
+        templateColumns="repeat(2, minmax(0, 1fr))"
+        gap="3"
+        css={{ [WIDE]: { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' } }}
+      >
         {products.map((product) => (
           <ProductTile key={product.id} product={product} frame={frame} />
         ))}
@@ -643,7 +719,17 @@ function ProductList({
   }
   if (layout === 'hero') {
     return (
-      <Stack gap="4">
+      // Two large cards a row on a wide page: one would be a 450px-tall photo.
+      <Stack
+        gap="4"
+        css={{
+          [WIDE]: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: '16px',
+          },
+        }}
+      >
         {products.map((product) => (
           <ProductFeature key={product.id} product={product} frame={frame} />
         ))}
@@ -653,7 +739,12 @@ function ProductList({
   return (
     <Stack gap="3">
       {products.map((product) => (
-        <ProductRow key={product.id} product={product} frame={frame} compact={layout === 'minimal'} />
+        <ProductRow
+          key={product.id}
+          product={product}
+          frame={frame}
+          compact={layout === 'minimal'}
+        />
       ))}
     </Stack>
   )
@@ -667,20 +758,42 @@ function buyAction(frame: Frame, product: QcProductView) {
     onClick: () => {
       if (!disabled && mode === 'live') onBuy?.(product)
     },
-    label: product.soldOut ? frame.copy.soldOut : product.hasVariants ? frame.copy.choose : frame.copy.buy,
+    label: product.soldOut
+      ? frame.copy.soldOut
+      : product.hasVariants
+        ? frame.copy.choose
+        : frame.copy.buy,
   }
 }
 
-function Price({ product, frame, size = 'sm' }: { product: QcProductView; frame: Frame; size?: string }) {
+function Price({
+  product,
+  frame,
+  size = 'sm',
+}: {
+  product: QcProductView
+  frame: Frame
+  size?: string
+}) {
   const { palette, props } = frame
   const discounted = product.compareAtPrice != null && product.compareAtPrice > product.price
   return (
     <Flex align="baseline" gap="1.5" wrap="wrap">
-      <Text fontWeight="bold" fontSize={size} color={palette.accentOnCard} fontVariantNumeric="tabular-nums">
+      <Text
+        fontWeight="bold"
+        fontSize={size}
+        color={palette.accentOnCard}
+        fontVariantNumeric="tabular-nums"
+      >
         {props.formatPrice(product.price)}
       </Text>
       {discounted && (
-        <Text fontSize="xs" color={palette.cardMuted} textDecoration="line-through" fontVariantNumeric="tabular-nums">
+        <Text
+          fontSize="xs"
+          color={palette.cardMuted}
+          textDecoration="line-through"
+          fontVariantNumeric="tabular-nums"
+        >
           {props.formatPrice(product.compareAtPrice!)}
         </Text>
       )}
@@ -690,9 +803,20 @@ function Price({ product, frame, size = 'sm' }: { product: QcProductView; frame:
 
 function ProductImage({ product, frame }: { product: QcProductView; frame: Frame }) {
   return product.imageUrl ? (
-    <Image src={product.imageUrl} alt={product.name} boxSize="full" objectFit="cover" loading="lazy" />
+    <Image
+      src={product.imageUrl}
+      alt={product.name}
+      boxSize="full"
+      objectFit="cover"
+      loading="lazy"
+    />
   ) : (
-    <Flex boxSize="full" align="center" justify="center" bg={mix(frame.palette.accent, frame.style.surface, 0.85)}>
+    <Flex
+      boxSize="full"
+      align="center"
+      justify="center"
+      bg={mix(frame.palette.accent, frame.style.surface, 0.85)}
+    >
       <Icon as={LuShoppingBag} boxSize="6" color={frame.palette.accentOnCard} />
     </Flex>
   )
@@ -717,7 +841,15 @@ function SoldOutVeil({ frame }: { frame: Frame }) {
   )
 }
 
-function ProductRow({ product, frame, compact }: { product: QcProductView; frame: Frame; compact: boolean }) {
+function ProductRow({
+  product,
+  frame,
+  compact,
+}: {
+  product: QcProductView
+  frame: Frame
+  compact: boolean
+}) {
   const buy = buyAction(frame, product)
   return (
     <chakra.button
@@ -948,15 +1080,43 @@ function SocialsBlock({ block, frame }: { block: QcSocialsBlock; frame: Frame })
 function ContactBlock({ block, frame }: { block: QcContactBlock; frame: Frame }) {
   const whatsapp = whatsappHref(block.whatsapp, block.whatsappMessage)
   const phone = block.phone.replace(/[^\d+]/g, '')
-  const rows: Array<{ kind: QcLinkKind; href: string; icon: IconType; label: string; detail: string; emphasis: boolean }> = []
+  const rows: Array<{
+    kind: QcLinkKind
+    href: string
+    icon: IconType
+    label: string
+    detail: string
+    emphasis: boolean
+  }> = []
   if (whatsapp) {
-    rows.push({ kind: 'whatsapp', href: whatsapp, icon: FaWhatsapp, label: frame.copy.whatsapp, detail: block.whatsapp, emphasis: true })
+    rows.push({
+      kind: 'whatsapp',
+      href: whatsapp,
+      icon: FaWhatsapp,
+      label: frame.copy.whatsapp,
+      detail: block.whatsapp,
+      emphasis: true,
+    })
   }
   if (block.email) {
-    rows.push({ kind: 'email', href: `mailto:${block.email}`, icon: LuMail, label: frame.copy.email, detail: block.email, emphasis: false })
+    rows.push({
+      kind: 'email',
+      href: `mailto:${block.email}`,
+      icon: LuMail,
+      label: frame.copy.email,
+      detail: block.email,
+      emphasis: false,
+    })
   }
   if (phone.length >= 6) {
-    rows.push({ kind: 'phone', href: `tel:${phone}`, icon: LuPhone, label: frame.copy.call, detail: block.phone, emphasis: false })
+    rows.push({
+      kind: 'phone',
+      href: `tel:${phone}`,
+      icon: LuPhone,
+      label: frame.copy.call,
+      detail: block.phone,
+      emphasis: false,
+    })
   }
   if (rows.length === 0) return null
 
@@ -995,4 +1155,3 @@ function ContactBlock({ block, frame }: { block: QcContactBlock; frame: Frame })
     </Box>
   )
 }
-
