@@ -34,7 +34,7 @@ async function launchBrowser(): Promise<Browser> {
   // A non-literal specifier so no bundler ever traces `puppeteer` into a
   // deploy — see the module doc comment above.
   const devOnlyPackage = 'puppeteer'
-  const { default: puppeteer } = await import(devOnlyPackage)
+  const { default: puppeteer } = await import(/* @vite-ignore */ devOnlyPackage)
   return puppeteer.launch({
     headless: true,
     args: ignoreCertificateErrors,

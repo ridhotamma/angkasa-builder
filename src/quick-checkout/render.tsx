@@ -953,7 +953,12 @@ function ProductFeature({ product, frame }: { product: QcProductView; frame: Fra
       type="button"
       onClick={buy.onClick}
       aria-disabled={buy.disabled}
-      display="block"
+      // A flex column rather than a block: the grid stretches every card in a
+      // row to the tallest one, and a button's own layout vertically centres
+      // its content — a short product name would push the image down instead
+      // of leaving the spare space at the foot of the card.
+      display="flex"
+      flexDirection="column"
       w="full"
       textAlign="left"
       overflow="hidden"
@@ -982,14 +987,14 @@ function ProductFeature({ product, frame }: { product: QcProductView; frame: Fra
           )}
         </Box>
       </AspectRatio>
-      <Stack gap="2" p="4">
+      <Stack gap="2" p="4" flex="1">
         <Text fontFamily={frame.fonts.heading} fontWeight="bold" fontSize="lg" lineHeight="1.25">
           {product.name}
         </Text>
         <Price product={product} frame={frame} size="md" />
         <Box
           as="span"
-          mt="1"
+          mt="auto"
           py="3"
           fontSize="sm"
           textAlign="center"

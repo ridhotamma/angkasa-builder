@@ -8,8 +8,10 @@
  * usable — seeing the letters in the face itself — needs the font loaded.
  * Loading all of them would be hundreds of stylesheets, so previews are lazy:
  * exactly one preview stylesheet is in the document at a time, swapped to
- * whichever family is highlighted (or selected). The storefront never sees any
- * of this; it requests only the two families the theme ends up using.
+ * whichever family is highlighted (or selected) for the *options in the list*.
+ * The trigger stays in the interface font — a control whose own text changes
+ * face while browsing reads as a glitch, not a preview. The storefront never
+ * sees any of this; it requests only the two families the theme ends up using.
  */
 
 import { Combobox, createListCollection, Portal, ScrollArea, Stack, Text } from '@chakra-ui/react'
@@ -88,7 +90,7 @@ export function FontSelect({
       positioning={{ sameWidth: true }}
     >
       <Combobox.Control>
-        <Combobox.Input placeholder={t('fontSearch')} fontFamily={fontStack(value)} />
+        <Combobox.Input placeholder={t('fontSearch')} />
         <Combobox.IndicatorGroup>
           <Combobox.Trigger />
         </Combobox.IndicatorGroup>

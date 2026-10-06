@@ -24,7 +24,7 @@ import {
   useBreakpointValue,
 } from '@chakra-ui/react'
 import { type ReactNode } from 'react'
-import { LuEllipsis, LuSettings2 } from 'react-icons/lu'
+import { LuEllipsisVertical, LuSettings2 } from 'react-icons/lu'
 
 import { Tooltip } from '@repo/theme'
 
@@ -67,7 +67,7 @@ export function EditorMenu({ items }: { items: EditorMenuItem[] }) {
     >
       <Menu.Trigger asChild>
         <IconButton aria-label={t('moreActions')} size="sm" variant="ghost">
-          <LuEllipsis />
+          <LuEllipsisVertical />
         </IconButton>
       </Menu.Trigger>
       <Portal>
