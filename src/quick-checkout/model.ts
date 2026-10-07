@@ -485,8 +485,11 @@ export interface QuickCheckoutContent {
 
 const HEX = /^#[0-9a-f]{6}$/i
 const ID = /^[a-zA-Z0-9_-]{1,36}$/
-/** Appwrite ids, or a hotlinked stock photo (`https://images.pexels.com/...#credit`). */
-const FILE_ID = /^(?:[a-zA-Z0-9._-]{1,36}|https:\/\/(?:cdn\.pixabay\.com|images\.pexels\.com|images\.unsplash\.com)\/[^\s"'<>]{1,500})$/
+/**
+ * Appwrite ids, or a hotlinked stock photo (`https://images.pexels.com/...#credit`).
+ * Pixabay serves both its original CDN renditions and `pixabay.com/get/` ones.
+ */
+const FILE_ID = /^(?:[a-zA-Z0-9._-]{1,36}|https:\/\/(?:cdn\.pixabay\.com|pixabay\.com\/get|images\.pexels\.com|images\.unsplash\.com)\/[^\s"'<>]{1,500})$/
 
 const text = (max: number, fallback = '') =>
   z

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
 import { renderToString } from 'react-dom/server'
 
+import { stockPhotoValue } from '@repo/appwrite-config'
 import { system } from '@repo/theme'
 
 import { contrastRatio } from '../src/model/settings'
@@ -112,6 +113,27 @@ describe('sanitizeQuickCheckoutContent', () => {
     const page = starterQuickCheckout(SHOP, 'midnight', 'id')
     expect(parseQuickCheckoutContent(serializeQuickCheckoutContent(page))).toEqual(page)
     expect(parseQuickCheckoutContent('{not json')).toEqual(sanitizeQuickCheckoutContent({}))
+  })
+
+  test("Pixabay's pixabay.com/get/ renditions survive as image values", () => {
+    const value = stockPhotoValue('https://pixabay.com/get/abc123_1280.jpg', {
+      provider: 'pixabay',
+      photographer: 'Jane',
+      photographerUrl: 'https://pixabay.com/users/jane-123/',
+    })
+    const page = sanitizeQuickCheckoutContent({
+      blocks: [{ id: 'i', type: 'image', imageFileId: value, url: '' }],
+    })
+    const block = page.blocks[0]
+    expect(block?.type === 'image' && block.imageFileId).toBe(value)
+
+    const pageUrl = sanitizeQuickCheckoutContent({
+      blocks: [
+        { id: 'p', type: 'image', imageFileId: 'https://pixabay.com/photos/cafe-42/', url: '' },
+      ],
+    })
+    const refused = pageUrl.blocks[0]
+    expect(refused?.type === 'image' && refused.imageFileId).toBeNull()
   })
 })
 
