@@ -20,6 +20,7 @@ export {
   type StorefrontVoucherData,
 } from './context'
 export {
+  HEADER_HEIGHT_VAR,
   isHeaderTransparent,
   StoreFooter,
   StoreHeader,
