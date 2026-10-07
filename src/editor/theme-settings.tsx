@@ -1,6 +1,7 @@
 /** The theme tab: colours, fonts and shape, with the contrast check live. */
 
 import {
+  Accordion,
   Alert,
   Badge,
   Box,
@@ -16,7 +17,7 @@ import {
   Text,
   Textarea,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { LuSparkles } from 'react-icons/lu'
 
 import {
@@ -69,6 +70,54 @@ function Heading({ children }: { children: string }) {
     >
       {children}
     </Text>
+  )
+}
+
+/**
+ * One collapsible group in the Theme tab, the same accordion the block-style
+ * overrides use: the whole settings list reads as a short set of headings and
+ * opens only where the seller is working.
+ */
+function ThemeSection({
+  value,
+  title,
+  helper,
+  children,
+}: {
+  value: string
+  title: string
+  /** A line of context under the heading, in the section's voice. */
+  helper?: string
+  children: ReactNode
+}) {
+  return (
+    <Accordion.Item value={value}>
+      <Accordion.ItemTrigger py="2">
+        <Text
+          flex="1"
+          fontSize="xs"
+          fontWeight="semibold"
+          textTransform="uppercase"
+          letterSpacing="wide"
+          color="fg.muted"
+        >
+          {title}
+        </Text>
+        <Accordion.ItemIndicator />
+      </Accordion.ItemTrigger>
+      <Accordion.ItemContent>
+        <Accordion.ItemBody pb="4">
+          <Stack gap="3">
+            {helper && (
+              <Text fontSize="xs" color="fg.muted">
+                {helper}
+              </Text>
+            )}
+            {children}
+          </Stack>
+        </Accordion.ItemBody>
+      </Accordion.ItemContent>
+    </Accordion.Item>
   )
 }
 
@@ -167,168 +216,373 @@ export function ThemeSettingsPanel({
         priorityKeys={priorityLookKeys}
       />
 
-      <Stack gap="3">
-        <Heading>{t('colors')}</Heading>
-        {color('brand', 'brandColor')}
-        {color('background', 'backgroundColor')}
-        {color('text', 'textColor')}
-        {color('accent', 'accentColor')}
-        {issues.map((issue) => (
-          <Alert.Root key={issue} status="warning" size="sm">
-            <Alert.Indicator />
-            <Alert.Description>
-              {t(issue === 'text' ? 'contrastText' : 'contrastBrand')}
-            </Alert.Description>
-          </Alert.Root>
-        ))}
-      </Stack>
+      <Accordion.Root multiple defaultValue={['colors']}>
+        <ThemeSection value="colors" title={t('colors')}>
+          {color('brand', 'brandColor')}
+          {color('background', 'backgroundColor')}
+          {color('text', 'textColor')}
+          {color('accent', 'accentColor')}
+          {issues.map((issue) => (
+            <Alert.Root key={issue} status="warning" size="sm">
+              <Alert.Indicator />
+              <Alert.Description>
+                {t(issue === 'text' ? 'contrastText' : 'contrastBrand')}
+              </Alert.Description>
+            </Alert.Root>
+          ))}
+        </ThemeSection>
 
-      <Stack gap="3">
-        <Heading>{t('colorSchemes')}</Heading>
-        <Text fontSize="xs" color="fg.muted">
-          {t('colorSchemesHelp')}
-        </Text>
-        {SCHEME_KEYS.map((key) => {
-          const own = settings.schemes[key]
-          const colors = resolveScheme(settings, key)
-          const invalid = schemeIssues.includes(key)
-          const setScheme = (scheme: SchemeColors | undefined) => {
-            const schemes = { ...settings.schemes }
-            if (scheme) schemes[key] = scheme
-            else delete schemes[key]
-            onChange({ ...settings, schemes })
-          }
-          return (
-            <Box
-              key={key}
-              borderWidth="1px"
-              borderColor={invalid ? 'warning.emphasized' : 'border.subtle'}
-              rounded="md"
-              p="2.5"
-            >
-              <HStack gap="2.5">
-                {/* A swatch that is the scheme: its background, its text, its button. */}
-                <HStack
-                  gap="1"
-                  px="2"
-                  py="1.5"
-                  rounded="sm"
-                  flexShrink="0"
-                  style={{ background: colors.background, color: colors.text }}
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                >
-                  <Text fontSize="xs" fontWeight="bold">
-                    Aa
+        <ThemeSection value="schemes" title={t('colorSchemes')} helper={t('colorSchemesHelp')}>
+          {SCHEME_KEYS.map((key) => {
+            const own = settings.schemes[key]
+            const colors = resolveScheme(settings, key)
+            const invalid = schemeIssues.includes(key)
+            const setScheme = (scheme: SchemeColors | undefined) => {
+              const schemes = { ...settings.schemes }
+              if (scheme) schemes[key] = scheme
+              else delete schemes[key]
+              onChange({ ...settings, schemes })
+            }
+            return (
+              <Box
+                key={key}
+                borderWidth="1px"
+                borderColor={invalid ? 'warning.emphasized' : 'border.subtle'}
+                rounded="md"
+                p="2.5"
+              >
+                <HStack gap="2.5">
+                  {/* A swatch that is the scheme: its background, its text, its button. */}
+                  <HStack
+                    gap="1"
+                    px="2"
+                    py="1.5"
+                    rounded="sm"
+                    flexShrink="0"
+                    style={{ background: colors.background, color: colors.text }}
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                  >
+                    <Text fontSize="xs" fontWeight="bold">
+                      Aa
+                    </Text>
+                    <Box boxSize="3" rounded="full" style={{ background: colors.button }} />
+                  </HStack>
+                  <Text fontSize="sm" fontWeight="medium" flex="1">
+                    {l(SCHEME_LABELS[key])}
                   </Text>
-                  <Box boxSize="3" rounded="full" style={{ background: colors.button }} />
+                  <Switch.Root
+                    size="sm"
+                    colorPalette="brand"
+                    checked={!own}
+                    onCheckedChange={({ checked }) => setScheme(checked ? undefined : colors)}
+                  >
+                    <Switch.HiddenInput />
+                    <Switch.Label fontSize="xs" color="fg.muted">
+                      {t('schemeAutomatic')}
+                    </Switch.Label>
+                    <Switch.Control />
+                  </Switch.Root>
                 </HStack>
-                <Text fontSize="sm" fontWeight="medium" flex="1">
-                  {l(SCHEME_LABELS[key])}
-                </Text>
+                {own && (
+                  <Stack gap="2" mt="3">
+                    <ColorInput
+                      label={t('schemeBackground')}
+                      value={own.background}
+                      onChange={(background) => setScheme({ ...own, background })}
+                    />
+                    <ColorInput
+                      label={t('schemeText')}
+                      value={own.text}
+                      onChange={(text) => setScheme({ ...own, text })}
+                    />
+                    <ColorInput
+                      label={t('schemeButton')}
+                      value={own.button}
+                      onChange={(button) => setScheme({ ...own, button })}
+                    />
+                    {invalid && (
+                      <Alert.Root status="warning" size="sm">
+                        <Alert.Indicator />
+                        <Alert.Description>{t('schemeContrast')}</Alert.Description>
+                      </Alert.Root>
+                    )}
+                  </Stack>
+                )}
+              </Box>
+            )
+          })}
+        </ThemeSection>
+
+        <ThemeSection value="motion" title={t('motion')}>
+          <Labeled label={t('animation')} help={t('animationHelp')}>
+            <SelectInput
+              value={settings.animation}
+              options={ANIMATION_STYLES.map((value) => ({
+                value,
+                label: l(ANIMATION_LABELS[value]),
+              }))}
+              onChange={(animation) =>
+                onChange({ ...settings, animation: animation as ThemeSettings['animation'] })
+              }
+            />
+          </Labeled>
+        </ThemeSection>
+
+        <ThemeSection value="splash" title={t('splash')} helper={t('splashHelp')}>
+          {splashToggle(t('splashEnable'), 'enabled')}
+          <Labeled label={t('splashStyle')}>
+            <SelectInput
+              value={settings.splash.style}
+              options={SPLASH_STYLES.map((value) => ({
+                value,
+                label: l(SPLASH_STYLE_LABELS[value]),
+              }))}
+              onChange={(style) =>
+                onChange({
+                  ...settings,
+                  splash: { ...settings.splash, style: style as SplashStyle },
+                })
+              }
+            />
+          </Labeled>
+          <Labeled label={t('splashTone')}>
+            <SelectInput
+              value={settings.splash.tone}
+              options={SPLASH_TONES.map((value) => ({
+                value,
+                label: l(SPLASH_TONE_LABELS[value]),
+              }))}
+              onChange={(tone) =>
+                onChange({ ...settings, splash: { ...settings.splash, tone: tone as SplashTone } })
+              }
+            />
+          </Labeled>
+          {splashToggle(t('splashShowLogo'), 'showLogo')}
+          {splashToggle(t('splashShowName'), 'showName')}
+          {splashToggle(t('splashOncePerSession'), 'oncePerSession')}
+          {shop && (
+            <Button
+              size="xs"
+              variant="outline"
+              alignSelf="start"
+              onClick={() => setSplashPreview((count) => count + 1)}
+            >
+              {t('previewIntro')}
+            </Button>
+          )}
+        </ThemeSection>
+
+        <ThemeSection value="popup" title={t('popup')} helper={t('popupHelp')}>
+          <Labeled label={t('popupKind')}>
+            <SelectInput
+              value={settings.popup.kind}
+              options={POPUP_KINDS.map((value) => ({
+                value,
+                label: l(POPUP_KIND_LABELS[value]),
+              }))}
+              onChange={(kind) =>
+                onChange({ ...settings, popup: { ...settings.popup, kind: kind as PopupKind } })
+              }
+            />
+          </Labeled>
+          {settings.popup.kind !== 'none' && (
+            <>
+              <Labeled label={t('popupTitle')}>
+                <Input
+                  size="sm"
+                  value={settings.popup.title}
+                  maxLength={120}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      popup: { ...settings.popup, title: event.currentTarget.value },
+                    })
+                  }
+                />
+              </Labeled>
+              <Labeled label={t('popupBody')}>
+                <Textarea
+                  size="sm"
+                  rows={3}
+                  value={settings.popup.body}
+                  maxLength={400}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      popup: { ...settings.popup, body: event.currentTarget.value },
+                    })
+                  }
+                />
+              </Labeled>
+              <Labeled label={t('popupButton')}>
+                <Input
+                  size="sm"
+                  value={settings.popup.buttonLabel}
+                  maxLength={40}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      popup: { ...settings.popup, buttonLabel: event.currentTarget.value },
+                    })
+                  }
+                />
+              </Labeled>
+              {(settings.popup.kind === 'welcome' || settings.popup.kind === 'exit') && (
+                <Labeled label={t('popupDelay')} help={t('popupDelayHelp')}>
+                  <Input
+                    size="sm"
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={settings.popup.delaySeconds}
+                    onChange={(event) =>
+                      onChange({
+                        ...settings,
+                        popup: {
+                          ...settings.popup,
+                          delaySeconds: Number(event.currentTarget.value) || 4,
+                        },
+                      })
+                    }
+                  />
+                </Labeled>
+              )}
+              <HStack justify="space-between" w="full" align="flex-start" gap="4">
+                <Text fontSize="sm">{t('popupOnce')}</Text>
                 <Switch.Root
                   size="sm"
                   colorPalette="brand"
-                  checked={!own}
-                  onCheckedChange={({ checked }) => setScheme(checked ? undefined : colors)}
+                  checked={settings.popup.oncePerSession}
+                  onCheckedChange={({ checked }) =>
+                    onChange({
+                      ...settings,
+                      popup: { ...settings.popup, oncePerSession: checked },
+                    })
+                  }
                 >
                   <Switch.HiddenInput />
-                  <Switch.Label fontSize="xs" color="fg.muted">
-                    {t('schemeAutomatic')}
-                  </Switch.Label>
                   <Switch.Control />
                 </Switch.Root>
               </HStack>
-              {own && (
-                <Stack gap="2" mt="3">
-                  <ColorInput
-                    label={t('schemeBackground')}
-                    value={own.background}
-                    onChange={(background) => setScheme({ ...own, background })}
-                  />
-                  <ColorInput
-                    label={t('schemeText')}
-                    value={own.text}
-                    onChange={(text) => setScheme({ ...own, text })}
-                  />
-                  <ColorInput
-                    label={t('schemeButton')}
-                    value={own.button}
-                    onChange={(button) => setScheme({ ...own, button })}
-                  />
-                  {invalid && (
-                    <Alert.Root status="warning" size="sm">
-                      <Alert.Indicator />
-                      <Alert.Description>{t('schemeContrast')}</Alert.Description>
-                    </Alert.Root>
-                  )}
-                </Stack>
-              )}
-            </Box>
-          )
-        })}
-      </Stack>
+              <Button
+                size="xs"
+                variant="outline"
+                alignSelf="start"
+                onClick={() => setPopupPreview((count) => count + 1)}
+              >
+                {t('previewPopup')}
+              </Button>
+            </>
+          )}
+        </ThemeSection>
 
-      <Stack gap="3">
-        <Heading>{t('motion')}</Heading>
-        <Labeled label={t('animation')} help={t('animationHelp')}>
-          <SelectInput
-            value={settings.animation}
-            options={ANIMATION_STYLES.map((value) => ({
-              value,
-              label: l(ANIMATION_LABELS[value]),
-            }))}
-            onChange={(animation) =>
-              onChange({ ...settings, animation: animation as ThemeSettings['animation'] })
-            }
-          />
-        </Labeled>
-      </Stack>
+        <ThemeSection value="typography" title={t('typography')}>
+          <Labeled label={t('headingFont')}>
+            <FontSelect
+              value={settings.fonts.heading}
+              onChange={(heading) =>
+                onChange({
+                  ...settings,
+                  fonts: { ...settings.fonts, heading: heading as FontFamily },
+                })
+              }
+            />
+          </Labeled>
+          <Labeled label={t('bodyFont')}>
+            <FontSelect
+              value={settings.fonts.body}
+              onChange={(body) =>
+                onChange({ ...settings, fonts: { ...settings.fonts, body: body as FontFamily } })
+              }
+            />
+          </Labeled>
+        </ThemeSection>
 
-      <Stack gap="3">
-        <Heading>{t('splash')}</Heading>
-        <Text fontSize="xs" color="fg.muted">
-          {t('splashHelp')}
-        </Text>
-        {splashToggle(t('splashEnable'), 'enabled')}
-        <Labeled label={t('splashStyle')}>
-          <SelectInput
-            value={settings.splash.style}
-            options={SPLASH_STYLES.map((value) => ({
-              value,
-              label: l(SPLASH_STYLE_LABELS[value]),
-            }))}
-            onChange={(style) =>
-              onChange({ ...settings, splash: { ...settings.splash, style: style as SplashStyle } })
-            }
-          />
-        </Labeled>
-        <Labeled label={t('splashTone')}>
-          <SelectInput
-            value={settings.splash.tone}
-            options={SPLASH_TONES.map((value) => ({
-              value,
-              label: l(SPLASH_TONE_LABELS[value]),
-            }))}
-            onChange={(tone) =>
-              onChange({ ...settings, splash: { ...settings.splash, tone: tone as SplashTone } })
-            }
-          />
-        </Labeled>
-        {splashToggle(t('splashShowLogo'), 'showLogo')}
-        {splashToggle(t('splashShowName'), 'showName')}
-        {splashToggle(t('splashOncePerSession'), 'oncePerSession')}
-        {shop && (
-          <Button
-            size="xs"
-            variant="outline"
-            alignSelf="start"
-            onClick={() => setSplashPreview((count) => count + 1)}
-          >
-            {t('previewIntro')}
-          </Button>
-        )}
-      </Stack>
+        <ThemeSection value="shape" title={t('shape')}>
+          <Labeled label={t('radius')}>
+            <SelectInput
+              value={settings.radius}
+              options={RADIUS_OPTIONS.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
+              onChange={(radius) =>
+                onChange({ ...settings, radius: radius as ThemeSettings['radius'] })
+              }
+            />
+          </Labeled>
+          <Labeled label={t('buttonStyle')}>
+            <SelectInput
+              value={settings.buttonStyle}
+              options={BUTTON_STYLES.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
+              onChange={(buttonStyle) =>
+                onChange({ ...settings, buttonStyle: buttonStyle as ThemeSettings['buttonStyle'] })
+              }
+            />
+          </Labeled>
+          <Labeled label={t('cardStyle')}>
+            <SelectInput
+              value={settings.cardStyle}
+              options={CARD_STYLES.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
+              onChange={(cardStyle) =>
+                onChange({ ...settings, cardStyle: cardStyle as ThemeSettings['cardStyle'] })
+              }
+            />
+          </Labeled>
+          {/* A fieldset, not a `Labeled` field: each switch names itself, and
+              a field would hand its one label to all four. */}
+          <Fieldset.Root gap="2">
+            <Fieldset.Legend fontSize="sm">{t('cardHover')}</Fieldset.Legend>
+            <Stack gap="2">
+              {CARD_HOVER_EFFECTS.map((effect) => (
+                <Switch.Root
+                  key={effect}
+                  size="sm"
+                  colorPalette="brand"
+                  w="full"
+                  justifyContent="space-between"
+                  checked={settings.cardHover.includes(effect)}
+                  onCheckedChange={({ checked }) =>
+                    onChange({
+                      ...settings,
+                      // Kept in the list's order, whichever was switched last.
+                      cardHover: CARD_HOVER_EFFECTS.filter((candidate) =>
+                        candidate === effect ? checked : settings.cardHover.includes(candidate),
+                      ),
+                    })
+                  }
+                >
+                  <Switch.HiddenInput />
+                  <Switch.Label fontSize="sm" fontWeight="normal">
+                    {l(CARD_HOVER_LABELS[effect])}
+                  </Switch.Label>
+                  <Switch.Control />
+                </Switch.Root>
+              ))}
+            </Stack>
+            <Fieldset.HelperText>{t('cardHoverHelp')}</Fieldset.HelperText>
+          </Fieldset.Root>
+        </ThemeSection>
+
+        <ThemeSection value="size" title={t('size')}>
+          <Labeled label={t('typeScale')} help={t('typeScaleHelp')}>
+            <SelectInput
+              value={settings.typeScale}
+              options={TYPE_SCALES.map((value) => ({ value, label: l(TYPE_SCALE_LABELS[value]) }))}
+              onChange={(typeScale) =>
+                onChange({ ...settings, typeScale: typeScale as ThemeSettings['typeScale'] })
+              }
+            />
+          </Labeled>
+          <Labeled label={t('density')} help={t('densityHelp')}>
+            <SelectInput
+              value={settings.density}
+              options={DENSITIES.map((value) => ({ value, label: l(DENSITY_LABELS[value]) }))}
+              onChange={(density) =>
+                onChange({ ...settings, density: density as ThemeSettings['density'] })
+              }
+            />
+          </Labeled>
+        </ThemeSection>
+      </Accordion.Root>
 
       {shop && splashPreview > 0 && (
         <Portal>
@@ -342,114 +596,6 @@ export function ThemeSettingsPanel({
         </Portal>
       )}
 
-      <Stack gap="3">
-        <Heading>{t('popup')}</Heading>
-        <Text fontSize="xs" color="fg.muted">
-          {t('popupHelp')}
-        </Text>
-        <Labeled label={t('popupKind')}>
-          <SelectInput
-            value={settings.popup.kind}
-            options={POPUP_KINDS.map((value) => ({
-              value,
-              label: l(POPUP_KIND_LABELS[value]),
-            }))}
-            onChange={(kind) =>
-              onChange({ ...settings, popup: { ...settings.popup, kind: kind as PopupKind } })
-            }
-          />
-        </Labeled>
-        {settings.popup.kind !== 'none' && (
-          <>
-            <Labeled label={t('popupTitle')}>
-              <Input
-                size="sm"
-                value={settings.popup.title}
-                maxLength={120}
-                onChange={(event) =>
-                  onChange({
-                    ...settings,
-                    popup: { ...settings.popup, title: event.currentTarget.value },
-                  })
-                }
-              />
-            </Labeled>
-            <Labeled label={t('popupBody')}>
-              <Textarea
-                size="sm"
-                rows={3}
-                value={settings.popup.body}
-                maxLength={400}
-                onChange={(event) =>
-                  onChange({
-                    ...settings,
-                    popup: { ...settings.popup, body: event.currentTarget.value },
-                  })
-                }
-              />
-            </Labeled>
-            <Labeled label={t('popupButton')}>
-              <Input
-                size="sm"
-                value={settings.popup.buttonLabel}
-                maxLength={40}
-                onChange={(event) =>
-                  onChange({
-                    ...settings,
-                    popup: { ...settings.popup, buttonLabel: event.currentTarget.value },
-                  })
-                }
-              />
-            </Labeled>
-            {(settings.popup.kind === 'welcome' || settings.popup.kind === 'exit') && (
-              <Labeled label={t('popupDelay')} help={t('popupDelayHelp')}>
-                <Input
-                  size="sm"
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={settings.popup.delaySeconds}
-                  onChange={(event) =>
-                    onChange({
-                      ...settings,
-                      popup: {
-                        ...settings.popup,
-                        delaySeconds: Number(event.currentTarget.value) || 4,
-                      },
-                    })
-                  }
-                />
-              </Labeled>
-            )}
-            <HStack justify="space-between" w="full" align="flex-start" gap="4">
-              <Text fontSize="sm">{t('popupOnce')}</Text>
-              <Switch.Root
-                size="sm"
-                colorPalette="brand"
-                checked={settings.popup.oncePerSession}
-                onCheckedChange={({ checked }) =>
-                  onChange({
-                    ...settings,
-                    popup: { ...settings.popup, oncePerSession: checked },
-                  })
-                }
-              >
-                <Switch.HiddenInput />
-                <Switch.Control />
-              </Switch.Root>
-            </HStack>
-            <Button
-              size="xs"
-              variant="outline"
-              alignSelf="start"
-              onClick={() => setPopupPreview((count) => count + 1)}
-            >
-              {t('previewPopup')}
-            </Button>
-          </>
-        )}
-      </Stack>
-
       {popupPreview > 0 && (
         <Portal>
           <SitePopup
@@ -460,115 +606,6 @@ export function ThemeSettingsPanel({
           />
         </Portal>
       )}
-
-      <Stack gap="3">
-        <Heading>{t('typography')}</Heading>
-        <Labeled label={t('headingFont')}>
-          <FontSelect
-            value={settings.fonts.heading}
-            onChange={(heading) =>
-              onChange({
-                ...settings,
-                fonts: { ...settings.fonts, heading: heading as FontFamily },
-              })
-            }
-          />
-        </Labeled>
-        <Labeled label={t('bodyFont')}>
-          <FontSelect
-            value={settings.fonts.body}
-            onChange={(body) =>
-              onChange({ ...settings, fonts: { ...settings.fonts, body: body as FontFamily } })
-            }
-          />
-        </Labeled>
-      </Stack>
-
-      <Stack gap="3">
-        <Heading>{t('shape')}</Heading>
-        <Labeled label={t('radius')}>
-          <SelectInput
-            value={settings.radius}
-            options={RADIUS_OPTIONS.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
-            onChange={(radius) =>
-              onChange({ ...settings, radius: radius as ThemeSettings['radius'] })
-            }
-          />
-        </Labeled>
-        <Labeled label={t('buttonStyle')}>
-          <SelectInput
-            value={settings.buttonStyle}
-            options={BUTTON_STYLES.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
-            onChange={(buttonStyle) =>
-              onChange({ ...settings, buttonStyle: buttonStyle as ThemeSettings['buttonStyle'] })
-            }
-          />
-        </Labeled>
-        <Labeled label={t('cardStyle')}>
-          <SelectInput
-            value={settings.cardStyle}
-            options={CARD_STYLES.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
-            onChange={(cardStyle) =>
-              onChange({ ...settings, cardStyle: cardStyle as ThemeSettings['cardStyle'] })
-            }
-          />
-        </Labeled>
-        {/* A fieldset, not a `Labeled` field: each switch names itself, and
-            a field would hand its one label to all four. */}
-        <Fieldset.Root gap="2">
-          <Fieldset.Legend fontSize="sm">{t('cardHover')}</Fieldset.Legend>
-          <Stack gap="2">
-            {CARD_HOVER_EFFECTS.map((effect) => (
-              <Switch.Root
-                key={effect}
-                size="sm"
-                colorPalette="brand"
-                w="full"
-                justifyContent="space-between"
-                checked={settings.cardHover.includes(effect)}
-                onCheckedChange={({ checked }) =>
-                  onChange({
-                    ...settings,
-                    // Kept in the list's order, whichever was switched last.
-                    cardHover: CARD_HOVER_EFFECTS.filter((candidate) =>
-                      candidate === effect ? checked : settings.cardHover.includes(candidate),
-                    ),
-                  })
-                }
-              >
-                <Switch.HiddenInput />
-                <Switch.Label fontSize="sm" fontWeight="normal">
-                  {l(CARD_HOVER_LABELS[effect])}
-                </Switch.Label>
-                <Switch.Control />
-              </Switch.Root>
-            ))}
-          </Stack>
-          <Fieldset.HelperText>{t('cardHoverHelp')}</Fieldset.HelperText>
-        </Fieldset.Root>
-      </Stack>
-
-      <Stack gap="3">
-        <Heading>{t('size')}</Heading>
-        <Labeled label={t('typeScale')} help={t('typeScaleHelp')}>
-          <SelectInput
-            value={settings.typeScale}
-            options={TYPE_SCALES.map((value) => ({ value, label: l(TYPE_SCALE_LABELS[value]) }))}
-            onChange={(typeScale) =>
-              onChange({ ...settings, typeScale: typeScale as ThemeSettings['typeScale'] })
-            }
-          />
-        </Labeled>
-        <Labeled label={t('density')} help={t('densityHelp')}>
-          <SelectInput
-            value={settings.density}
-            options={DENSITIES.map((value) => ({ value, label: l(DENSITY_LABELS[value]) }))}
-            onChange={(density) =>
-              onChange({ ...settings, density: density as ThemeSettings['density'] })
-            }
-          />
-        </Labeled>
-      </Stack>
     </Stack>
   )
 }
