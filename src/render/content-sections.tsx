@@ -36,6 +36,7 @@ import {
   type FieldValues,
 } from '../model/fields'
 import { textElementKey } from '../model/element-style'
+import { STICKY_BELOW_HEADER } from './chrome'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { featureIcon } from './icons'
@@ -264,7 +265,7 @@ export function ScrollingStory({ settings }: SectionProps) {
       <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={{ md: '12' }}>
         <Box hideBelow="md" order={imageRight ? 1 : 0}>
-          <Box position="sticky" top="24">
+          <Box position="sticky" top={STICKY_BELOW_HEADER}>
             <AspectRatio ratio={4 / 5} rounded="l3" overflow="hidden" bg="bg.subtle">
               <Box>
                 {steps.map((step, index) => (

@@ -27,6 +27,7 @@ export {
   StoreHeader,
   StoreTab,
   StoreTabBar,
+  STICKY_BELOW_HEADER,
   TABBAR_HEIGHT_VAR,
   type ChromeShop,
   type SocialPlatform,

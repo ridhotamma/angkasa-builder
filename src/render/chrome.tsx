@@ -23,6 +23,7 @@ import {
   IconButton,
   Link as ChakraLink,
   Portal,
+  ScrollArea,
   SimpleGrid,
   Stack,
   Text,
@@ -236,14 +237,34 @@ function DesktopMenuItem({ item }: { item: MenuItem }) {
   )
 }
 
+/**
+ * The main menu's row on a desktop. A long menu scrolls sideways in one row
+ * rather than wrapping into a second: a wrapped header grows taller with every
+ * link the seller adds, and its second line reads as a different menu.
+ *
+ * The row sits in a box at least as wide as the viewport, centred with auto
+ * margins: a menu that fits is centred (or starts at the left), and one that
+ * overflows starts at its first link instead of being clipped on both sides,
+ * which is what `justify-content: center` alone would do. The dropdowns open in
+ * a portal, so the scroll container never clips them.
+ */
 function DesktopMenu({ items, justify }: { items: MenuItem[]; justify: 'start' | 'center' }) {
   if (items.length === 0) return null
   return (
-    <HStack as="nav" gap="6" justify={justify} wrap="wrap" hideBelow="md">
-      {items.map((item) => (
-        <DesktopMenuItem key={item.id} item={item} />
-      ))}
-    </HStack>
+    <ScrollArea.Root as="nav" size="xs" hideBelow="md" data-desktop-menu="">
+      <ScrollArea.Viewport>
+        <ScrollArea.Content minW="full" w="max-content" pb="1">
+          <HStack gap="6" w="max-content" mx={justify === 'center' ? 'auto' : undefined}>
+            {items.map((item) => (
+              <Box key={item.id} flexShrink="0" whiteSpace="nowrap">
+                <DesktopMenuItem item={item} />
+              </Box>
+            ))}
+          </HStack>
+        </ScrollArea.Content>
+      </ScrollArea.Viewport>
+      <ScrollArea.Scrollbar orientation="horizontal" />
+    </ScrollArea.Root>
   )
 }
 
@@ -483,6 +504,13 @@ const HEADER_CONTROL_VARS = {
 
 /** The header's height as the page sees it; `StoreHeader` keeps it current. */
 export const HEADER_HEIGHT_VAR = '--store-header-height'
+
+/**
+ * Where a sticky panel stops: a gap below the header's real height, whatever
+ * its layout, menu row and announcement strip make it. The fallback is the
+ * classic header, for the server's HTML before the header has measured itself.
+ */
+export const STICKY_BELOW_HEADER = `calc(var(${HEADER_HEIGHT_VAR}, 76px) + var(--chakra-spacing-4))`
 
 /**
  * The header as the theme lays it out. Sticky unless the seller turned that

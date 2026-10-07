@@ -45,6 +45,7 @@ import {
   readText,
   type BlockValue,
 } from '../model/fields'
+import { STICKY_BELOW_HEADER } from './chrome'
 import { previewProductDetail, useRenderEnvironment, type StorefrontProductDetail } from './context'
 import { useRenderText } from './copy'
 import { DataTable } from './content-sections'
@@ -802,7 +803,7 @@ export function ProductInfo({ settings }: SectionProps) {
         alignItems="start"
       >
         <Gallery product={product} layout={gallery} zoom={readBoolean(settings, 'zoom')} />
-        <Box position={{ lg: sticky ? 'sticky' : 'static' }} top={{ lg: '24' }}>
+        <Box position={{ lg: sticky ? 'sticky' : 'static' }} top={{ lg: STICKY_BELOW_HEADER }}>
           <BlockList blocks={readBlocks(settings, 'blocks')} product={product} />
         </Box>
       </Grid>
