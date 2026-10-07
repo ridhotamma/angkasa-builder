@@ -315,6 +315,7 @@ export const LINK_KIND_LABELS: Record<LinkKind, EditorMessage> = {
   product: 'linkProduct',
   collection: 'linkCollection',
   category: 'linkCategory',
+  catalog: 'linkCatalog',
   blog: 'linkBlog',
   article: 'linkArticle',
   search: 'linkSearch',
@@ -325,6 +326,7 @@ function emptyLink(kind: LinkKind): Link {
   switch (kind) {
     case 'none':
     case 'home':
+    case 'catalog':
       return { kind }
     case 'page':
     case 'product':
@@ -402,6 +404,23 @@ export function LinkControl({
             clearable
             onChange={(slug) => onChange({ ...link, slug })}
             options={slugOptions.map((option) => ({ value: option.slug, label: option.name }))}
+          />
+        </OwnField>
+      )}
+      {link.kind === 'catalog' && (
+        // Optional: left empty, the catalogue opens on every category.
+        <OwnField>
+          <SelectInput
+            value={link.category ?? ''}
+            placeholder={t('linkCatalogAll')}
+            clearable
+            onChange={(category) =>
+              onChange(category ? { kind: 'catalog', category } : { kind: 'catalog' })
+            }
+            options={services.categories.map((option) => ({
+              value: option.slug,
+              label: option.name,
+            }))}
           />
         </OwnField>
       )}

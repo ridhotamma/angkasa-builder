@@ -927,7 +927,22 @@ export const SECTION_SCHEMAS = [
       id: 'Produk yang terakhir terbit.',
     },
     usesCatalogue: true,
-    fields: [heading('New arrivals'), productLayout(), limit(12), ...columns(4, 2, 2)],
+    fields: [
+      heading('New arrivals'),
+      productLayout(),
+      limit(12),
+      ...columns(4, 2, 2),
+      {
+        kind: 'boolean',
+        key: 'showAll',
+        label: { en: 'Link to all products', id: 'Tautan ke semua produk' },
+        help: {
+          en: 'A "See all" link beside the heading, to the full catalogue with its category filter.',
+          id: 'Tautan "Lihat semua" di samping judul, ke katalog lengkap dengan filter kategori.',
+        },
+        default: true,
+      },
+    ],
   },
   {
     type: 'rich-text',

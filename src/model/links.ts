@@ -23,6 +23,7 @@ export const LINK_KINDS = [
   'product',
   'collection',
   'category',
+  'catalog',
   'blog',
   'article',
   'search',
@@ -38,6 +39,11 @@ export type Link =
   | { kind: 'product'; slug: string }
   | { kind: 'collection'; slug: string }
   | { kind: 'category'; slug: string }
+  /**
+   * The whole catalogue, `/products` — opened on one category's chip when
+   * `category` is set. Unlike `category`, the shopper can switch to the others.
+   */
+  | { kind: 'catalog'; category?: string }
   /** A blog's index, `/blogs/<blogHandle>` — narrowed to one tag when `tag` is set. */
   | { kind: 'blog'; blogHandle: string; tag?: string }
   /** One article, `/blogs/<blogHandle>/<slug>` — slugs are unique per blog, not per shop. */
@@ -70,6 +76,11 @@ const linkSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('product'), slug }),
   z.object({ kind: z.literal('collection'), slug }),
   z.object({ kind: z.literal('category'), slug }),
+  z.object({
+    kind: z.literal('catalog'),
+    // An empty or malformed category is the unfiltered catalogue, not a broken link.
+    category: slug.optional().catch(undefined),
+  }),
   z.object({
     kind: z.literal('blog'),
     blogHandle: slug,
@@ -116,6 +127,10 @@ export function storefrontHref(link: Link): string | null {
       return `/k/${link.slug}`
     case 'category':
       return `/c/${link.slug}`
+    case 'catalog':
+      return link.category
+        ? `/products?category=${encodeURIComponent(link.category)}`
+        : '/products'
     case 'blog':
       return link.tag
         ? `/blogs/${link.blogHandle}?tag=${encodeURIComponent(link.tag)}`

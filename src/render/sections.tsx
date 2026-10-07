@@ -46,6 +46,7 @@ import {
   type FieldValues,
 } from '../model/fields'
 import { readToken, textElementKey } from '../model/element-style'
+import type { Link } from '../model/links'
 import { isRichDocEmpty } from '../model/rich-text'
 import type { SectionType } from '../model/sections'
 import { HEADER_HEIGHT_VAR, TABBAR_HEIGHT_VAR } from './chrome'
@@ -687,6 +688,16 @@ function CategoryBento({ categories }: { categories: StorefrontCategoryData[] })
   )
 }
 
+/** The "See all" link a product row's header ends with. */
+function SeeAllLink({ link }: { link: Link }) {
+  const text = useRenderText()
+  return (
+    <SmartLink link={link} fontSize="sm" flexShrink="0" color="brand.fg" fontWeight="medium">
+      {text('seeAll')}
+    </SmartLink>
+  )
+}
+
 function ShelfHeader({
   title,
   description,
@@ -696,7 +707,6 @@ function ShelfHeader({
   description?: string | null
   slug: string
 }) {
-  const { locale } = useLocale()
   return (
     <Flex justify="space-between" align="baseline" gap="4">
       <Stack gap="1">
@@ -707,15 +717,7 @@ function ShelfHeader({
           </Text>
         )}
       </Stack>
-      <SmartLink
-        link={{ kind: 'collection', slug }}
-        fontSize="sm"
-        flexShrink="0"
-        color="brand.fg"
-        fontWeight="medium"
-      >
-        {locale === 'id' ? 'Lihat semua' : 'See all'}
-      </SmartLink>
+      <SeeAllLink link={{ kind: 'collection', slug }} />
     </Flex>
   )
 }
@@ -785,7 +787,13 @@ function LatestProducts({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="4">
-      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+      <Flex justify="space-between" align="baseline" gap="4">
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+        {/* The newest few are a teaser; the catalogue is the rest, filterable. */}
+        {readBoolean(settings, 'showAll') && products.length > 0 && (
+          <SeeAllLink link={{ kind: 'catalog' }} />
+        )}
+      </Flex>
       {products.length === 0 ? (
         <EmptyNotice>{empty('products')}</EmptyNotice>
       ) : (

@@ -91,6 +91,7 @@ describe('sections', () => {
       limit: 12,
       columns: '3',
       mobileColumns: '2',
+      showAll: true,
     })
     expect(sections[0]!.settings).not.toHaveProperty('style')
   })

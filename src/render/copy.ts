@@ -82,6 +82,7 @@ const TEXT = {
   compareSlider: { en: 'Drag to compare', id: 'Geser untuk membandingkan' },
   home: { en: 'Home', id: 'Beranda' },
   menu: { en: 'Menu', id: 'Menu' },
+  seeAll: { en: 'See all', id: 'Lihat semua' },
   phoneNavigation: { en: 'Shop navigation', id: 'Navigasi toko' },
   textPlaceholder: { en: 'Write your text here…', id: 'Tulis teks Anda di sini…' },
   readingTime: { en: '{n} min read', id: '{n} menit baca' },

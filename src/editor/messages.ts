@@ -88,6 +88,8 @@ const MESSAGES = {
   linkProduct: { en: 'Product', id: 'Produk' },
   linkCollection: { en: 'Collection', id: 'Koleksi' },
   linkCategory: { en: 'Category', id: 'Kategori' },
+  linkCatalog: { en: 'All products', id: 'Semua produk' },
+  linkCatalogAll: { en: 'Every category', id: 'Semua kategori' },
   linkBlog: { en: 'Blog', id: 'Blog' },
   linkArticle: { en: 'Article', id: 'Artikel' },
   blogTag: { en: 'Only articles tagged (optional)', id: 'Hanya artikel dengan tag (opsional)' },
