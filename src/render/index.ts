@@ -20,15 +20,21 @@ export {
   type StorefrontVoucherData,
 } from './context'
 export {
+  hasTabBar,
   HEADER_HEIGHT_VAR,
   isHeaderTransparent,
   StoreFooter,
   StoreHeader,
+  StoreTab,
+  StoreTabBar,
+  TABBAR_HEIGHT_VAR,
   type ChromeShop,
   type SocialPlatform,
   type StoreFooterProps,
   type StoreHeaderProps,
+  type StoreTabBarProps,
 } from './chrome'
+export { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
 export { ArticleCard, ArticleGrid, formatArticleDate } from './article-page'
 export { BlockChildren } from './blocks-section'
 export {

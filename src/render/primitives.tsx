@@ -55,6 +55,7 @@ import { readLink, readText, type FieldValues } from '../model/fields'
 import type { Link } from '../model/links'
 import type { ButtonStyle, CardStyle } from '../model/settings'
 import type { SectionHeadline } from '../model/section-style'
+import { BOLD_INK, boldButton, boldCard } from './bold'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
@@ -137,11 +138,14 @@ export function SmartLink({
 export function buttonLook(style: ButtonStyle): {
   variant: 'solid' | 'outline'
   rounded: 'full' | 'l2'
-} {
-  return {
-    variant: style === 'outline' ? 'outline' : 'solid',
-    rounded: style === 'pill' ? 'full' : 'l2',
+} & Partial<ReturnType<typeof boldButton>> {
+  const look = {
+    variant: style === 'outline' ? ('outline' as const) : ('solid' as const),
+    rounded: style === 'pill' ? ('full' as const) : ('l2' as const),
   }
+  // The bold frame and its press ride along, so a host that spreads the look
+  // on its own buttons (checkout, order status) gets them too.
+  return style === 'hard' ? { ...look, ...boldButton(BOLD_INK) } : look
 }
 
 /** What a theme's card style means for a card's frame. Shared like `buttonLook`. */
@@ -151,6 +155,8 @@ export function cardFrame(style: CardStyle): BoxProps {
       return { borderWidth: '0', shadow: 'md' }
     case 'flat':
       return { borderWidth: '0', shadow: 'none', bg: 'transparent' }
+    case 'hard':
+      return boldCard(BOLD_INK)
     case 'border':
       return { borderWidth: '1px', borderColor: 'border.subtle' }
   }
@@ -304,13 +310,17 @@ export function ThemeButton({
   )
   const hoverCss = buttonHoverCss(hover, appearance)
 
-  const press = {
-    // `manipulation` drops the double-tap zoom delay on touch controls.
-    touchAction: 'manipulation',
-    transition: 'transform 180ms ease, background-color 150ms ease',
-    _hover: { transform: 'translateY(-1px)' },
-    _active: { transform: 'translateY(0) scale(0.98)' },
-  }
+  const press =
+    settings.buttonStyle === 'hard'
+      ? // The bold look lifts off its shadow and lands on it instead.
+        { touchAction: 'manipulation', ...boldButton(BOLD_INK) }
+      : {
+          // `manipulation` drops the double-tap zoom delay on touch controls.
+          touchAction: 'manipulation',
+          transition: 'transform 180ms ease, background-color 150ms ease',
+          _hover: { transform: 'translateY(-1px)' },
+          _active: { transform: 'translateY(0) scale(0.98)' },
+        }
   const shape = {
     colorPalette: 'brand',
     rounded: look.rounded,

@@ -48,7 +48,7 @@ import {
 import { readToken, textElementKey } from '../model/element-style'
 import { isRichDocEmpty } from '../model/rich-text'
 import type { SectionType } from '../model/sections'
-import { HEADER_HEIGHT_VAR } from './chrome'
+import { HEADER_HEIGHT_VAR, TABBAR_HEIGHT_VAR } from './chrome'
 import { useRenderEnvironment, type StorefrontCategoryData } from './context'
 import { useRenderText } from './copy'
 import { useSectionLayout } from './frame'
@@ -137,9 +137,10 @@ export const HERO_HEIGHT = {
   // editor's iframe that is one screen of the previewed device. The header's
   // height comes off the top: its measured height, or nothing when it floats
   // over the banner (`StoreHeader` keeps the variable current). The fallbacks
-  // are the classic header's height, for the server's HTML.
+  // are the classic header's height, for the server's HTML. A phone's tab bar
+  // comes off the bottom the same way.
   screen: {
-    base: `calc(100svh - var(${HEADER_HEIGHT_VAR}, 4rem))`,
+    base: `calc(100svh - var(${HEADER_HEIGHT_VAR}, 4rem) - var(${TABBAR_HEIGHT_VAR}, 0px))`,
     md: `calc(100svh - var(${HEADER_HEIGHT_VAR}, 4.5rem))`,
   },
 } as const

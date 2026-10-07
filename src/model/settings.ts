@@ -87,8 +87,12 @@ export function fontHref(family: FontFamily): string | null {
 /* -------------------------------------------------------------------------- */
 
 export const RADIUS_OPTIONS = ['none', 'sm', 'md', 'lg'] as const
-export const BUTTON_STYLES = ['solid', 'outline', 'pill'] as const
-export const CARD_STYLES = ['border', 'shadow', 'flat'] as const
+/**
+ * `hard` is the bold look, shared with Quick Checkout: a thick ink border and
+ * an offset shadow with no blur (see `render/bold.ts`).
+ */
+export const BUTTON_STYLES = ['solid', 'outline', 'pill', 'hard'] as const
+export const CARD_STYLES = ['border', 'shadow', 'flat', 'hard'] as const
 
 export const ANIMATION_STYLES = ['none', 'subtle', 'expressive'] as const
 
@@ -258,6 +262,7 @@ export const OPTION_LABELS: Record<RadiusOption | ButtonStyle | CardStyle, Local
   border: { en: 'Border', id: 'Garis tepi' },
   shadow: { en: 'Shadow', id: 'Bayangan' },
   flat: { en: 'Flat', id: 'Datar' },
+  hard: { en: 'Bold', id: 'Berani' },
 }
 
 export interface ThemeSettings {

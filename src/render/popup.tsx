@@ -12,6 +12,7 @@ import { Box, Button, CloseButton, Dialog, Flex, Heading, Stack, Text } from '@c
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { resolveScheme, schemeCssVars, type ThemeSettings } from '../model/settings'
+import { TABBAR_HEIGHT_VAR } from './chrome'
 import { schemeCss } from './frame'
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
@@ -91,7 +92,8 @@ export function SitePopup({
         data-popup="cookie"
         position="fixed"
         insetX="0"
-        bottom="0"
+        // Above a phone's tab bar, when the theme has one.
+        bottom={`var(${TABBAR_HEIGHT_VAR}, 0px)`}
         zIndex="2000"
         bg="bg"
         color="fg"

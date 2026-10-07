@@ -53,6 +53,7 @@ import {
 import { SiShopee } from 'react-icons/si'
 
 import { contrastRatio, mix, readableOn } from '../model/settings'
+import { boldButton, boldCard } from '../render/bold'
 import {
   QC_AUTO_PRODUCTS,
   QC_RADIUS_PX,
@@ -432,12 +433,7 @@ function cardProps(frame: Frame) {
     case 'outline':
       return { ...base, borderWidth: '1.5px', borderColor: palette.cardBorder }
     case 'hard':
-      return {
-        ...base,
-        borderWidth: '2px',
-        borderColor: palette.cardBorder,
-        boxShadow: `4px 4px 0 ${palette.cardBorder}`,
-      }
+      return { ...base, ...boldCard(palette.cardBorder) }
     default:
       return { ...base, boxShadow: '0 1px 2px rgba(0,0,0,0.05), 0 6px 20px rgba(0,0,0,0.06)' }
   }
@@ -487,11 +483,7 @@ function buttonProps(frame: Frame, emphasis = true) {
         ...common,
         bg: palette.accent,
         color: palette.accentText,
-        borderWidth: '2px',
-        borderColor: palette.cardText,
-        boxShadow: `3px 3px 0 ${palette.cardText}`,
-        _hover: { transform: 'translate(-1px, -1px)', boxShadow: `4px 4px 0 ${palette.cardText}` },
-        _active: { transform: 'translate(3px, 3px)', boxShadow: 'none' },
+        ...boldButton(palette.cardText),
       }
     default:
       return {

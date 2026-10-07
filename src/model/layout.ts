@@ -48,6 +48,29 @@ export const HEADER_FIELDS: readonly Field[] = [
     default: '6xl',
   },
   {
+    kind: 'select',
+    key: 'mobileNav',
+    label: { en: 'Phone navigation', id: 'Navigasi di ponsel' },
+    options: [
+      {
+        value: 'menu',
+        label: { en: 'Menu button at the top', id: 'Tombol menu di atas' },
+      },
+      {
+        value: 'tabs',
+        label: {
+          en: 'Tab bar at the bottom, like an app',
+          id: 'Bilah tab di bawah, seperti aplikasi',
+        },
+      },
+    ],
+    help: {
+      en: 'The tab bar keeps home, menu, search, cart and account under the shopper’s thumb. Phones only; a computer keeps the header above.',
+      id: 'Bilah tab menaruh beranda, menu, pencarian, keranjang, dan akun di bawah jempol pembeli. Hanya di ponsel; komputer tetap memakai header di atas.',
+    },
+    default: 'menu',
+  },
+  {
     kind: 'boolean',
     key: 'sticky',
     label: { en: 'Stay on screen while scrolling', id: 'Tetap terlihat saat menggulir' },

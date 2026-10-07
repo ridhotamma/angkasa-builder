@@ -553,8 +553,8 @@ const brutalist = makeSeed(
       heading: 'Space Grotesk',
       body: 'Space Grotesk',
       radius: 'none',
-      buttonStyle: 'solid',
-      cardStyle: 'border',
+      buttonStyle: 'hard',
+      cardStyle: 'hard',
       animation: 'none',
       schemes: {
         subtle: { background: '#e7e4da', text: '#111111', button: '#111111' },

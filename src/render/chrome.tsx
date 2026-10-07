@@ -12,6 +12,7 @@ import {
   Accordion,
   Avatar,
   Box,
+  chakra,
   Container,
   Drawer,
   Flex,
@@ -26,11 +27,29 @@ import {
   Stack,
   Text,
   type BoxProps,
+  type HTMLChakraProps,
   type LinkProps,
 } from '@chakra-ui/react'
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from 'react'
 import { FaFacebookF, FaInstagram, FaTiktok, FaXTwitter, FaYoutube } from 'react-icons/fa6'
-import { LuChevronDown, LuGlobe, LuMail, LuMapPin, LuMenu, LuPhone } from 'react-icons/lu'
+import {
+  LuChevronDown,
+  LuGlobe,
+  LuHouse,
+  LuLayoutGrid,
+  LuMail,
+  LuMapPin,
+  LuMenu,
+  LuPhone,
+} from 'react-icons/lu'
 
 import { ImageWithFallback, Tooltip } from '@repo/theme'
 
@@ -38,7 +57,9 @@ import { readBoolean, readLink, readList, readText, type FieldValues } from '../
 import { isMegaMenu, type MenuItem } from '../model/menus'
 import { isContentWidth } from '../model/section-style'
 import { resolveScheme, schemeCssVars, SCHEME_KEYS, type SchemeKey } from '../model/settings'
+import { BOLD_BORDER_WIDTH, BOLD_INK, boldShadow } from './bold'
 import { useRenderEnvironment } from './context'
+import { useRenderText } from './copy'
 import { schemeCss } from './frame'
 import { SmartLink, useOverlayProps } from './primitives'
 import type { PageEdges } from './renderer'
@@ -235,10 +256,13 @@ function MobileMenu({
   items,
   shop,
   account,
+  trigger,
 }: {
   items: MenuItem[]
   shop: ChromeShop
   account?: ReactNode
+  /** What opens the drawer: the bar's menu button unless the tab bar brings its own tab. */
+  trigger?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const overlay = useOverlayProps()
@@ -275,9 +299,11 @@ function MobileMenu({
       size="xs"
     >
       <Drawer.Trigger asChild>
-        <IconButton aria-label="Menu" variant="ghost" size="md" rounded="full" color="inherit">
-          <LuMenu />
-        </IconButton>
+        {trigger ?? (
+          <IconButton aria-label="Menu" variant="ghost" size="md" rounded="full" color="inherit">
+            <LuMenu />
+          </IconButton>
+        )}
       </Drawer.Trigger>
       <Portal>
         <Drawer.Backdrop />
@@ -476,6 +502,7 @@ export function StoreHeader({
   transparent = false,
 }: StoreHeaderProps) {
   const layout = readText(header, 'layout') || 'classic'
+  const tabs = hasTabBar(header)
   const sticky = readBoolean(header, 'sticky')
   const showSearch = readBoolean(header, 'showSearch')
   const ref = useRef<HTMLDivElement>(null)
@@ -538,7 +565,16 @@ export function StoreHeader({
   // The phone bar is one design in every layout: a menu button with the brand
   // beside it, and search and the cart on the right. The account is not here —
   // it waits at the bottom of the menu, where its name can be written out.
-  const mobileBar = (
+  //
+  // With the tab bar on, the menu, search, cart and account all live down in
+  // `StoreTabBar`, so the top of a phone keeps only the brand.
+  const mobileBar = tabs ? (
+    <Flex data-mobile-bar="" justify="center" minW="0" hideFrom="md">
+      <Box minW="0" maxW="full">
+        <Logo shop={shop} centered />
+      </Box>
+    </Flex>
+  ) : (
     <Grid
       data-mobile-bar=""
       templateColumns="minmax(0, 1fr) auto"
@@ -652,6 +688,232 @@ export function StoreHeader({
         {bar}
       </Container>
     </Box>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tab bar                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/** Whether the header asks for the phone's bottom tab bar instead of a top menu button. */
+export function hasTabBar(header: FieldValues): boolean {
+  return readText(header, 'mobileNav') === 'tabs'
+}
+
+/**
+ * How much of a phone's screen the tab bar covers, on the document root:
+ * `0px` without it. Anything else fixed to the bottom of the screen — the
+ * floating contact buttons, the cookie bar — sits on top of it with this.
+ */
+export const TABBAR_HEIGHT_VAR = '--store-tabbar-height'
+
+const TABBAR_HEIGHT = 'calc(4rem + env(safe-area-inset-bottom, 0px))'
+
+/**
+ * One tab: an icon over its label, with an optional count.
+ *
+ * Hosts build their own tabs from it — the cart that knows its count, the
+ * account that knows its route — so every tab in the bar is the same shape.
+ * `asChild` puts the tab on the host's own link element (its router's `Link`);
+ * without it the tab is a button, for a tab that opens something.
+ */
+export function StoreTab({
+  icon,
+  label,
+  active = false,
+  badge = 0,
+  asChild = false,
+  children,
+  ...props
+}: {
+  icon: ComponentType
+  label: string
+  /** The page the shopper is on. */
+  active?: boolean
+  /** A count over the icon — the cart's items. Hidden at zero. */
+  badge?: number
+} & Omit<HTMLChakraProps<'button'>, 'children'> & { children?: ReactNode }) {
+  const { settings } = useRenderEnvironment()
+  const bold = settings.cardStyle === 'hard'
+
+  const content = (
+    <>
+      <Flex
+        data-tab-icon=""
+        position="relative"
+        align="center"
+        justify="center"
+        h="7"
+        px="4"
+        rounded="full"
+        transition="background-color 150ms ease"
+        bg={active ? 'brand.subtle' : 'transparent'}
+        // The bold look's active tab is a small brand chip on its own shadow.
+        // Every tab keeps the border's room, so the icons never shift.
+        {...(bold && {
+          borderWidth: BOLD_BORDER_WIDTH,
+          borderColor: 'transparent',
+          ...(active && {
+            bg: 'brand.solid',
+            color: 'brand.contrast',
+            borderColor: BOLD_INK,
+            boxShadow: boldShadow(BOLD_INK, 2),
+          }),
+        })}
+      >
+        <Icon as={icon} boxSize="5" />
+        {badge > 0 && (
+          <Flex
+            position="absolute"
+            top="-1"
+            insetEnd="1.5"
+            minW="4"
+            h="4"
+            px="1"
+            rounded="full"
+            bg="brand.solid"
+            color="brand.contrast"
+            align="center"
+            justify="center"
+            fontSize="9px"
+            fontWeight="bold"
+            lineHeight="1"
+            fontVariantNumeric="tabular-nums"
+            borderWidth="2px"
+            borderColor="bg"
+            aria-hidden
+          >
+            {badge > 99 ? '99+' : badge}
+          </Flex>
+        )}
+      </Flex>
+      <Text
+        as="span"
+        fontSize="2xs"
+        fontWeight={active ? 'semibold' : 'medium'}
+        truncate
+        maxW="full"
+      >
+        {label}
+      </Text>
+    </>
+  )
+
+  const look = {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5',
+    flex: '1',
+    minW: '0',
+    h: 'full',
+    px: '1',
+    color: active ? 'fg' : 'fg.muted',
+    bg: 'transparent',
+    cursor: 'pointer',
+    // `manipulation` drops the double-tap zoom delay on touch controls.
+    touchAction: 'manipulation',
+    transition: 'color 150ms ease',
+    _hover: { color: 'fg', textDecoration: 'none' },
+    _focusVisible: { outline: '2px solid', outlineColor: 'brand.focusRing', outlineOffset: '-2px' },
+    'aria-current': active ? ('page' as const) : undefined,
+  }
+
+  if (asChild && isValidElement(children)) {
+    return (
+      <chakra.button asChild {...look} {...props}>
+        {cloneElement(children, undefined, content)}
+      </chakra.button>
+    )
+  }
+  return (
+    <chakra.button type="button" {...look} {...props}>
+      {content}
+    </chakra.button>
+  )
+}
+
+export interface StoreTabBarProps {
+  header: FieldValues
+  shop: ChromeShop
+  menu: MenuItem[]
+  /** The shopper is on the home page. */
+  homeActive?: boolean
+  /** A tab that opens the search, built with `StoreTab`. Shown when the header shows search. */
+  search?: ReactNode
+  /** The cart tab, built with `StoreTab`. */
+  cart?: ReactNode
+  /** The account tab, built with `StoreTab`. */
+  account?: ReactNode
+  /** The full-width account row at the bottom of the menu drawer, as in the header's. */
+  drawerAccount?: ReactNode
+}
+
+/**
+ * The phone's bottom navigation, when the header asks for it (`mobileNav`):
+ * home, the menu, search, the cart and the account, a thumb away.
+ *
+ * Rendered last in the page's column by the host. It draws an in-flow spacer
+ * as tall as itself, so the footer's last line is never under the bar, and
+ * publishes its height as `TABBAR_HEIGHT_VAR` for the other things fixed to
+ * the bottom of the screen. Nothing from `md` up, and nothing at all when the
+ * header keeps the menu button.
+ */
+export function StoreTabBar({
+  header,
+  shop,
+  menu,
+  homeActive = false,
+  search,
+  cart,
+  account,
+  drawerAccount,
+}: StoreTabBarProps) {
+  const { settings } = useRenderEnvironment()
+  const text = useRenderText()
+  if (!hasTabBar(header)) return null
+  const bold = settings.cardStyle === 'hard'
+  const showSearch = readBoolean(header, 'showSearch')
+
+  return (
+    <>
+      {/* The md breakpoint is Chakra's 48rem; the variable must agree with `hideFrom`. */}
+      <style>{`@media (max-width:47.99rem){:root{${TABBAR_HEIGHT_VAR}:${TABBAR_HEIGHT}}}`}</style>
+      <Box data-tabbar-spacer="" h={TABBAR_HEIGHT} flexShrink="0" hideFrom="md" aria-hidden />
+      <Box
+        as="nav"
+        data-tabbar=""
+        aria-label={text('phoneNavigation')}
+        position="fixed"
+        insetX="0"
+        bottom="0"
+        zIndex="sticky"
+        hideFrom="md"
+        bg="bg/95"
+        color="fg"
+        backdropFilter="blur(8px)"
+        borderTopWidth={bold ? BOLD_BORDER_WIDTH : '1px'}
+        borderColor={bold ? BOLD_INK : 'border'}
+        pb="env(safe-area-inset-bottom, 0px)"
+        css={HEADER_CONTROL_VARS}
+      >
+        <Flex h="16" align="stretch" maxW="lg" mx="auto" px="1">
+          <StoreTab asChild icon={LuHouse} label={text('home')} active={homeActive}>
+            <SmartLink link={{ kind: 'home' }}>{null}</SmartLink>
+          </StoreTab>
+          <MobileMenu
+            items={menu}
+            shop={shop}
+            account={drawerAccount}
+            trigger={<StoreTab icon={LuLayoutGrid} label={text('menu')} />}
+          />
+          {showSearch && search}
+          {cart}
+          {account}
+        </Flex>
+      </Box>
+    </>
   )
 }
 

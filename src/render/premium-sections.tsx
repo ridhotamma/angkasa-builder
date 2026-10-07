@@ -41,6 +41,7 @@ import {
 import type { SectionType } from '../model/sections'
 import { resolveScheme, schemeCssVars, themeCssVarGroups } from '../model/settings'
 import { textElementKey } from '../model/element-style'
+import { TABBAR_HEIGHT_VAR } from './chrome'
 import { SectionColumn } from './column'
 import { whatsappHref } from './content-sections'
 import { useRenderEnvironment } from './context'
@@ -845,7 +846,8 @@ export function FloatingContact({ settings: section }: SectionProps) {
     <Box
       data-floating-contact=""
       position="fixed"
-      bottom="4"
+      // Above a phone's tab bar, when the theme has one.
+      bottom={`calc(var(${TABBAR_HEIGHT_VAR}, 0px) + var(--chakra-spacing-4))`}
       zIndex="docked"
       css={{ ...theme.always, 'html:not(.dark) &': theme.surfaces }}
       {...side}

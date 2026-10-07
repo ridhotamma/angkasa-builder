@@ -126,7 +126,14 @@ import type { MenuItem } from '../model/menus'
 import { SECTION_STYLE_FIELDS, VISIBILITY_STYLE_KEYS } from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { googleFontsHref, type ThemeSettings } from '../model/settings'
-import { isHeaderTransparent, StoreFooter, StoreHeader } from '../render/chrome'
+import {
+  hasTabBar,
+  isHeaderTransparent,
+  StoreFooter,
+  StoreHeader,
+  StoreTab,
+  StoreTabBar,
+} from '../render/chrome'
 import {
   RenderProvider,
   type RenderEnvironment,
@@ -1326,6 +1333,25 @@ function Builder({
     [layout, shop, menus.footer, footerPages, edges.flushBottom, pickable, t],
   )
 
+  // The phone's tab bar, when the header asks for one. Picking it opens the
+  // header's settings, where the choice lives. The tabs are stand-ins for the
+  // storefront's own, like the header's icons.
+  const tabBar = useMemo(() => {
+    if (!layout || !hasTabBar(layout.header)) return null
+    return pickable(
+      HEADER_ID,
+      <StoreTabBar
+        header={layout.header}
+        shop={shop}
+        menu={menus.main}
+        homeActive={scope === 'home'}
+        search={<StoreTab icon={LuSearch} label={t('standInSearch')} />}
+        cart={<StoreTab icon={LuShoppingBag} label={t('standInCart')} />}
+        account={<StoreTab icon={LuUser} label={t('standInAccount')} />}
+      />,
+    )
+  }, [layout, shop, menus.main, scope, pickable, t])
+
   const edited = useMemo(
     () => (
       <SectionsRenderer
@@ -1411,10 +1437,22 @@ function Builder({
             </Container>
           </Box>
           {footer}
+          {tabBar}
         </ThemeScope>
       </RenderProvider>
     ),
-    [env, settings, clickAway, header, edges.flushTop, edges.flushBottom, framed, edited, footer],
+    [
+      env,
+      settings,
+      clickAway,
+      header,
+      edges.flushTop,
+      edges.flushBottom,
+      framed,
+      edited,
+      footer,
+      tabBar,
+    ],
   )
 
   // The device switch, undo and redo, and the screen's own buttons: above the

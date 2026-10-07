@@ -407,6 +407,22 @@ export const PALETTES: readonly Palette[] = [
     },
   },
   {
+    // Quick Checkout's "Bold" colours, for a storefront that wants to match.
+    key: 'cream-tomato',
+    name: { en: 'Cream & Tomato', id: 'Krim & Tomat' },
+    tags: ['bold', 'playful', 'warm'],
+    colors: {
+      brand: '#ff5c39',
+      background: '#fff4d6',
+      text: '#111111',
+      accent: '#2f6bff',
+    },
+    schemes: {
+      subtle: { background: '#ffe9ad', text: '#111111', button: '#111111' },
+      inverse: { background: '#111111', text: '#fff4d6', button: '#ff5c39' },
+    },
+  },
+  {
     key: 'cobalt-white',
     name: { en: 'Cobalt & White', id: 'Kobalt & Putih' },
     tags: ['bold', 'cool'],
@@ -817,9 +833,24 @@ export const LOOKS: readonly Look[] = [
     palette: 'tangerine-black',
     fontPair: 'space-space',
     radius: 'none',
-    buttonStyle: 'solid',
-    cardStyle: 'border',
+    buttonStyle: 'hard',
+    cardStyle: 'hard',
     animation: 'none',
+  },
+  {
+    key: 'bold-pop',
+    name: { en: 'Bold Pop', id: 'Pop Berani' },
+    description: {
+      en: 'Ink borders and hard shadows on warm cream, like Quick Checkout’s Bold theme.',
+      id: 'Garis tinta dan bayangan tegas di atas krim hangat, seperti tema Berani di Quick Checkout.',
+    },
+    tags: ['bold', 'playful', 'brutalist'],
+    palette: 'cream-tomato',
+    fontPair: 'space-space',
+    radius: 'sm',
+    buttonStyle: 'hard',
+    cardStyle: 'hard',
+    animation: 'subtle',
   },
   {
     key: 'luxury-boutique',
