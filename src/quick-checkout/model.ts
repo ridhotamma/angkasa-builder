@@ -19,7 +19,19 @@ import { z } from 'zod'
 
 import { findFont, isFontFamily } from '../model/font-library'
 import type { Localized } from '../model/localized'
-import { contrastRatio, fontHref, fontStack, mix, readableOn } from '../model/settings'
+import {
+  contrastRatio,
+  DEFAULT_THEME_SETTINGS,
+  fontHref,
+  fontStack,
+  mix,
+  readableOn,
+  sanitizeThemeSettings,
+  type ButtonStyle,
+  type CardStyle,
+  type RadiusOption,
+  type ThemeSettings,
+} from '../model/settings'
 
 export const QUICK_CHECKOUT_VERSION = 1
 
@@ -1007,6 +1019,62 @@ export function qcFontsHref(style: QcStyle): string | null {
     return part ? [part] : []
   })
   return parts.length > 0 ? `https://fonts.googleapis.com/css2?${parts.join('&')}&display=swap` : null
+}
+
+/* -------------------------------------------------------------------------- */
+/* As a store theme                                                           */
+/* -------------------------------------------------------------------------- */
+
+const THEME_RADIUS: Record<QcRadius, RadiusOption> = {
+  none: 'none',
+  sm: 'sm',
+  md: 'md',
+  lg: 'lg',
+  full: 'lg',
+}
+
+/**
+ * The page's look as storefront theme settings, for a simple store.
+ *
+ * A simple store's shopper starts on the Quick Checkout page and may go on to
+ * a product page, the cart or checkout — storefront screens, drawn from theme
+ * settings. Those take the page's colours, fonts and shape from here, so the
+ * shop does not change its face halfway through a purchase.
+ *
+ * The page's background colour is the theme's (a gradient's first stop, an
+ * image's tint), and its text is repaired against that the way `qcPalette`
+ * repairs the page's own. Motion, the splash and the popup stay off: those
+ * belong to a full store's theme.
+ */
+export function qcThemeSettings(style: QcStyle): ThemeSettings {
+  const background = style.background.color
+  const buttonStyle: ButtonStyle =
+    style.buttonStyle === 'hard'
+      ? 'hard'
+      : style.buttonStyle === 'outline'
+        ? 'outline'
+        : style.radius === 'full'
+          ? 'pill'
+          : 'solid'
+  const cardStyle: CardStyle =
+    style.cardStyle === 'hard'
+      ? 'hard'
+      : style.cardStyle === 'solid'
+        ? 'shadow'
+        : 'border'
+  return sanitizeThemeSettings({
+    ...DEFAULT_THEME_SETTINGS,
+    colors: {
+      brand: style.accent,
+      background,
+      text: readableAgainst(style.text, [background], MIN_TEXT_CONTRAST),
+      accent: style.accent,
+    },
+    fonts: { heading: style.fontHeading, body: style.fontBody },
+    radius: THEME_RADIUS[style.radius],
+    buttonStyle,
+    cardStyle,
+  })
 }
 
 /* -------------------------------------------------------------------------- */
