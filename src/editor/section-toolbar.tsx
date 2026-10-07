@@ -20,6 +20,7 @@ import {
   type SectionInstance,
 } from '../model/content'
 import { sectionSchema } from '../model/sections'
+import { SECTION_LINKING_ENABLED } from './features'
 import { useEditorText } from './messages'
 
 export function SectionToolbar({
@@ -106,22 +107,24 @@ export function SectionToolbar({
           <LuCopy />
         </IconButton>
       </Tooltip>
-      <Tooltip content={t('linkedCopy')} wrap>
-        <IconButton
-          {...button}
-          aria-label={t('linkedCopy')}
-          disabled={!canDuplicateSection(sections, section.id)}
-          onClick={() => {
-            const result = duplicateLinkedSection(sections, section.id)
-            if (!result) return
-            onChange(result.sections)
-            onSelect(result.copy.id)
-          }}
-        >
-          <LuLink />
-        </IconButton>
-      </Tooltip>
-      {section.linkedTo && (
+      {SECTION_LINKING_ENABLED && (
+        <Tooltip content={t('linkedCopy')} wrap>
+          <IconButton
+            {...button}
+            aria-label={t('linkedCopy')}
+            disabled={!canDuplicateSection(sections, section.id)}
+            onClick={() => {
+              const result = duplicateLinkedSection(sections, section.id)
+              if (!result) return
+              onChange(result.sections)
+              onSelect(result.copy.id)
+            }}
+          >
+            <LuLink />
+          </IconButton>
+        </Tooltip>
+      )}
+      {SECTION_LINKING_ENABLED && section.linkedTo && (
         <Tooltip content={t('detach')} wrap>
           <IconButton
             {...button}

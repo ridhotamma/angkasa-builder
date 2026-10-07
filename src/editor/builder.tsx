@@ -145,6 +145,7 @@ import { PaletteDragProvider, usePaletteDrag } from './add-palette'
 import { useBuilderDialogFooter } from './builder-dialog'
 import { BlockStylePanel } from './block-style-panel'
 import { CatalogueProvider } from './catalogue'
+import { SECTION_LINKING_ENABLED } from './features'
 import { DropOverlay, type DropTarget } from './preview-drop'
 import { FieldsForm, SelectInput } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
@@ -952,7 +953,7 @@ function Builder({
           {t('resetToTheme')}
         </Button>
       </Stack>
-    ) : selected && schema && selected.linkedTo ? (
+    ) : selected && schema && SECTION_LINKING_ENABLED && selected.linkedTo ? (
       <Stack gap="4">
         {back}
         <Stack gap="1">

@@ -60,6 +60,7 @@ import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { AddPalette, type PaletteBlock } from './add-palette'
+import { SECTION_LINKING_ENABLED } from './features'
 import { useEditorText } from './messages'
 import { sectionIcon } from './section-icons'
 
@@ -136,7 +137,7 @@ function RowBadges({ section }: { section: SectionInstance }) {
   const schedule = scheduleState(style, new Date())
   return (
     <>
-      {section.linkedTo && (
+      {SECTION_LINKING_ENABLED && section.linkedTo && (
         <Badge size="xs" variant="subtle" colorPalette="brand">
           {t('linkedBadge')}
         </Badge>
@@ -266,15 +267,17 @@ function Row({
         <IconButton aria-label={t('copySection')} size="2xs" variant="ghost" onClick={onCopy}>
           <LuClipboardCopy />
         </IconButton>
-        <IconButton
-          aria-label={t('linkedCopy')}
-          size="2xs"
-          variant="ghost"
-          disabled={!canDuplicate}
-          onClick={onLinkedCopy}
-        >
-          <LuLink />
-        </IconButton>
+        {SECTION_LINKING_ENABLED && (
+          <IconButton
+            aria-label={t('linkedCopy')}
+            size="2xs"
+            variant="ghost"
+            disabled={!canDuplicate}
+            onClick={onLinkedCopy}
+          >
+            <LuLink />
+          </IconButton>
+        )}
         <IconButton
           aria-label={t('duplicate')}
           size="2xs"
