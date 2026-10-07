@@ -531,7 +531,7 @@ export function ThemeSettingsPanel({
               a field would hand its one label to all four. */}
           <Fieldset.Root gap="2">
             <Fieldset.Legend fontSize="sm">{t('cardHover')}</Fieldset.Legend>
-            <Stack gap="2">
+            <Stack gap="3">
               {CARD_HOVER_EFFECTS.map((effect) => (
                 <Switch.Root
                   key={effect}
