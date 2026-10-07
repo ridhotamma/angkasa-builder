@@ -383,6 +383,29 @@ describe('colour', () => {
     expect(vars['--chakra-colors-brand-contrast']).toBe('#ffffff')
   })
 
+  test('the status palettes follow the shop’s own colours', () => {
+    const vars = themeCssVars({
+      ...DEFAULT_THEME_SETTINGS,
+      colors: { ...DEFAULT_THEME_SETTINGS.colors, brand: '#0055ff', accent: '#ff0055' },
+    })
+    // Success wears the brand, danger the accent — badges, alerts and the
+    // order stepper stop sitting in the platform's green/red.
+    expect(vars['--chakra-colors-success-500']).toBe('#0055ff')
+    expect(vars['--chakra-colors-success-solid']).toBe('#0055ff')
+    expect(vars['--chakra-colors-success-contrast']).toBe('#ffffff')
+    expect(vars['--chakra-colors-danger-500']).toBe('#ff0055')
+    expect(vars['--chakra-colors-danger-solid']).toBe('#ff0055')
+    // Chakra's stock green/red move with them: a `status`-only Alert paints
+    // through those ramps, not through `success`/`danger`.
+    expect(vars['--chakra-colors-green-500']).toBe('#0055ff')
+    expect(vars['--chakra-colors-red-500']).toBe('#ff0055')
+    expect(vars['--chakra-colors-green-subtle']).toBe(vars['--chakra-colors-success-subtle'])
+    // Warning keeps the platform's amber: it is the third meaning, and neither
+    // shop colour can stand in for it without colliding with success/danger.
+    expect(vars['--chakra-colors-warning-500']).toBeUndefined()
+    expect(vars['--chakra-colors-orange-500']).toBeUndefined()
+  })
+
   test('type scale and density move every font size and spacing token', () => {
     // The middle of each scale emits nothing: the storefront as it always was.
     const base = themeCssVars(DEFAULT_THEME_SETTINGS)

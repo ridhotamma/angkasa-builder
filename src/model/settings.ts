@@ -616,6 +616,62 @@ export function themeCssVars(settings: ThemeSettings): Record<string, string> {
 }
 
 /**
+ * One status ramp, derived from a shop colour exactly like the brand ramp:
+ * `color` at 500, tints toward the page and shades toward black. The semantic
+ * tokens are set beside it for the same reason the brand ones are (see
+ * `themeCssVars`).
+ *
+ * `alias` is Chakra's own palette for the same meaning — `green` for success,
+ * `red` for danger — and gets the identical ramp. A `status`-only Alert
+ * resolves its `colorPalette` through that stock palette (the recipe maps
+ * `error` to `red`, `success` to `green`), so overriding `danger` alone would
+ * leave exactly the alerts that never name a palette in the platform's
+ * colours.
+ */
+function statusRampVars(
+  status: 'success' | 'danger',
+  alias: 'green' | 'red',
+  color: string,
+): Record<string, string> {
+  const ramp = brandRamp(color)
+  const vars: Record<string, string> = {}
+  for (const key of [status, alias]) {
+    for (const shade of BRAND_SHADES) vars[`--chakra-colors-${key}-${shade}`] = ramp[shade]
+    Object.assign(vars, {
+      [`--chakra-colors-${key}-solid`]: color,
+      [`--chakra-colors-${key}-contrast`]: readableOn(color),
+      [`--chakra-colors-${key}-emphasized`]: ramp[600],
+      [`--chakra-colors-${key}-focus-ring`]: color,
+    })
+  }
+  return vars
+}
+
+/**
+ * The status tokens that sit on the page rather than fill a control: text on
+ * a tinted surface. Same rule as `brand.fg` — the colour itself when it reads
+ * on the page, its 700 shade when it does not — and tints mixed into the
+ * page's own background, so a pale status wash belongs to the theme.
+ */
+function statusSurfaceVars(
+  status: 'success' | 'danger',
+  alias: 'green' | 'red',
+  color: string,
+  background: string,
+): Record<string, string> {
+  const ramp = brandRamp(color)
+  const vars: Record<string, string> = {}
+  for (const key of [status, alias]) {
+    Object.assign(vars, {
+      [`--chakra-colors-${key}-fg`]: contrastRatio(color, background) >= 3 ? color : ramp[700],
+      [`--chakra-colors-${key}-muted`]: mix(color, background, 0.75),
+      [`--chakra-colors-${key}-subtle`]: mix(color, background, 0.88),
+    })
+  }
+  return vars
+}
+
+/**
  * The same variables, split by whether they hold in dark mode.
  *
  * `always` is the brand ramp, the solid brand colours, fonts and radii — true
@@ -627,7 +683,7 @@ export function themeCssVarGroups(settings: ThemeSettings): {
   always: Record<string, string>
   surfaces: Record<string, string>
 } {
-  const { brand, background, text } = settings.colors
+  const { brand, background, text, accent } = settings.colors
   const ramp = brandRamp(brand)
   const [l1, l2, l3] = RADII[settings.radius]
 
@@ -639,6 +695,16 @@ export function themeCssVarGroups(settings: ThemeSettings): {
     '--chakra-colors-brand-contrast': readableOn(brand),
     '--chakra-colors-brand-emphasized': ramp[600],
     '--chakra-colors-brand-focus-ring': brand,
+
+    // Status colours follow the shop's own palette: the brand carries the
+    // happy states (paid, received), the accent the bad ones (failed,
+    // cancelled). Without this a themed storefront still badges "Lunas" in
+    // the platform's green and alerts in its red, next to brand-coloured
+    // buttons and steppers. Warning keeps the platform's amber — it is the
+    // third meaning, and neither shop colour can stand in for it without
+    // colliding with one of the other two.
+    ...statusRampVars('success', 'green', brand),
+    ...statusRampVars('danger', 'red', accent),
 
     '--chakra-fonts-heading': fontStack(settings.fonts.heading),
     '--chakra-fonts-body': fontStack(settings.fonts.body),
@@ -676,6 +742,11 @@ export function themeCssVarGroups(settings: ThemeSettings): {
     '--chakra-colors-brand-fg': contrastRatio(brand, background) >= 3 ? brand : ramp[700],
     '--chakra-colors-brand-muted': mix(brand, background, 0.75),
     '--chakra-colors-brand-subtle': mix(brand, background, 0.88),
+
+    // The status tints read as the theme's surface (an alert sits on a pale
+    // wash of its own colour over the page), like the brand ones above.
+    ...statusSurfaceVars('success', 'green', brand, background),
+    ...statusSurfaceVars('danger', 'red', accent, background),
 
     '--chakra-colors-bg': background,
     '--chakra-colors-bg-subtle': mix(background, text, 0.04),
