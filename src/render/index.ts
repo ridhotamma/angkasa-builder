@@ -48,7 +48,13 @@ export {
 } from './block-registry'
 export { DataTable, whatsappHref } from './content-sections'
 export { embedUrl } from './media'
-export { buttonLook, cardFrame, FullBleed, PAGE_WIDTH_CONTAINER } from './primitives'
+export {
+  buttonLook,
+  cardFrame,
+  cardHoverProps,
+  FullBleed,
+  PAGE_WIDTH_CONTAINER,
+} from './primitives'
 export { RichTextView } from './rich-text'
 export {
   drawnSections,
@@ -66,6 +72,6 @@ export { SectionDivider } from './dividers'
 export type { DividerShape } from '../model/section-style'
 export { SplitText, Tilt, VelocityMarquee } from './motion'
 export { SitePopup } from './popup'
-export { SplashScreen, type SplashShop } from './splash'
+export { SplashScreen, splashSkipScript, type SplashShop } from './splash'
 export type { SectionProps } from './sections'
 export { SNAPSHOT_WIDTH, TemplateSnapshotPage, type SnapshotPageProps } from './theme-preview'

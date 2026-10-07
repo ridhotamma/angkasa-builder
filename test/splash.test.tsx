@@ -12,7 +12,7 @@ import {
   SPLASH_STYLES,
   type ThemeSettings,
 } from '../src/index'
-import { SplashScreen } from '../src/render/index'
+import { SplashScreen, splashSkipScript } from '../src/render/index'
 
 const SHOP = { name: 'Kopi Kita', logoUrl: null }
 
@@ -61,6 +61,9 @@ describe('the splash screen', () => {
       '@keyframes pb-splash-up{to{transform:translateY(-102%);visibility:hidden;pointer-events:none;}}',
     )
     expect(html).toContain('prefers-reduced-motion')
+    // The rule the pre-paint skip script relies on: marked documents never
+    // paint the overlay at all.
+    expect(html).toContain('html[data-splash-skip] [data-splash]{display:none}')
   })
 
   test('every exit reaches the page as valid keyframes', () => {
@@ -74,6 +77,17 @@ describe('the splash screen', () => {
       expect(html).not.toContain('to:translateY')
       expect(html).not.toContain('to:opacity')
     }
+  })
+
+  test('the skip script mirrors the component rules', () => {
+    const once = splashSkipScript(true)
+    expect(once).toContain('sessionStorage.getItem("pb-splash")')
+    expect(once).toContain('prefers-reduced-motion')
+    expect(once).toContain("setAttribute('data-splash-skip'")
+
+    // Without once-per-session only reduced motion can skip; a tab that has
+    // seen the intro still replays it on reload.
+    expect(splashSkipScript(false)).not.toContain('sessionStorage')
   })
 
   test('a dark or brand backdrop carries the scheme colours', () => {

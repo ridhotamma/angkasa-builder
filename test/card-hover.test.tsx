@@ -40,9 +40,11 @@ function render(
   )
 }
 
-// Matched inside a `:hover` rule: the theme's global focus ring uses the same
-// outline colour on every page.
-const OUTLINE = /:hover\{[^}]*outline-color:var\(--chakra-colors-brand-solid\)/
+// The ring is an overlay pseudo-element on the card root, transparent at
+// rest and brand-coloured on hover. An `outline` on the card itself paints
+// under its children, which is what this replaced.
+const OUTLINE = /:hover::after\{[^}]*border-color:var\(--chakra-colors-brand-solid\)/
+const OUTLINE_BASE = /::after\{[^}]*border:2px solid transparent/
 const ZOOM = /:hover img\{[^}]*transform:scale\(1\.05\)/
 const LIFT = /:hover\{[^}]*transform:translateY\(-4px\)/
 
@@ -53,6 +55,7 @@ describe('card hover', () => {
     expect(sanitizeThemeSettings({}).cardHover).toEqual(['outline', 'zoom'])
     const html = render('latest-products', {})
     expect(html).toMatch(OUTLINE)
+    expect(html).toMatch(OUTLINE_BASE)
     expect(html).toMatch(ZOOM)
     expect(html).not.toMatch(LIFT)
   })
@@ -75,6 +78,7 @@ describe('card hover', () => {
       expect(html, `${type} ${JSON.stringify(section)}`).toMatch(LIFT)
       expect(html).toContain('box-shadow:var(--chakra-shadows-lg)')
       expect(html).not.toMatch(OUTLINE)
+      expect(html).not.toMatch(OUTLINE_BASE)
       expect(html).not.toMatch(ZOOM)
     }
   })
@@ -82,6 +86,7 @@ describe('card hover', () => {
   test('none at all leaves the cards still', () => {
     const html = render('latest-products', {}, { cardHover: [] })
     expect(html).not.toMatch(OUTLINE)
+    expect(html).not.toMatch(OUTLINE_BASE)
     expect(html).not.toMatch(ZOOM)
   })
 

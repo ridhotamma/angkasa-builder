@@ -53,7 +53,7 @@ import {
 } from '../model/element-style'
 import { readLink, readText, type FieldValues } from '../model/fields'
 import type { Link } from '../model/links'
-import type { ButtonStyle, CardStyle } from '../model/settings'
+import type { ButtonStyle, CardStyle, ThemeSettings } from '../model/settings'
 import type { SectionHeadline } from '../model/section-style'
 import { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
@@ -924,27 +924,52 @@ export function EmptyNotice({ children }: { children: ReactNode }) {
 /**
  * What a product or category card does on hover, from the theme's
  * `cardHover`: any of a brand outline, an image zoom, a lift and a shadow.
- * Spread on the card's root. The outline is drawn as an `outline` inset over
- * the card, so it shows whatever the card style's border is — none, hairline
- * or bold. On a bold card the shadow grows its hard shadow rather than adding
- * a soft one. Reduced motion keeps the colour and drops the movement.
+ * Spread on the card's root. On a bold card the shadow grows its hard shadow
+ * rather than adding a soft one. Reduced motion keeps the colour and drops
+ * the movement.
  */
 export function useCardHover(): BoxProps {
   const { settings } = useRenderEnvironment()
+  return cardHoverProps(settings)
+}
+
+/**
+ * `useCardHover` as a pure function, so the storefront's own pages can wear
+ * the same effects through `storefrontLook` (they read the theme from the
+ * root loader, not from a `RenderProvider`).
+ */
+export function cardHoverProps(settings: ThemeSettings): BoxProps {
   const effects = new Set(settings.cardHover)
   if (effects.size === 0) return {}
   const bold = settings.cardStyle === 'hard'
+  const outline = effects.has('outline')
   const hover: Record<string, string> = {}
-  if (effects.has('outline')) hover.outlineColor = 'var(--chakra-colors-brand-solid)'
   if (effects.has('lift')) hover.transform = bold ? 'translate(-2px, -2px)' : 'translateY(-4px)'
   if (effects.has('shadow')) {
     hover.boxShadow = bold ? boldShadow(BOLD_INK, 6) : 'var(--chakra-shadows-lg)'
   }
   return {
-    transition: 'transform 250ms ease, box-shadow 250ms ease, outline-color 150ms ease',
-    ...(effects.has('outline') && { outline: '2px solid transparent', outlineOffset: '-2px' }),
+    // The ring overlay below is absolutely placed, so the card anchors it.
+    ...(outline && { position: 'relative' as const }),
+    transition: 'transform 250ms ease, box-shadow 250ms ease',
     css: {
-      '&:hover': hover,
+      ...(outline && {
+        // Drawn as an overlay pseudo-element, not an `outline`: a card's own
+        // outline paints under its children, so an opaque image box hid the
+        // top half of the ring — and a full-bleed bento tile hid all of it.
+        // The overlay sits above the content, inset from the card's edge.
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          inset: '0',
+          borderRadius: 'inherit',
+          border: '2px solid transparent',
+          pointerEvents: 'none',
+          transition: 'border-color 150ms ease',
+        },
+        '&:hover::after': { borderColor: 'var(--chakra-colors-brand-solid)' },
+      }),
+      ...(Object.keys(hover).length > 0 && { '&:hover': hover }),
       ...(effects.has('zoom') && { '&:hover img': { transform: 'scale(1.05)' } }),
       '@media (prefers-reduced-motion: reduce)': {
         '&:hover': { transform: 'none' },

@@ -29,7 +29,8 @@ import { schemeCss } from './frame'
 /** The intro holds this long, then the exit runs; the overlay leaves the DOM after this. */
 const HOLD_MS = 1500
 const TOTAL_MS = 2300
-const SESSION_KEY = 'pb-splash'
+/** One intro per tab, when the theme asks for it. */
+export const SPLASH_SESSION_KEY = 'pb-splash'
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
@@ -63,6 +64,31 @@ const EXITS: Record<SplashStyle, Record<string, unknown>> = {
  * `@keyframes pb-splash-up{to:translateY(-102%)}` never runs. A raw `<style>`
  * is what `ThemeScope` uses for its effect CSS too.
  */
+/**
+ * The pre-paint skip check, as the text of an inline `<script>` the
+ * storefront puts in its head.
+ *
+ * The server always renders the splash: it cannot read `sessionStorage`, and
+ * the visitor's motion preference is not known until CSS runs. Without this
+ * the overlay of a repeat visit paints, then hydration removes it a moment
+ * later — the intro blinks instead of playing or staying away.
+ *
+ * Mirrors the layout effect's skip rules exactly, so the attribute is only
+ * set when the component will really skip: reduced motion, or
+ * `oncePerSession` and this tab already saw it. Every other visit plays.
+ */
+export function splashSkipScript(oncePerSession: boolean): string {
+  return (
+    '(function(){try{' +
+    "var skip=matchMedia('(prefers-reduced-motion: reduce)').matches;" +
+    (oncePerSession
+      ? `if(!skip&&sessionStorage.getItem(${JSON.stringify(SPLASH_SESSION_KEY)})==='1')skip=true;`
+      : '') +
+    "if(skip)document.documentElement.setAttribute('data-splash-skip','')" +
+    '}catch(e){}})()'
+  )
+}
+
 const EXIT_KEYFRAMES: Record<SplashStyle, string> = {
   fade: '@keyframes pb-splash-fade{to{opacity:0;visibility:hidden;pointer-events:none;}}',
   'slide-up':
@@ -107,12 +133,12 @@ export function SplashScreen({
     }
     if (!replay && splash.oncePerSession) {
       try {
-        if (view.sessionStorage.getItem(SESSION_KEY) === '1') {
+        if (view.sessionStorage.getItem(SPLASH_SESSION_KEY) === '1') {
           setDone(true)
           onDoneRef.current?.()
           return
         }
-        view.sessionStorage.setItem(SESSION_KEY, '1')
+        view.sessionStorage.setItem(SPLASH_SESSION_KEY, '1')
       } catch {
         // Private mode or storage disabled: play it.
       }
@@ -136,7 +162,12 @@ export function SplashScreen({
 
   return (
     <>
-      <style>{EXIT_KEYFRAMES[splash.style]}</style>
+      {/* The first rule pairs with `splashSkipScript`: the storefront's inline
+          script marks the document before paint, so a visit that will skip
+          never shows the overlay at all. The keyframes follow. */}
+      <style>
+        {`html[data-splash-skip] [data-splash]{display:none}` + EXIT_KEYFRAMES[splash.style]}
+      </style>
       <Flex
         data-splash=""
         aria-hidden
