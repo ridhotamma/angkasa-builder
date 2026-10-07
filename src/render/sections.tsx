@@ -45,6 +45,7 @@ import {
   readText,
   type FieldValues,
 } from '../model/fields'
+import { CATEGORY_PREVIEW_PRODUCTS } from '../model/content'
 import { readToken, textElementKey } from '../model/element-style'
 import type { Link } from '../model/links'
 import { isRichDocEmpty } from '../model/rich-text'
@@ -60,6 +61,7 @@ import { RichTextView } from './rich-text'
 import {
   BENTO_COLUMNS,
   bentoPhoneColumns,
+  bentoReveal,
   bentoShape,
   ButtonRow,
   EditableText,
@@ -73,6 +75,7 @@ import {
   SectionHeading,
   SmartLink,
   ThemeButton,
+  useCardHover,
   useCardStyle,
 } from './primitives'
 
@@ -573,6 +576,7 @@ function IntroBand({ settings }: { settings: FieldValues }) {
 function CategoryRail({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
   const { frame } = useCardStyle()
+  const hover = useCardHover()
   const empty = useEmptyText()
   const categories = data.categories.slice(0, readNumber(settings, 'limit', 12))
 
@@ -582,11 +586,23 @@ function CategoryRail({ settings }: SectionProps) {
       {categories.length === 0 ? (
         <EmptyNotice>{empty('categories')}</EmptyNotice>
       ) : readText(settings, 'layout') === 'bento' ? (
-        <CategoryBento categories={categories} />
+        <CategoryBento
+          categories={categories}
+          reveal={readText(settings, 'bentoText') === 'hover'}
+        />
+      ) : readText(settings, 'layout') === 'list' ? (
+        <CategoryList categories={categories} size={readText(settings, 'listSize')} />
       ) : (
         <SimpleGrid columns={{ base: 3, md: 5, lg: 6 }} gap="3">
           {categories.map((category) => (
-            <Card.Root key={category.id} bg="bg.panel" rounded="l3" overflow="hidden" {...frame}>
+            <Card.Root
+              key={category.id}
+              bg="bg.panel"
+              rounded="l3"
+              overflow="hidden"
+              {...frame}
+              {...hover}
+            >
               <SmartLink link={{ kind: 'category', slug: category.slug }} display="block">
                 <AspectRatio ratio={1} bg="bg.subtle">
                   <ImageWithFallback
@@ -595,6 +611,7 @@ function CategoryRail({ settings }: SectionProps) {
                     objectFit="cover"
                     loading="lazy"
                     fallbackIconSize="6"
+                    transition="transform 600ms ease"
                   />
                 </AspectRatio>
                 <Box p="2.5">
@@ -611,8 +628,174 @@ function CategoryRail({ settings }: SectionProps) {
   )
 }
 
-function CategoryBento({ categories }: { categories: StorefrontCategoryData[] }) {
+/** Each preview photo arrives this much after the one before it. */
+const PREVIEW_STAGGER_MS = 60
+
+/** A preview photo shown, arriving `index` steps after the first. */
+function revealed(index: number) {
+  return {
+    opacity: 1,
+    transform: 'none',
+    pointerEvents: 'auto',
+    transitionDelay: `${index * PREVIEW_STAGGER_MS}ms`,
+  } as const
+}
+
+/**
+ * The categories as a list of large names, one per row, each bringing in its
+ * best sellers on hover — or on keyboard focus, so the preview is not a
+ * pointer-only feature.
+ *
+ * The whole row opens the category (its link is stretched over the row), and
+ * each photo opens its own product above that, so neither link is nested in
+ * the other. The photos come in from the right one after another; with
+ * reduced motion they simply appear. A screen without hover — a tablet —
+ * shows them all the time, and a phone keeps the plain list, where a strip of
+ * photos would crowd the names it is there to sell.
+ */
+/**
+ * The list layout's three sizes: the name, the row's padding and the preview
+ * photos step together, so a smaller list stays in proportion.
+ */
+const CATEGORY_LIST_SIZES = {
+  sm: {
+    fontSize: { base: 'lg', md: 'xl', lg: '2xl' },
+    py: { base: '3', md: '4' },
+    preview: { md: '12', lg: '14' },
+  },
+  md: {
+    fontSize: { base: 'xl', md: '2xl', lg: '3xl' },
+    py: { base: '4', md: '5' },
+    preview: { md: '16', lg: '20' },
+  },
+  lg: {
+    fontSize: { base: '2xl', md: '4xl', lg: '5xl' },
+    py: { base: '5', md: '7' },
+    preview: { md: '20', lg: '24' },
+  },
+} as const
+
+function CategoryList({
+  categories,
+  size: sizeKey,
+}: {
+  categories: StorefrontCategoryData[]
+  size: string
+}) {
+  const size =
+    CATEGORY_LIST_SIZES[sizeKey as keyof typeof CATEGORY_LIST_SIZES] ?? CATEGORY_LIST_SIZES.md
+  return (
+    <Stack
+      as="ul"
+      gap="0"
+      listStyleType="none"
+      m="0"
+      p="0"
+      borderTopWidth="1px"
+      borderColor="border.subtle"
+    >
+      {categories.map((category) => {
+        const products = (category.products ?? []).slice(0, CATEGORY_PREVIEW_PRODUCTS)
+        return (
+          <Flex
+            as="li"
+            key={category.id}
+            className="group"
+            position="relative"
+            align="center"
+            justify="space-between"
+            gap="6"
+            py={size.py}
+            borderBottomWidth="1px"
+            borderColor="border.subtle"
+            data-category-row=""
+          >
+            <SmartLink
+              link={{ kind: 'category', slug: category.slug }}
+              minW="0"
+              fontFamily="heading"
+              fontWeight="bold"
+              fontSize={size.fontSize}
+              lineHeight="1.1"
+              letterSpacing="-0.02em"
+              color="fg"
+              transition="color 0.2s ease"
+              _groupHover={{ color: 'brand.fg' }}
+              _groupFocusWithin={{ color: 'brand.fg' }}
+              // The row is the target: the link's box is stretched over it.
+              css={{ '&::after': { content: '""', position: 'absolute', inset: '0' } }}
+            >
+              {category.name}
+            </SmartLink>
+            {/* Always drawn, so a category with nothing to preview keeps the
+                same row height as the rest. */}
+            <HStack
+              gap="3"
+              flexShrink="0"
+              hideBelow="md"
+              h={size.preview}
+              position="relative"
+              zIndex="1"
+            >
+              {products.map((product, index) => (
+                <SmartLink
+                  key={product.id}
+                  link={{ kind: 'product', slug: product.slug }}
+                  aria-label={product.name}
+                  display="block"
+                  boxSize={size.preview}
+                  rounded="l2"
+                  overflow="hidden"
+                  bg="bg.subtle"
+                  data-category-preview=""
+                  opacity="0"
+                  transform="translateX(12px)"
+                  pointerEvents="none"
+                  transition="opacity 0.3s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)"
+                  // Leaving, they all go at once; arriving, one after another.
+                  _groupHover={revealed(index)}
+                  _groupFocusWithin={revealed(index)}
+                  css={{
+                    '@media (hover: none)': {
+                      opacity: 1,
+                      transform: 'none',
+                      pointerEvents: 'auto',
+                    },
+                    '@media (prefers-reduced-motion: reduce)': {
+                      transition: 'none',
+                      transform: 'none',
+                    },
+                  }}
+                >
+                  <ImageWithFallback
+                    src={product.imageUrl ?? undefined}
+                    alt=""
+                    w="full"
+                    h="full"
+                    objectFit="cover"
+                    loading="lazy"
+                    fallbackIconSize="5"
+                  />
+                </SmartLink>
+              ))}
+            </HStack>
+          </Flex>
+        )
+      })}
+    </Stack>
+  )
+}
+
+function CategoryBento({
+  categories,
+  reveal,
+}: {
+  categories: StorefrontCategoryData[]
+  /** The names show on hover only (the section's `bentoText`). */
+  reveal: boolean
+}) {
   const { frame } = useCardStyle()
+  const hover = useCardHover()
 
   return (
     <Grid
@@ -635,6 +818,7 @@ function CategoryBento({ categories }: { categories: StorefrontCategoryData[] })
             overflow="hidden"
             bg="bg.subtle"
             {...frame}
+            {...hover}
           >
             <SmartLink
               link={{ kind: 'category', slug: category.slug }}
@@ -642,13 +826,9 @@ function CategoryBento({ categories }: { categories: StorefrontCategoryData[] })
               position="relative"
               h="full"
               className="group"
+              data-text-reveal={reveal ? '' : undefined}
             >
-              <Box
-                position="absolute"
-                inset="0"
-                transition="transform 0.4s ease"
-                _groupHover={{ transform: 'scale(1.05)' }}
-              >
+              <Box position="absolute" inset="0">
                 <ImageWithFallback
                   src={category.imageUrl ?? undefined}
                   alt=""
@@ -657,6 +837,7 @@ function CategoryBento({ categories }: { categories: StorefrontCategoryData[] })
                   objectFit="cover"
                   loading="lazy"
                   fallbackIconSize="6"
+                  transition="transform 600ms ease"
                 />
               </Box>
               {/* Darkest at the bottom where the name sits, so it reads on
@@ -667,6 +848,7 @@ function CategoryBento({ categories }: { categories: StorefrontCategoryData[] })
                 bgGradient="to-t"
                 gradientFrom="blackAlpha.700"
                 gradientTo="transparent"
+                {...(reveal && bentoReveal(0, { rise: false }))}
               />
               <Text
                 position="absolute"
@@ -677,6 +859,7 @@ function CategoryBento({ categories }: { categories: StorefrontCategoryData[] })
                 fontWeight="semibold"
                 fontSize={shape === 'big' ? { base: 'md', md: 'xl' } : 'md'}
                 lineClamp={2}
+                {...(reveal && bentoReveal(70))}
               >
                 {category.name}
               </Text>
@@ -747,6 +930,7 @@ function FeaturedCollection({ settings }: SectionProps) {
         <ProductList
           products={products}
           layout={readText(settings, 'layout')}
+          textReveal={readText(settings, 'bentoText') === 'hover'}
           columns={readText(settings, 'columns')}
           mobileColumns={readText(settings, 'mobileColumns')}
         />
@@ -771,6 +955,7 @@ function CollectionShelves({ settings }: SectionProps) {
           <ProductList
             products={shelf.products.slice(0, limit)}
             layout={readText(settings, 'layout')}
+            textReveal={readText(settings, 'bentoText') === 'hover'}
             columns={readText(settings, 'columns')}
             mobileColumns={readText(settings, 'mobileColumns')}
           />
@@ -800,6 +985,7 @@ function LatestProducts({ settings }: SectionProps) {
         <ProductList
           products={products}
           layout={readText(settings, 'layout')}
+          textReveal={readText(settings, 'bentoText') === 'hover'}
           columns={readText(settings, 'columns')}
           mobileColumns={readText(settings, 'mobileColumns')}
         />

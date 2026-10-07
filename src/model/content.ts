@@ -880,6 +880,24 @@ export function voucherIds(sections: readonly SectionInstance[]): string[] {
   return [...ids]
 }
 
+/** How many best sellers a category row previews in the category rail's list layout. */
+export const CATEGORY_PREVIEW_PRODUCTS = 4
+
+/**
+ * How many categories need their best sellers read beside the page: the
+ * largest `limit` among category rails drawn as a list, or 0 when none is —
+ * so a page without one reads nothing extra.
+ */
+export function categoryPreviewCount(sections: readonly SectionInstance[]): number {
+  let count = 0
+  for (const section of sections) {
+    if (section.type !== 'category-rail' || section.settings.layout !== 'list') continue
+    const limit = section.settings.limit
+    count = Math.max(count, typeof limit === 'number' ? limit : 12)
+  }
+  return count
+}
+
 /** Only the sections the storefront would draw: hidden ones read nothing. */
 export function visibleSections(sections: readonly SectionInstance[]): SectionInstance[] {
   return sections.filter((section) => !section.hidden)

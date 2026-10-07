@@ -5,6 +5,7 @@ import {
   Badge,
   Box,
   Button,
+  Fieldset,
   Flex,
   HStack,
   Icon,
@@ -22,6 +23,8 @@ import {
   ANIMATION_LABELS,
   ANIMATION_STYLES,
   BUTTON_STYLES,
+  CARD_HOVER_EFFECTS,
+  CARD_HOVER_LABELS,
   CARD_STYLES,
   contrastIssues,
   DENSITIES,
@@ -510,6 +513,39 @@ export function ThemeSettingsPanel({
             }
           />
         </Labeled>
+        {/* A fieldset, not a `Labeled` field: each switch names itself, and
+            a field would hand its one label to all four. */}
+        <Fieldset.Root gap="2">
+          <Fieldset.Legend fontSize="sm">{t('cardHover')}</Fieldset.Legend>
+          <Stack gap="2">
+            {CARD_HOVER_EFFECTS.map((effect) => (
+              <Switch.Root
+                key={effect}
+                size="sm"
+                colorPalette="brand"
+                w="full"
+                justifyContent="space-between"
+                checked={settings.cardHover.includes(effect)}
+                onCheckedChange={({ checked }) =>
+                  onChange({
+                    ...settings,
+                    // Kept in the list's order, whichever was switched last.
+                    cardHover: CARD_HOVER_EFFECTS.filter((candidate) =>
+                      candidate === effect ? checked : settings.cardHover.includes(candidate),
+                    ),
+                  })
+                }
+              >
+                <Switch.HiddenInput />
+                <Switch.Label fontSize="sm" fontWeight="normal">
+                  {l(CARD_HOVER_LABELS[effect])}
+                </Switch.Label>
+                <Switch.Control />
+              </Switch.Root>
+            ))}
+          </Stack>
+          <Fieldset.HelperText>{t('cardHoverHelp')}</Fieldset.HelperText>
+        </Fieldset.Root>
       </Stack>
 
       <Stack gap="3">

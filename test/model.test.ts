@@ -88,6 +88,7 @@ describe('sections', () => {
     expect(sections[0]!.settings).toEqual({
       heading: 'New arrivals',
       layout: 'grid',
+      bentoText: 'always',
       limit: 12,
       columns: '3',
       mobileColumns: '2',

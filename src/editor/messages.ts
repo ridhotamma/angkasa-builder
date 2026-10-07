@@ -62,6 +62,11 @@ const MESSAGES = {
   radius: { en: 'Corner radius', id: 'Sudut' },
   buttonStyle: { en: 'Buttons', id: 'Tombol' },
   cardStyle: { en: 'Cards', id: 'Kartu' },
+  cardHover: { en: 'Card hover', id: 'Efek kartu saat disorot' },
+  cardHoverHelp: {
+    en: 'What product and category cards do when a shopper points at them. Combine any; turn all off for none.',
+    id: 'Yang dilakukan kartu produk dan kategori saat pembeli mengarahkan kursor. Gabungkan sesuka hati; matikan semua untuk tanpa efek.',
+  },
   size: { en: 'Size', id: 'Ukuran' },
   typeScale: { en: 'Text size', id: 'Ukuran teks' },
   typeScaleHelp: {

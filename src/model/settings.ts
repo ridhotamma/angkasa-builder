@@ -97,6 +97,21 @@ export const CARD_STYLES = ['border', 'shadow', 'flat', 'hard'] as const
 export const ANIMATION_STYLES = ['none', 'subtle', 'expressive'] as const
 
 /**
+ * What a product or category card does when the shopper points at it. A set,
+ * not one choice: the effects combine, and the default — a brand outline and
+ * a slow image zoom — is what every card did before the setting existed.
+ */
+export const CARD_HOVER_EFFECTS = ['outline', 'zoom', 'lift', 'shadow'] as const
+export type CardHoverEffect = (typeof CARD_HOVER_EFFECTS)[number]
+
+export const CARD_HOVER_LABELS: Record<CardHoverEffect, Localized> = {
+  outline: { en: 'Brand outline', id: 'Garis warna brand' },
+  zoom: { en: 'Image zoom', id: 'Gambar membesar' },
+  lift: { en: 'Lift', id: 'Terangkat' },
+  shadow: { en: 'Shadow', id: 'Bayangan' },
+}
+
+/**
  * One step for every text size in the storefront. A token scale, not a free
  * multiplier: the values move every Chakra font-size token by a fixed step, so
  * a heading, a paragraph and a button label stay in proportion.
@@ -280,6 +295,8 @@ export interface ThemeSettings {
   radius: RadiusOption
   buttonStyle: ButtonStyle
   cardStyle: CardStyle
+  /** What product and category cards do on hover; empty for nothing. */
+  cardHover: CardHoverEffect[]
   /** One step for every text size: compact, default or large. */
   typeScale: TypeScale
   /** One step for every gap, padding and control size: tight, cozy or airy. */
@@ -310,6 +327,7 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   radius: 'md',
   buttonStyle: 'solid',
   cardStyle: 'border',
+  cardHover: ['outline', 'zoom'],
   // The middle of each scale is the storefront as it always was, so a theme
   // saved before these knobs existed reads exactly the same.
   typeScale: 'default',
@@ -351,6 +369,11 @@ const settingsSchema = z.object({
   radius: z.enum(RADIUS_OPTIONS).catch(DEFAULT_THEME_SETTINGS.radius),
   buttonStyle: z.enum(BUTTON_STYLES).catch(DEFAULT_THEME_SETTINGS.buttonStyle),
   cardStyle: z.enum(CARD_STYLES).catch(DEFAULT_THEME_SETTINGS.cardStyle),
+  // Unknown effects dropped, duplicates collapsed, kept in the list's order.
+  cardHover: z
+    .array(z.string())
+    .transform((effects) => CARD_HOVER_EFFECTS.filter((effect) => effects.includes(effect)))
+    .catch(DEFAULT_THEME_SETTINGS.cardHover),
   typeScale: z.enum(TYPE_SCALES).catch(DEFAULT_THEME_SETTINGS.typeScale),
   density: z.enum(DENSITIES).catch(DEFAULT_THEME_SETTINGS.density),
   schemes: z

@@ -831,6 +831,7 @@ export function RelatedProducts({ settings }: SectionProps) {
       <ProductList
         products={related}
         layout={readText(settings, 'layout')}
+        textReveal={readText(settings, 'bentoText') === 'hover'}
         columns={readText(settings, 'columns')}
         mobileColumns={readText(settings, 'mobileColumns')}
       />

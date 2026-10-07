@@ -11,6 +11,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react'
 
+import { CATEGORY_PREVIEW_PRODUCTS } from '../model/content'
 import type { ElementKind } from '../model/element-style'
 import type { TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
@@ -109,6 +110,11 @@ export interface StorefrontCategoryData {
   name: string
   slug: string
   imageUrl: string | null
+  /**
+   * Its best sellers, most sold first, when a section previews them (the
+   * category rail's list layout — see `categoryPreviewCount`).
+   */
+  products?: StorefrontProductCard[]
 }
 
 export interface StorefrontVoucherData {
@@ -289,6 +295,7 @@ export function sampleStorefrontData(shopName = 'Your shop'): StorefrontRenderDa
       name,
       slug: name.toLowerCase(),
       imageUrl: null,
+      products: products(i * 2, CATEGORY_PREVIEW_PRODUCTS),
     })),
     collections: [
       {

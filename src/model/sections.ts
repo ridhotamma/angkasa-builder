@@ -249,6 +249,27 @@ const productLayout = (): ItemField => ({
   },
 })
 
+/**
+ * Whether a bento's tiles always show their text, or show it on hover — the
+ * photos uncovered until the shopper points at one. Screens without hover
+ * always show it.
+ */
+const bentoText = (): ItemField => ({
+  kind: 'select',
+  key: 'bentoText',
+  label: { en: 'Text on tiles', id: 'Teks di ubin' },
+  options: [
+    { value: 'always', label: { en: 'Always', id: 'Selalu' } },
+    { value: 'hover', label: { en: 'On hover', id: 'Saat disorot' } },
+  ],
+  default: 'always',
+  help: {
+    en: 'On hover leaves each photo clear and brings its text in when the shopper points at it. Phones always show the text.',
+    id: 'Saat disorot membiarkan foto bersih dan memunculkan teksnya saat pembeli mengarahkan kursor. Ponsel selalu menampilkan teks.',
+  },
+  showWhen: { key: 'layout', is: ['bento'] },
+})
+
 const subheading = (fallback = ''): ItemField => ({
   kind: 'textarea',
   key: 'subheading',
@@ -857,12 +878,30 @@ export const SECTION_SCHEMAS = [
         options: [
           { value: 'tiles', label: { en: 'Tiles', id: 'Ubin' } },
           { value: 'bento', label: { en: 'Bento grid', id: 'Kisi bento' } },
+          { value: 'list', label: { en: 'List with preview', id: 'Daftar dengan pratinjau' } },
         ],
         default: 'tiles',
         help: {
-          en: 'Bento shows each image as a background with the name on top, in tiles of mixed sizes.',
-          id: 'Bento menampilkan gambar sebagai latar dengan nama di atasnya, dalam ubin beragam ukuran.',
+          en: 'Bento shows each image as a background with the name on top, in tiles of mixed sizes. List writes each name large, one per row, and brings in its best sellers on hover.',
+          id: 'Bento menampilkan gambar sebagai latar dengan nama di atasnya, dalam ubin beragam ukuran. Daftar menulis tiap nama besar, satu per baris, dan memunculkan produk terlarisnya saat disorot.',
         },
+      },
+      bentoText(),
+      {
+        kind: 'select',
+        key: 'listSize',
+        label: { en: 'Size', id: 'Ukuran' },
+        options: [
+          { value: 'sm', label: { en: 'Small', id: 'Kecil' } },
+          { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+          { value: 'lg', label: { en: 'Large', id: 'Besar' } },
+        ],
+        default: 'md',
+        help: {
+          en: 'How large each name is written, with its row and preview photos to match.',
+          id: 'Seberapa besar tiap nama ditulis, beserta baris dan foto pratinjaunya.',
+        },
+        showWhen: { key: 'layout', is: ['list'] },
       },
       {
         kind: 'number',
@@ -900,6 +939,7 @@ export const SECTION_SCHEMAS = [
         },
       },
       productLayout(),
+      bentoText(),
       limit(8),
       ...columns(4, 2, 2),
     ],
@@ -914,7 +954,7 @@ export const SECTION_SCHEMAS = [
       id: 'Satu rak untuk setiap koleksi aktif, sesuai urutan.',
     },
     usesCatalogue: true,
-    fields: [productLayout(), limit(8), ...columns(4, 2, 2)],
+    fields: [productLayout(), bentoText(), limit(8), ...columns(4, 2, 2)],
   },
   {
     type: 'latest-products',
@@ -930,6 +970,7 @@ export const SECTION_SCHEMAS = [
     fields: [
       heading('New arrivals'),
       productLayout(),
+      bentoText(),
       limit(12),
       ...columns(4, 2, 2),
       {
@@ -1250,6 +1291,7 @@ export const SECTION_SCHEMAS = [
     fields: [
       heading('Shop the edit'),
       productLayout(),
+      bentoText(),
       {
         kind: 'list',
         key: 'tabs',
@@ -2384,7 +2426,13 @@ export const SECTION_SCHEMAS = [
     scopes: PRODUCT_ONLY,
     max: 1,
     usesCatalogue: true,
-    fields: [heading('You may also like'), productLayout(), limit(4, 12), ...columns(4, 2, 2)],
+    fields: [
+      heading('You may also like'),
+      productLayout(),
+      bentoText(),
+      limit(4, 12),
+      ...columns(4, 2, 2),
+    ],
   },
 
   /* ---------------------------------------------------------------------- */

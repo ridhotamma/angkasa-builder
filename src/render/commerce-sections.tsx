@@ -207,6 +207,7 @@ export function CollectionTabs({ settings }: SectionProps) {
                 <ProductList
                   products={tab.shelf.products.slice(0, limit)}
                   layout={readText(settings, 'layout')}
+                  textReveal={readText(settings, 'bentoText') === 'hover'}
                   columns={readText(settings, 'columns')}
                   mobileColumns={readText(settings, 'mobileColumns')}
                 />

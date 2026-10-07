@@ -55,7 +55,7 @@ import { readLink, readText, type FieldValues } from '../model/fields'
 import type { Link } from '../model/links'
 import type { ButtonStyle, CardStyle } from '../model/settings'
 import type { SectionHeadline } from '../model/section-style'
-import { BOLD_INK, boldButton, boldCard } from './bold'
+import { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
@@ -921,6 +921,39 @@ export function EmptyNotice({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * What a product or category card does on hover, from the theme's
+ * `cardHover`: any of a brand outline, an image zoom, a lift and a shadow.
+ * Spread on the card's root. The outline is drawn as an `outline` inset over
+ * the card, so it shows whatever the card style's border is — none, hairline
+ * or bold. On a bold card the shadow grows its hard shadow rather than adding
+ * a soft one. Reduced motion keeps the colour and drops the movement.
+ */
+export function useCardHover(): BoxProps {
+  const { settings } = useRenderEnvironment()
+  const effects = new Set(settings.cardHover)
+  if (effects.size === 0) return {}
+  const bold = settings.cardStyle === 'hard'
+  const hover: Record<string, string> = {}
+  if (effects.has('outline')) hover.outlineColor = 'var(--chakra-colors-brand-solid)'
+  if (effects.has('lift')) hover.transform = bold ? 'translate(-2px, -2px)' : 'translateY(-4px)'
+  if (effects.has('shadow')) {
+    hover.boxShadow = bold ? boldShadow(BOLD_INK, 6) : 'var(--chakra-shadows-lg)'
+  }
+  return {
+    transition: 'transform 250ms ease, box-shadow 250ms ease, outline-color 150ms ease',
+    ...(effects.has('outline') && { outline: '2px solid transparent', outlineOffset: '-2px' }),
+    css: {
+      '&:hover': hover,
+      ...(effects.has('zoom') && { '&:hover img': { transform: 'scale(1.05)' } }),
+      '@media (prefers-reduced-motion: reduce)': {
+        '&:hover': { transform: 'none' },
+        '&:hover img': { transform: 'none' },
+      },
+    },
+  }
+}
+
 /** A card's frame under the theme's card style; `flat` drops the frame entirely. */
 export function useCardStyle(): { frame: BoxProps; flat: boolean } {
   const { settings } = useRenderEnvironment()
@@ -967,6 +1000,7 @@ export function WishlistButton({
 export function ProductCard({ product }: { product: StorefrontProductCard }) {
   const { data, formatPrice } = useRenderEnvironment()
   const { frame, flat } = useCardStyle()
+  const hover = useCardHover()
 
   return (
     <Card.Root
@@ -976,15 +1010,8 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
       bg="bg.panel"
       rounded="l3"
       overflow="hidden"
-      transition="border-color 150ms"
-      _hover={{ borderColor: 'brand.emphasized' }}
-      css={{
-        '&:hover img': { transform: 'scale(1.05)' },
-        '@media (prefers-reduced-motion: reduce)': {
-          '&:hover img': { transform: 'none' },
-        },
-      }}
       {...frame}
+      {...hover}
     >
       <SmartLink
         link={{ kind: 'product', slug: product.slug }}
@@ -1185,34 +1212,67 @@ export function bentoPhoneColumns(index: number, count: number): number {
 }
 
 /**
+ * A bento tile's text and shade, hidden until the tile (a `group`) is hovered
+ * or holds focus, then brought in `delayMs` after the hover begins: the shade
+ * first, then the name rising into place, then the price. Leaving, all of it
+ * goes at once. A screen without hover always shows it, and reduced motion
+ * keeps the fade without the movement.
+ */
+export function bentoReveal(delayMs = 0, { rise = true }: { rise?: boolean } = {}) {
+  const shown = {
+    opacity: 1,
+    transform: 'none',
+    transitionDelay: `${delayMs}ms`,
+  }
+  return {
+    opacity: 0,
+    transform: rise ? 'translateY(10px)' : 'none',
+    transition: 'opacity 0.3s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
+    _groupHover: shown,
+    _groupFocusWithin: shown,
+    css: {
+      '@media (hover: none)': { opacity: 1, transform: 'none' },
+      '@media (prefers-reduced-motion: reduce)': {
+        transform: 'none',
+        transition: 'opacity 0.2s ease',
+      },
+    },
+  } as const
+}
+
+/** How far the price trails the name when a bento tile reveals its text. */
+const REVEAL_STAGGER_MS = 70
+
+/**
  * A product as a background tile, name and price over a faded bottom edge —
  * the bento counterpart of `ProductCard`, which a mixed-size tile cannot hold.
+ * With `reveal`, the text waits for the shopper to point at the tile.
  */
 function ProductBentoCard({
   product,
   shape,
+  reveal,
 }: {
   product: StorefrontProductCard
   shape: BentoShape
+  reveal: boolean
 }) {
   const { data, formatPrice } = useRenderEnvironment()
   const { frame } = useCardStyle()
+  const hover = useCardHover()
   const big = shape === 'big'
 
   return (
     <Card.Root
+      className="group"
       position="relative"
       h="full"
       bg="bg.subtle"
       rounded="l3"
       overflow="hidden"
-      css={{
-        '&:hover img': { transform: 'scale(1.05)' },
-        '@media (prefers-reduced-motion: reduce)': {
-          '&:hover img': { transform: 'none' },
-        },
-      }}
+      data-text-reveal={reveal ? '' : undefined}
       {...frame}
+      {...hover}
     >
       <SmartLink
         link={{ kind: 'product', slug: product.slug }}
@@ -1237,6 +1297,7 @@ function ProductBentoCard({
           bgGradient="to-t"
           gradientFrom="blackAlpha.700"
           gradientTo="transparent"
+          {...(reveal && bentoReveal(0, { rise: false }))}
         />
         <Stack position="absolute" insetX="0" bottom="0" gap="0.5" p={big ? '4' : '3'}>
           <Text
@@ -1244,10 +1305,16 @@ function ProductBentoCard({
             fontWeight="semibold"
             lineClamp={2}
             fontSize={big ? { base: 'sm', md: 'lg' } : { base: 'sm', md: 'md' }}
+            {...(reveal && bentoReveal(REVEAL_STAGGER_MS))}
           >
             {product.name}
           </Text>
-          <HStack gap="2" align="baseline" wrap="wrap">
+          <HStack
+            gap="2"
+            align="baseline"
+            wrap="wrap"
+            {...(reveal && bentoReveal(REVEAL_STAGGER_MS * 2))}
+          >
             <Text
               color="white"
               fontWeight="bold"
@@ -1274,7 +1341,13 @@ function ProductBentoCard({
  * price, four columns of paired rows on a desktop and repeating halves on a
  * phone.
  */
-function ProductBento({ products }: { products: StorefrontProductCard[] }) {
+function ProductBento({
+  products,
+  reveal,
+}: {
+  products: StorefrontProductCard[]
+  reveal: boolean
+}) {
   return (
     <Grid
       data-product-layout="bento"
@@ -1295,7 +1368,7 @@ function ProductBento({ products }: { products: StorefrontProductCard[] }) {
             rowSpan={{ base: 1, md: shape === 'big' ? 2 : 1 }}
             minW="0"
           >
-            <ProductBentoCard product={product} shape={shape} />
+            <ProductBentoCard product={product} shape={shape} reveal={reveal} />
           </GridItem>
         )
       })}
@@ -1314,15 +1387,18 @@ export function ProductList({
   layout = 'grid',
   columns = '4',
   mobileColumns,
+  textReveal = false,
 }: {
   products: StorefrontProductCard[]
   layout?: string
   columns?: string
   /** One or two columns/slides on a phone. */
   mobileColumns?: string
+  /** The bento's text shows on hover only (the section's `bentoText`). */
+  textReveal?: boolean
 }) {
   if (layout === 'slider')
     return <ProductSlider products={products} columns={columns} mobileColumns={mobileColumns} />
-  if (layout === 'bento') return <ProductBento products={products} />
+  if (layout === 'bento') return <ProductBento products={products} reveal={textReveal} />
   return <ProductGrid products={products} columns={columns} mobileColumns={mobileColumns} />
 }
