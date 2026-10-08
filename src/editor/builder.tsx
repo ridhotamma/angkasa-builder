@@ -553,8 +553,8 @@ function Builder({
     const { sections: current, onSectionsChange: change } = latest.current
     const at = (index: number) => Math.max(0, Math.min(current.length, index))
 
-    // Dropped, not selected: the detail panel opens when the seller clicks
-    // the section or block, so the palette stays open for the next item.
+    // Dropped, not selected: the palette stays open for the next item. An
+    // item added by click opens its settings instead (see `insert`).
     if (item.kind === 'section') {
       const section = createSection(item.type, item.preset?.settings, item.preset?.style)
       const next = [...current]

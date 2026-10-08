@@ -425,9 +425,11 @@ export function SectionList({
       : sections.length
     const next = [...sections]
     next.splice(at > 0 ? at : sections.length, 0, section)
-    // Added, not selected: the detail panel opens when the seller clicks the
-    // section, so the palette stays open for the next item.
+    // Added by click: open its settings straight away so they can be filled
+    // in. A drop from the palette only adds it (see `onPaletteDrop`), so the
+    // palette stays open for the next item.
     onChange(next)
+    onSelect(section.id)
   }
 
   // The palette takes over the panel while it is open, so dragging from it
