@@ -12,6 +12,9 @@
  * Catalogue targets are addressed by slug, the same key the storefront routes
  * use. A renamed product breaks a link to it; that is the same trade the
  * storefront's own URLs already make.
+ *
+ * One kind stays on the page: `section` points at another section of the same
+ * layout by its id, which is what a hero's "Explore now" scrolls to.
  */
 
 import { z } from 'zod'
@@ -27,6 +30,7 @@ export const LINK_KINDS = [
   'blog',
   'article',
   'search',
+  'section',
   'url',
 ] as const
 
@@ -49,9 +53,26 @@ export type Link =
   /** One article, `/blogs/<blogHandle>/<slug>` — slugs are unique per blog, not per shop. */
   | { kind: 'article'; blogHandle: string; slug: string }
   | { kind: 'search'; query: string }
+  /**
+   * Another section on the same page — what a hero's "Explore now" points at.
+   * The section's id is stored and the anchor derived, so moving or renaming
+   * the target never rewrites the link.
+   */
+  | { kind: 'section'; sectionId: string }
   | { kind: 'url'; href: string }
 
 export const NO_LINK: Link = { kind: 'none' }
+
+/**
+ * The DOM id a section renders with, and the fragment a section link uses.
+ *
+ * Prefixed so it can never collide with an id the host's own chrome carries,
+ * and derived from the section id so nothing about the target is stored on the
+ * link itself.
+ */
+export function sectionAnchorId(sectionId: string): string {
+  return `section-${sectionId}`
+}
 
 const slug = z
   .string()
@@ -95,6 +116,14 @@ const linkSchema = z.discriminatedUnion('kind', [
   }),
   z.object({ kind: z.literal('article'), blogHandle: slug, slug }),
   z.object({ kind: z.literal('search'), query: z.string().trim().min(1).max(120) }),
+  // The same shape a section id is sanitised to in `model/content`.
+  z.object({
+    kind: z.literal('section'),
+    sectionId: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_-]{1,64}$/),
+  }),
   z.object({
     kind: z.literal('url'),
     href: z.string().trim().max(2000).refine(isSafeHref),
@@ -128,9 +157,7 @@ export function storefrontHref(link: Link): string | null {
     case 'category':
       return `/c/${link.slug}`
     case 'catalog':
-      return link.category
-        ? `/products?category=${encodeURIComponent(link.category)}`
-        : '/products'
+      return link.category ? `/products?category=${encodeURIComponent(link.category)}` : '/products'
     case 'blog':
       return link.tag
         ? `/blogs/${link.blogHandle}?tag=${encodeURIComponent(link.tag)}`
@@ -139,6 +166,8 @@ export function storefrontHref(link: Link): string | null {
       return `/blogs/${link.blogHandle}/${link.slug}`
     case 'search':
       return `/search?q=${encodeURIComponent(link.query)}`
+    case 'section':
+      return `#${sectionAnchorId(link.sectionId)}`
     case 'url':
       return link.href
   }

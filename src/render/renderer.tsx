@@ -21,9 +21,11 @@ import {
 import { useLocale } from '@repo/i18n'
 
 import { resolveLinkedSections, type SectionInstance } from '../model/content'
+import { sectionAnchorId } from '../model/links'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
 import { effectCss, themeCssVars, type ThemeSettings } from '../model/settings'
+import { HEADER_HEIGHT_VAR } from './chrome'
 import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
 import { SectionFrame } from './frame'
 import { requestMotionRefresh } from './motion/engine'
@@ -229,12 +231,23 @@ const SectionItem = memo(function SectionItem({
       </SectionElementsContext.Provider>
     </SectionIdContext.Provider>
   )
-  if (!pickable) return <Box mt={mt}>{rendered}</Box>
+  // Every drawn section lands below the sticky header when a section link
+  // scrolls to it, and carries the anchor that link targets (`anchorId`).
+  const anchorStyle = { scrollMarginTop: `var(${HEADER_HEIGHT_VAR}, 0px)` }
+
+  if (!pickable)
+    return (
+      <Box id={sectionAnchorId(section.id)} mt={mt} {...anchorStyle}>
+        {rendered}
+      </Box>
+    )
 
   return (
     <PickableSection
       mt={mt}
       id={section.id}
+      anchorId={sectionAnchorId(section.id)}
+      {...anchorStyle}
       selected={selected}
       first={first}
       toolbar={toolbar}
@@ -337,6 +350,7 @@ function sameBox(a: OutlineBox | null, b: OutlineBox | null) {
  */
 function PickableSection({
   id,
+  anchorId,
   selected,
   first,
   toolbar,
@@ -344,7 +358,10 @@ function PickableSection({
   children,
   ...props
 }: {
+  /** The section's own id, for the editor's `data-section-id` hook. */
   id: string
+  /** The DOM id a section link scrolls to — `section-<id>`. */
+  anchorId: string
   selected: boolean
   first: boolean
   toolbar: ReactNode
@@ -382,6 +399,7 @@ function PickableSection({
   return (
     <Box
       ref={ref}
+      id={anchorId}
       data-section-id={id}
       position="relative"
       cursor="pointer"

@@ -56,6 +56,7 @@ import {
   useContext,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -147,10 +148,11 @@ import { BlockStylePanel } from './block-style-panel'
 import { CatalogueProvider } from './catalogue'
 import { SECTION_LINKING_ENABLED } from './features'
 import { DropOverlay, type DropTarget } from './preview-drop'
-import { FieldsForm, SelectInput } from './controls'
+import { FieldsForm, SectionLinkProvider, SelectInput } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
 import { useEditorText } from './messages'
 import { PreviewFrame, type PreviewDevice } from './preview-frame'
+import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import { PinnedRow, SectionList } from './section-list'
 import { SectionToolbar } from './section-toolbar'
 import type { EditorServices } from './services'
@@ -496,6 +498,21 @@ function Builder({
 
   // What the preview draws: a deferred copy, drawn after the input updates.
   const previewSections = useDeferredValue(sections)
+
+  // The preview slides too, read from the iframe's own document: a reorder in
+  // the list or a move from the toolbar both land here, and only the sections
+  // that changed places animate.
+  const previewRects = useRef<SectionRects>(new Map())
+  const previewIndexes = useRef<Map<string, number>>(new Map())
+
+  useLayoutEffect(() => {
+    const ids = previewSections.map((section) => section.id)
+    previewRects.current = flipElements(previewDoc, ids, previewRects.current, {
+      attribute: 'data-section-id',
+      animate: orderMoved(ids, previewIndexes.current),
+    })
+    previewIndexes.current = new Map(ids.map((id, index) => [id, index]))
+  }, [previewDoc, previewSections])
 
   // Text typed into the preview edits the latest sections, read through refs
   // so the environment below does not change with every keystroke.
@@ -1536,7 +1553,7 @@ function Builder({
     </PreviewFrame>
   )
 
-  const panelBox = panelOverride ? (
+  const panelBody = panelOverride ? (
     // The host panel fills the same frame the section list gets, but without
     // the scroll area: a chat pins its composer and scrolls its own messages.
     <Box
@@ -1573,6 +1590,16 @@ function Builder({
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar />
     </ScrollArea.Root>
+  )
+
+  // The panel's link controls can point at any section on the page being
+  // edited, so the list is offered to them here rather than through the host's
+  // services (which know the catalogue, not the layout). The section being
+  // edited is named too, so no section can be offered a link to itself.
+  const panelBox = (
+    <SectionLinkProvider sections={sections} currentSectionId={selected?.id ?? null}>
+      {panelBody}
+    </SectionLinkProvider>
   )
 
   if (!compact) {

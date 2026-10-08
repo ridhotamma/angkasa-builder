@@ -28,7 +28,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   LuClipboardCopy,
   LuCopy,
@@ -62,6 +62,7 @@ import { sectionSchema, type SectionScope } from '../model/sections'
 import { AddPalette, type PaletteBlock } from './add-palette'
 import { SECTION_LINKING_ENABLED } from './features'
 import { useEditorText } from './messages'
+import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import { sectionIcon } from './section-icons'
 
 /* -------------------------------------------------------------------------- */
@@ -200,6 +201,7 @@ function Row({
   return (
     <HStack
       ref={setNodeRef}
+      data-section-row={section.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       gap="1"
       px="1.5"
@@ -394,6 +396,21 @@ export function SectionList({
     return map
   }, [sections])
 
+  // The rows slide to their new places whenever the order changes, whichever
+  // control asked for it — a drag, the preview's move buttons, a paste.
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const rowRects = useRef<SectionRects>(new Map())
+  const rowIndexes = useRef<Map<string, number>>(new Map())
+
+  useLayoutEffect(() => {
+    const ids = sections.map((section) => section.id)
+    rowRects.current = flipElements(rowsRef.current, ids, rowRects.current, {
+      attribute: 'data-section-row',
+      animate: orderMoved(ids, rowIndexes.current),
+    })
+    rowIndexes.current = new Map(ids.map((id, index) => [id, index]))
+  }, [sections])
+
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
     const from = sections.findIndex((section) => section.id === active.id)
@@ -473,7 +490,7 @@ export function SectionList({
             items={sections.map((section) => section.id)}
             strategy={verticalListSortingStrategy}
           >
-            <Stack gap="1.5">
+            <Stack ref={rowsRef} gap="1.5">
               {sections.map((section) => (
                 <Row
                   key={section.id}

@@ -23,7 +23,7 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   LuArrowDown,
   LuArrowUp,
@@ -47,6 +47,7 @@ import {
 } from '../model/menus'
 import { Labeled, LINK_KIND_LABELS, LinkControl } from './controls'
 import { useEditorText } from './messages'
+import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import type { EditorServices } from './services'
 
 /** An item's place in the tree: its index at each level, top first. */
@@ -105,6 +106,20 @@ function Items({ items, onChange, path, services, open, setOpen, labelError }: I
   const summary = useLinkSummary()
   const depth = path.length + 1
 
+  // Rows slide to their new places on every reorder — see `ListControl`.
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const rowRects = useRef<SectionRects>(new Map())
+  const rowIndexes = useRef<Map<string, number>>(new Map())
+
+  useLayoutEffect(() => {
+    const ids = items.map((item) => item.id)
+    rowRects.current = flipElements(rowsRef.current, ids, rowRects.current, {
+      attribute: 'data-menu-row',
+      animate: orderMoved(ids, rowIndexes.current),
+    })
+    rowIndexes.current = new Map(ids.map((id, index) => [id, index]))
+  }, [items])
+
   const update = (id: string, next: Partial<MenuItem>) =>
     onChange(items.map((item) => (item.id === id ? { ...item, ...next } : item)))
 
@@ -116,13 +131,13 @@ function Items({ items, onChange, path, services, open, setOpen, labelError }: I
   }
 
   return (
-    <Stack gap="1.5">
+    <Stack ref={rowsRef} gap="1.5">
       {items.map((item, index) => {
         const here = [...path, index]
         const expanded = open === item.id
         const error = labelError?.(here)
         return (
-          <Box key={item.id}>
+          <Box key={item.id} data-menu-row={item.id}>
             <Collapsible.Root
               open={expanded}
               onOpenChange={({ open: next }) => setOpen(next ? item.id : null)}

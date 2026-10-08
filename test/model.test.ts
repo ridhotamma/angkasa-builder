@@ -72,6 +72,18 @@ describe('links', () => {
     expect(storefrontHref({ kind: 'search', query: 'kaos polos' })).toBe('/search?q=kaos%20polos')
     expect(storefrontHref({ kind: 'none' })).toBeNull()
   })
+
+  test('a section link points at its anchor on the same page', () => {
+    expect(storefrontHref({ kind: 'section', sectionId: 'hero1' })).toBe('#section-hero1')
+    expect(sanitizeLink({ kind: 'section', sectionId: 'hero_1-2' })).toEqual({
+      kind: 'section',
+      sectionId: 'hero_1-2',
+    })
+    // Empty, spaced and path-like ids are not section ids.
+    expect(sanitizeLink({ kind: 'section', sectionId: '' })).toEqual({ kind: 'none' })
+    expect(sanitizeLink({ kind: 'section', sectionId: 'a b' })).toEqual({ kind: 'none' })
+    expect(sanitizeLink({ kind: 'section', sectionId: '../top' })).toEqual({ kind: 'none' })
+  })
 })
 
 describe('sections', () => {

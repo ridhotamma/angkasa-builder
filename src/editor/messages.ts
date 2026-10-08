@@ -99,6 +99,8 @@ const MESSAGES = {
   linkArticle: { en: 'Article', id: 'Artikel' },
   blogTag: { en: 'Only articles tagged (optional)', id: 'Hanya artikel dengan tag (opsional)' },
   linkSearch: { en: 'Search results', id: 'Hasil pencarian' },
+  linkSection: { en: 'A section on this page', id: 'Bagian di halaman ini' },
+  linkSectionPlaceholder: { en: 'Pick a section', id: 'Pilih bagian' },
   linkUrl: { en: 'Web address', id: 'Alamat web' },
   searchQuery: { en: 'Search for', id: 'Cari' },
   urlHelp: { en: 'Must start with https://', id: 'Harus diawali https://' },

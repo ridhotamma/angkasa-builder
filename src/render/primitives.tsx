@@ -52,7 +52,7 @@ import {
   type TextElementStyle,
 } from '../model/element-style'
 import { readLink, readText, type FieldValues } from '../model/fields'
-import type { Link } from '../model/links'
+import { sectionAnchorId, type Link } from '../model/links'
 import type { ButtonStyle, CardStyle, ThemeSettings } from '../model/settings'
 import type { SectionHeadline } from '../model/section-style'
 import { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
@@ -86,11 +86,63 @@ export function useOverlayProps() {
     : {}
 }
 
+/**
+ * Scroll a section into view, smoothly.
+ *
+ * The section's own `scroll-margin-top` (set against the sticky store header)
+ * is what the landing is measured from, so its heading is not hidden behind
+ * the header. A shopper who asked for reduced motion gets the jump without the
+ * animation — their system setting is the one place that preference is said.
+ *
+ * Returns whether the section was found.
+ */
+export function scrollToSection(doc: Document, sectionId: string): boolean {
+  const target = doc.getElementById(sectionAnchorId(sectionId))
+  if (!target) return false
+
+  const reduced = doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+  return true
+}
+
 /** The anchor props a link needs: where it goes, and whether it opens a new tab. */
 function useAnchor(link: Link) {
   const { href, mode, navigate } = useRenderEnvironment()
   const url = href(link)
   if (!url) return null
+
+  // A section link is a same-document jump, not a route: it scrolls to the
+  // section it names and keeps the address shareable, so `navigate` never
+  // sees it. The `href` stays real, so a middle-click still opens the page at
+  // that section.
+  if (link.kind === 'section') {
+    return {
+      href: url,
+      onClick: (event: MouseEvent<HTMLElement>) => {
+        if (mode === 'preview') return event.preventDefault()
+        if (event.defaultPrevented || event.button !== 0) return
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        event.preventDefault()
+        const doc = event.currentTarget.ownerDocument
+        const target = doc.getElementById(sectionAnchorId(link.sectionId))
+        // A section pointing at itself — a link stored before the editor
+        // stopped offering it — goes nowhere rather than nudging the page.
+        if (!target || target.contains(event.currentTarget)) return
+        scrollToSection(doc, link.sectionId)
+        // Shareable, without dropping the page's own query (a filtered
+        // catalogue, a search) from the address.
+        const view = doc.defaultView
+        if (view) {
+          view.history.replaceState(
+            null,
+            '',
+            `${view.location.pathname}${view.location.search}${url}`,
+          )
+        }
+      },
+    }
+  }
+
   const external = link.kind === 'url'
   return {
     href: url,

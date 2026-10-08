@@ -171,6 +171,18 @@ export function createSection(
 
 /* Editing a list of sections — shared by the editor's list and its preview toolbar. */
 
+/**
+ * The sections a section link may point at: every one but the section being
+ * edited. A hero whose button scrolls back to the hero is a button that goes
+ * nowhere, so the picker never offers it.
+ */
+export function sectionLinkTargets(
+  sections: readonly SectionInstance[],
+  currentSectionId: string | null,
+): SectionInstance[] {
+  return sections.filter((section) => section.id !== currentSectionId)
+}
+
 /** `sections` with the one `id` moved `by` places; unchanged when it would leave the list. */
 export function moveSection(
   sections: SectionInstance[],

@@ -33,7 +33,16 @@ import {
   Text,
   Textarea,
 } from '@chakra-ui/react'
-import { memo, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  memo,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import {
   LuArrowDown,
   LuArrowUp,
@@ -47,6 +56,8 @@ import {
 } from 'react-icons/lu'
 
 import { readBlockDevices } from '../model/block-style'
+import { sectionLinkTargets, type SectionInstance } from '../model/content'
+import { sectionSchema } from '../model/sections'
 
 import {
   canAddBlock,
@@ -73,6 +84,7 @@ import {
   TableControl,
   VideoControl,
 } from './media-controls'
+import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import { RichTextControl } from './rich-text-control'
 import { useEditorText, type EditorMessage } from './messages'
 import type { EditorServices } from './services'
@@ -319,6 +331,7 @@ export const LINK_KIND_LABELS: Record<LinkKind, EditorMessage> = {
   blog: 'linkBlog',
   article: 'linkArticle',
   search: 'linkSearch',
+  section: 'linkSection',
   url: 'linkUrl',
 }
 
@@ -339,9 +352,39 @@ function emptyLink(kind: LinkKind): Link {
       return { kind, blogHandle: '', slug: '' }
     case 'search':
       return { kind, query: '' }
+    case 'section':
+      return { kind, sectionId: '' }
     case 'url':
       return { kind, href: 'https://' }
   }
+}
+
+/**
+ * The sections a link can point at, supplied by the builder's panel.
+ *
+ * `null` outside the builder — the menu editor, say — where a same-page
+ * anchor is not a link target; the kind is then absent from the picker rather
+ * than offered and unusable.
+ */
+interface SectionLinkOptions {
+  sections: readonly SectionInstance[]
+  /** The section being edited: a link may not point at the section it sits in. */
+  currentSectionId: string | null
+}
+
+const SectionLinkContext = createContext<SectionLinkOptions | null>(null)
+
+export function SectionLinkProvider({
+  sections,
+  currentSectionId = null,
+  children,
+}: {
+  sections: readonly SectionInstance[]
+  currentSectionId?: string | null
+  children: ReactNode
+}) {
+  const value = useMemo(() => ({ sections, currentSectionId }), [sections, currentSectionId])
+  return <SectionLinkContext.Provider value={value}>{children}</SectionLinkContext.Provider>
 }
 
 /**
@@ -371,8 +414,34 @@ export function LinkControl({
   onChange: (link: Link) => void
   services: EditorServices
 }) {
-  const { t } = useEditorText()
+  const { t, l } = useEditorText()
   const link = value ?? NO_LINK
+  const sectionLinks = useContext(SectionLinkContext)
+
+  // The page's own sections, named the way the section list names them: the
+  // section type, then its first line of copy so two heroes are tellable
+  // apart. The section being edited is left out — a button cannot scroll to
+  // the section it is already in.
+  const sectionOptions = useMemo(
+    () =>
+      sectionLinkTargets(sectionLinks?.sections ?? [], sectionLinks?.currentSectionId ?? null).map(
+        (section, index) => {
+          const schema = sectionSchema(section.type)
+          const detail = readText(section.settings, 'heading') || readText(section.settings, 'text')
+          const name = schema ? l(schema.name) : section.type
+          return {
+            value: section.id,
+            label: detail ? `${name} — ${detail.slice(0, 40)}` : `${name} ${index + 1}`,
+          }
+        },
+      ),
+    [sectionLinks, l],
+  )
+
+  const kindOptions = (Object.keys(LINK_KIND_LABELS) as LinkKind[]).filter(
+    // Offered only where there is a page to point into.
+    (kind) => kind !== 'section' || sectionOptions.length > 0,
+  )
 
   const slugOptions =
     // An article is picked from its own list below: its slug alone is not unique.
@@ -391,11 +460,22 @@ export function LinkControl({
       <SelectInput
         value={link.kind}
         onChange={(kind) => onChange(emptyLink(kind as LinkKind))}
-        options={(Object.keys(LINK_KIND_LABELS) as LinkKind[]).map((kind) => ({
+        options={kindOptions.map((kind) => ({
           value: kind,
           label: t(LINK_KIND_LABELS[kind]),
         }))}
       />
+      {link.kind === 'section' && (
+        <OwnField>
+          <SelectInput
+            value={link.sectionId}
+            placeholder={t('linkSectionPlaceholder')}
+            clearable
+            onChange={(sectionId) => onChange({ kind: 'section', sectionId })}
+            options={sectionOptions}
+          />
+        </OwnField>
+      )}
       {slugOptions && 'slug' in link && (
         <OwnField>
           <SelectInput
@@ -534,6 +614,21 @@ function ListControl({
   const items = Array.isArray(value) ? (value as Array<FieldValues & { id: string }>) : []
   const [open, setOpen] = useState<string | null>(null)
 
+  // Rows slide to their new places on every reorder, the same way the section
+  // list does — the panel gives feedback even when two rows read alike.
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const rowRects = useRef<SectionRects>(new Map())
+  const rowIndexes = useRef<Map<string, number>>(new Map())
+
+  useLayoutEffect(() => {
+    const ids = items.map((item) => item.id)
+    rowRects.current = flipElements(rowsRef.current, ids, rowRects.current, {
+      attribute: 'data-list-row',
+      animate: orderMoved(ids, rowIndexes.current),
+    })
+    rowIndexes.current = new Map(ids.map((id, index) => [id, index]))
+  }, [items])
+
   function move(index: number, by: number) {
     const next = [...items]
     const [item] = next.splice(index, 1)
@@ -542,7 +637,7 @@ function ListControl({
   }
 
   return (
-    <Stack gap="2">
+    <Stack ref={rowsRef} gap="2">
       {items.map((item, index) => {
         const voucherId = readText(item, 'voucherId')
         const itemVoucher = voucherId
@@ -552,6 +647,12 @@ function ListControl({
           readText(item, field.titleKey) ||
           (itemVoucher ? `${itemVoucher.code} — ${itemVoucher.name}` : '') ||
           `${l(field.itemLabel)} ${index + 1}`
+        // An item that carries a picture shows it, so two untitled rows are
+        // still tellable apart — and a move is visible even when the labels
+        // are only their positions.
+        const imageField = field.fields.find((candidate) => candidate.kind === 'image')
+        const imageId = imageField ? readText(item, imageField.key) : ''
+        const thumbnail = imageId ? services.imageUrl(imageId, { width: 64, height: 64 }) : null
         const expanded = open === item.id
         return (
           <Collapsible.Root
@@ -559,11 +660,21 @@ function ListControl({
             open={expanded}
             onOpenChange={({ open: next }) => setOpen(next ? item.id : null)}
           >
-            <Box borderWidth="1px" borderColor="border.subtle" rounded="md">
+            <Box data-list-row={item.id} borderWidth="1px" borderColor="border.subtle" rounded="md">
               <HStack gap="1" px="2" py="1.5">
                 <Collapsible.Trigger asChild>
                   <Button variant="ghost" size="xs" flex="1" justifyContent="start" minW="0">
                     <Icon as={expanded ? LuChevronDown : LuChevronRight} />
+                    {thumbnail && (
+                      <Image
+                        src={thumbnail}
+                        alt=""
+                        boxSize="8"
+                        rounded="md"
+                        objectFit="cover"
+                        flexShrink="0"
+                      />
+                    )}
                     <Text truncate>{title}</Text>
                   </Button>
                 </Collapsible.Trigger>
@@ -934,6 +1045,20 @@ function BlocksControl({
   const blocks = Array.isArray(value) ? (value as BlockValue[]) : []
   const [open, setOpen] = useState<string | null>(null)
 
+  // Rows slide to their new places on every reorder — see `ListControl`.
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const rowRects = useRef<SectionRects>(new Map())
+  const rowIndexes = useRef<Map<string, number>>(new Map())
+
+  useLayoutEffect(() => {
+    const ids = blocks.map((block) => block.id)
+    rowRects.current = flipElements(rowsRef.current, ids, rowRects.current, {
+      attribute: 'data-block-row',
+      animate: orderMoved(ids, rowIndexes.current),
+    })
+    rowIndexes.current = new Map(ids.map((id, index) => [id, index]))
+  }, [blocks])
+
   function move(index: number, by: number) {
     const next = [...blocks]
     const [block] = next.splice(index, 1)
@@ -942,7 +1067,7 @@ function BlocksControl({
   }
 
   return (
-    <Stack gap="1.5">
+    <Stack ref={rowsRef} gap="1.5">
       {blocks.map((block, index) => {
         const schema = field.blocks.find((candidate) => candidate.type === block.type)
         if (!schema) return null
@@ -968,6 +1093,7 @@ function BlocksControl({
             onOpenChange={({ open: next }) => setOpen(next ? block.id : null)}
           >
             <Box
+              data-block-row={block.id}
               borderWidth="1px"
               borderColor={expanded ? 'brand.muted' : 'border.subtle'}
               rounded="md"
