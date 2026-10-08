@@ -107,7 +107,7 @@ export function scrollToSection(doc: Document, sectionId: string): boolean {
 
 /** The anchor props a link needs: where it goes, and whether it opens a new tab. */
 function useAnchor(link: Link) {
-  const { href, mode, navigate } = useRenderEnvironment()
+  const { href, mode, navigate, editing } = useRenderEnvironment()
   const url = href(link)
   if (!url) return null
 
@@ -119,11 +119,21 @@ function useAnchor(link: Link) {
     return {
       href: url,
       onClick: (event: MouseEvent<HTMLElement>) => {
-        if (mode === 'preview') return event.preventDefault()
         if (event.defaultPrevented || event.button !== 0) return
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-        event.preventDefault()
         const doc = event.currentTarget.ownerDocument
+
+        // The editor's preview still plays the jump — the seller tries the
+        // navigation where they built it — but nothing else about it does: the
+        // address stays the editor's, and a snapshot, which has no `editing`,
+        // is a still picture rather than a live page.
+        if (mode === 'preview') {
+          event.preventDefault()
+          if (editing) scrollToSection(doc, link.sectionId)
+          return
+        }
+
+        event.preventDefault()
         const target = doc.getElementById(sectionAnchorId(link.sectionId))
         // A section pointing at itself — a link stored before the editor
         // stopped offering it — goes nowhere rather than nudging the page.

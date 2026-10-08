@@ -3,6 +3,7 @@
 export {
   findProductCard,
   previewArticleDetail,
+  previewListing,
   previewProductDetail,
   RenderProvider,
   sampleStorefrontData,
@@ -12,6 +13,7 @@ export {
   type StorefrontArticleDetail,
   type StorefrontCategoryData,
   type StorefrontGalleryImage,
+  type StorefrontListingData,
   type StorefrontProductCard,
   type StorefrontProductDetail,
   type StorefrontRenderData,

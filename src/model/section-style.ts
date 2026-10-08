@@ -174,6 +174,17 @@ export const HEADLINE_ANIMATIONS = [
 ] as const
 export type SectionHeadline = (typeof HEADLINE_ANIMATIONS)[number]['value']
 
+/**
+ * Whether a section may be made to stick while scrolling.
+ *
+ * Built but switched off for now, like `SECTION_LINKING_ENABLED` in the editor:
+ * the field, the sanitiser and the renderer all keep working, and flipping this
+ * to `true` brings the toggle back and lets the sections that ask for it stick
+ * again. While it is off the toggle is not offered and a stored `sticky: true`
+ * is ignored, so no layout can pin a section.
+ */
+export const SECTION_STICKY_ENABLED = false
+
 export const SECTION_STYLE_FIELDS: readonly Field[] = [
   {
     kind: 'select',

@@ -33,6 +33,7 @@ import {
   ArticleShare,
   RelatedArticles,
 } from './article-page'
+import { CatalogHeader, CatalogProducts } from './catalog-page'
 import { PinnedScroll, ScrollRail, StackedCards } from './motion-sections'
 import { ProductInfo, ProductReviews, RelatedProducts } from './product-page'
 import { PREMIUM_SECTION_RENDERERS } from './premium-sections'
@@ -73,4 +74,6 @@ export const SECTION_RENDERERS = {
   'article-share': ArticleShare,
   'article-pagination': ArticlePagination,
   'related-articles': RelatedArticles,
+  'catalog-header': CatalogHeader,
+  'catalog-products': CatalogProducts,
 } satisfies Record<SectionType, ComponentType<SectionProps>>

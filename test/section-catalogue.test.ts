@@ -13,7 +13,7 @@ import {
 /** Sections kept in the library but withdrawn from the "Add section" picker. */
 const HIDDEN = ['announcement-bar', 'newsletter', 'spin-360', 'pinned-scroll'] as const
 
-const SCOPES: readonly SectionScope[] = ['home', 'page', 'product', 'article']
+const SCOPES: readonly SectionScope[] = ['home', 'page', 'product', 'article', 'catalog']
 
 describe('the section catalogue', () => {
   test('hidden sections are not offered in the picker, on any page', () => {

@@ -127,13 +127,17 @@ export interface SectionInstance {
   overrides?: SectionOverrides
 }
 
-export const TEMPLATE_KEYS = ['home', 'product', 'article'] as const
+export const TEMPLATE_KEYS = ['home', 'product', 'article', 'catalog'] as const
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number]
 
 export const TEMPLATE_SCOPES: Record<TemplateKey, SectionScope> = {
   home: 'home',
   product: 'product',
   article: 'article',
+  // One template for every listing page: the whole catalogue (`/products`)
+  // and the category (`/c/<slug>`) and collection (`/k/<slug>`) pages that
+  // share its screen. What differs between them is data, not structure.
+  catalog: 'catalog',
 }
 
 export interface ThemeContent {
@@ -754,6 +758,34 @@ export function sanitizeArticleTemplate(value: unknown): SectionInstance[] {
   return sections.filter((section) => required.has(section.type) || keep.has(section.id))
 }
 
+/** The catalogue page every theme starts with — and the one a theme without its own gets. */
+export function defaultCatalogTemplate(): SectionInstance[] {
+  return [createSection('catalog-header'), createSection('catalog-products')]
+}
+
+/**
+ * The catalogue page template, cleaned. Its header and its product grid are
+ * required, like the product page's buy box: a theme saved before catalogue
+ * templates existed gets the default page, and one missing either section by
+ * hand gets it back — the header at the top, the grid right after it.
+ */
+export function sanitizeCatalogTemplate(value: unknown): SectionInstance[] {
+  if (!Array.isArray(value) || value.length === 0) return defaultCatalogTemplate()
+  let sections = sanitizeSections(value, 'catalog')
+  const has = (type: SectionType) => sections.some((section) => section.type === type)
+  if (!has('catalog-header')) sections = [createSection('catalog-header'), ...sections]
+  if (!has('catalog-products')) {
+    const at = sections.findIndex((section) => section.type === 'catalog-header') + 1
+    sections = [...sections.slice(0, at), createSection('catalog-products'), ...sections.slice(at)]
+  }
+  if (sections.length <= MAX_SECTIONS) return sections
+  // Over the cap after the repair: drop from the end, never a required section.
+  const required = new Set<string>(['catalog-header', 'catalog-products'])
+  const optional = sections.filter((section) => !required.has(section.type))
+  const keep = new Set(optional.slice(0, MAX_SECTIONS - 2).map((section) => section.id))
+  return sections.filter((section) => required.has(section.type) || keep.has(section.id))
+}
+
 export function sanitizeThemeContent(value: unknown): ThemeContent {
   const source = isRecord(value) ? value : {}
   const templates = isRecord(source.templates) ? source.templates : {}
@@ -765,6 +797,7 @@ export function sanitizeThemeContent(value: unknown): ThemeContent {
       home: sanitizeSections(templates.home, 'home'),
       product: sanitizeProductTemplate(templates.product),
       article: sanitizeArticleTemplate(templates.article),
+      catalog: sanitizeCatalogTemplate(templates.catalog),
     },
     recommendedLooks: sanitizeRecommendedLooks(source.recommendedLooks),
   }
@@ -825,7 +858,7 @@ export const EMPTY_THEME_CONTENT: ThemeContent = {
   version: CONTENT_VERSION,
   settings: DEFAULT_THEME_SETTINGS,
   layout: sanitizeLayout(null),
-  templates: { home: [], product: [], article: [] },
+  templates: { home: [], product: [], article: [], catalog: [] },
   recommendedLooks: [],
 }
 
@@ -971,6 +1004,7 @@ export function remapThemeImages(
       home: remapSections(content.templates.home, images, videoMap),
       product: remapSections(content.templates.product, images, videoMap),
       article: remapSections(content.templates.article, images, videoMap),
+      catalog: remapSections(content.templates.catalog, images, videoMap),
     },
   }
 }

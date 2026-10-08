@@ -129,6 +129,26 @@ export interface StorefrontVoucherData {
   expiresAt?: string | null
 }
 
+/**
+ * A listing page's own data: the whole catalogue, one category, or one
+ * collection. The template is the same for all three — what differs is this
+ * slice, which the `catalog-header` and `catalog-products` sections read.
+ */
+export interface StorefrontListingData {
+  title: string
+  description: string
+  total: number
+  /** The page being shown, 1-based. */
+  page: number
+  /** How many pages the listing has, at least 1. */
+  pages: number
+  products: StorefrontProductCard[]
+  /** The shop's active categories, for the header's filter. */
+  categories: Array<{ id: string; name: string; slug: string }>
+  /** The category or collection the page is showing, when it is one. */
+  current: { kind: 'category' | 'collection'; name: string; slug: string } | null
+}
+
 export interface StorefrontRenderData {
   shop: {
     name: string
@@ -154,6 +174,8 @@ export interface StorefrontRenderData {
   product?: StorefrontProductDetail
   /** Only on an article page — or, in the editor, the article being written. */
   article?: StorefrontArticleDetail
+  /** Only on a catalogue, category or collection page. */
+  listing?: StorefrontListingData
   vouchers?: StorefrontVoucherData[]
 }
 
@@ -179,6 +201,12 @@ export interface RenderEnvironment {
   navigate?: (href: string) => void
   /** An uploaded video's file id as a URL the `<video>` element can stream. */
   videoUrl?: (fileId: string) => string | null
+  /**
+   * The URL of another page of a listing, filters and all — how the catalogue
+   * template's pager pages a category or collection route the host owns. The
+   * editor leaves it out and gets the plain catalogue's own URLs.
+   */
+  pageHref?: (page: number) => string
   /**
    * The moment scheduled sections and countdowns are judged against. The
    * storefront passes the request's time, so the server and the browser
@@ -388,6 +416,28 @@ export function previewProductDetail(data: StorefrontRenderData): StorefrontProd
       note: 'Measured flat, across the chest from armpit to armpit.',
     },
     related,
+  }
+}
+
+/**
+ * The listing a catalogue-page preview shows: the shop's newest products, its
+ * categories, and a second page so the pagination has something to draw. The
+ * editor has no server listing of its own.
+ */
+export function previewListing(data: StorefrontRenderData): StorefrontListingData {
+  return {
+    title: 'All products',
+    description: 'Every product in the shop, newest first.',
+    total: data.latest.length,
+    page: 1,
+    pages: Math.max(2, Math.ceil(data.latest.length / 12)),
+    products: data.latest.slice(0, 12),
+    categories: data.categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+    })),
+    current: null,
   }
 }
 

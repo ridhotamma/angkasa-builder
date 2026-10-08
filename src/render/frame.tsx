@@ -146,8 +146,10 @@ export function SectionFrame({
       : null
 
   const surface: BoxProps = {
-    position: style.sticky ? 'sticky' : 'relative',
-    ...(style.sticky && { top: '0', zIndex: 1 }),
+    // Always positioned: the background layers and dividers inside are
+    // absolute against it. The section's own "Stick while scrolling" lives on
+    // the wrapper around this frame — see `SectionItem` for why.
+    position: 'relative',
     ...(style.scheme && vars && { css: schemeCss(style.scheme, vars), color: 'fg' }),
     ...(paint.bg && { bg: paint.bg }),
     ...(paint.backgroundImage && { backgroundImage: paint.backgroundImage }),

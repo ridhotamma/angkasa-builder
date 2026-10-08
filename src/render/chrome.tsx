@@ -270,24 +270,24 @@ function DesktopMenu({ items, justify }: { items: MenuItem[]; justify: 'start' |
 
 /**
  * The whole main menu in a drawer on a phone, nested levels as accordions,
- * with the account pinned at its bottom — out of the top bar, where there is
- * room to write its name out.
+ * with the caller's rows pinned at its bottom.
+ *
+ * Opened by the hamburger in the phone bar, in every header state: the tab
+ * bar's own tabs are the shop's destinations, not its whole menu.
  */
 function MobileMenu({
   items,
   shop,
-  account,
-  trigger,
+  bottom,
 }: {
   items: MenuItem[]
   shop: ChromeShop
-  account?: ReactNode
-  /** What opens the drawer: the bar's menu button unless the tab bar brings its own tab. */
-  trigger?: ReactNode
+  /** Rows under the menu — the account row, and whatever the host pins with it. */
+  bottom?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const overlay = useOverlayProps()
-  if (items.length === 0 && !account) return null
+  if (items.length === 0 && !bottom) return null
 
   const entry = (item: MenuItem, depth: number): ReactNode =>
     item.children.length === 0 ? (
@@ -320,11 +320,9 @@ function MobileMenu({
       size="xs"
     >
       <Drawer.Trigger asChild>
-        {trigger ?? (
-          <IconButton aria-label="Menu" variant="ghost" size="md" rounded="full" color="inherit">
-            <LuMenu />
-          </IconButton>
-        )}
+        <IconButton aria-label="Menu" variant="ghost" size="md" rounded="full" color="inherit">
+          <LuMenu />
+        </IconButton>
       </Drawer.Trigger>
       <Portal>
         <Drawer.Backdrop />
@@ -338,16 +336,16 @@ function MobileMenu({
                 {items.map((item) => entry(item, 0))}
               </Accordion.Root>
             </Drawer.Body>
-            {account && (
+            {bottom && (
               <Box
-                data-mobile-account=""
+                data-mobile-drawer-bottom=""
                 borderTopWidth="1px"
                 borderColor="border"
                 px="6"
                 py="3"
                 onClick={() => setOpen(false)}
               >
-                {account}
+                <Stack gap="1">{bottom}</Stack>
               </Box>
             )}
           </Drawer.Content>
@@ -421,9 +419,16 @@ export interface StoreHeaderProps {
   account?: ReactNode
   /**
    * The account as a full-width row for the phone menu's bottom. Falls back
-   * to `account`, so a host with one control still gets it down there.
+   * to `account`, so a host with one control still gets it down there. With
+   * the tab bar on, the account is a tab and the row is left out.
    */
   drawerAccount?: ReactNode
+  /**
+   * What else sits under the menu, below the account row — the storefront
+   * pins its colour-mode switch here. Kept when the tab bar carries the
+   * account, so the switch does not lose its only phone home.
+   */
+  drawerFooter?: ReactNode
   /** Trailing controls for a host that has no separate cart and account slots. */
   actions?: ReactNode
   /**
@@ -526,6 +531,7 @@ export function StoreHeader({
   cart,
   account,
   drawerAccount: drawerAccountProp,
+  drawerFooter,
   actions,
   transparent = false,
 }: StoreHeaderProps) {
@@ -589,19 +595,46 @@ export function StoreHeader({
       actions
     )
   const drawerAccount = drawerAccountProp ?? account
+  // The drawer's bottom rows. With the tab bar on, the account is a tab, so
+  // the drawer skips it and keeps only what the host pins beyond it — the
+  // storefront's colour-mode switch, which has no other phone home there.
+  const drawerBottom = tabs ? (
+    drawerFooter
+  ) : drawerAccount && drawerFooter ? (
+    <>
+      {drawerAccount}
+      {drawerFooter}
+    </>
+  ) : (
+    (drawerAccount ?? drawerFooter)
+  )
 
   // The phone bar is one design in every layout: a menu button with the brand
   // beside it, and search and the cart on the right. The account is not here —
   // it waits at the bottom of the menu, where its name can be written out.
   //
-  // With the tab bar on, the menu, search, cart and account all live down in
-  // `StoreTabBar`, so the top of a phone keeps only the brand.
+  // With the tab bar on, the bar keeps the menu button on the left and search
+  // on the right, around the centred brand; only the cart and the account move
+  // down to `StoreTabBar`, whose own tabs are destinations rather than the
+  // whole menu.
   const mobileBar = tabs ? (
-    <Flex data-mobile-bar="" justify="center" minW="0" hideFrom="md">
-      <Box minW="0" maxW="full">
+    <Grid
+      data-mobile-bar=""
+      templateColumns="minmax(0, 1fr) auto minmax(0, 1fr)"
+      alignItems="center"
+      gap="2"
+      hideFrom="md"
+    >
+      <HStack gap="2.5" minW="0">
+        <MobileMenu items={menu} shop={shop} bottom={drawerBottom} />
+      </HStack>
+      <Box minW="0" maxW="full" justifySelf="center">
         <Logo shop={shop} centered />
       </Box>
-    </Flex>
+      <HStack gap="1" justifySelf="end" minW="0" flexShrink="0">
+        {search}
+      </HStack>
+    </Grid>
   ) : (
     <Grid
       data-mobile-bar=""
@@ -611,7 +644,7 @@ export function StoreHeader({
       hideFrom="md"
     >
       <HStack gap="2.5" minW="0">
-        <MobileMenu items={menu} shop={shop} account={drawerAccount} />
+        <MobileMenu items={menu} shop={shop} bottom={drawerBottom} />
         <Box minW="0">
           <Logo shop={shop} />
         </Box>
@@ -864,23 +897,21 @@ export function StoreTab({
 
 export interface StoreTabBarProps {
   header: FieldValues
-  shop: ChromeShop
-  menu: MenuItem[]
   /** The shopper is on the home page. */
   homeActive?: boolean
-  /** A tab that opens the search, built with `StoreTab`. Shown when the header shows search. */
-  search?: ReactNode
+  /** The shopper is in the catalogue (`/products`). */
+  catalogActive?: boolean
   /** The cart tab, built with `StoreTab`. */
   cart?: ReactNode
   /** The account tab, built with `StoreTab`. */
   account?: ReactNode
-  /** The full-width account row at the bottom of the menu drawer, as in the header's. */
-  drawerAccount?: ReactNode
 }
 
 /**
  * The phone's bottom navigation, when the header asks for it (`mobileNav`):
- * home, the menu, search, the cart and the account, a thumb away.
+ * home, the catalogue, the cart and the account, a thumb away. The menu button
+ * and search stay up in the header — the bar is for destinations, and the
+ * whole menu is one tap away in the drawer.
  *
  * Rendered last in the page's column by the host. It draws an in-flow spacer
  * as tall as itself, so the footer's last line is never under the bar, and
@@ -890,19 +921,15 @@ export interface StoreTabBarProps {
  */
 export function StoreTabBar({
   header,
-  shop,
-  menu,
   homeActive = false,
-  search,
+  catalogActive = false,
   cart,
   account,
-  drawerAccount,
 }: StoreTabBarProps) {
   const { settings } = useRenderEnvironment()
   const text = useRenderText()
   if (!hasTabBar(header)) return null
   const bold = settings.cardStyle === 'hard'
-  const showSearch = readBoolean(header, 'showSearch')
 
   return (
     <>
@@ -930,13 +957,9 @@ export function StoreTabBar({
           <StoreTab asChild icon={LuHouse} label={text('home')} active={homeActive}>
             <SmartLink link={{ kind: 'home' }}>{null}</SmartLink>
           </StoreTab>
-          <MobileMenu
-            items={menu}
-            shop={shop}
-            account={drawerAccount}
-            trigger={<StoreTab icon={LuLayoutGrid} label={text('menu')} />}
-          />
-          {showSearch && search}
+          <StoreTab asChild icon={LuLayoutGrid} label={text('catalog')} active={catalogActive}>
+            <SmartLink link={{ kind: 'catalog' }}>{null}</SmartLink>
+          </StoreTab>
           {cart}
           {account}
         </Flex>

@@ -24,6 +24,7 @@ import type { FieldValues } from './fields'
 import {
   createSection,
   defaultArticleTemplate,
+  defaultCatalogTemplate,
   defaultProductTemplate,
   sanitizeThemeContent,
   type SectionInstance,
@@ -143,7 +144,14 @@ const bIcon = (icon: string, o: { size?: string; tone?: string } = {}): RawBlock
 
 const bImage = (o: { alt?: string; ratio?: string } = {}): RawBlock => ({
   type: 'image',
-  settings: { image: '', alt: o.alt ?? '', ratio: o.ratio ?? '4/3', rounded: 'lg', width: 'full', align: 'left' },
+  settings: {
+    image: '',
+    alt: o.alt ?? '',
+    ratio: o.ratio ?? '4/3',
+    rounded: 'lg',
+    width: 'full',
+    align: 'left',
+  },
 })
 
 const bBadge = (text: string, o: { tone?: string; align?: string } = {}): RawBlock => ({
@@ -255,7 +263,9 @@ function statementComposed(copy: {
             bBadge(copy.eyebrow, { tone: 'subtle', align: 'center' }),
             bHeading(copy.heading, { level: 'h2', size: '3xl', align: 'center' }),
             bRichText(copy.body, { align: 'center' }),
-            ...(copy.button ? [bButton(copy.button, { size: 'lg', align: 'center', variant: 'outline' })] : []),
+            ...(copy.button
+              ? [bButton(copy.button, { size: 'lg', align: 'center', variant: 'outline' })]
+              : []),
           ],
           { align: 'center', width: 'medium' },
         ),
@@ -329,7 +339,12 @@ function cardsComposed(
           items.map((item) =>
             bColumn([bHeading(item.title, { level: 'h3', size: 'md' }), bText(item.text)], {
               gap: 'sm',
-              style: { padding: 'md', borderRadius: 'lg', borderWidth: '1', borderColor: '#e5e5e5' },
+              style: {
+                padding: 'md',
+                borderRadius: 'lg',
+                borderWidth: '1',
+                borderColor: '#e5e5e5',
+              },
             }),
           ),
           { columns: '3', align: 'stretch' },
@@ -359,7 +374,10 @@ function reviewsComposed(
                 bHeading(item.author, { level: 'h3', size: 'md' }),
                 bText(item.role),
               ],
-              { gap: 'sm', style: { padding: 'md', borderRadius: 'lg', backgroundColor: '#f5f5f5' } },
+              {
+                gap: 'sm',
+                style: { padding: 'md', borderRadius: 'lg', backgroundColor: '#f5f5f5' },
+              },
             ),
           ),
           { columns: '3', align: 'stretch' },
@@ -432,6 +450,7 @@ function makeSeed(
           home,
           product: defaultProductTemplate(),
           article: defaultArticleTemplate(),
+          catalog: defaultCatalogTemplate(),
         },
         recommendedLooks: [...recommendedLooks],
       })
@@ -492,9 +511,17 @@ function lookSettings(
 /* -------------------------------------------------------------------------- */
 
 const TRUST_ITEMS = [
-  { icon: 'truck', title: 'Gratis ongkir', text: 'Untuk pesanan di atas Rp 300.000, ke seluruh Indonesia.' },
+  {
+    icon: 'truck',
+    title: 'Gratis ongkir',
+    text: 'Untuk pesanan di atas Rp 300.000, ke seluruh Indonesia.',
+  },
   { icon: 'cash', title: 'COD tersedia', text: 'Bayar di tempat untuk area yang didukung kurir.' },
-  { icon: 'refresh', title: 'Retur 7 hari', text: 'Tidak cocok? Ajukan pengembalian dengan mudah.' },
+  {
+    icon: 'refresh',
+    title: 'Retur 7 hari',
+    text: 'Tidak cocok? Ajukan pengembalian dengan mudah.',
+  },
   { icon: 'shield', title: 'Pembayaran aman', text: 'Dana ditahan sampai barang diterima.' },
 ]
 
@@ -568,7 +595,9 @@ const brutalist = makeSeed(
       sticky: true,
       showSearch: true,
       announcementScheme: 'accent',
-      announcements: [{ text: 'Rilisan terbatas: batch Juli sudah dibuka', link: { kind: 'none' } }],
+      announcements: [
+        { text: 'Rilisan terbatas: batch Juli sudah dibuka', link: { kind: 'none' } },
+      ],
     },
     footer: {
       colorScheme: 'inverse',
@@ -608,15 +637,26 @@ const brutalist = makeSeed(
       }),
       cardsComposed(
         [
-          { title: 'Kualitas dulu', text: 'Satu barang lulus tiga kali pemeriksaan sebelum dikirim.' },
-          { title: 'Harga terbuka', text: 'Kami tulis biaya bahan dan jahit di tiap halaman produk.' },
+          {
+            title: 'Kualitas dulu',
+            text: 'Satu barang lulus tiga kali pemeriksaan sebelum dikirim.',
+          },
+          {
+            title: 'Harga terbuka',
+            text: 'Kami tulis biaya bahan dan jahit di tiap halaman produk.',
+          },
           { title: 'Tidak musiman', text: 'Model klasik yang tetap dipakai bertahun-tahun.' },
         ],
         'Aturan main',
       ),
       featuresComposed(TRUST_ITEMS, 'Tanpa drama'),
       reviewsComposed(REVIEWS, 'Kata pembeli'),
-      section('faq', { heading: 'Jawaban lugas', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Jawaban lugas',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
       section('latest-products', { heading: 'Semua produk', limit: 12, columns: '4' }),
     ],
   }),
@@ -646,7 +686,13 @@ const minimalist = makeSeed(
       animation: 'none',
     }),
     header: { layout: 'inline', sticky: true, showSearch: true },
-    footer: { colorScheme: 'default', about: '', showContact: true, showPages: true, showSocials: true },
+    footer: {
+      colorScheme: 'default',
+      about: '',
+      showContact: true,
+      showPages: true,
+      showSocials: true,
+    },
     home: [
       heroComposed({
         heading: 'Lebih sedikit, lebih baik.',
@@ -692,7 +738,12 @@ const minimalist = makeSeed(
         ],
       }),
       section('category-rail', { heading: 'Kategori', layout: 'tiles', limit: 6 }),
-      section('faq', { heading: 'Pertanyaan umum', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Pertanyaan umum',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
       reviewsComposed(REVIEWS, 'Ulasan'),
       section('featured-collection', { heading: 'Koleksi pilihan', limit: 8, columns: '4' }),
     ],
@@ -721,7 +772,13 @@ const bold = makeSeed(
       announcementScheme: 'brand',
       announcements: [{ text: 'Gratis ongkir minggu ini — tanpa minimum', link: { kind: 'none' } }],
     },
-    footer: { colorScheme: 'inverse', about: '', showContact: true, showPages: true, showSocials: true },
+    footer: {
+      colorScheme: 'inverse',
+      about: '',
+      showContact: true,
+      showPages: true,
+      showSocials: true,
+    },
     home: [
       heroComposed({
         heading: 'Berani tampil beda.',
@@ -756,7 +813,12 @@ const bold = makeSeed(
         items: REVIEWS,
       }),
       section('collection-tabs', { heading: 'Pilih suasana', limit: 8, columns: '4', tabs: [] }),
-      section('faq', { heading: 'Masih ragu?', items: FAQ_ITEMS, align: 'center', width: 'narrow' }),
+      section('faq', {
+        heading: 'Masih ragu?',
+        items: FAQ_ITEMS,
+        align: 'center',
+        width: 'narrow',
+      }),
       section('latest-products', { heading: 'Semua yang baru', limit: 12, columns: '5' }),
     ],
   }),
@@ -786,7 +848,13 @@ const modern = makeSeed(
       animation: 'subtle',
     }),
     header: { layout: 'classic', sticky: true, showSearch: true },
-    footer: { colorScheme: 'subtle', about: '', showContact: true, showPages: true, showSocials: true },
+    footer: {
+      colorScheme: 'subtle',
+      about: '',
+      showContact: true,
+      showPages: true,
+      showSocials: true,
+    },
     home: [
       heroComposed({
         heading: 'Belanja cepat, barang sampai.',
@@ -805,7 +873,12 @@ const modern = makeSeed(
       }),
       section('collection-tabs', { heading: 'Jelajahi koleksi', limit: 8, columns: '4', tabs: [] }),
       reviewsComposed(REVIEWS, 'Dipercaya ribuan pembeli'),
-      section('faq', { heading: 'Pertanyaan yang sering muncul', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Pertanyaan yang sering muncul',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
       section('latest-products', { heading: 'Baru masuk', limit: 12, columns: '5' }),
       noteComposed(
         'Butuh bantuan memilih?',
@@ -831,7 +904,13 @@ const editorial = makeSeed(
   () => ({
     settings: lookSettings('editorial-fashion'),
     header: { layout: 'centered', sticky: true, showSearch: false },
-    footer: { colorScheme: 'inverse', about: '', showContact: true, showPages: true, showSocials: true },
+    footer: {
+      colorScheme: 'inverse',
+      about: '',
+      showContact: true,
+      showPages: true,
+      showSocials: true,
+    },
     home: [
       statementComposed({
         eyebrow: 'Musim ini',
@@ -855,7 +934,12 @@ const editorial = makeSeed(
         'Sisi lain',
       ),
       reviewsComposed(REVIEWS, 'Kata mereka'),
-      section('faq', { heading: 'Sebelum memesan', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Sebelum memesan',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
       section('latest-products', { heading: 'Semua koleksi', limit: 12, columns: '4' }),
     ],
   }),
@@ -877,7 +961,13 @@ const elegant = makeSeed(
   () => ({
     settings: lookSettings('luxury-boutique'),
     header: { layout: 'centered', sticky: true, showSearch: false },
-    footer: { colorScheme: 'inverse', about: '', showContact: true, showPages: true, showSocials: true },
+    footer: {
+      colorScheme: 'inverse',
+      about: '',
+      showContact: true,
+      showPages: true,
+      showSocials: true,
+    },
     home: [
       imageTextComposed({
         heading: 'Dibuat untuk disimpan lama.',
@@ -907,7 +997,12 @@ const elegant = makeSeed(
         imageSide: 'left',
       }),
       reviewsComposed(REVIEWS, 'Cerita pelanggan'),
-      section('faq', { heading: 'Perlu diketahui', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Perlu diketahui',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
       section('latest-products', { heading: 'Koleksi', limit: 8, columns: '4' }),
     ],
   }),
@@ -947,7 +1042,9 @@ const marketplace = makeSeed(
       sticky: true,
       showSearch: true,
       announcementScheme: 'inverse',
-      announcements: [{ text: 'Gratis ongkir untuk pesanan di atas Rp 300.000', link: { kind: 'none' } }],
+      announcements: [
+        { text: 'Gratis ongkir untuk pesanan di atas Rp 300.000', link: { kind: 'none' } },
+      ],
     },
     footer: {
       colorScheme: 'inverse',
@@ -977,7 +1074,12 @@ const marketplace = makeSeed(
         ],
       }),
       reviewsComposed(REVIEWS, 'Ulasan pembeli'),
-      section('faq', { heading: 'Pusat bantuan', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Pusat bantuan',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
     ],
   }),
 )
@@ -1026,7 +1128,8 @@ const preloved = makeSeed(
     },
     footer: {
       colorScheme: 'subtle',
-      about: 'Jual beli fashion preloved dengan pembayaran rekber dan pengiriman ke seluruh Indonesia.',
+      about:
+        'Jual beli fashion preloved dengan pembayaran rekber dan pengiriman ke seluruh Indonesia.',
       showContact: true,
       showPages: true,
       showSocials: true,
@@ -1042,22 +1145,41 @@ const preloved = makeSeed(
       section('category-rail', { heading: 'Jelajahi kategori', layout: 'tiles', limit: 6 }),
       featuresComposed([
         { icon: 'shield', title: 'Rekber aman', text: 'Dana diteruskan setelah barang diterima.' },
-        { icon: 'badge', title: 'Penjual terverifikasi', text: 'Identitas dan ulasan asli dari pembeli.' },
-        { icon: 'truck', title: 'Ongkir dihitung', text: 'Tarif kurir otomatis di halaman produk.' },
+        {
+          icon: 'badge',
+          title: 'Penjual terverifikasi',
+          text: 'Identitas dan ulasan asli dari pembeli.',
+        },
+        {
+          icon: 'truck',
+          title: 'Ongkir dihitung',
+          text: 'Tarif kurir otomatis di halaman produk.',
+        },
         { icon: 'refresh', title: 'Bisa retur', text: 'Barang tidak sesuai? Ajukan pengembalian.' },
       ]),
       section('collection-shelves', { limit: 8, columns: '4' }),
       section('featured-collection', { heading: 'Pilihan editor', limit: 10, columns: '5' }),
       cardsComposed(
         [
-          { title: 'Harga masuk akal', text: 'Barang berkualitas dengan harga jauh di bawah baru.' },
+          {
+            title: 'Harga masuk akal',
+            text: 'Barang berkualitas dengan harga jauh di bawah baru.',
+          },
           { title: 'Tidak kembaran', text: 'Setiap potong unik, tidak diproduksi ulang.' },
-          { title: 'Lebih ramah bumi', text: 'Satu baju dipakai lagi berarti satu limbah berkurang.' },
+          {
+            title: 'Lebih ramah bumi',
+            text: 'Satu baju dipakai lagi berarti satu limbah berkurang.',
+          },
         ],
         'Kenapa belanja preloved?',
       ),
       reviewsComposed(REVIEWS, 'Cerita komunitas'),
-      section('faq', { heading: 'Pertanyaan pembeli baru', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Pertanyaan pembeli baru',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
       section('latest-products', { heading: 'Baru diunggah', limit: 12, columns: '5' }),
     ],
   }),
@@ -1079,7 +1201,13 @@ const retro = makeSeed(
   () => ({
     settings: lookSettings('retro-vintage'),
     header: { layout: 'centered', sticky: true, showSearch: true },
-    footer: { colorScheme: 'inverse', about: '', showContact: true, showPages: true, showSocials: true },
+    footer: {
+      colorScheme: 'inverse',
+      about: '',
+      showContact: true,
+      showPages: true,
+      showSocials: true,
+    },
     home: [
       heroComposed({
         heading: 'Rasa lama, dibuat hari ini.',
@@ -1111,7 +1239,12 @@ const retro = makeSeed(
         'Sudut kedai',
       ),
       reviewsComposed(REVIEWS, 'Kata pelanggan'),
-      section('faq', { heading: 'Sering ditanyakan', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Sering ditanyakan',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
       section('latest-products', { heading: 'Dari rak kami', limit: 12, columns: '4' }),
       section('category-rail', { heading: 'Kategori', layout: 'tiles', limit: 6 }),
     ],
@@ -1163,7 +1296,11 @@ const organic = makeSeed(
       featuresComposed(
         [
           { icon: 'leaf', title: 'Alami', text: 'Tanpa paraben, silikon, dan pewarna sintetis.' },
-          { icon: 'heart', title: 'Cruelty-free', text: 'Tidak diuji pada hewan, tanpa bahan hewani.' },
+          {
+            icon: 'heart',
+            title: 'Cruelty-free',
+            text: 'Tidak diuji pada hewan, tanpa bahan hewani.',
+          },
           { icon: 'droplet', title: 'Isi ulang', text: 'Bawa wadahmu, dapat potongan harga.' },
           { icon: 'award', title: 'Perajin lokal', text: 'Dibuat petani dan perajin mitra kami.' },
         ],
@@ -1178,7 +1315,12 @@ const organic = makeSeed(
         'Jurnal',
       ),
       reviewsComposed(REVIEWS, 'Kata pelanggan'),
-      section('faq', { heading: 'Pertanyaan umum', items: FAQ_ITEMS, align: 'left', width: 'narrow' }),
+      section('faq', {
+        heading: 'Pertanyaan umum',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
       section('latest-products', { heading: 'Semua produk', limit: 12, columns: '4' }),
     ],
   }),

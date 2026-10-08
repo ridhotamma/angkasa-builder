@@ -51,14 +51,16 @@ function headerHtml({
   transparent,
   layout = 'centered',
   showSearch = true,
+  mobileNav,
 }: {
   transparent: boolean
   layout?: string
   showSearch?: boolean
+  mobileNav?: string
 }): string {
   return render(
     <StoreHeader
-      header={{ layout, showSearch, sticky: true }}
+      header={{ layout, showSearch, sticky: true, ...(mobileNav ? { mobileNav } : {}) }}
       shop={shop}
       menu={[]}
       searchField={<span>FIELD</span>}
@@ -93,5 +95,12 @@ describe('the mobile header search', () => {
     const html = headerHtml({ transparent: false, showSearch: false })
     expect(html).not.toContain('ICON')
     expect(html).not.toContain('FIELD')
+  })
+
+  test('the tab layout keeps the icon in the top-right of the phone bar', () => {
+    const html = headerHtml({ transparent: false, mobileNav: 'tabs' })
+    const mobile = html.slice(html.indexOf('data-mobile-bar'), html.indexOf('data-desktop-bar'))
+    expect(mobile).toContain('ICON')
+    expect(mobile).not.toContain('FIELD')
   })
 })

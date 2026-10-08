@@ -1,9 +1,10 @@
 /**
  * The header's mobile bar.
  *
- * A phone gets one bar on every theme: a menu button with the brand beside
- * it, and search and the cart on the right. The account is not in the bar —
- * it rides at the bottom of the slide-in menu.
+ * With the menu button, a phone gets a menu button with the brand beside it,
+ * and search and the cart on the right. The tab layout keeps the menu button
+ * and search and drops the cart — the account is never in the bar; it rides
+ * at the bottom of the slide-in menu.
  */
 
 import { describe, expect, test } from 'bun:test'

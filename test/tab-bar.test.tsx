@@ -1,9 +1,11 @@
 /**
  * The phone's bottom tab bar and the bold look.
  *
- * A header set to `mobileNav: 'tabs'` moves the menu, search, cart and account
- * out of the phone's top bar and into `StoreTabBar`. The bold card and button
- * styles are Quick Checkout's hard frame, read through the storefront's ink.
+ * A header set to `mobileNav: 'tabs'` keeps the menu button and search in the
+ * phone's top bar and moves the cart and account down into `StoreTabBar`,
+ * whose own tabs are home, the catalogue, the cart and the account. The bold
+ * card and button styles are Quick Checkout's hard frame, read through the
+ * storefront's ink.
  */
 
 import { describe, expect, test } from 'bun:test'
@@ -57,11 +59,8 @@ function render(node: ReactNode, settings: ThemeSettings = DEFAULT_THEME_SETTING
 function tabBar(header: Record<string, unknown>, settings?: ThemeSettings): string {
   return render(
     <StoreTabBar
-      header={{ showSearch: true, ...header }}
-      shop={shop}
-      menu={MENU}
+      header={header}
       homeActive
-      search={<span>SEARCH TAB</span>}
       cart={<span>CART TAB</span>}
       account={<span>ACCOUNT TAB</span>}
     />,
@@ -75,20 +74,19 @@ describe('the tab bar', () => {
     expect(tabBar({ mobileNav: 'menu' })).not.toContain('data-tabbar')
   })
 
-  test('draws home, the menu and the host’s tabs, in that order', () => {
+  test('draws home, the catalog and the host’s tabs, in that order', () => {
     const html = tabBar({ mobileNav: 'tabs' })
-    const order = ['Home', 'Menu', 'SEARCH TAB', 'CART TAB', 'ACCOUNT TAB'].map((label) =>
-      html.indexOf(label),
-    )
+    const order = ['Home', 'Catalog', 'CART TAB', 'ACCOUNT TAB'].map((label) => html.indexOf(label))
     expect(order.every((at) => at > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(html).toContain('aria-current="page"')
   })
 
-  test('leaves the search tab out when the header hides search', () => {
-    const html = tabBar({ mobileNav: 'tabs', showSearch: false })
-    expect(html).not.toContain('SEARCH TAB')
-    expect(html).toContain('CART TAB')
+  test('the catalog tab points at the catalogue, and the menu is not a tab', () => {
+    const html = tabBar({ mobileNav: 'tabs' })
+    expect(html).toContain('href="/products"')
+    // The whole menu lives in the header's hamburger drawer now.
+    expect(html).not.toContain('aria-label="Menu"')
   })
 
   test('takes room in the page and publishes its height', () => {
@@ -97,7 +95,7 @@ describe('the tab bar', () => {
     expect(html).toContain(`${TABBAR_HEIGHT_VAR}:calc(4rem`)
   })
 
-  test('the header’s phone bar keeps only the brand', () => {
+  test('the tab layout keeps the menu and search in the phone bar', () => {
     const html = render(
       <StoreHeader
         header={{ layout: 'classic', showSearch: true, mobileNav: 'tabs' }}
@@ -109,9 +107,10 @@ describe('the tab bar', () => {
     )
     const mobile = html.slice(html.indexOf('data-mobile-bar'), html.indexOf('data-desktop-bar'))
     expect(mobile).toContain('Toko Tamma')
+    expect(mobile).toContain('aria-label="Menu"')
+    expect(mobile).toContain('ICON')
+    // The cart stays a tab below; the top bar does not repeat it.
     expect(mobile).not.toContain('CART')
-    expect(mobile).not.toContain('ICON')
-    expect(mobile).not.toContain('aria-label="Menu"')
   })
 
   test('a tab shows its count, capped at 99+', () => {

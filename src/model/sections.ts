@@ -25,9 +25,11 @@ export { FEATURE_ICONS, type FeatureIcon } from './icons'
 /**
  * Where a template can use a section. Omitted means everywhere but the product
  * page. An article's own body is a page (`page`); `article` is the theme's
- * article template, the frame around every body.
+ * article template, the frame around every body. `catalog` is the product
+ * catalogue and every listing page that shares it — the category and
+ * collection detail pages.
  */
-export type SectionScope = 'home' | 'page' | 'product' | 'article'
+export type SectionScope = 'home' | 'page' | 'product' | 'article' | 'catalog'
 
 /** How the "Add section" picker groups sections. */
 export const SECTION_CATEGORIES = [
@@ -41,6 +43,7 @@ export const SECTION_CATEGORIES = [
   'store',
   'product-page',
   'article-page',
+  'catalog-page',
 ] as const
 
 export type SectionCategory = (typeof SECTION_CATEGORIES)[number]
@@ -56,6 +59,7 @@ export const SECTION_CATEGORY_LABELS: Record<SectionCategory, Localized> = {
   store: { en: 'Shop information', id: 'Informasi toko' },
   'product-page': { en: 'Product page', id: 'Halaman produk' },
   'article-page': { en: 'Article page', id: 'Halaman artikel' },
+  'catalog-page': { en: 'Catalogue page', id: 'Halaman katalog' },
 }
 
 /**
@@ -103,12 +107,14 @@ export interface SectionSchema {
   fields: readonly Field[]
 }
 
-// The article template takes the general sections too — a newsletter or a
-// banner under every article — so both "everywhere" sets include it.
-const EVERYWHERE_BUT_PRODUCT: readonly SectionScope[] = ['home', 'page', 'article']
-const EVERYWHERE: readonly SectionScope[] = ['home', 'page', 'product', 'article']
+// The article and catalogue templates take the general sections too — a
+// newsletter under every article, a banner above the product grid — so both
+// "everywhere" sets include them.
+const EVERYWHERE_BUT_PRODUCT: readonly SectionScope[] = ['home', 'page', 'article', 'catalog']
+const EVERYWHERE: readonly SectionScope[] = ['home', 'page', 'product', 'article', 'catalog']
 const PRODUCT_ONLY: readonly SectionScope[] = ['product']
 const ARTICLE_ONLY: readonly SectionScope[] = ['article']
+const CATALOG_ONLY: readonly SectionScope[] = ['catalog']
 
 /** The most related articles an article page draws; the storefront reads this many. */
 export const MAX_RELATED_ARTICLES = 6
@@ -2602,6 +2608,167 @@ export const SECTION_SCHEMAS = [
         min: 1,
         max: MAX_RELATED_ARTICLES,
         default: 3,
+      },
+    ],
+  },
+
+  /* ---------------------------------------------------------------------- */
+  /* Catalogue page — the product catalogue and the category/collection      */
+  /* listings that share it                                                  */
+  /* ---------------------------------------------------------------------- */
+
+  {
+    type: 'catalog-header',
+    category: 'catalog-page',
+    icon: 'tag',
+    name: { en: 'Catalogue header', id: 'Kepala katalog' },
+    description: {
+      en: 'The listing title, its description, the result count and the category filter.',
+      id: 'Judul daftar, deskripsi, jumlah hasil, dan filter kategori.',
+    },
+    scopes: CATALOG_ONLY,
+    max: 1,
+    usesCatalogue: true,
+    fields: [
+      {
+        kind: 'boolean',
+        key: 'breadcrumbs',
+        label: { en: 'Show the path (Shop › Catalogue)', id: 'Tampilkan jalur (Toko › Katalog)' },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'showTitle',
+        label: { en: 'Show the title', id: 'Tampilkan judul' },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'showDescription',
+        label: { en: 'Show the description', id: 'Tampilkan deskripsi' },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'showCount',
+        label: { en: 'Show the result count', id: 'Tampilkan jumlah hasil' },
+        default: true,
+      },
+      {
+        kind: 'boolean',
+        key: 'showFilters',
+        label: { en: 'Show the category filter', id: 'Tampilkan filter kategori' },
+        default: true,
+      },
+      {
+        kind: 'select',
+        key: 'filterStyle',
+        label: { en: 'Filter style', id: 'Gaya filter' },
+        options: [
+          { value: 'chips', label: { en: 'Pill chips', id: 'Chip pil' } },
+          { value: 'underline', label: { en: 'Underline tabs', id: 'Tab garis bawah' } },
+          { value: 'select', label: { en: 'Dropdown', id: 'Menu turun' } },
+        ],
+        default: 'chips',
+        showWhen: { key: 'showFilters', is: ['true'] },
+      },
+      {
+        kind: 'select',
+        key: 'filterSticky',
+        label: { en: 'Keep the filter on screen', id: 'Filter tetap di layar' },
+        help: {
+          en: 'Sticky holds the filter row under the header while the products scroll. On phones only is the app-like choice; always also pins it on a computer.',
+          id: 'Menempel menahan baris filter di bawah header saat produk bergulir. Hanya di ponsel cocok untuk gaya aplikasi; selalu juga menempel di komputer.',
+        },
+        options: [
+          { value: 'none', label: { en: 'Never', id: 'Tidak pernah' } },
+          { value: 'mobile', label: { en: 'On phones only', id: 'Hanya di ponsel' } },
+          { value: 'always', label: { en: 'Always', id: 'Selalu' } },
+        ],
+        default: 'none',
+        showWhen: { key: 'showFilters', is: ['true'] },
+      },
+      align,
+    ],
+  },
+  {
+    type: 'catalog-products',
+    category: 'catalog-page',
+    icon: 'grid',
+    name: { en: 'Product grid', id: 'Kisi produk' },
+    description: {
+      en: 'The listing itself, with its card columns and pagination.',
+      id: 'Daftar produknya, lengkap dengan kolom kartu dan paginasi.',
+    },
+    scopes: CATALOG_ONLY,
+    max: 1,
+    required: true,
+    usesCatalogue: true,
+    fields: [
+      {
+        kind: 'select',
+        key: 'columns',
+        label: { en: 'Columns on desktop', id: 'Kolom di desktop' },
+        options: [2, 3, 4, 5, 6].map((n) => ({
+          value: String(n),
+          label: { en: String(n), id: String(n) },
+        })),
+        default: '4',
+      },
+      {
+        kind: 'select',
+        key: 'tabletColumns',
+        label: { en: 'Columns on tablets', id: 'Kolom di tablet' },
+        options: [2, 3, 4].map((n) => ({
+          value: String(n),
+          label: { en: String(n), id: String(n) },
+        })),
+        default: '3',
+      },
+      {
+        kind: 'select',
+        key: 'mobileColumns',
+        label: { en: 'Columns on phones', id: 'Kolom di ponsel' },
+        options: [1, 2].map((n) => ({
+          value: String(n),
+          label: { en: String(n), id: String(n) },
+        })),
+        default: '2',
+      },
+      {
+        kind: 'select',
+        key: 'gap',
+        label: { en: 'Space between cards', id: 'Jarak antar kartu' },
+        options: [
+          { value: 'tight', label: { en: 'Tight', id: 'Rapat' } },
+          { value: 'cozy', label: { en: 'Cozy', id: 'Nyaman' } },
+          { value: 'airy', label: { en: 'Airy', id: 'Longgar' } },
+        ],
+        default: 'cozy',
+      },
+      {
+        kind: 'select',
+        key: 'pagination',
+        label: { en: 'Pagination', id: 'Paginasi' },
+        options: [
+          { value: 'numbers', label: { en: 'Page numbers', id: 'Nomor halaman' } },
+          { value: 'simple', label: { en: 'Previous / Next', id: 'Sebelumnya / Berikutnya' } },
+          { value: 'compact', label: { en: 'Compact (2 / 5)', id: 'Ringkas (2 / 5)' } },
+          { value: 'none', label: { en: 'None', id: 'Tanpa' } },
+        ],
+        default: 'numbers',
+      },
+      {
+        kind: 'select',
+        key: 'paginationAlign',
+        label: { en: 'Pagination alignment', id: 'Perataan paginasi' },
+        options: [
+          { value: 'start', label: { en: 'Left', id: 'Kiri' } },
+          { value: 'center', label: { en: 'Center', id: 'Tengah' } },
+          { value: 'end', label: { en: 'Right', id: 'Kanan' } },
+        ],
+        default: 'center',
+        showWhen: { key: 'pagination', is: ['numbers', 'simple', 'compact'] },
       },
     ],
   },

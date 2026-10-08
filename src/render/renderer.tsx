@@ -23,7 +23,12 @@ import { useLocale } from '@repo/i18n'
 import { resolveLinkedSections, type SectionInstance } from '../model/content'
 import { sectionAnchorId } from '../model/links'
 import { localize } from '../model/localized'
-import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
+import {
+  readSectionStyle,
+  SCHEDULE_LABELS,
+  scheduleState,
+  SECTION_STICKY_ENABLED,
+} from '../model/section-style'
 import { effectCss, themeCssVars, type ThemeSettings } from '../model/settings'
 import { HEADER_HEIGHT_VAR } from './chrome'
 import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
@@ -222,6 +227,25 @@ const SectionItem = memo(function SectionItem({
   if (!Section) return null
   const mt = flush ? '0' : SECTION_GAP
 
+  /**
+   * The section's "Stick while scrolling" band.
+   *
+   * The position goes on this wrapper, never on the frame inside it. A sticky
+   * box is clamped to its containing block, and the frame's parent is this
+   * wrapper — exactly the frame's own height, so a sticky frame has nowhere to
+   * travel and scrolls away like any other. The wrapper's containing block is
+   * the whole column of sections, so here the section holds at the top while
+   * the sections after it (later in the DOM, painted above) scroll up over it.
+   *
+   * Switched off for now (`SECTION_STICKY_ENABLED`): a stored `sticky: true`
+   * is read but not applied, so no layout pins a section until the feature is
+   * turned back on.
+   */
+  const sticky =
+    SECTION_STICKY_ENABLED && readSectionStyle(section.style).sticky
+      ? ({ position: 'sticky', top: '0' } as const)
+      : null
+
   const rendered = (
     <SectionIdContext.Provider value={section.id}>
       <SectionElementsContext.Provider value={section.elements ?? NO_ELEMENTS}>
@@ -237,7 +261,7 @@ const SectionItem = memo(function SectionItem({
 
   if (!pickable)
     return (
-      <Box id={sectionAnchorId(section.id)} mt={mt} {...anchorStyle}>
+      <Box id={sectionAnchorId(section.id)} mt={mt} {...sticky} {...anchorStyle}>
         {rendered}
       </Box>
     )
@@ -247,6 +271,7 @@ const SectionItem = memo(function SectionItem({
       mt={mt}
       id={section.id}
       anchorId={sectionAnchorId(section.id)}
+      {...sticky}
       {...anchorStyle}
       selected={selected}
       first={first}

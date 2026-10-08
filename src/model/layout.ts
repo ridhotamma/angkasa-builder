@@ -65,8 +65,8 @@ export const HEADER_FIELDS: readonly Field[] = [
       },
     ],
     help: {
-      en: 'The tab bar keeps home, menu, search, cart and account under the shopper’s thumb. Phones only; a computer keeps the header above.',
-      id: 'Bilah tab menaruh beranda, menu, pencarian, keranjang, dan akun di bawah jempol pembeli. Hanya di ponsel; komputer tetap memakai header di atas.',
+      en: 'The tab bar keeps home, catalog, cart and account under the shopper’s thumb; the menu button and search stay in the header. Phones only; a computer keeps the header above.',
+      id: 'Bilah tab menaruh beranda, katalog, keranjang, dan akun di bawah jempol pembeli; tombol menu dan pencarian tetap di header. Hanya di ponsel; komputer tetap memakai header di atas.',
     },
     default: 'menu',
   },

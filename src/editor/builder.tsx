@@ -124,7 +124,11 @@ import {
   type ThemeLayout,
 } from '../model/layout'
 import type { MenuItem } from '../model/menus'
-import { SECTION_STYLE_FIELDS, VISIBILITY_STYLE_KEYS } from '../model/section-style'
+import {
+  SECTION_STICKY_ENABLED,
+  SECTION_STYLE_FIELDS,
+  VISIBILITY_STYLE_KEYS,
+} from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { googleFontsHref, type ThemeSettings } from '../model/settings'
 import {
@@ -159,7 +163,10 @@ import type { EditorServices } from './services'
 import { ThemeSettingsPanel } from './theme-settings'
 
 const STYLE_FIELDS = SECTION_STYLE_FIELDS.filter(
-  (field) => !(VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key),
+  (field) =>
+    !(VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key) &&
+    // The sticky toggle is built but switched off; see `SECTION_STICKY_ENABLED`.
+    (SECTION_STICKY_ENABLED || field.key !== 'sticky'),
 )
 const VISIBILITY_FIELDS = SECTION_STYLE_FIELDS.filter((field) =>
   (VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key),
@@ -365,6 +372,7 @@ const TEMPLATE_LABELS = {
   home: 'templateHome',
   product: 'templateProduct',
   article: 'templateArticle',
+  catalog: 'templateCatalog',
 } as const satisfies Record<TemplateKey, string>
 
 /**
@@ -1353,22 +1361,20 @@ function Builder({
 
   // The phone's tab bar, when the header asks for one. Picking it opens the
   // header's settings, where the choice lives. The tabs are stand-ins for the
-  // storefront's own, like the header's icons.
+  // storefront's own, like the header's icons; the catalogue tab and the
+  // header's menu button are the chrome's own and need no stand-in.
   const tabBar = useMemo(() => {
     if (!layout || !hasTabBar(layout.header)) return null
     return pickable(
       HEADER_ID,
       <StoreTabBar
         header={layout.header}
-        shop={shop}
-        menu={menus.main}
         homeActive={scope === 'home'}
-        search={<StoreTab icon={LuSearch} label={t('standInSearch')} />}
         cart={<StoreTab icon={LuShoppingBag} label={t('standInCart')} />}
         account={<StoreTab icon={LuUser} label={t('standInAccount')} />}
       />,
     )
-  }, [layout, shop, menus.main, scope, pickable, t])
+  }, [layout, scope, pickable, t])
 
   const edited = useMemo(
     () => (
