@@ -145,8 +145,28 @@ export interface StorefrontListingData {
   products: StorefrontProductCard[]
   /** The shop's active categories, for the header's filter. */
   categories: Array<{ id: string; name: string; slug: string }>
+  /** The shop's active collections, for a collection page's filter. */
+  collections?: Array<{ id: string; name: string; slug: string }>
   /** The category or collection the page is showing, when it is one. */
   current: { kind: 'category' | 'collection'; name: string; slug: string } | null
+}
+
+/**
+ * One physical shop the storefront can show: a branch with its address, or
+ * the shop's own single address when it has no branches. Read-only, and only
+ * what a shopper may see — never a branch's internal fields.
+ */
+export interface StorefrontBranchData {
+  id: string
+  name: string
+  /** The address as one line, already composed. `''` when unknown. */
+  address: string
+  phone: string | null
+  /** Where to pin it; `null` when the address was never geocoded. */
+  latitude: number | null
+  longitude: number | null
+  /** The branch the shop calls its headquarters, when there is one. */
+  isHeadquarters?: boolean
 }
 
 export interface StorefrontRenderData {
@@ -163,6 +183,11 @@ export interface StorefrontRenderData {
      * order form). Guests never see it; the number travels in the link.
      */
     phone?: string | null
+    /** The shop's own address — the store-locations fallback when there are no branches. */
+    address?: string | null
+    /** The shop's pickup point, for the fallback location's map pin. */
+    latitude?: number | null
+    longitude?: number | null
   }
   categories: StorefrontCategoryData[]
   /** Active collections in sort order, each with its first products. */
@@ -170,6 +195,12 @@ export interface StorefrontRenderData {
   latest: StorefrontProductCard[]
   /** Products the layout picks by id (featured product, hotspots, video tags). */
   products?: StorefrontProductCard[]
+  /**
+   * The shop's active branches, when a section draws them. The store-locations
+   * section prefers these over its own list; an empty array (or none at all)
+   * falls back to the seller's list and then the shop's own address.
+   */
+  branches?: StorefrontBranchData[]
   /** Only on the product page. */
   product?: StorefrontProductDetail
   /** Only on an article page — or, in the editor, the article being written. */
@@ -317,7 +348,38 @@ export function sampleStorefrontData(shopName = 'Your shop'): StorefrontRenderDa
       bannerUrl: null,
       currency: 'IDR',
       phone: '+62 812-3456-7890',
+      email: 'hello@example.com',
+      address: 'Jl. Contoh Raya No. 24, Kebayoran Baru, Jakarta Selatan',
+      latitude: -6.244,
+      longitude: 106.799,
     },
+    branches: [
+      {
+        id: 'sample-branch-1',
+        name: 'Flagship — Jakarta',
+        address: 'Jl. Contoh Raya No. 24, Kebayoran Baru, Jakarta Selatan',
+        phone: '0812-3456-7890',
+        latitude: -6.244,
+        longitude: 106.799,
+        isHeadquarters: true,
+      },
+      {
+        id: 'sample-branch-2',
+        name: 'Bandung',
+        address: 'Jl. Contoh No. 8, Dago, Bandung',
+        phone: '0812-3456-7891',
+        latitude: -6.8915,
+        longitude: 107.6107,
+      },
+      {
+        id: 'sample-branch-3',
+        name: 'Surabaya',
+        address: 'Jl. Contoh No. 15, Darmo, Surabaya',
+        phone: '0812-3456-7892',
+        latitude: -7.2892,
+        longitude: 112.7344,
+      },
+    ],
     categories: ['Apparel', 'Bags', 'Accessories', 'Home', 'Gifts', 'Sale'].map((name, i) => ({
       id: `sample-category-${i}`,
       name,
@@ -427,7 +489,10 @@ export function previewProductDetail(data: StorefrontRenderData): StorefrontProd
 export function previewListing(data: StorefrontRenderData): StorefrontListingData {
   return {
     title: 'All products',
-    description: 'Every product in the shop, newest first.',
+    // Empty on purpose: the catalogue header's own description field is what
+    // the seller edits, and it shows the same copy the live all-products page
+    // falls back to.
+    description: '',
     total: data.latest.length,
     page: 1,
     pages: Math.max(2, Math.ceil(data.latest.length / 12)),
@@ -436,6 +501,11 @@ export function previewListing(data: StorefrontRenderData): StorefrontListingDat
       id: category.id,
       name: category.name,
       slug: category.slug,
+    })),
+    collections: data.collections.map((shelf) => ({
+      id: shelf.id,
+      name: shelf.name,
+      slug: shelf.slug,
     })),
     current: null,
   }

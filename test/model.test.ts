@@ -49,6 +49,8 @@ import {
   THEME_PRESETS,
   findPreset,
   themeCssVars,
+  themeDesignedForDark,
+  themeModeCssVars,
 } from '../src/index'
 
 describe('links', () => {
@@ -369,6 +371,35 @@ describe('colour', () => {
     expect(css).toMatch(/html\.dark\{[^}]*--chakra-colors-fg:#f2ead9/)
     expect(css).toMatch(/html:not\(\.dark\)\{[^}]*--chakra-colors-bg:#f2ead9/)
     expect(css).toMatch(/html:not\(\.dark\)\{[^}]*--chakra-colors-fg:#141210/)
+  })
+
+  test('a scope can paint one mode at a time, like the preview beside its chrome', () => {
+    expect(themeDesignedForDark(DEFAULT_THEME_SETTINGS)).toBe(false)
+
+    // A light theme in light mode paints its designed surfaces.
+    expect(themeModeCssVars(DEFAULT_THEME_SETTINGS, 'light')['--chakra-colors-bg']).toBe('#fffefb')
+    // The same theme in dark mode sets no surfaces — Chakra's own dark tokens
+    // apply — and only moves its brand ink.
+    const lightInDark = themeModeCssVars(DEFAULT_THEME_SETTINGS, 'dark')
+    expect(lightInDark['--chakra-colors-bg']).toBeUndefined()
+    expect(lightInDark['--chakra-colors-brand-solid']).toBe(DEFAULT_THEME_SETTINGS.colors.brand)
+
+    // A dark theme is the mirror image: dark mode as drawn, light mode swapped.
+    const dark = {
+      ...DEFAULT_THEME_SETTINGS,
+      colors: {
+        ...DEFAULT_THEME_SETTINGS.colors,
+        background: '#141210',
+        text: '#f2ead9',
+      },
+    }
+    expect(themeDesignedForDark(dark)).toBe(true)
+    const darkInDark = themeModeCssVars(dark, 'dark')
+    expect(darkInDark['--chakra-colors-bg']).toBe('#141210')
+    expect(darkInDark['--chakra-colors-fg']).toBe('#f2ead9')
+    const darkInLight = themeModeCssVars(dark, 'light')
+    expect(darkInLight['--chakra-colors-bg']).toBe('#f2ead9')
+    expect(darkInLight['--chakra-colors-fg']).toBe('#141210')
   })
 
   test('the neutral palette follows the theme, not Chakra’s baked-in gray', () => {

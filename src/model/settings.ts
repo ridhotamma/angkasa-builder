@@ -888,23 +888,54 @@ function declarations(vars: Record<string, string>): string {
  */
 export function themeStylesheet(settings: ThemeSettings): string {
   const { always, surfaces } = themeCssVarGroups(settings)
-  const designedForDark = luminance(settings.colors.background) < 0.5
-  const alternateMode = designedForDark
-    ? themeCssVarGroups({
-        ...settings,
-        colors: {
-          ...settings.colors,
-          background: settings.colors.text,
-          text: settings.colors.background,
-        },
-      }).surfaces
-    : { '--chakra-colors-brand-fg': darkModeBrandFg(settings.colors.brand) }
+  const designedForDark = themeDesignedForDark(settings)
+  const alternateMode = alternateModeVars(settings, designedForDark)
   return (
     `:root{${declarations(always)}}` +
     `${designedForDark ? 'html.dark' : 'html:not(.dark)'}{${declarations(surfaces)}}` +
     `${designedForDark ? 'html:not(.dark)' : 'html.dark'}{${declarations(alternateMode)}}` +
     effectCss(settings)
   )
+}
+
+/** Whether a theme was designed on a dark page — the mode it paints as drawn. */
+export function themeDesignedForDark(settings: ThemeSettings): boolean {
+  return luminance(settings.colors.background) < 0.5
+}
+
+/** The surfaces of the mode a theme was *not* designed in. */
+function alternateModeVars(
+  settings: ThemeSettings,
+  designedForDark: boolean,
+): Record<string, string> {
+  // A light theme in dark mode keeps Chakra's own dark surfaces and only
+  // moves its brand ink; a dark theme in light mode swaps its page and text.
+  if (!designedForDark) {
+    return { '--chakra-colors-brand-fg': darkModeBrandFg(settings.colors.brand) }
+  }
+  return themeCssVarGroups({
+    ...settings,
+    colors: {
+      ...settings.colors,
+      background: settings.colors.text,
+      text: settings.colors.background,
+    },
+  }).surfaces
+}
+
+/**
+ * A theme's variables for one colour mode, the same split `themeStylesheet`
+ * makes with `html.dark`/`html:not(.dark)` — for a scope that has to paint
+ * one mode at a time, like the editor preview beside its own light chrome.
+ */
+export function themeModeCssVars(
+  settings: ThemeSettings,
+  mode: 'light' | 'dark',
+): Record<string, string> {
+  const { always, surfaces } = themeCssVarGroups(settings)
+  const designedForDark = themeDesignedForDark(settings)
+  if (designedForDark === (mode === 'dark')) return { ...always, ...surfaces }
+  return { ...always, ...alternateModeVars(settings, designedForDark) }
 }
 
 /**

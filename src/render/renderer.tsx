@@ -29,7 +29,7 @@ import {
   scheduleState,
   SECTION_STICKY_ENABLED,
 } from '../model/section-style'
-import { effectCss, themeCssVars, type ThemeSettings } from '../model/settings'
+import { effectCss, themeCssVars, themeModeCssVars, type ThemeSettings } from '../model/settings'
 import { HEADER_HEIGHT_VAR } from './chrome'
 import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
 import { SectionFrame } from './frame'
@@ -43,11 +43,27 @@ const NO_ELEMENTS: Record<string, never> = {}
 
 export function ThemeScope({
   settings,
+  mode,
   children,
   ...props
-}: { settings: ThemeSettings; children: ReactNode } & BoxProps) {
+}: {
+  settings: ThemeSettings
+  /**
+   * The colour mode to paint. Omitted, the theme paints as designed (the
+   * snapshots and the storefront's server render); the editor preview passes
+   * its toolbar's choice so the preview can follow the seller's toggle.
+   */
+  mode?: 'light' | 'dark'
+  children: ReactNode
+} & BoxProps) {
   return (
-    <Box css={themeCssVars(settings)} bg="bg" color="fg" fontFamily="body" {...props}>
+    <Box
+      css={mode ? themeModeCssVars(settings, mode) : themeCssVars(settings)}
+      bg="bg"
+      color="fg"
+      fontFamily="body"
+      {...props}
+    >
       {/* The same effect rules the storefront inlines, so the editor preview
           and snapshots sweep and transition like the live page. Unlayered
           like the variables; data-attribute scoped, so dashboard chrome

@@ -26,6 +26,7 @@
     "@emotion/cache": "^11.14.0",
     "@emotion/server": "^11.11.0",
     "@repo/appwrite-config": "workspace:*",
+    "@repo/geoapify": "workspace:*",
     "@repo/i18n": "workspace:*",
     "@repo/theme": "workspace:*",
     "@tiptap/pm": "^3.31.3",

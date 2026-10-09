@@ -24,6 +24,8 @@ import { useEffect, useRef, useState } from 'react'
 import { FaWhatsapp } from 'react-icons/fa6'
 import { LuClock, LuMail, LuMapPin, LuNavigation, LuPhone } from 'react-icons/lu'
 
+import { StoreMap } from '@repo/geoapify/store-map'
+import { externalMapUrl } from '@repo/geoapify/urls'
 import { ImageWithFallback } from '@repo/theme'
 
 import {
@@ -36,8 +38,9 @@ import {
   type FieldValues,
 } from '../model/fields'
 import { textElementKey } from '../model/element-style'
+import { NO_LINK, type Link } from '../model/links'
 import { STICKY_BELOW_HEADER } from './chrome'
-import { useRenderEnvironment } from './context'
+import { useRenderEnvironment, type StorefrontRenderData } from './context'
 import { useRenderText } from './copy'
 import { featureIcon } from './icons'
 import { Tilt } from './motion'
@@ -602,89 +605,290 @@ function telHref(phone: string): string | null {
   return digits.length >= 6 ? `tel:${digits}` : null
 }
 
-export function StoreLocations({ settings }: SectionProps) {
-  const { imageUrl } = useRenderEnvironment()
-  const { frame } = useCardStyle()
-  const text = useRenderText()
-  const empty = useEmptyText()
+/** One store location, however it was sourced. */
+interface StoreLocationEntry {
+  id: string
+  name: string
+  address: string
+  hours: string
+  phone: string
+  /** A media file id, when the seller gave one (branches have no photo). */
+  image: string
+  /** The seller's own directions link, when they set one. */
+  link: Link
+  latitude: number | null
+  longitude: number | null
+}
+
+/** A number from a text field, or `null` when it is blank or out of range. */
+function readCoordinate(value: string, max: number): number | null {
+  const parsed = Number(value.trim())
+  return value.trim() !== '' && Number.isFinite(parsed) && Math.abs(parsed) <= max ? parsed : null
+}
+
+function mapsSearchHref(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+}
+
+/** Where "directions" goes: the seller's own link, or the pin/address. */
+function directionsFor(entry: StoreLocationEntry): Link {
+  if (entry.link.kind !== 'none') return entry.link
+  if (entry.latitude !== null && entry.longitude !== null) {
+    return {
+      kind: 'url',
+      href: externalMapUrl({ latitude: entry.latitude, longitude: entry.longitude }),
+    }
+  }
+  return entry.address ? { kind: 'url', href: mapsSearchHref(entry.address) } : NO_LINK
+}
+
+/**
+ * The stores a location section draws, best source first: the shop's real
+ * branches, then the seller's own list, then the shop's single address. A shop
+ * with branches never shows the stale list it typed before branches existed.
+ */
+function locationsFor(settings: FieldValues, data: StorefrontRenderData): StoreLocationEntry[] {
+  const branches = data.branches ?? []
+  if (branches.length > 0) {
+    return branches.map((branch) => ({
+      id: branch.id,
+      name: branch.name,
+      address: branch.address,
+      hours: '',
+      phone: branch.phone ?? '',
+      image: '',
+      link: NO_LINK,
+      latitude: Number.isFinite(branch.latitude) ? branch.latitude : null,
+      longitude: Number.isFinite(branch.longitude) ? branch.longitude : null,
+    }))
+  }
+
   const items = readList(settings, 'items').filter((item) => readText(item, 'name'))
+  if (items.length > 0) {
+    return items.map((item) => ({
+      id: item.id,
+      name: readText(item, 'name'),
+      address: readText(item, 'address'),
+      hours: readText(item, 'hours'),
+      phone: readText(item, 'phone'),
+      image: readText(item, 'image'),
+      link: readLink(item, 'mapLink'),
+      latitude: readCoordinate(readText(item, 'latitude'), 90),
+      longitude: readCoordinate(readText(item, 'longitude'), 180),
+    }))
+  }
+
+  const address = data.shop.address?.trim()
+  if (address) {
+    return [
+      {
+        id: 'shop',
+        name: data.shop.name,
+        address,
+        hours: '',
+        phone: data.shop.phone ?? '',
+        image: '',
+        link: NO_LINK,
+        latitude: Number.isFinite(data.shop.latitude) ? (data.shop.latitude ?? null) : null,
+        longitude: Number.isFinite(data.shop.longitude) ? (data.shop.longitude ?? null) : null,
+      },
+    ]
+  }
+
+  return []
+}
+
+function hasPin(entry: StoreLocationEntry): boolean {
+  return entry.latitude !== null && entry.longitude !== null
+}
+
+/** The address, hours and phone rows every location shows. */
+function LocationDetails({ entry }: { entry: StoreLocationEntry }) {
+  return (
+    <>
+      {entry.address && (
+        <HStack align="start" gap="2" color="fg.muted" fontSize="sm">
+          <Icon as={LuMapPin} mt="0.5" flexShrink="0" />
+          <Text whiteSpace="pre-line">{entry.address}</Text>
+        </HStack>
+      )}
+      {entry.hours && (
+        <HStack align="start" gap="2" color="fg.muted" fontSize="sm">
+          <Icon as={LuClock} mt="0.5" flexShrink="0" />
+          <Text whiteSpace="pre-line">{entry.hours}</Text>
+        </HStack>
+      )}
+    </>
+  )
+}
+
+/** Directions and call links, shared by the grid and the locator list. */
+function LocationActions({ entry, directions }: { entry: StoreLocationEntry; directions: Link }) {
+  const text = useRenderText()
+  const tel = telHref(entry.phone)
+  return (
+    <HStack gap="2" pt="1" wrap="wrap">
+      {directions.kind !== 'none' && (
+        <Button asChild size="sm" variant="outline" colorPalette="brand" rounded="full">
+          <SmartLink link={directions}>
+            <LuNavigation />
+            {text('directions')}
+          </SmartLink>
+        </Button>
+      )}
+      {tel && (
+        <Button asChild size="sm" variant="ghost" rounded="full">
+          <ChakraLink href={tel} unstyled>
+            <LuPhone />
+            {entry.phone}
+          </ChakraLink>
+        </Button>
+      )}
+    </HStack>
+  )
+}
+
+export function StoreLocations({ settings }: SectionProps) {
+  const { data, imageUrl } = useRenderEnvironment()
+  const { frame } = useCardStyle()
+  const empty = useEmptyText()
+  const entries = locationsFor(settings, data)
+  const locator = readText(settings, 'layout') === 'locator'
+  const showMap = readBoolean(settings, 'showMap')
+  const points = entries.filter(hasPin).map((entry) => ({
+    id: entry.id,
+    latitude: entry.latitude!,
+    longitude: entry.longitude!,
+    label: entry.name,
+  }))
+
+  // The locator's selection: the first pinned store until the shopper picks
+  // another, falling back if the entries change under it.
+  const [picked, setPicked] = useState<string | null>(() => points[0]?.id ?? null)
+  const selected = points.some((point) => point.id === picked) ? picked : (points[0]?.id ?? null)
+
+  if (entries.length === 0) {
+    return (
+      <Stack as="section" gap="5">
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+        <EmptyNotice>{empty('items')}</EmptyNotice>
+      </Stack>
+    )
+  }
+
+  if (locator) {
+    return (
+      <Stack as="section" gap="5">
+        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
+        <Grid
+          templateColumns={{ base: '1fr', lg: 'minmax(0, 2fr) minmax(0, 3fr)' }}
+          gap={{ base: '5', lg: '8' }}
+          alignItems="start"
+        >
+          {/* On phones and tablets the map comes first, so a tap on a store
+              flies a map that is already on screen; on a computer the list
+              stays on the left, the classic locator. */}
+          <Stack order={{ base: 1, lg: 0 }} gap="3">
+            {entries.map((entry) => {
+              const active = entry.id === selected
+              const directions = directionsFor(entry)
+              return (
+                <Box
+                  key={entry.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={active}
+                  cursor="pointer"
+                  textAlign="left"
+                  rounded="l3"
+                  p={{ base: '4', md: '5' }}
+                  bg={active ? 'brand.subtle' : 'bg.panel'}
+                  borderWidth="1px"
+                  borderColor={active ? 'brand.solid' : 'border.subtle'}
+                  transition="border-color 150ms ease, background-color 150ms ease"
+                  onClick={() => setPicked(entry.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setPicked(entry.id)
+                    }
+                  }}
+                  _focusVisible={{ outlineWidth: '2px', outlineColor: 'brand.solid' }}
+                >
+                  <Stack gap="3">
+                    <Heading as="h3" size="md">
+                      {entry.name}
+                    </Heading>
+                    <LocationDetails entry={entry} />
+                    {/* The links keep their own click; selecting the card is
+                        not what a tap on "directions" asked for. */}
+                    <Box onClick={(event) => event.stopPropagation()}>
+                      <LocationActions entry={entry} directions={directions} />
+                    </Box>
+                  </Stack>
+                </Box>
+              )
+            })}
+          </Stack>
+
+          {points.length > 0 && (
+            <Box
+              order={{ base: 0, lg: 1 }}
+              position={{ base: 'relative', lg: 'sticky' }}
+              top={{ lg: STICKY_BELOW_HEADER }}
+            >
+              <StoreMap
+                points={points}
+                selectedId={selected}
+                onSelect={setPicked}
+                height={{ base: '16rem', md: '22rem', lg: '30rem' }}
+              />
+            </Box>
+          )}
+        </Grid>
+      </Stack>
+    )
+  }
 
   return (
     <Stack as="section" gap="5">
       <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-      {items.length === 0 ? (
-        <EmptyNotice>{empty('items')}</EmptyNotice>
-      ) : (
-        <SimpleGrid
-          columns={columnsOf(
-            readText(settings, 'columns'),
-            items.length,
-            readText(settings, 'mobileColumns'),
-          )}
-          gap="4"
-        >
-          {items.map((item) => {
-            const image = readText(item, 'image')
-            const tel = telHref(readText(item, 'phone'))
-            const map = readLink(item, 'mapLink')
-            return (
-              <Card.Root key={item.id} bg="bg.panel" rounded="l3" overflow="hidden" {...frame}>
-                {image && (
-                  <AspectRatio ratio={16 / 9} bg="bg.subtle">
-                    <ImageWithFallback
-                      src={imageUrl(image, { width: 800, height: 450 }) ?? undefined}
-                      alt=""
-                      objectFit="cover"
-                      loading="lazy"
-                    />
-                  </AspectRatio>
-                )}
-                <Card.Body gap="3">
-                  <Heading as="h3" size="md">
-                    {readText(item, 'name')}
-                  </Heading>
-                  {readText(item, 'address') && (
-                    <HStack align="start" gap="2" color="fg.muted" fontSize="sm">
-                      <Icon as={LuMapPin} mt="0.5" flexShrink="0" />
-                      <Text whiteSpace="pre-line">{readText(item, 'address')}</Text>
-                    </HStack>
-                  )}
-                  {readText(item, 'hours') && (
-                    <HStack align="start" gap="2" color="fg.muted" fontSize="sm">
-                      <Icon as={LuClock} mt="0.5" flexShrink="0" />
-                      <Text whiteSpace="pre-line">{readText(item, 'hours')}</Text>
-                    </HStack>
-                  )}
-                  <HStack gap="2" pt="1" wrap="wrap">
-                    {map.kind !== 'none' && (
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
-                        colorPalette="brand"
-                        rounded="full"
-                      >
-                        <SmartLink link={map}>
-                          <LuNavigation />
-                          {text('directions')}
-                        </SmartLink>
-                      </Button>
-                    )}
-                    {tel && (
-                      <Button asChild size="sm" variant="ghost" rounded="full">
-                        <ChakraLink href={tel} unstyled>
-                          <LuPhone />
-                          {readText(item, 'phone')}
-                        </ChakraLink>
-                      </Button>
-                    )}
-                  </HStack>
-                </Card.Body>
-              </Card.Root>
-            )
-          })}
-        </SimpleGrid>
+      {showMap && points.length > 0 && (
+        <StoreMap points={points} height={{ base: '14rem', md: '20rem' }} />
       )}
+      <SimpleGrid
+        columns={columnsOf(
+          readText(settings, 'columns'),
+          entries.length,
+          readText(settings, 'mobileColumns'),
+        )}
+        gap="4"
+      >
+        {entries.map((entry) => {
+          const directions = directionsFor(entry)
+          return (
+            <Card.Root key={entry.id} bg="bg.panel" rounded="l3" overflow="hidden" {...frame}>
+              {entry.image && (
+                <AspectRatio ratio={16 / 9} bg="bg.subtle">
+                  <ImageWithFallback
+                    src={imageUrl(entry.image, { width: 800, height: 450 }) ?? undefined}
+                    alt=""
+                    objectFit="cover"
+                    loading="lazy"
+                  />
+                </AspectRatio>
+              )}
+              <Card.Body gap="3">
+                <Heading as="h3" size="md">
+                  {entry.name}
+                </Heading>
+                <LocationDetails entry={entry} />
+                <LocationActions entry={entry} directions={directions} />
+              </Card.Body>
+            </Card.Root>
+          )
+        })}
+      </SimpleGrid>
     </Stack>
   )
 }
@@ -711,7 +915,12 @@ export function ContactCta({ settings }: SectionProps) {
   const { data, mode } = useRenderEnvironment()
   const text = useRenderText()
   const align = alignOf(settings)
-  const wa = whatsappHref(readText(settings, 'whatsapp'), readText(settings, 'whatsappMessage'))
+  // The section's own words win; a shop that never filled them still reaches
+  // the number and inbox saved in shop settings.
+  const wa = whatsappHref(
+    readText(settings, 'whatsapp') || data.shop.phone || '',
+    readText(settings, 'whatsappMessage'),
+  )
   const email = readText(settings, 'email') || data.shop.email || ''
   const mail = EMAIL.test(email) ? `mailto:${email}` : null
   const stop = (event: { preventDefault: () => void }) =>

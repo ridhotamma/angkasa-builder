@@ -814,11 +814,15 @@ const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayout
  * server HTML, and the layout effect moves it before the browser paints.
  */
 export function FloatingContact({ settings: section }: SectionProps) {
-  const { getWindow, settings } = useRenderEnvironment()
+  const { data, getWindow, settings } = useRenderEnvironment()
   const reduced = usePrefersReducedMotion()
   const [host, setHost] = useState<HTMLElement | null>(null)
-  const wa = whatsappHref(readText(section, 'whatsapp'), readText(section, 'whatsappMessage'))
-  const email = readText(section, 'email')
+  // Shop settings fill in whatever the section leaves blank.
+  const wa = whatsappHref(
+    readText(section, 'whatsapp') || data.shop.phone || '',
+    readText(section, 'whatsappMessage'),
+  )
+  const email = readText(section, 'email') || data.shop.email || ''
   const mail = email.includes('@') ? `mailto:${email}` : null
   const showTop = readBoolean(section, 'showTop')
   const side = readText(section, 'position') === 'left' ? { left: '4' } : { right: '4' }

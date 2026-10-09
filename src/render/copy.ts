@@ -86,6 +86,8 @@ const TEXT = {
   allCategories: { en: 'All', id: 'Semua' },
   results: { en: '{n} products', id: '{n} produk' },
   filters: { en: 'Categories', id: 'Kategori' },
+  filtersCollections: { en: 'Collections', id: 'Koleksi' },
+  noMatches: { en: 'No matches', id: 'Tidak ada hasil' },
   noProducts: { en: 'No products to show yet.', id: 'Belum ada produk untuk ditampilkan.' },
   previousPage: { en: 'Previous page', id: 'Halaman sebelumnya' },
   nextPage: { en: 'Next page', id: 'Halaman berikutnya' },

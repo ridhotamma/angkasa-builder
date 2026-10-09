@@ -496,6 +496,73 @@ const video: BlockSchema = {
   ],
 }
 
+/**
+ * One place on a map: a marker at coordinates the seller pastes, drawn as an
+ * interactive canvas that only loads where the block is. The screenshot-safe
+ * placeholder shows before the map mounts.
+ */
+const map: BlockSchema = {
+  type: 'map',
+  name: { en: 'Map', id: 'Peta' },
+  description: {
+    en: 'A pin on a map at coordinates you paste from Google Maps.',
+    id: 'Pin di peta pada koordinat yang Anda salin dari Google Maps.',
+  },
+  fields: [
+    {
+      kind: 'text',
+      key: 'label',
+      label: { en: 'Label', id: 'Label' },
+      help: {
+        en: 'Read out as the marker’s name, e.g. “Our shop, Jakarta”.',
+        id: 'Dibacakan sebagai nama pin, mis. “Toko kami, Jakarta”.',
+      },
+      max: 80,
+      default: 'Our shop',
+    },
+    {
+      kind: 'number',
+      key: 'latitude',
+      label: { en: 'Latitude', id: 'Lintang' },
+      help: {
+        en: 'e.g. -6.244 — right-click a spot in Google Maps to copy it.',
+        id: 'mis. -6.244 — klik kanan sebuah titik di Google Maps untuk menyalinnya.',
+      },
+      min: -90,
+      max: 90,
+      step: 0.1,
+      default: -6.2,
+    },
+    {
+      kind: 'number',
+      key: 'longitude',
+      label: { en: 'Longitude', id: 'Bujur' },
+      help: {
+        en: 'e.g. 106.799 — the second number in the pair.',
+        id: 'mis. 106.799 — angka kedua pada pasangan koordinat.',
+      },
+      min: -180,
+      max: 180,
+      step: 0.1,
+      default: 106.816666,
+    },
+    {
+      kind: 'select',
+      key: 'zoom',
+      label: { en: 'Zoom', id: 'Zum' },
+      options: [
+        { value: '11', label: { en: 'City', id: 'Kota' } },
+        { value: '13', label: { en: 'Neighbourhood', id: 'Kecamatan' } },
+        { value: '15', label: { en: 'Street', id: 'Jalan' } },
+        { value: '17', label: { en: 'Building', id: 'Bangunan' } },
+      ],
+      default: '13',
+    },
+    contentWidthField(),
+    alignmentField(),
+  ],
+}
+
 const badge: BlockSchema = {
   type: 'badge',
   name: { en: 'Badge', id: 'Lencana' },
@@ -939,6 +1006,7 @@ BLOCK_TYPES.push(
   icon,
   divider,
   video,
+  map,
   badge,
   rating,
   collapsible,

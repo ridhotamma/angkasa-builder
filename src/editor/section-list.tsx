@@ -55,6 +55,7 @@ import {
   sanitizeSections,
   type SectionInstance,
 } from '../model/content'
+import { createStarterSection } from '../model/section-starters'
 import { newId, readText } from '../model/fields'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
@@ -444,9 +445,7 @@ export function SectionList({
           clearClipboard()
           setCopied(null)
         }}
-        onAddSection={(type, preset) =>
-          insert(createSection(type, preset?.settings, preset?.style))
-        }
+        onAddSection={(type, preset) => insert(createStarterSection(type, preset))}
         onAddBlocks={(blocks: readonly PaletteBlock[]) =>
           insert(createSection('custom', { blocks }))
         }

@@ -11,6 +11,7 @@ export {
   type RenderEnvironment,
   type StorefrontArticleCard,
   type StorefrontArticleDetail,
+  type StorefrontBranchData,
   type StorefrontCategoryData,
   type StorefrontGalleryImage,
   type StorefrontListingData,

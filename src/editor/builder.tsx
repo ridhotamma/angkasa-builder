@@ -71,9 +71,11 @@ import {
   LuEye,
   LuLink,
   LuMonitor,
+  LuMoon,
   LuRedo2,
   LuShoppingBag,
   LuSmartphone,
+  LuSun,
   LuTablet,
   LuTrash2,
   LuUnlink,
@@ -116,6 +118,7 @@ import {
   type ElementKind,
 } from '../model/element-style'
 import { readBlocks, type FieldValues } from '../model/fields'
+import { createStarterSection } from '../model/section-starters'
 import {
   FOOTER_FIELDS,
   HEADER_FIELDS,
@@ -130,7 +133,7 @@ import {
   VISIBILITY_STYLE_KEYS,
 } from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
-import { googleFontsHref, type ThemeSettings } from '../model/settings'
+import { googleFontsHref, themeDesignedForDark, type ThemeSettings } from '../model/settings'
 import {
   hasTabBar,
   isHeaderTransparent,
@@ -433,7 +436,13 @@ function Builder({
   const [tab, setTab] = useState<'sections' | 'theme'>(startWithLooks ? 'theme' : 'sections')
   const [sectionTab, setSectionTab] = useState<'content' | 'style' | 'visibility'>('content')
   const [device, setDevice] = useState<PreviewDevice>('desktop')
+  // The preview's colour mode. `null` follows the theme's designed mode until
+  // the seller flips the toolbar switch; the live site's own switch is the
+  // shopper's, so this only ever paints the preview.
+  const [previewMode, setPreviewMode] = useState<'light' | 'dark' | null>(null)
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null)
+  const designedMode: 'light' | 'dark' = themeDesignedForDark(settings) ? 'dark' : 'light'
+  const previewColorMode = previewMode ?? designedMode
   const [notice, setNotice] = useState<string | null>(null)
   // Below `lg` the panel takes the whole width, and the preview opens as a
   // full-screen sheet from a button pinned to the bottom instead.
@@ -564,7 +573,7 @@ function Builder({
     // Dropped, not selected: the palette stays open for the next item. An
     // item added by click opens its settings instead (see `insert`).
     if (item.kind === 'section') {
-      const section = createSection(item.type, item.preset?.settings, item.preset?.style)
+      const section = createStarterSection(item.type, item.preset)
       const next = [...current]
       next.splice(at(target.kind === 'sections' ? target.index : current.length), 0, section)
       change(next)
@@ -1440,6 +1449,7 @@ function Builder({
             window. The page's width container is the box around the sections. */}
         <ThemeScope
           settings={settings}
+          mode={previewColorMode}
           minH="100dvh"
           display="flex"
           flexDirection="column"
@@ -1468,6 +1478,7 @@ function Builder({
     [
       env,
       settings,
+      previewColorMode,
       clickAway,
       header,
       edges.flushTop,
@@ -1535,6 +1546,19 @@ function Builder({
               </Tooltip>
             </HStack>
           )}
+          <Tooltip
+            content={previewColorMode === 'dark' ? t('previewLight') : t('previewDark')}
+            wrap
+          >
+            <IconButton
+              aria-label={previewColorMode === 'dark' ? t('previewLight') : t('previewDark')}
+              size="xs"
+              variant="ghost"
+              onClick={() => setPreviewMode(previewColorMode === 'dark' ? 'light' : 'dark')}
+            >
+              <Icon as={previewColorMode === 'dark' ? LuSun : LuMoon} />
+            </IconButton>
+          </Tooltip>
           <Text fontSize="xs" color="fg.muted" hideBelow="xl">
             {previewNote ? `${previewNote} ` : ''}
             {t('inlineHint')}
@@ -1543,7 +1567,7 @@ function Builder({
         {toolbar}
       </Flex>
     ),
-    [device, history, previewNote, toolbar, t],
+    [device, history, previewNote, toolbar, t, previewColorMode],
   )
 
   const previewButton = (
@@ -1554,7 +1578,12 @@ function Builder({
   )
 
   const previewFrame = (
-    <PreviewFrame device={device} fontHref={googleFontsHref(settings)} onDocument={setPreviewDoc}>
+    <PreviewFrame
+      device={device}
+      mode={previewColorMode}
+      fontHref={googleFontsHref(settings)}
+      onDocument={setPreviewDoc}
+    >
       {preview}
     </PreviewFrame>
   )

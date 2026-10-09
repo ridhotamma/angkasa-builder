@@ -17,16 +17,18 @@ import {
   Breadcrumb,
   Button,
   chakra,
+  Combobox,
+  createListCollection,
   Flex,
   HStack,
   Icon,
-  NativeSelect,
+  Portal,
   SimpleGrid,
   Stack,
   Text,
   type ButtonProps,
 } from '@chakra-ui/react'
-import type { MouseEvent, ReactNode } from 'react'
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 
 import { readBoolean, readText } from '../model/fields'
@@ -66,6 +68,16 @@ function activeCategory(listing: StorefrontListingData): string | null {
   return listing.current?.kind === 'category' ? listing.current.slug : null
 }
 
+/**
+ * What the filter row offers. The catalogue and a category page filter by the
+ * shop's categories; a collection page filters by its sibling collections,
+ * because "New Arrival next to Kaos" is a category jump the shopper did not
+ * ask for.
+ */
+function filterMode(listing: StorefrontListingData): 'categories' | 'collections' {
+  return listing.current?.kind === 'collection' ? 'collections' : 'categories'
+}
+
 /* -------------------------------------------------------------------------- */
 /* Header                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -76,8 +88,15 @@ export function CatalogHeader({ settings }: SectionProps) {
   const centered = readText(settings, 'align') === 'center'
   if (!listing) return null
 
-  const active = activeCategory(listing)
-  const showFilters = readBoolean(settings, 'showFilters') && listing.categories.length > 0
+  const mode = filterMode(listing)
+  const entries = mode === 'collections' ? (listing.collections ?? []) : listing.categories
+  const showFilters = readBoolean(settings, 'showFilters') && entries.length > 0
+  // The listing's own words win on a category or collection page. The plain
+  // catalogue has no server description, so the section's copy is what the
+  // seller writes there.
+  const description = listing.current
+    ? listing.description
+    : listing.description || readText(settings, 'description')
 
   return (
     <Stack as="section" gap="4">
@@ -126,9 +145,9 @@ export function CatalogHeader({ settings }: SectionProps) {
               {listing.title}
             </Text>
           )}
-          {readBoolean(settings, 'showDescription') && listing.description && (
+          {readBoolean(settings, 'showDescription') && description && (
             <Text color="fg.muted" maxW="2xl" mx={centered ? 'auto' : undefined}>
-              {listing.description}
+              {description}
             </Text>
           )}
           {readBoolean(settings, 'showCount') && listing.total > 0 && (
@@ -139,35 +158,77 @@ export function CatalogHeader({ settings }: SectionProps) {
         </Stack>
       )}
 
-      {showFilters && <CategoryFilter listing={listing} settings={settings} active={active} />}
+      {showFilters && (
+        <CatalogFilter listing={listing} settings={settings} mode={mode} entries={entries} />
+      )}
     </Stack>
   )
 }
 
+interface FilterEntry {
+  id: string
+  name: string
+  slug: string
+}
+
 /**
- * The shop's categories as a filter over the catalogue. The chosen style is
- * per section; the sticky choice keeps the row under the store header while
- * the products scroll, on phones only or at every width.
+ * The shop's categories — or a collection page's sibling collections — as a
+ * filter over the catalogue. The chosen style is per section; the sticky
+ * choice keeps the row under the store header while the products scroll, on
+ * phones only or at every width.
  */
-function CategoryFilter({
+function CatalogFilter({
   listing,
   settings,
-  active,
+  mode,
+  entries,
 }: {
   listing: StorefrontListingData
   settings: SectionProps['settings']
-  active: string | null
+  mode: 'categories' | 'collections'
+  entries: readonly FilterEntry[]
 }) {
   const text = useRenderText()
-  const { href, mode, navigate } = useRenderEnvironment()
+  const { href, mode: renderMode, navigate } = useRenderEnvironment()
   const style = filterStyleOf(settings)
   const sticky = readText(settings, 'filterSticky') || 'none'
   const pinned = sticky === 'always' || sticky === 'mobile'
+  const underline = style === 'underline'
+  const byCollections = mode === 'collections'
+  const [query, setQuery] = useState('')
+
+  const active = byCollections
+    ? listing.current?.kind === 'collection'
+      ? listing.current.slug
+      : null
+    : activeCategory(listing)
+  const allLabel = text('allCategories')
+  const activeName = entries.find((entry) => entry.slug === active)?.name ?? allLabel
+  const label = byCollections ? text('filtersCollections') : text('filters')
+
+  /** The link a filter choice points at: catalog + category, or one collection. */
+  const linkFor = (slug: string | null) =>
+    byCollections
+      ? slug
+        ? ({ kind: 'collection', slug } as const)
+        : ({ kind: 'catalog' } as const)
+      : slug
+        ? ({ kind: 'catalog', category: slug } as const)
+        : ({ kind: 'catalog' } as const)
+
+  const collection = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    const items = [
+      { value: '', label: allLabel },
+      ...entries.map((entry) => ({ value: entry.slug, label: entry.name })),
+    ].filter((item) => item.value === '' || !needle || item.label.toLowerCase().includes(needle))
+    return createListCollection({ items })
+  }, [entries, allLabel, query])
 
   const follow = (event: MouseEvent<HTMLElement>, link: Parameters<typeof href>[0]) => {
     const url = href(link)
     if (!url) return
-    if (mode === 'preview') return event.preventDefault()
+    if (renderMode === 'preview') return event.preventDefault()
     if (!navigate || event.defaultPrevented || event.button !== 0) return
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
@@ -179,13 +240,16 @@ function CategoryFilter({
       key={label}
       asChild
       size="sm"
-      rounded={style === 'underline' ? 'none' : 'full'}
+      rounded={underline ? 'none' : 'full'}
       flexShrink="0"
-      variant={isActive ? (style === 'underline' ? 'ghost' : 'solid') : 'outline'}
+      variant={underline ? 'ghost' : isActive ? 'solid' : 'outline'}
       colorPalette={isActive ? 'brand' : 'gray'}
-      borderBottomWidth={style === 'underline' ? '2px' : undefined}
-      borderColor={style === 'underline' && isActive ? 'brand.solid' : 'transparent'}
-      _hover={{ textDecoration: 'none' }}
+      // Underline tabs sit flush: no gap between them, the padding gives each
+      // its room. Pill chips keep the gap that reads as separate controls.
+      px={underline ? '3' : undefined}
+      borderBottomWidth={underline ? '2px' : undefined}
+      borderColor={underline ? (isActive ? 'brand.solid' : 'transparent') : undefined}
+      _hover={{ textDecoration: 'none', ...(underline ? { color: 'fg' } : {}) }}
     >
       <chakra.a
         href={href(link) ?? undefined}
@@ -200,43 +264,58 @@ function CategoryFilter({
   const row = (
     <HStack
       as="nav"
-      aria-label={text('filters')}
-      gap={style === 'underline' ? '5' : '2'}
+      aria-label={label}
+      gap={underline ? '0' : '2'}
       overflowX="auto"
       pb="1"
-      flexWrap={{ base: 'nowrap', md: style === 'underline' ? 'nowrap' : 'wrap' }}
+      flexWrap={{ base: 'nowrap', md: underline ? 'nowrap' : 'wrap' }}
       css={{ scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}
     >
-      {chip(text('allCategories'), { kind: 'catalog' }, active === null && !listing.current)}
-      {listing.categories.map((category) =>
-        chip(category.name, { kind: 'catalog', category: category.slug }, active === category.slug),
-      )}
+      {chip(allLabel, linkFor(null), listing.current === null)}
+      {entries.map((entry) => chip(entry.name, linkFor(entry.slug), active === entry.slug))}
     </HStack>
   )
 
+  // The dropdown is a combobox, not a native select: a shop with fifty
+  // collections needs to type four letters, not scroll a system menu.
   const select = (
-    <NativeSelect.Root size="sm" maxW="xs" aria-label={text('filters')}>
-      <NativeSelect.Field
-        value={active ?? ''}
-        rounded="l2"
-        onChange={(event) => {
-          const slug = event.currentTarget.value
-          const link = slug
-            ? { kind: 'catalog' as const, category: slug }
-            : { kind: 'catalog' as const }
-          const url = href(link)
-          if (url && mode === 'live' && navigate) navigate(url)
-        }}
-      >
-        <option value="">{text('allCategories')}</option>
-        {listing.categories.map((category) => (
-          <option key={category.id} value={category.slug}>
-            {category.name}
-          </option>
-        ))}
-      </NativeSelect.Field>
-      <NativeSelect.Indicator />
-    </NativeSelect.Root>
+    <Combobox.Root
+      // Remount when the page changes, so the input shows the new choice.
+      key={active ?? 'all'}
+      collection={collection}
+      size="sm"
+      maxW="xs"
+      width="full"
+      openOnClick
+      defaultInputValue={activeName}
+      onInputValueChange={({ inputValue }) => setQuery(inputValue)}
+      onValueChange={({ value }) => {
+        const slug = value[0] ?? ''
+        const url = href(linkFor(slug || null))
+        if (url && renderMode === 'live' && navigate) navigate(url)
+      }}
+      positioning={{ sameWidth: true }}
+    >
+      <Combobox.Control>
+        <Combobox.Input placeholder={allLabel} aria-label={label} />
+        <Combobox.IndicatorGroup>
+          <Combobox.Trigger />
+        </Combobox.IndicatorGroup>
+      </Combobox.Control>
+      <Portal>
+        <Combobox.Positioner>
+          <Combobox.Content>
+            <Combobox.Empty>{text('noMatches')}</Combobox.Empty>
+            {collection.items.map((item) => (
+              <Combobox.Item item={item} key={item.value}>
+                {item.label}
+                <Combobox.ItemIndicator />
+              </Combobox.Item>
+            ))}
+          </Combobox.Content>
+        </Combobox.Positioner>
+      </Portal>
+    </Combobox.Root>
   )
 
   const content = style === 'select' ? select : row

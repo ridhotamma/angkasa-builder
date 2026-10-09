@@ -241,6 +241,8 @@ const MESSAGES = {
   deviceDesktop: { en: 'Desktop', id: 'Desktop' },
   deviceTablet: { en: 'Tablet', id: 'Tablet' },
   deviceMobile: { en: 'Phone', id: 'Ponsel' },
+  previewLight: { en: 'Preview in light mode', id: 'Pratinjau mode terang' },
+  previewDark: { en: 'Preview in dark mode', id: 'Pratinjau mode gelap' },
   showPreview: { en: 'View preview', id: 'Lihat pratinjau' },
   closePreview: { en: 'Close preview', id: 'Tutup pratinjau' },
   templateHome: { en: 'Home page', id: 'Beranda' },

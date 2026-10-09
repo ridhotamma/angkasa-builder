@@ -42,6 +42,7 @@ import {
   LuStar,
 } from 'react-icons/lu'
 
+import { StoreMap } from '@repo/geoapify/store-map'
 import { useLocale } from '@repo/i18n'
 import { ImageWithFallback } from '@repo/theme'
 
@@ -236,6 +237,7 @@ const BUILT_IN_BLOCKS: Record<string, BlockRenderer> = {
   icon: IconBlock,
   divider: DividerBlock,
   video: VideoBlock,
+  map: MapBlock,
   badge: BadgeBlock,
   rating: RatingBlock,
   collapsible: CollapsibleBlock,
@@ -815,6 +817,29 @@ function VideoBlock({ block }: { block: BlockValue }) {
         ratio={ratio}
         autoplay={readBoolean(block.settings, 'autoplay')}
         title=""
+      />
+    </Box>
+  )
+}
+
+/** One pin on a map at the block's coordinates. */
+function MapBlock({ block }: { block: BlockValue }) {
+  const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const zoom = Number(readText(block.settings, 'zoom'))
+  return (
+    <Box {...contentLayout(width, align)}>
+      <StoreMap
+        points={[
+          {
+            id: block.id,
+            latitude: readNumber(block.settings, 'latitude', -6.2),
+            longitude: readNumber(block.settings, 'longitude', 106.816666),
+            label: readText(block.settings, 'label'),
+          },
+        ]}
+        zoom={Number.isFinite(zoom) && zoom > 0 ? zoom : 13}
+        height={{ base: '14rem', md: '20rem' }}
       />
     </Box>
   )

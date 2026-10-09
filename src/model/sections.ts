@@ -2313,15 +2313,47 @@ export const SECTION_SCHEMAS = [
     icon: 'pin',
     name: { en: 'Store locations', id: 'Lokasi toko' },
     description: {
-      en: 'Your physical stores, with address, opening hours and directions.',
-      id: 'Toko fisik Anda, dengan alamat, jam buka, dan petunjuk arah.',
+      en: 'Your physical stores — from the shop’s branches, or a list you type, with a map and directions.',
+      id: 'Toko fisik Anda — dari cabang toko, atau daftar yang Anda tulis, dengan peta dan petunjuk arah.',
     },
     fields: [
       heading('Visit our stores'),
       {
+        kind: 'select',
+        key: 'layout',
+        label: { en: 'Layout', id: 'Tampilan' },
+        options: [
+          { value: 'grid', label: { en: 'Cards', id: 'Kartu' } },
+          {
+            value: 'locator',
+            label: { en: 'List and map', id: 'Daftar dan peta' },
+          },
+        ],
+        default: 'grid',
+        help: {
+          en: 'List and map puts the stores on the left; picking one moves the map beside it.',
+          id: 'Daftar dan peta menaruh toko di kiri; memilih satu menggerakkan peta di sampingnya.',
+        },
+      },
+      {
+        kind: 'boolean',
+        key: 'showMap',
+        label: { en: 'Show a map', id: 'Tampilkan peta' },
+        help: {
+          en: 'Ignored by the list-and-map layout, which always shows both. Needs store coordinates to draw pins.',
+          id: 'Diabaikan oleh tampilan daftar-dan-peta yang selalu menampilkan keduanya. Perlu koordinat toko untuk menggambar pin.',
+        },
+        default: true,
+        showWhen: { key: 'layout', is: ['grid'] },
+      },
+      {
         kind: 'list',
         key: 'items',
         label: { en: 'Stores', id: 'Toko' },
+        help: {
+          en: 'Used when the shop has no branches. Add branches in Settings to fill this automatically.',
+          id: 'Dipakai bila toko belum punya cabang. Tambahkan cabang di Pengaturan agar terisi otomatis.',
+        },
         itemLabel: { en: 'Store', id: 'Toko' },
         titleKey: 'name',
         max: 24,
@@ -2366,6 +2398,28 @@ export const SECTION_SCHEMAS = [
               en: 'Paste the Google Maps share link as a web address.',
               id: 'Tempel tautan bagikan Google Maps sebagai alamat web.',
             },
+          },
+          {
+            kind: 'text',
+            key: 'latitude',
+            label: { en: 'Latitude', id: 'Lintang' },
+            help: {
+              en: 'Optional, for the map pin. e.g. -6.244 — copy it from Google Maps.',
+              id: 'Opsional, untuk pin di peta. mis. -6.244 — salin dari Google Maps.',
+            },
+            max: 20,
+            default: '',
+          },
+          {
+            kind: 'text',
+            key: 'longitude',
+            label: { en: 'Longitude', id: 'Bujur' },
+            help: {
+              en: 'Optional, for the map pin. e.g. 106.799 — copy it from Google Maps.',
+              id: 'Opsional, untuk pin di peta. mis. 106.799 — salin dari Google Maps.',
+            },
+            max: 20,
+            default: '',
           },
         ],
       },
@@ -2743,6 +2797,18 @@ export const SECTION_SCHEMAS = [
         key: 'showDescription',
         label: { en: 'Show the description', id: 'Tampilkan deskripsi' },
         default: true,
+      },
+      {
+        kind: 'text',
+        key: 'description',
+        label: { en: 'All-products description', id: 'Deskripsi semua produk' },
+        help: {
+          en: 'Shown on the all-products page. A category or collection page shows its own description instead.',
+          id: 'Tampil di halaman semua produk. Halaman kategori atau koleksi memakai deskripsinya sendiri.',
+        },
+        max: 240,
+        default: 'Every product in the shop, newest first.',
+        showWhen: { key: 'showDescription', is: ['true'] },
       },
       {
         kind: 'boolean',

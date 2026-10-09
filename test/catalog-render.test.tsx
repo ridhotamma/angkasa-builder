@@ -17,6 +17,7 @@ import {
   RenderProvider,
   sampleStorefrontData,
   SectionsRenderer,
+  ThemeScope,
   type RenderEnvironment,
   type StorefrontListingData,
 } from '../src/render/index'
@@ -111,7 +112,7 @@ describe('the catalogue header', () => {
     expect(html).toContain('href="/products?category=kaos"')
   })
 
-  test('the dropdown style is a select over the same categories', () => {
+  test('the dropdown style is a filterable combobox over the same categories', () => {
     const html = render(
       <SectionsRenderer
         sections={[
@@ -121,8 +122,58 @@ describe('the catalogue header', () => {
         env={env()}
       />,
     )
-    expect(html).toContain('<select')
+    expect(html).toContain('role="combobox"')
     expect(html).toContain('Jaket')
+    expect(html).not.toContain('<select')
+  })
+
+  test('underline tabs are flat, gap-less and carry no box', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[createSection('catalog-header', { filterStyle: 'underline' })]}
+        env={env()}
+      />,
+    )
+    // Flush tabs: the row has no gap, and the inactive tabs are ghost
+    // (bottom rule only) rather than outlined boxes.
+    expect(html).toContain('gap:0')
+    expect(html).toContain('border-bottom-width:2px')
+    expect(html).toContain('border-color:var(--chakra-colors-brand-solid)')
+    expect(html).not.toContain('border-color:var(--chakra-colors-border)')
+  })
+
+  test('the all-products description falls back to the section copy', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[createSection('catalog-header')]}
+        env={env({ description: '' })}
+      />,
+    )
+    expect(html).toContain('Every product in the shop, newest first.')
+  })
+
+  test('a listing with its own description keeps it', () => {
+    expect(catalog()).toContain('Semua kaos di toko ini.')
+  })
+
+  test('a collection page filters by its sibling collections, not categories', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[createSection('catalog-header')]}
+        env={env({
+          current: { kind: 'collection', name: 'New Arrival', slug: 'new-arrival' },
+          collections: [
+            { id: 'k1', name: 'New Arrival', slug: 'new-arrival' },
+            { id: 'k2', name: 'Best Sellers', slug: 'best-sellers' },
+          ],
+        })}
+      />,
+    )
+    expect(html).toContain('Collections')
+    expect(html).toContain('href="/k/best-sellers"')
+    expect(html).toContain('href="/k/new-arrival"')
+    // The categories are for category pages; they are not offered here.
+    expect(html).not.toContain('href="/products?category=jaket"')
   })
 
   test('a sticky filter emits the sticky position', () => {
@@ -211,5 +262,30 @@ describe('the catalogue pagination', () => {
     expect(pageItems(1, 3)).toEqual([1, 2, 3])
     expect(pageItems(4, 10)).toEqual([1, 'gap', 3, 4, 5, 'gap', 10])
     expect(pageItems(10, 10)).toEqual([1, 'gap', 9, 10])
+  })
+
+  test('the current page wears the store theme’s brand, in the preview too', () => {
+    const themed = {
+      ...DEFAULT_THEME_SETTINGS,
+      colors: { ...DEFAULT_THEME_SETTINGS.colors, brand: '#123456' },
+    }
+    const html = renderToString(
+      <ChakraProvider value={system}>
+        <I18nProvider locale="en" resources={{}}>
+          <RenderProvider value={{ ...env(), settings: themed, mode: 'preview' }}>
+            <ThemeScope settings={themed} mode="light">
+              <SectionsRenderer
+                sections={[createSection('catalog-products')]}
+                env={{ ...env(), settings: themed, mode: 'preview' }}
+              />
+            </ThemeScope>
+          </RenderProvider>
+        </I18nProvider>
+      </ChakraProvider>,
+    )
+    // The scope carries the theme's brand…
+    expect(html).toContain('--chakra-colors-brand-solid:#123456')
+    // …and the active page's palette resolves through it, not Chakra's default.
+    expect(html).toContain('--chakra-colors-color-palette-solid:var(--chakra-colors-brand-solid)')
   })
 })

@@ -37,11 +37,14 @@ let frames = 0
 
 export function PreviewFrame({
   device,
+  mode,
   fontHref,
   onDocument,
   children,
 }: {
   device: PreviewDevice
+  /** The colour mode the preview paints: the iframe's own light/dark switch. */
+  mode: 'light' | 'dark'
   /** The theme's Google Fonts stylesheet, which must load inside the frame too. */
   fontHref: string
   /** The iframe's document once it is ready, for scrolling a section into view. */
@@ -81,6 +84,15 @@ export function PreviewFrame({
     onDocument?.(doc)
     return () => onDocument?.(null)
   }, [doc, onDocument])
+
+  // The storefront and this frame both key their mode CSS off `.dark` on the
+  // document root, so the toolbar's switch toggles exactly what the live
+  // switch would — including the soft/inverse scheme bands.
+  useEffect(() => {
+    if (!doc) return
+    doc.documentElement.classList.toggle('dark', mode === 'dark')
+    doc.documentElement.style.colorScheme = mode
+  }, [doc, mode])
 
   // Fonts are a `<link>` the editor's React tree cannot hoist into the frame.
   useEffect(() => {
