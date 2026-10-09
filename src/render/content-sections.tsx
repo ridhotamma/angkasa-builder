@@ -840,7 +840,6 @@ export function StoreLocations({ settings }: SectionProps) {
               <StoreMap
                 points={points}
                 selectedId={selected}
-                onSelect={setPicked}
                 height={{ base: '16rem', md: '22rem', lg: '30rem' }}
               />
             </Box>
