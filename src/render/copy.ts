@@ -83,6 +83,10 @@ const TEXT = {
   home: { en: 'Home', id: 'Beranda' },
   catalog: { en: 'Catalog', id: 'Katalog' },
   allProducts: { en: 'All products', id: 'Semua produk' },
+  allProductsDescription: {
+    en: 'Every product in the shop, newest first.',
+    id: 'Semua produk di toko ini, dari yang terbaru.',
+  },
   allCategories: { en: 'All', id: 'Semua' },
   results: { en: '{n} products', id: '{n} produk' },
   filters: { en: 'Categories', id: 'Kategori' },

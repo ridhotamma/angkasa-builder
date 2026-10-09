@@ -91,12 +91,12 @@ export function CatalogHeader({ settings }: SectionProps) {
   const mode = filterMode(listing)
   const entries = mode === 'collections' ? (listing.collections ?? []) : listing.categories
   const showFilters = readBoolean(settings, 'showFilters') && entries.length > 0
-  // The listing's own words win on a category or collection page. The plain
-  // catalogue has no server description, so the section's copy is what the
-  // seller writes there.
+  // The listing's own words win on a category or collection page. On the plain
+  // catalogue the seller's copy is what they typed, falling back to the
+  // localized default while they have not written one.
   const description = listing.current
     ? listing.description
-    : listing.description || readText(settings, 'description')
+    : listing.description || readText(settings, 'description') || text('allProductsDescription')
 
   return (
     <Stack as="section" gap="4">

@@ -52,14 +52,22 @@ function env(data: Partial<StorefrontListingData> = {}): RenderEnvironment {
   }
 }
 
-function render(node: ReactNode, data: Partial<StorefrontListingData> = {}): string {
+function renderIn(
+  locale: 'en' | 'id',
+  node: ReactNode,
+  data: Partial<StorefrontListingData> = {},
+): string {
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <I18nProvider locale={locale} resources={{}}>
         <RenderProvider value={env(data)}>{node}</RenderProvider>
       </I18nProvider>
     </ChakraProvider>,
   )
+}
+
+function render(node: ReactNode, data: Partial<StorefrontListingData> = {}): string {
+  return renderIn('en', node, data)
 }
 
 function catalog(settings: Record<string, unknown> = {}): string {
@@ -150,6 +158,31 @@ describe('the catalogue header', () => {
       />,
     )
     expect(html).toContain('Every product in the shop, newest first.')
+  })
+
+  test('the all-products fallback is localized', () => {
+    const html = renderIn(
+      'id',
+      <SectionsRenderer
+        sections={[createSection('catalog-header')]}
+        env={env({ description: '' })}
+      />,
+      { description: '' },
+    )
+    expect(html).toContain('Semua produk di toko ini, dari yang terbaru.')
+    expect(html).not.toContain('Every product in the shop')
+  })
+
+  test('a seller-edited all-products description is kept as-is', () => {
+    const html = renderIn(
+      'id',
+      <SectionsRenderer
+        sections={[createSection('catalog-header', { description: 'Promo akhir tahun!' })]}
+        env={env({ description: '' })}
+      />,
+      { description: '' },
+    )
+    expect(html).toContain('Promo akhir tahun!')
   })
 
   test('a listing with its own description keeps it', () => {
