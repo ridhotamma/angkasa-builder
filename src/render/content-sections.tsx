@@ -781,7 +781,11 @@ export function StoreLocations({ settings }: SectionProps) {
       <Stack as="section" gap="5">
         <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
         <Grid
-          templateColumns={{ base: '1fr', lg: 'minmax(0, 2fr) minmax(0, 3fr)' }}
+          // Without a single pin the map column has nothing to hold, so the
+          // list takes the full width instead of leaving a blank half.
+          templateColumns={
+            points.length > 0 ? { base: '1fr', lg: 'minmax(0, 2fr) minmax(0, 3fr)' } : '1fr'
+          }
           gap={{ base: '5', lg: '8' }}
           alignItems="start"
         >

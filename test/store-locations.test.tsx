@@ -135,6 +135,41 @@ describe('store locations', () => {
     )
     expect(withoutPins).not.toContain('data-store-map')
   })
+
+  test('typed stores with coordinates still map', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('store-locations', {
+            layout: 'locator',
+            items: [
+              { name: 'Typed store', address: 'Somewhere', latitude: '-6.2', longitude: '106.8' },
+            ],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    expect(html).toContain('Typed store')
+    expect(html).toContain('data-store-map=""')
+  })
+
+  test('a locator with no pinned stores is a single-column list', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('store-locations', {
+            layout: 'locator',
+            items: [{ name: 'Typed store', address: 'Somewhere' }],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    expect(html).toContain('Typed store')
+    expect(html).not.toContain('data-store-map')
+    expect(html).toContain('grid-template-columns:1fr')
+  })
 })
 
 describe('the map block', () => {
