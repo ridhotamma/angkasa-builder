@@ -39,7 +39,7 @@ export {
 } from './chrome'
 export { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
 export { ArticleCard, ArticleGrid, formatArticleDate } from './article-page'
-export { BlockChildren } from './blocks-section'
+export { BlockChildren, BlockStrip } from './blocks-section'
 export {
   blockRenderer,
   registerBlockRenderer,

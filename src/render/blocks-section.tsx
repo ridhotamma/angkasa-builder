@@ -128,9 +128,10 @@ export function BlocksSection({ settings }: SectionProps) {
 /**
  * The attributes that mark a block list as a drop target in the editor's
  * preview: which field holds the children and which block (or the section)
- * owns it. Absent on live pages, so nothing leaks to shoppers.
+ * owns it. Absent on live pages, so nothing leaks to shoppers. Exported for
+ * renderers that draw their own list of blocks — the stacked cards' pile.
  */
-function useDropTarget(parentId: string | null, fieldKey: string): Record<string, string> {
+export function useDropTarget(parentId: string | null, fieldKey: string): Record<string, string> {
   const { mode } = useRenderEnvironment()
   // No section id: a marquee's repeated copy, which is not somewhere to drop.
   const sectionId = useContext(SectionIdContext)
@@ -179,6 +180,32 @@ function BlockList({
  */
 export function BlockChildren({ blocks }: { blocks: readonly BlockValue[] }) {
   return <>{blockItems(blocks)}</>
+}
+
+/**
+ * A blocks list running sideways: every top-level block is one stop, each
+ * held to `width` so a plain heading cannot stretch the track. Exported for
+ * the scroll rail, whose whole content is one horizontal strip.
+ */
+export function BlockStrip({
+  blocks,
+  gap,
+  width,
+}: {
+  blocks: BlockValue[]
+  gap: string
+  width: BoxProps['w']
+}) {
+  const drop = useDropTarget(null, 'blocks')
+  return (
+    <Flex gap={gap} w="max-content" align="stretch" {...drop}>
+      {blocks.map((block) => (
+        <Box key={block.id} w={width} flexShrink="0">
+          <BlockView block={block} />
+        </Box>
+      ))}
+    </Flex>
+  )
 }
 
 function blockItems(blocks: readonly BlockValue[]) {

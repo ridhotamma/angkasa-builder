@@ -26,6 +26,7 @@ import {
   parseColor,
   Portal,
   ScrollArea,
+  SegmentGroup,
   Select,
   Spinner,
   Stack,
@@ -189,6 +190,37 @@ export function SelectInput({
         </Select.Positioner>
       </Portal>
     </Select.Root>
+  )
+}
+
+/**
+ * A two-way field as a segmented control: both answers stay visible, so the
+ * seller sees what the other choice is — cards or custom blocks.
+ */
+export function SegmentInput({
+  value,
+  onChange,
+  options,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: ReadonlyArray<{ value: string; label: string }>
+}) {
+  return (
+    <SegmentGroup.Root
+      size="sm"
+      w="full"
+      value={value}
+      onValueChange={({ value: next }) => next && onChange(next)}
+    >
+      <SegmentGroup.Indicator />
+      {options.map((option) => (
+        <SegmentGroup.Item key={option.value} value={option.value} flex="1">
+          <SegmentGroup.ItemText>{option.label}</SegmentGroup.ItemText>
+          <SegmentGroup.ItemHiddenInput />
+        </SegmentGroup.Item>
+      ))}
+    </SegmentGroup.Root>
   )
 }
 
@@ -876,14 +908,25 @@ function FieldControl({
     case 'select':
       return (
         <Labeled label={label} help={help}>
-          <SelectInput
-            value={typeof value === 'string' ? value : field.default}
-            onChange={onChange}
-            options={field.options.map((option) => ({
-              value: option.value,
-              label: l(option.label),
-            }))}
-          />
+          {field.segment ? (
+            <SegmentInput
+              value={typeof value === 'string' ? value : field.default}
+              onChange={onChange}
+              options={field.options.map((option) => ({
+                value: option.value,
+                label: l(option.label),
+              }))}
+            />
+          ) : (
+            <SelectInput
+              value={typeof value === 'string' ? value : field.default}
+              onChange={onChange}
+              options={field.options.map((option) => ({
+                value: option.value,
+                label: l(option.label),
+              }))}
+            />
+          )}
         </Labeled>
       )
     case 'boolean':

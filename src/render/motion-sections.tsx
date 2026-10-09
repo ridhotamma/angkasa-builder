@@ -14,9 +14,17 @@ import { useEffect, useRef, useState } from 'react'
 
 import { ImageWithFallback } from '@repo/theme'
 
-import { readLink, readList, readRichText, readText, type FieldValues } from '../model/fields'
+import {
+  readBlocks,
+  readLink,
+  readList,
+  readRichText,
+  readText,
+  type FieldValues,
+} from '../model/fields'
 import { isRichDocEmpty } from '../model/rich-text'
 import { resolveScheme, schemeCssVars } from '../model/settings'
+import { BlockChildren, BlockStrip, useDropTarget } from './blocks-section'
 import { HEADER_HEIGHT_VAR } from './chrome'
 import { SectionColumn } from './column'
 import { useRenderEnvironment } from './context'
@@ -41,15 +49,19 @@ import { alignOf, useEmptyText, type SectionProps } from './sections'
  * Cards pinning one over another as the page scrolls, each peeking from
  * under the next and shrinking into the pile. Pinning is plain CSS sticky;
  * the shrink is a ScrollTrigger scrub, so it works in every browser rather
- * than only where CSS scroll-driven animations do.
+ * than only where CSS scroll-driven animations do. Every top-level block is
+ * one card; pages built before the pile took blocks keep their fixed cards.
  */
 export function StackedCards({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const { frame, flat } = useCardStyle()
   const empty = useEmptyText()
   const align = alignOf(settings)
-  const items = readList(settings, 'items')
+  const custom = readText(settings, 'content') === 'blocks'
+  const blocks = custom ? readBlocks(settings, 'blocks') : []
+  const items = custom ? [] : readList(settings, 'items')
   const stack = useRef<HTMLDivElement>(null)
+  const drop = useDropTarget(null, 'blocks')
 
   useMotionEffect(
     stack,
@@ -76,10 +88,12 @@ export function StackedCards({ settings }: SectionProps) {
         )
       })
     },
-    [items.length],
+    [blocks.length, items.length],
   )
 
-  if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
+  if (blocks.length === 0 && items.length === 0) {
+    return <EmptyNotice>{empty('items')}</EmptyNotice>
+  }
 
   return (
     <Stack gap="6">
@@ -88,83 +102,113 @@ export function StackedCards({ settings }: SectionProps) {
           {readText(settings, 'heading')}
         </SectionHeading>
       </SectionColumn>
-      <Stack ref={stack} gap="6">
-        {items.map((item, index) => {
-          const fileId = readText(item, 'image')
-          const src = fileId ? imageUrl(fileId, { width: 1000, height: 625 }) : null
-          const title = readText(item, 'title')
-          const linkLabel = readText(item, 'linkLabel')
-          return (
-            <Box
-              key={item.id}
-              data-stack-card=""
-              position="sticky"
-              // Below the store header, each card a thumb lower than the last.
-              top={`calc(var(${HEADER_HEIGHT_VAR}, 76px) + ${16 + index * 28}px)`}
-            >
+      <Stack ref={stack} gap="6" {...(custom ? drop : {})}>
+        {blocks.length > 0
+          ? blocks.map((block, index) => (
               <Box
-                rounded="l3"
-                overflow="hidden"
-                p={{ base: '5', md: '8' }}
-                {...frame}
-                // A pile only reads when a card hides the one under it. A flat
-                // theme would leave every card see-through and the whole stack
-                // would show its text at once, so the surface is forced opaque
-                // and flat gets an edge for the peeking strips.
-                bg="bg.panel"
-                {...(flat && { borderWidth: '1px', borderColor: 'border.subtle' })}
+                key={block.id}
+                data-stack-card=""
+                position="sticky"
+                // Below the store header, each card a thumb lower than the last.
+                top={`calc(var(${HEADER_HEIGHT_VAR}, 76px) + ${16 + index * 28}px)`}
               >
-                <Flex
-                  direction={{ base: 'column', md: src ? 'row' : 'column' }}
-                  gap={{ base: '5', md: '8' }}
-                  align="center"
+                <Box
+                  rounded="l3"
+                  overflow="hidden"
+                  p={{ base: '5', md: '8' }}
+                  {...frame}
+                  // A pile only reads when a card hides the one under it. A flat
+                  // theme would leave every card see-through and the whole stack
+                  // would show its text at once, so the surface is forced opaque
+                  // and flat gets an edge for the peeking strips.
+                  bg="bg.panel"
+                  {...(flat && { borderWidth: '1px', borderColor: 'border.subtle' })}
                 >
-                  <Stack gap="2.5" flex="1" minW="0" textAlign={align}>
-                    <Text
-                      fontSize="sm"
-                      fontWeight="bold"
-                      color="brand.fg"
-                      fontVariantNumeric="tabular-nums"
-                    >
-                      {String(index + 1).padStart(2, '0')}
-                    </Text>
-                    {title && (
-                      <Heading as="h3" size={{ base: 'lg', md: 'xl' }} letterSpacing="-0.01em">
-                        {title}
-                      </Heading>
-                    )}
-                    <Paragraphs text={readText(item, 'text')} align={align} />
-                    {linkLabel && (
-                      <SmartLink
-                        link={readLink(item, 'link')}
-                        color="brand.fg"
-                        fontWeight="semibold"
-                        fontSize="sm"
-                        mt="1"
-                        data-sweep=""
-                      >
-                        {linkLabel} →
-                      </SmartLink>
-                    )}
-                  </Stack>
-                  {src && (
-                    <AspectRatio
-                      ratio={16 / 10}
-                      w="full"
-                      maxW={{ md: 'md' }}
-                      rounded="l2"
-                      overflow="hidden"
-                      bg="bg.subtle"
-                      flexShrink="0"
-                    >
-                      <ImageWithFallback src={src} alt={title} objectFit="cover" loading="lazy" />
-                    </AspectRatio>
-                  )}
-                </Flex>
+                  <BlockChildren blocks={[block]} />
+                </Box>
               </Box>
-            </Box>
-          )
-        })}
+            ))
+          : items.map((item, index) => {
+              const fileId = readText(item, 'image')
+              const src = fileId ? imageUrl(fileId, { width: 1000, height: 625 }) : null
+              const title = readText(item, 'title')
+              const linkLabel = readText(item, 'linkLabel')
+              return (
+                <Box
+                  key={item.id}
+                  data-stack-card=""
+                  position="sticky"
+                  // Below the store header, each card a thumb lower than the last.
+                  top={`calc(var(${HEADER_HEIGHT_VAR}, 76px) + ${16 + index * 28}px)`}
+                >
+                  <Box
+                    rounded="l3"
+                    overflow="hidden"
+                    p={{ base: '5', md: '8' }}
+                    {...frame}
+                    // A pile only reads when a card hides the one under it. A flat
+                    // theme would leave every card see-through and the whole stack
+                    // would show its text at once, so the surface is forced opaque
+                    // and flat gets an edge for the peeking strips.
+                    bg="bg.panel"
+                    {...(flat && { borderWidth: '1px', borderColor: 'border.subtle' })}
+                  >
+                    <Flex
+                      direction={{ base: 'column', md: src ? 'row' : 'column' }}
+                      gap={{ base: '5', md: '8' }}
+                      align="center"
+                    >
+                      <Stack gap="2.5" flex="1" minW="0" textAlign={align}>
+                        <Text
+                          fontSize="sm"
+                          fontWeight="bold"
+                          color="brand.fg"
+                          fontVariantNumeric="tabular-nums"
+                        >
+                          {String(index + 1).padStart(2, '0')}
+                        </Text>
+                        {title && (
+                          <Heading as="h3" size={{ base: 'lg', md: 'xl' }} letterSpacing="-0.01em">
+                            {title}
+                          </Heading>
+                        )}
+                        <Paragraphs text={readText(item, 'text')} align={align} />
+                        {linkLabel && (
+                          <SmartLink
+                            link={readLink(item, 'link')}
+                            color="brand.fg"
+                            fontWeight="semibold"
+                            fontSize="sm"
+                            mt="1"
+                            data-sweep=""
+                          >
+                            {linkLabel} →
+                          </SmartLink>
+                        )}
+                      </Stack>
+                      {src && (
+                        <AspectRatio
+                          ratio={16 / 10}
+                          w="full"
+                          maxW={{ md: 'md' }}
+                          rounded="l2"
+                          overflow="hidden"
+                          bg="bg.subtle"
+                          flexShrink="0"
+                        >
+                          <ImageWithFallback
+                            src={src}
+                            alt={title}
+                            objectFit="cover"
+                            loading="lazy"
+                          />
+                        </AspectRatio>
+                      )}
+                    </Flex>
+                  </Box>
+                </Box>
+              )
+            })}
       </Stack>
     </Stack>
   )
@@ -387,20 +431,51 @@ export function PinnedScroll({ settings }: SectionProps) {
 /* Scroll rail                                                                */
 /* -------------------------------------------------------------------------- */
 
+/** Page scroll paid per pixel of rail travel; a higher factor reads slower. */
+export const RAIL_SPEEDS: Record<string, number> = { slow: 2.6, normal: 1.6, fast: 1 }
+
+/** The pin distance multiplier the seller's speed choice asks for. */
+export function railSpeed(settings: FieldValues): number {
+  return RAIL_SPEEDS[readText(settings, 'speed')] ?? RAIL_SPEEDS.normal!
+}
+
+/** How wide one stop stands, by the section's width choice. */
+const RAIL_STOP_WIDTHS: Record<string, { base: string; md: string }> = {
+  sm: { base: '60vw', md: '260px' },
+  md: { base: '70vw', md: '340px' },
+  lg: { base: '84vw', md: '460px' },
+}
+
+/** How tall the pinned stage stands, as a share of the viewport. */
+export const RAIL_HEIGHTS: Record<string, number> = { md: 0.7, lg: 0.85, screen: 1 }
+
+/** The stage height the seller's choice asks for: a CSS length and its share. */
+export function railHeight(settings: FieldValues): { css: string; fraction: number } {
+  const fraction = RAIL_HEIGHTS[readText(settings, 'height')] ?? RAIL_HEIGHTS.screen!
+  return { css: `${fraction * 100}svh`, fraction }
+}
+
 /**
- * A horizontal gallery the page's vertical scroll drives: the stage pins for
+ * A horizontal rail the page's vertical scroll drives: the stage pins for
  * exactly the rail's overflow, then releases — a ScrollTrigger scrub across
  * the section's own scroll room, with the stage held by native CSS sticky.
- * Phones and reduced motion get the same cards as a native swipeable strip.
+ * The track holds whatever the seller composed from blocks; pages built
+ * before the rail took blocks keep their fixed cards. Phones and reduced
+ * motion get the same content as a native swipeable strip.
  */
 export function ScrollRail({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const { frame } = useCardStyle()
-  const items = readList(settings, 'items')
+  const custom = readText(settings, 'content') === 'blocks'
+  const blocks = custom ? readBlocks(settings, 'blocks') : []
+  const items = custom ? [] : readList(settings, 'items')
   const outer = useRef<HTMLDivElement>(null)
   const track = useRef<HTMLDivElement>(null)
   const [driving, setDriving] = useState(false)
+  const speed = railSpeed(settings)
+  const stage = railHeight(settings)
+  const stopWidth = RAIL_STOP_WIDTHS[readText(settings, 'stopWidth')] ?? RAIL_STOP_WIDTHS.md!
 
   useMotionEffect(
     outer,
@@ -418,7 +493,9 @@ export function ScrollRail({ settings }: SectionProps) {
           trigger: section,
           scroller,
           start: 'top top',
-          end: 'bottom bottom',
+          // The tween must finish exactly when the sticky stage releases —
+          // the overflow travel, whatever height the stage was given.
+          end: () => `+=${(rail.scrollWidth - section.clientWidth) * speed}`,
           scrub: true,
           invalidateOnRefresh: true,
         },
@@ -434,9 +511,13 @@ export function ScrollRail({ settings }: SectionProps) {
           view.innerWidth >= 768 &&
           rail.scrollWidth - section.clientWidth > view.innerHeight * 0.1
         if (next) {
-          // Scroll room for exactly the overflow, plus one screen so the
-          // stage releases only once the last card has rested in view.
-          section.style.height = `${rail.scrollWidth - section.clientWidth + view.innerHeight}px`
+          // Scroll room for the overflow, scaled by the speed choice, plus
+          // the stage's own height, so the sticky element releases only once
+          // the last stop has rested in view. A slower speed means a longer,
+          // calmer travel.
+          section.style.height = `${
+            (rail.scrollWidth - section.clientWidth) * speed + view.innerHeight * stage.fraction
+          }px`
         } else {
           section.style.height = ''
           gsap.set(rail, { clearProps: 'transform' })
@@ -464,17 +545,19 @@ export function ScrollRail({ settings }: SectionProps) {
         section.style.height = ''
       }
     },
-    [items.length],
+    [blocks.length, items.length, speed, stage.fraction],
   )
 
-  if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
+  if (blocks.length === 0 && items.length === 0) {
+    return <EmptyNotice>{empty('items')}</EmptyNotice>
+  }
 
   return (
     <Box ref={outer} data-rail="section">
       <Box
         position={driving ? 'sticky' : 'static'}
         top="0"
-        h={driving ? '100svh' : 'auto'}
+        h={driving ? stage.css : 'auto'}
         display="flex"
         flexDirection="column"
         justifyContent="center"
@@ -485,52 +568,63 @@ export function ScrollRail({ settings }: SectionProps) {
           <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
         </SectionColumn>
         <Box overflowX={driving ? 'hidden' : 'auto'} pb={driving ? '0' : '2'}>
-          <Flex ref={track} data-rail="track" gap="5" w="max-content">
-            {items.map((item) => {
-              const fileId = readText(item, 'image')
-              const src = fileId ? imageUrl(fileId, { width: 800, height: 600 }) : null
-              const title = readText(item, 'title')
-              const text = readText(item, 'text')
-              return (
-                <Box
-                  key={item.id}
-                  w={{ base: '70vw', md: '320px' }}
-                  flexShrink="0"
-                  rounded="l3"
-                  overflow="hidden"
-                  bg="bg.panel"
-                  transition="transform 200ms ease, border-color 200ms ease"
-                  _hover={{ transform: 'translateY(-4px)' }}
-                  css={{
-                    '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-                  }}
-                  {...frame}
-                >
-                  <SmartLink link={readLink(item, 'link')} display="block" h="full">
-                    {src && (
-                      <AspectRatio ratio={4 / 3} bg="bg.subtle">
-                        <ImageWithFallback src={src} alt={title} objectFit="cover" loading="lazy" />
-                      </AspectRatio>
-                    )}
-                    {(title || text) && (
-                      <Stack gap="1" p="4">
-                        {title && (
-                          <Text fontWeight="semibold" lineClamp={2}>
-                            {title}
-                          </Text>
+          <Box ref={track} data-rail="track" w="max-content">
+            {custom ? (
+              <BlockStrip blocks={blocks} gap="5" width={stopWidth} />
+            ) : (
+              <Flex gap="5" w="max-content">
+                {items.map((item) => {
+                  const fileId = readText(item, 'image')
+                  const src = fileId ? imageUrl(fileId, { width: 800, height: 600 }) : null
+                  const title = readText(item, 'title')
+                  const text = readText(item, 'text')
+                  return (
+                    <Box
+                      key={item.id}
+                      w={{ base: '70vw', md: '320px' }}
+                      flexShrink="0"
+                      rounded="l3"
+                      overflow="hidden"
+                      bg="bg.panel"
+                      transition="transform 200ms ease, border-color 200ms ease"
+                      _hover={{ transform: 'translateY(-4px)' }}
+                      css={{
+                        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+                      }}
+                      {...frame}
+                    >
+                      <SmartLink link={readLink(item, 'link')} display="block" h="full">
+                        {src && (
+                          <AspectRatio ratio={4 / 3} bg="bg.subtle">
+                            <ImageWithFallback
+                              src={src}
+                              alt={title}
+                              objectFit="cover"
+                              loading="lazy"
+                            />
+                          </AspectRatio>
                         )}
-                        {text && (
-                          <Text fontSize="sm" color="fg.muted" lineClamp={3}>
-                            {text}
-                          </Text>
+                        {(title || text) && (
+                          <Stack gap="1" p="4">
+                            {title && (
+                              <Text fontWeight="semibold" lineClamp={2}>
+                                {title}
+                              </Text>
+                            )}
+                            {text && (
+                              <Text fontSize="sm" color="fg.muted" lineClamp={3}>
+                                {text}
+                              </Text>
+                            )}
+                          </Stack>
                         )}
-                      </Stack>
-                    )}
-                  </SmartLink>
-                </Box>
-              )
-            })}
-          </Flex>
+                      </SmartLink>
+                    </Box>
+                  )
+                })}
+              </Flex>
+            )}
+          </Box>
         </Box>
       </Box>
     </Box>

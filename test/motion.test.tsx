@@ -23,7 +23,7 @@ import {
   type RenderEnvironment,
 } from '../src/render/index'
 import { dividerContainerStyle, surfacePaint } from '../src/render/dividers'
-import { scrollRoomHeight } from '../src/render/motion-sections'
+import { railHeight, railSpeed, scrollRoomHeight } from '../src/render/motion-sections'
 
 function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
   return {
@@ -120,6 +120,72 @@ describe('scroll-rail section', () => {
     expect(html).toContain('Card one')
     expect(html).toContain('Second card')
   })
+
+  test('drives whatever the seller composed from blocks, not only cards', () => {
+    const html = page([
+      createSection('scroll-rail', {
+        heading: 'Any layout',
+        content: 'blocks',
+        blocks: [
+          { type: 'heading', settings: { text: 'Stop one', level: 'h3' } },
+          {
+            type: 'column',
+            settings: {
+              blocks: [{ type: 'text', settings: { body: 'A column stop' } }],
+            },
+          },
+          { type: 'image', settings: { alt: 'A photo stop' } },
+        ],
+        // Old cards ride along in storage but do not show in blocks mode.
+        items: [{ title: 'Legacy card', text: '', image: '' }],
+      }),
+    ])
+    expect(html).toContain('Any layout')
+    expect(html).toContain('data-rail="track"')
+    expect(html).toContain('Stop one')
+    expect(html).toContain('A column stop')
+    expect(html).not.toContain('Legacy card')
+  })
+
+  test('cards mode still draws the fixed cards, blocks and all kept in storage', () => {
+    const html = page([
+      createSection('scroll-rail', {
+        heading: 'The collection',
+        content: 'cards',
+        items: [{ title: 'Default card', text: 'First card', image: '' }],
+        blocks: [{ type: 'heading', settings: { text: 'Hidden block stop' } }],
+      }),
+    ])
+    expect(html).toContain('Default card')
+    expect(html).not.toContain('Hidden block stop')
+  })
+
+  test('a slower speed asks for a longer pin, and unknown values fall back', () => {
+    expect(railSpeed({ speed: 'slow' })).toBeGreaterThan(railSpeed({ speed: 'normal' }))
+    expect(railSpeed({ speed: 'normal' })).toBeGreaterThan(railSpeed({ speed: 'fast' }))
+    expect(railSpeed({})).toBe(railSpeed({ speed: 'normal' }))
+    expect(railSpeed({ speed: 'warp' })).toBe(railSpeed({ speed: 'normal' }))
+  })
+
+  test('the stage height follows the setting, falling back to full screen', () => {
+    expect(railHeight({ height: 'md' })).toEqual({ css: '70svh', fraction: 0.7 })
+    expect(railHeight({ height: 'lg' })).toEqual({ css: '85svh', fraction: 0.85 })
+    expect(railHeight({})).toEqual({ css: '100svh', fraction: 1 })
+    expect(railHeight({ height: 'giant' })).toEqual({ css: '100svh', fraction: 1 })
+  })
+
+  test('the cards/blocks switch picks which editor shows', () => {
+    const blocks = { showWhen: { key: 'content', is: ['blocks'] } }
+    const cards = { showWhen: { key: 'content', is: ['cards'] } }
+    expect(isFieldShown(blocks, { content: 'blocks' })).toBe(true)
+    expect(isFieldShown(blocks, { content: 'cards' })).toBe(false)
+    expect(isFieldShown(cards, { content: 'cards' })).toBe(true)
+    expect(isFieldShown(cards, { content: 'blocks' })).toBe(false)
+    // String conditions elsewhere keep working as before.
+    expect(isFieldShown({ showWhen: { key: 'layout', is: ['bento'] } }, { layout: 'bento' })).toBe(
+      true,
+    )
+  })
 })
 
 describe('stacked-cards section', () => {
@@ -158,6 +224,29 @@ describe('stacked-cards section', () => {
     expect(html).toContain('--chakra-colors-bg-panel')
     expect(html).toContain('background:var(--chakra-colors-bg-panel)')
     expect(html).toContain('border-width:1px')
+  })
+
+  test('stacks whatever the seller composed from blocks, not only cards', () => {
+    const html = page([
+      createSection('stacked-cards', {
+        heading: 'Any card',
+        content: 'blocks',
+        blocks: [
+          { type: 'heading', settings: { text: 'Block card one' } },
+          {
+            type: 'column',
+            settings: { blocks: [{ type: 'text', settings: { body: 'Block card two' } }] },
+          },
+        ],
+        // Old cards ride along in storage but do not show in blocks mode.
+        items: [{ title: 'Legacy card', text: '', image: '' }],
+      }),
+    ])
+    expect(html).toContain('Any card')
+    expect(html).toContain('Block card one')
+    expect(html).toContain('Block card two')
+    expect(html).not.toContain('Legacy card')
+    expect(html.match(/data-stack-card/g) ?? []).toHaveLength(2)
   })
 })
 

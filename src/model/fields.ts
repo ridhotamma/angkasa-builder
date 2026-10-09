@@ -77,6 +77,11 @@ export interface SelectField extends BaseField {
   kind: 'select'
   options: ReadonlyArray<{ value: string; label: Localized }>
   default: string
+  /**
+   * Draw the options as a segmented control rather than a dropdown — for a
+   * two-way choice the seller flips between, like cards or custom blocks.
+   */
+  segment?: boolean
 }
 
 export interface BooleanField extends BaseField {

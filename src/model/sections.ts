@@ -11,7 +11,8 @@
  * rules" in docs/POSITIONING.md.
  */
 
-import { blocksSectionSchema, customSectionSchema } from './blocks'
+import { BLOCK_STYLE_FIELDS } from './block-style'
+import { blocksSectionSchema, customSectionSchema, BLOCK_TYPES } from './blocks'
 import type { BlockSchema, Field, ItemField, ListField, RichTextField, TextField } from './fields'
 import { FEATURE_ICONS, FEATURE_ICON_LABELS, type FeatureIcon } from './icons'
 import type { Localized } from './localized'
@@ -1540,11 +1541,35 @@ export const SECTION_SCHEMAS = [
     icon: 'marquee',
     name: { en: 'Scroll rail', id: 'Rel gulir' },
     description: {
-      en: 'A horizontal gallery driven by vertical scrolling.',
-      id: 'Galeri horizontal yang bergerak saat halaman digulir.',
+      en: 'A horizontal rail driven by vertical scrolling — any blocks, from product cards to a custom grid.',
+      id: 'Rel horizontal yang bergerak saat halaman digulir — blok apa pun, dari kartu produk hingga kisi kustom.',
     },
     fields: [
       heading(''),
+      {
+        kind: 'select',
+        key: 'content',
+        label: { en: 'Content', id: 'Konten' },
+        segment: true,
+        options: [
+          { value: 'cards', label: { en: 'Default cards', id: 'Kartu bawaan' } },
+          { value: 'blocks', label: { en: 'Custom blocks', id: 'Blok kustom' } },
+        ],
+        default: 'cards',
+      },
+      {
+        kind: 'blocks',
+        key: 'blocks',
+        label: { en: 'Blocks', id: 'Blok' },
+        help: {
+          en: 'Every block is one stop in the rail — an image, a card, a column, a grid or a whole row.',
+          id: 'Setiap blok menjadi satu bagian di rel — gambar, kartu, kolom, kisi, atau satu baris utuh.',
+        },
+        max: 20,
+        blocks: BLOCK_TYPES,
+        styleFields: BLOCK_STYLE_FIELDS,
+        showWhen: { key: 'content', is: ['blocks'] },
+      },
       {
         kind: 'list',
         key: 'items',
@@ -1552,6 +1577,7 @@ export const SECTION_SCHEMAS = [
         itemLabel: { en: 'Card', id: 'Kartu' },
         titleKey: 'title',
         max: 10,
+        showWhen: { key: 'content', is: ['cards'] },
         fields: [
           { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
           {
@@ -1571,6 +1597,51 @@ export const SECTION_SCHEMAS = [
           },
           { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
         ],
+      },
+      {
+        kind: 'select',
+        key: 'speed',
+        label: { en: 'Scroll speed', id: 'Kecepatan gulir' },
+        help: {
+          en: 'How much page scrolling moves the rail. Slower gives the rail more room to travel.',
+          id: 'Seberapa jauh halaman menggulir menggerakkan rel. Lebih pelan memberi rel ruang lebih.',
+        },
+        options: [
+          { value: 'slow', label: { en: 'Slow', id: 'Pelan' } },
+          { value: 'normal', label: { en: 'Normal', id: 'Normal' } },
+          { value: 'fast', label: { en: 'Fast', id: 'Cepat' } },
+        ],
+        default: 'normal',
+      },
+      {
+        kind: 'select',
+        key: 'stopWidth',
+        label: { en: 'Stop width', id: 'Lebar bagian' },
+        help: {
+          en: 'How wide each block sits in the rail. Large suits grids and cards; small suits images and chips.',
+          id: 'Seberapa lebar setiap blok di rel. Besar cocok untuk kisi dan kartu; kecil untuk gambar dan label.',
+        },
+        options: [
+          { value: 'sm', label: { en: 'Small', id: 'Kecil' } },
+          { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+          { value: 'lg', label: { en: 'Large', id: 'Besar' } },
+        ],
+        default: 'md',
+      },
+      {
+        kind: 'select',
+        key: 'height',
+        label: { en: 'Height', id: 'Tinggi' },
+        help: {
+          en: 'How tall the pinned stage stands while the rail travels. Phones always use the natural height.',
+          id: 'Seberapa tinggi panggung yang menempel saat rel bergerak. Ponsel selalu memakai tinggi alami.',
+        },
+        options: [
+          { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+          { value: 'lg', label: { en: 'Tall', id: 'Tinggi' } },
+          { value: 'screen', label: { en: 'Full screen', id: 'Satu layar penuh' } },
+        ],
+        default: 'screen',
       },
     ],
   },
@@ -1836,12 +1907,37 @@ export const SECTION_SCHEMAS = [
       heading(''),
       align,
       {
+        kind: 'select',
+        key: 'content',
+        label: { en: 'Content', id: 'Konten' },
+        segment: true,
+        options: [
+          { value: 'cards', label: { en: 'Default cards', id: 'Kartu bawaan' } },
+          { value: 'blocks', label: { en: 'Custom blocks', id: 'Blok kustom' } },
+        ],
+        default: 'cards',
+      },
+      {
+        kind: 'blocks',
+        key: 'blocks',
+        label: { en: 'Blocks', id: 'Blok' },
+        help: {
+          en: 'Every block is one card in the pile — an image, a card, a column, a grid or a whole row.',
+          id: 'Setiap blok menjadi satu kartu di tumpukan — gambar, kartu, kolom, kisi, atau satu baris utuh.',
+        },
+        max: 6,
+        blocks: BLOCK_TYPES,
+        styleFields: BLOCK_STYLE_FIELDS,
+        showWhen: { key: 'content', is: ['blocks'] },
+      },
+      {
         kind: 'list',
         key: 'items',
         label: { en: 'Cards', id: 'Kartu' },
         itemLabel: { en: 'Card', id: 'Kartu' },
         titleKey: 'title',
         max: 6,
+        showWhen: { key: 'content', is: ['cards'] },
         fields: [
           { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
           {
