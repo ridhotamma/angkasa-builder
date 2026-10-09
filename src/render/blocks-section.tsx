@@ -87,6 +87,7 @@ import {
 import {
   readBlocks,
   readBoolean,
+  readCoordinates,
   readLink,
   readNumber,
   readRichText,
@@ -827,17 +828,15 @@ function MapBlock({ block }: { block: BlockValue }) {
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const zoom = Number(readText(block.settings, 'zoom'))
+  const coordinates = readCoordinates(block.settings, 'coordinates')
   return (
     <Box {...contentLayout(width, align)}>
       <StoreMap
-        points={[
-          {
-            id: block.id,
-            latitude: readNumber(block.settings, 'latitude', -6.2),
-            longitude: readNumber(block.settings, 'longitude', 106.816666),
-            label: readText(block.settings, 'label'),
-          },
-        ]}
+        points={
+          coordinates
+            ? [{ id: block.id, ...coordinates, label: readText(block.settings, 'label') }]
+            : []
+        }
         zoom={Number.isFinite(zoom) && zoom > 0 ? zoom : 13}
         height={{ base: '14rem', md: '20rem' }}
       />

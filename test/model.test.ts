@@ -25,6 +25,7 @@ import {
   MAX_SECTIONS,
   menuFormSchema,
   moveSection,
+  parseCoordinates,
   readBlocks,
   removeSection,
   resolveLinkedSections,
@@ -85,6 +86,56 @@ describe('links', () => {
     expect(sanitizeLink({ kind: 'section', sectionId: '' })).toEqual({ kind: 'none' })
     expect(sanitizeLink({ kind: 'section', sectionId: 'a b' })).toEqual({ kind: 'none' })
     expect(sanitizeLink({ kind: 'section', sectionId: '../top' })).toEqual({ kind: 'none' })
+  })
+})
+
+describe('coordinates', () => {
+  test('reads the pair Google Maps copies, however it is wrapped', () => {
+    expect(parseCoordinates('-6.244, 106.799')).toEqual({ latitude: -6.244, longitude: 106.799 })
+    expect(parseCoordinates(' (-6.244, 106.799) ')).toEqual({
+      latitude: -6.244,
+      longitude: 106.799,
+    })
+    expect(parseCoordinates('-6.244;106.799')).toEqual({ latitude: -6.244, longitude: 106.799 })
+  })
+
+  test('refuses anything that is not an on-Earth pair', () => {
+    expect(parseCoordinates('-6.244')).toBeNull()
+    expect(parseCoordinates('-6.244, 106.799, 12')).toBeNull()
+    expect(parseCoordinates('91, 106.799')).toBeNull()
+    expect(parseCoordinates('0, 0')).toBeNull()
+    expect(parseCoordinates('Jl. Dago No. 8')).toBeNull()
+  })
+
+  test('a stored pin is the pair as numbers, and an empty pin is null', () => {
+    const [section] = sanitizeSections([
+      {
+        id: 's',
+        type: 'store-locations',
+        settings: {
+          items: [
+            { name: 'A', coordinates: '-6.2, 106.8' },
+            { name: 'B', coordinates: 'not a place' },
+          ],
+        },
+      },
+    ])
+    const items = section!.settings.items as Array<Record<string, unknown>>
+    expect(items[0]!.coordinates).toEqual({ latitude: -6.2, longitude: 106.8 })
+    expect(items[1]!.coordinates).toBeNull()
+  })
+
+  test('the old latitude and longitude fields fold into the pair', () => {
+    const [section] = sanitizeSections([
+      {
+        id: 's',
+        type: 'store-locations',
+        settings: { items: [{ name: 'A', latitude: '-6.2', longitude: '106.8' }] },
+      },
+    ])
+    const items = section!.settings.items as Array<Record<string, unknown>>
+    expect(items[0]!.coordinates).toEqual({ latitude: -6.2, longitude: 106.8 })
+    expect(items[0]).not.toHaveProperty('latitude')
   })
 })
 

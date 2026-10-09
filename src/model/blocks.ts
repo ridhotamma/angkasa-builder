@@ -497,9 +497,8 @@ const video: BlockSchema = {
 }
 
 /**
- * One place on a map: a marker at coordinates the seller pastes, drawn as an
- * interactive canvas that only loads where the block is. The screenshot-safe
- * placeholder shows before the map mounts.
+ * One place on a map: a marker at the one coordinate pair the seller pastes,
+ * drawn as a light Google Maps embed rather than a map canvas.
  */
 const map: BlockSchema = {
   type: 'map',
@@ -521,30 +520,16 @@ const map: BlockSchema = {
       default: 'Our shop',
     },
     {
-      kind: 'number',
-      key: 'latitude',
-      label: { en: 'Latitude', id: 'Lintang' },
+      kind: 'coordinates',
+      key: 'coordinates',
+      label: { en: 'Coordinates', id: 'Koordinat' },
       help: {
-        en: 'e.g. -6.244 — right-click a spot in Google Maps to copy it.',
-        id: 'mis. -6.244 — klik kanan sebuah titik di Google Maps untuk menyalinnya.',
+        en: 'Right-click the spot in Google Maps, copy the pair and paste it here. e.g. -6.244, 106.799',
+        id: 'Klik kanan titiknya di Google Maps, salin pasangannya, lalu tempel di sini. mis. -6.244, 106.799',
       },
-      min: -90,
-      max: 90,
-      step: 0.1,
-      default: -6.2,
-    },
-    {
-      kind: 'number',
-      key: 'longitude',
-      label: { en: 'Longitude', id: 'Bujur' },
-      help: {
-        en: 'e.g. 106.799 — the second number in the pair.',
-        id: 'mis. 106.799 — angka kedua pada pasangan koordinat.',
-      },
-      min: -180,
-      max: 180,
-      step: 0.1,
-      default: 106.816666,
+      placeholder: { en: '-6.244, 106.799', id: '-6.244, 106.799' },
+      default: { latitude: -6.2, longitude: 106.816666 },
+      legacy: { latitude: 'latitude', longitude: 'longitude' },
     },
     {
       kind: 'select',

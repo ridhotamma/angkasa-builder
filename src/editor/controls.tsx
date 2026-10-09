@@ -66,12 +66,15 @@ import {
   defaultValues,
   isFieldShown,
   newId,
+  parseCoordinates,
+  readCoordinates,
   readPoint,
   readRichText,
   readTable,
   readText,
   type BlockValue,
   type BlocksField,
+  type CoordinatesValue,
   type Field as FieldSpec,
   type FieldValues,
   type JsonValue,
@@ -253,6 +256,66 @@ export function NumberControl({
       <NumberInput.Control />
       <NumberInput.Input />
     </NumberInput.Root>
+  )
+}
+
+/**
+ * One pin, as one box. Google Maps copies a spot as "lat, lng" in a single
+ * string, so the seller pastes once instead of splitting the pair by hand.
+ * Half-typed text stays in the box untouched — the stored pin only moves once
+ * the pair parses — and an empty box clears it.
+ */
+function CoordinatesControl({
+  label,
+  help,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string
+  help?: string
+  placeholder?: string
+  value: unknown
+  onChange: (value: CoordinatesValue | null) => void
+}) {
+  const { t } = useEditorText()
+  const stored = readCoordinates({ value: value as JsonValue }, 'value')
+  const canonical = stored ? `${stored.latitude}, ${stored.longitude}` : ''
+  // The draft follows the stored value when it changes from outside — another
+  // block, another section — while a keystroke's own commit leaves the text
+  // exactly as typed. Updating state during render is React's own pattern for
+  // exactly this: state that mirrors a prop.
+  const [draft, setDraft] = useState({ value, text: canonical })
+  if (value !== draft.value) setDraft({ value, text: canonical })
+  const [invalid, setInvalid] = useState(false)
+
+  function change(text: string) {
+    if (text.trim() === '') {
+      setDraft({ value: null, text })
+      setInvalid(false)
+      onChange(null)
+      return
+    }
+    const parsed = parseCoordinates(text)
+    if (!parsed) {
+      setDraft({ value: draft.value, text })
+      setInvalid(true)
+      return
+    }
+    setDraft({ value: parsed, text })
+    setInvalid(false)
+    onChange(parsed)
+  }
+
+  return (
+    <Labeled label={label} help={help} error={invalid ? t('coordinatesInvalid') : undefined}>
+      <Input
+        size="sm"
+        placeholder={placeholder}
+        value={draft.text}
+        onChange={(event) => change(event.currentTarget.value)}
+      />
+    </Labeled>
   )
 }
 
@@ -904,6 +967,16 @@ function FieldControl({
             onChange={onChange}
           />
         </Labeled>
+      )
+    case 'coordinates':
+      return (
+        <CoordinatesControl
+          label={label}
+          help={help}
+          placeholder={field.placeholder ? l(field.placeholder) : undefined}
+          value={value}
+          onChange={onChange}
+        />
       )
     case 'select':
       return (

@@ -11,7 +11,7 @@
  * still renders, and a hand-crafted payload can only ever produce a valid one.
  */
 
-import { sanitizeStockPhoto } from '@repo/appwrite-config'
+import { hasCoordinates, sanitizeStockPhoto } from '@repo/appwrite-config'
 
 import { sanitizeLink, NO_LINK, type Link } from './links'
 import { EMPTY_RICH_DOC, sanitizeRichDoc, type RichDoc } from './rich-text'
@@ -71,6 +71,35 @@ export interface NumberField extends BaseField {
   max: number
   step?: number
   default: number
+}
+
+/** A place on Earth, as the one pair of numbers every map here wants. */
+export interface CoordinatesValue {
+  latitude: number
+  longitude: number
+}
+
+/**
+ * One pin, as a latitude and a longitude together.
+ *
+ * Stored as the pair but edited as a single box, because that is how the
+ * coordinates arrive: Google Maps copies "lat, lng" as one string, so asking
+ * for two fields means splitting the paste by hand. A cleared pin is `null`,
+ * which is why a field with a default still needs the seller to be able to
+ * empty it.
+ */
+export interface CoordinatesField extends BaseField {
+  kind: 'coordinates'
+  /** The pin a fresh field starts on; `null` means none until one is pasted. */
+  default: CoordinatesValue | null
+  /** Shown in the empty box, e.g. the pair Google Maps copies. */
+  placeholder?: Localized
+  /**
+   * Where a layout saved before this field existed kept the pair instead —
+   * `latitude` and `longitude` as two fields of their own. Read once when the
+   * combined value is absent, then folded into it by the sanitiser.
+   */
+  legacy?: { latitude: string; longitude: string }
 }
 
 export interface SelectField extends BaseField {
@@ -154,6 +183,7 @@ export type ItemField =
   | TextareaField
   | RichTextField
   | NumberField
+  | CoordinatesField
   | SelectField
   | BooleanField
   | ColorField
@@ -363,6 +393,54 @@ function sanitizePoint(value: unknown): PointValue {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Coordinates                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The pair Google Maps copies from "what's here?" / right-click: two decimals
+ * separated by a comma, as much precision as the spot has. Semicolons and
+ * wrapping parentheses are accepted too, because other map tools paste them.
+ */
+const COORDINATE_PAIR = /^\(?\s*(-?\d+(?:\.\d+)?)\s*[,;]\s*(-?\d+(?:\.\d+)?)\s*\)?$/
+
+/** A pasted "lat, lng", or null when it is not one — or not on Earth. */
+export function parseCoordinates(input: string): CoordinatesValue | null {
+  const match = COORDINATE_PAIR.exec(input.trim())
+  if (!match) return null
+  const latitude = Number(match[1])
+  const longitude = Number(match[2])
+  return hasCoordinates({ latitude, longitude }) ? { latitude, longitude } : null
+}
+
+/** A number a coordinate arrived as, whether typed as text or stored as one. */
+function coordinateNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value !== 'string' || value.trim() === '') return null
+  const parsed = Number(value.trim())
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+/**
+ * A stored pin, cleaned: the pair as numbers, on Earth, and never `(0, 0)` —
+ * which is always a map default or an empty geocode, never a real place.
+ * Accepts the `{ latitude, longitude }` shape this field stores, the pasted
+ * text a person types, and the strings an older layout kept the halves in.
+ */
+export function sanitizeCoordinates(value: unknown): CoordinatesValue | null {
+  if (typeof value === 'string') return parseCoordinates(value)
+  if (!isRecord(value)) return null
+  const latitude = coordinateNumber(value.latitude)
+  const longitude = coordinateNumber(value.longitude)
+  if (latitude === null || longitude === null) return null
+  return hasCoordinates({ latitude, longitude }) ? { latitude, longitude } : null
+}
+
+/** The pin a sanitised value holds, or null when it is empty or unusable. */
+export function readCoordinates(values: FieldValues, key: string): CoordinatesValue | null {
+  return sanitizeCoordinates(values[key])
+}
+
+/* -------------------------------------------------------------------------- */
 /* Blocks                                                                     */
 /* -------------------------------------------------------------------------- */
 
@@ -398,6 +476,8 @@ export function defaultForField(field: Field): JsonValue {
       return sanitizeRichDoc(field.default, field.max) as unknown as JsonValue
     case 'number':
       return field.default
+    case 'coordinates':
+      return (field.default ? { ...field.default } : null) as unknown as JsonValue
     case 'select':
       return field.default
     case 'boolean':
@@ -518,6 +598,13 @@ function sanitizeField(
       if (value < field.min || value > field.max) return field.default
       return field.step && field.step < 1 ? value : Math.round(value)
     }
+    case 'coordinates': {
+      // `null` is a real answer — the seller cleared the pin — so only an
+      // absent or broken value falls back to the field's own default.
+      if (value === null) return null
+      return (sanitizeCoordinates(value) ??
+        (field.default ? { ...field.default } : null)) as unknown as JsonValue
+    }
     case 'select':
       return field.options.some((option) => option.value === value)
         ? (value as string)
@@ -565,6 +652,19 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/**
+ * The raw value a field sanitises. A coordinates field with no combined value
+ * of its own adopts the pair an older layout kept under two separate keys —
+ * see `CoordinatesField.legacy` — so a saved pin survives the schema change.
+ */
+function fieldInput(field: Field, source: Record<string, unknown>): unknown {
+  const value = source[field.key]
+  if (value !== undefined || field.kind !== 'coordinates' || !field.legacy) return value
+  const { latitude, longitude } = field.legacy
+  if (source[latitude] === undefined && source[longitude] === undefined) return undefined
+  return { latitude: source[latitude], longitude: source[longitude] }
+}
+
 /** Every declared field, sanitised; every undeclared key, dropped. */
 export function sanitizeValues(
   fields: readonly Field[],
@@ -575,7 +675,7 @@ export function sanitizeValues(
   const source = isRecord(values) ? values : {}
   const out: FieldValues = {}
   for (const field of fields) {
-    out[field.key] = sanitizeField(field, source[field.key], budget, depth)
+    out[field.key] = sanitizeField(field, fieldInput(field, source), budget, depth)
   }
   return out
 }

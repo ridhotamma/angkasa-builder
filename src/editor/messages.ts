@@ -173,6 +173,10 @@ const MESSAGES = {
     en: 'Click or drag on the photo to move the dot.',
     id: 'Klik atau geser di foto untuk memindahkan titik.',
   },
+  coordinatesInvalid: {
+    en: 'Paste the pair as “-6.244, 106.799”.',
+    id: 'Tempel pasangannya sebagai “-6.244, 106.799”.',
+  },
   clear: { en: 'Clear', id: 'Hapus' },
   tableAddRow: { en: 'Row', id: 'Baris' },
   tableAddColumn: { en: 'Column', id: 'Kolom' },

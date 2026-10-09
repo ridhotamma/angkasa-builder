@@ -112,6 +112,8 @@ describe('store locations', () => {
       />,
     )
     expect(html).toContain('data-store-map=""')
+    // The map is the keyless Google embed, opened on the selected store.
+    expect(html).toContain('maps.google.com/maps?q=-6.8915,107.6107')
     expect(html).toContain('Bandung')
     expect(html).toContain('Surabaya')
     // The first pinned store is the selection the page starts on.
@@ -143,7 +145,11 @@ describe('store locations', () => {
           createSection('store-locations', {
             layout: 'locator',
             items: [
-              { name: 'Typed store', address: 'Somewhere', latitude: '-6.2', longitude: '106.8' },
+              {
+                name: 'Typed store',
+                address: 'Somewhere',
+                coordinates: '-6.2, 106.8',
+              },
             ],
           }),
         ]}
@@ -152,6 +158,7 @@ describe('store locations', () => {
     )
     expect(html).toContain('Typed store')
     expect(html).toContain('data-store-map=""')
+    expect(html).toContain('maps.google.com/maps?q=-6.2,106.8')
   })
 
   test('a locator with no pinned stores is a single-column list', () => {
@@ -181,7 +188,7 @@ describe('the map block', () => {
             blocks: [
               {
                 type: 'map',
-                settings: { label: 'Warung', latitude: -6.2, longitude: 106.816666 },
+                settings: { label: 'Warung', coordinates: '-6.2, 106.816666' },
               },
             ],
           }),
@@ -190,6 +197,27 @@ describe('the map block', () => {
       />,
     )
     expect(html).toContain('data-store-map=""')
+    expect(html).toContain('maps.google.com/maps?q=-6.2,106.816666')
+    expect(html).toContain('title="Warung"')
+  })
+
+  test('a block saved before the combined field keeps its pin', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('blocks', {
+            blocks: [
+              {
+                type: 'map',
+                settings: { label: 'Warung', latitude: -6.2, longitude: 106.816666 },
+              },
+            ],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    expect(html).toContain('maps.google.com/maps?q=-6.2,106.816666')
   })
 })
 

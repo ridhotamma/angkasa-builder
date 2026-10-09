@@ -30,6 +30,7 @@ import { ImageWithFallback } from '@repo/theme'
 
 import {
   readBoolean,
+  readCoordinates,
   readLink,
   readList,
   readRichText,
@@ -620,12 +621,6 @@ interface StoreLocationEntry {
   longitude: number | null
 }
 
-/** A number from a text field, or `null` when it is blank or out of range. */
-function readCoordinate(value: string, max: number): number | null {
-  const parsed = Number(value.trim())
-  return value.trim() !== '' && Number.isFinite(parsed) && Math.abs(parsed) <= max ? parsed : null
-}
-
 function mapsSearchHref(address: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
 }
@@ -665,17 +660,20 @@ function locationsFor(settings: FieldValues, data: StorefrontRenderData): StoreL
 
   const items = readList(settings, 'items').filter((item) => readText(item, 'name'))
   if (items.length > 0) {
-    return items.map((item) => ({
-      id: item.id,
-      name: readText(item, 'name'),
-      address: readText(item, 'address'),
-      hours: readText(item, 'hours'),
-      phone: readText(item, 'phone'),
-      image: readText(item, 'image'),
-      link: readLink(item, 'mapLink'),
-      latitude: readCoordinate(readText(item, 'latitude'), 90),
-      longitude: readCoordinate(readText(item, 'longitude'), 180),
-    }))
+    return items.map((item) => {
+      const coordinates = readCoordinates(item, 'coordinates')
+      return {
+        id: item.id,
+        name: readText(item, 'name'),
+        address: readText(item, 'address'),
+        hours: readText(item, 'hours'),
+        phone: readText(item, 'phone'),
+        image: readText(item, 'image'),
+        link: readLink(item, 'mapLink'),
+        latitude: coordinates?.latitude ?? null,
+        longitude: coordinates?.longitude ?? null,
+      }
+    })
   }
 
   const address = data.shop.address?.trim()
