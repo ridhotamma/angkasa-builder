@@ -6,7 +6,12 @@ import { renderToString } from 'react-dom/server'
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
-import { createSection, DEFAULT_THEME_SETTINGS, sanitizeSections, type SectionInstance } from '../src/index'
+import {
+  createSection,
+  DEFAULT_THEME_SETTINGS,
+  sanitizeSections,
+  type SectionInstance,
+} from '../src/index'
 import {
   readTextElement,
   sanitizeElements,
@@ -181,10 +186,7 @@ describe('section-level text everywhere', () => {
   test('heading and body are pickable in the preview, editable once picked', () => {
     const editing = { onEditText: () => undefined, onSelectElement: () => undefined }
     const idle = render(
-      <SectionsRenderer
-        sections={[imageText()]}
-        env={env({ mode: 'preview', editing })}
-      />,
+      <SectionsRenderer sections={[imageText()]} env={env({ mode: 'preview', editing })} />,
     )
     expect(idle).toContain('data-element-id="text.heading"')
     expect(idle).toContain('data-element-id="text.body"')

@@ -4,7 +4,11 @@ import { renderToString } from 'react-dom/server'
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 import { createSection, DEFAULT_THEME_SETTINGS, type SectionInstance } from '@repo/page-builder'
-import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '@repo/page-builder/render'
+import {
+  sampleStorefrontData,
+  SectionsRenderer,
+  type RenderEnvironment,
+} from '@repo/page-builder/render'
 
 function env(): RenderEnvironment {
   return {

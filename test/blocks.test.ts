@@ -268,13 +268,7 @@ describe('inserting a dragged block', () => {
   test('inserts into a nested column, addressed by its id', () => {
     const values = sampleValues()
     const block = createBlock(field, 'spacer')!
-    const next = insertBlock(
-      [field],
-      values,
-      { parentId: 'cols', fieldKey: 'left' },
-      0,
-      block,
-    )!
+    const next = insertBlock([field], values, { parentId: 'cols', fieldKey: 'left' }, 0, block)!
     const columns = findBlock([field], next, 'cols')!
     expect(readBlocks(columns.block.settings, 'left').map((candidate) => candidate.id)).toEqual([
       block.id,
@@ -293,9 +287,7 @@ describe('inserting a dragged block', () => {
     const full = sanitizeValues([field], {
       blocks: Array.from({ length: 60 }, (_, index) => raw(`b-${index}`)),
     })
-    expect(
-      insertBlock([field], full, { parentId: null, fieldKey: 'blocks' }, 0, block),
-    ).toBeNull()
+    expect(insertBlock([field], full, { parentId: null, fieldKey: 'blocks' }, 0, block)).toBeNull()
   })
 })
 

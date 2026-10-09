@@ -489,12 +489,18 @@ const ID = /^[a-zA-Z0-9_-]{1,36}$/
  * Appwrite ids, or a hotlinked stock photo (`https://images.pexels.com/...#credit`).
  * Pixabay serves both its original CDN renditions and `pixabay.com/get/` ones.
  */
-const FILE_ID = /^(?:[a-zA-Z0-9._-]{1,36}|https:\/\/(?:cdn\.pixabay\.com|pixabay\.com\/get|images\.pexels\.com|images\.unsplash\.com)\/[^\s"'<>]{1,500})$/
+const FILE_ID =
+  /^(?:[a-zA-Z0-9._-]{1,36}|https:\/\/(?:cdn\.pixabay\.com|pixabay\.com\/get|images\.pexels\.com|images\.unsplash\.com)\/[^\s"'<>]{1,500})$/
 
 const text = (max: number, fallback = '') =>
   z
     .string()
-    .transform((value) => value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim().slice(0, max))
+    .transform((value) =>
+      value
+        .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '')
+        .trim()
+        .slice(0, max),
+    )
     .catch(fallback)
 
 /** Multi-line copy keeps its line breaks, but no more than two in a row. */
@@ -696,9 +702,9 @@ function sanitizeStyle(value: unknown): QcStyle {
   const raw = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
   const preset = findQcTheme(typeof raw.theme === 'string' ? raw.theme : 'clean')
   const fallback = preset.style
-  const background = (raw.background && typeof raw.background === 'object'
-    ? raw.background
-    : {}) as Record<string, unknown>
+  const background = (
+    raw.background && typeof raw.background === 'object' ? raw.background : {}
+  ) as Record<string, unknown>
 
   return z
     .object({
@@ -815,7 +821,9 @@ export function newQcBlock(type: QcBlockType, locale: 'en' | 'id' = 'id'): QcBlo
         visible: true,
         type,
         title: '',
-        items: [{ id: qcId('l'), label: word('My website', 'Website saya'), url: '', highlight: false }],
+        items: [
+          { id: qcId('l'), label: word('My website', 'Website saya'), url: '', highlight: false },
+        ],
       }
     case 'socials':
       return { id, visible: true, type, items: [] }
@@ -859,7 +867,9 @@ export function starterQuickCheckout(
     floating: Boolean(shop.contactPhone),
   }
   const blocks: QcBlock[] = [
-    ...(socials.length > 0 ? [{ id: qcId(), visible: true, type: 'socials' as const, items: socials }] : []),
+    ...(socials.length > 0
+      ? [{ id: qcId(), visible: true, type: 'socials' as const, items: socials }]
+      : []),
     products,
     contact,
   ]
@@ -873,7 +883,13 @@ export function starterQuickCheckout(
     },
     style: { ...preset.style, theme: preset.id },
     blocks,
-    checkout: { delivery: 'ship', email: 'optional', allowNote: true, allowQuantity: true, buttonLabel: '' },
+    checkout: {
+      delivery: 'ship',
+      email: 'optional',
+      allowNote: true,
+      allowQuantity: true,
+      buttonLabel: '',
+    },
     seo: { title: '', description: '' },
   })
 }
@@ -1021,7 +1037,9 @@ export function qcFontsHref(style: QcStyle): string | null {
     const part = findFont(family) ? fontHref(family) : null
     return part ? [part] : []
   })
-  return parts.length > 0 ? `https://fonts.googleapis.com/css2?${parts.join('&')}&display=swap` : null
+  return parts.length > 0
+    ? `https://fonts.googleapis.com/css2?${parts.join('&')}&display=swap`
+    : null
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1060,11 +1078,7 @@ export function qcThemeSettings(style: QcStyle): ThemeSettings {
           ? 'pill'
           : 'solid'
   const cardStyle: CardStyle =
-    style.cardStyle === 'hard'
-      ? 'hard'
-      : style.cardStyle === 'solid'
-        ? 'shadow'
-        : 'border'
+    style.cardStyle === 'hard' ? 'hard' : style.cardStyle === 'solid' ? 'shadow' : 'border'
   return sanitizeThemeSettings({
     ...DEFAULT_THEME_SETTINGS,
     colors: {

@@ -190,7 +190,8 @@ describe('qcPalette', () => {
         style.background.kind === 'gradient'
           ? [style.background.color, style.background.gradientTo]
           : [style.background.color]
-      for (const stop of stops) expect(contrastRatio(palette.pageText, stop)).toBeGreaterThanOrEqual(4.5)
+      for (const stop of stops)
+        expect(contrastRatio(palette.pageText, stop)).toBeGreaterThanOrEqual(4.5)
       if (style.cardStyle !== 'outline' && style.cardStyle !== 'glass') {
         expect(contrastRatio(palette.cardText, style.surface)).toBeGreaterThanOrEqual(4.5)
       }

@@ -68,7 +68,12 @@ export function BlockStylePanel({
           {t('blockStyle')}
         </Text>
         {overridden > 0 && (
-          <Button size="2xs" variant="ghost" colorPalette="danger" onClick={() => onChange(undefined)}>
+          <Button
+            size="2xs"
+            variant="ghost"
+            colorPalette="danger"
+            onClick={() => onChange(undefined)}
+          >
             {t('blockStyleReset')}
           </Button>
         )}

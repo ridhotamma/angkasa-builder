@@ -96,7 +96,9 @@ describe('looks & palettes library', () => {
     expect(searchLooks('mewah').some((l) => l.key === 'luxury-boutique')).toBe(true)
     expect(searchLooks('luxury').some((l) => l.key === 'luxury-boutique')).toBe(true)
     expect(searchLooks('minimal').some((l) => l.key === 'minimal')).toBe(true)
-    expect(searchLooks('berani').some((l) => l.key === 'bold-maximal' || l.key === 'neo-brutalist')).toBe(true)
+    expect(
+      searchLooks('berani').some((l) => l.key === 'bold-maximal' || l.key === 'neo-brutalist'),
+    ).toBe(true)
   })
 
   test('searchPalettes finds palettes by name or tag', () => {
@@ -104,5 +106,4 @@ describe('looks & palettes library', () => {
     expect(natural.length).toBeGreaterThan(0)
     expect(natural.some((p) => p.key === 'forest-oat' || p.key === 'sage-bone')).toBe(true)
   })
-
 })

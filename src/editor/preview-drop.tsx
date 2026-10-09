@@ -69,7 +69,14 @@ function sectionAt(
   const after = point.y > rect.top + rect.height / 2
   // The header and footer are not in the list: dropping on one adds at the
   // nearest end.
-  const at = index < 0 ? (point.y < rect.top + rect.height / 2 ? 0 : sectionIds.length) : after ? index + 1 : index
+  const at =
+    index < 0
+      ? point.y < rect.top + rect.height / 2
+        ? 0
+        : sectionIds.length
+      : after
+        ? index + 1
+        : index
   return {
     target: { kind: 'sections', index: at },
     marker: { left: rect.left, top: after ? rect.bottom : rect.top, width: rect.width, height: 2 },

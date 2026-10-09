@@ -48,7 +48,9 @@ interface RenderFunctionResponse {
   error?: string
 }
 
-export async function renderViaFunction(request: RenderFunctionRequest): Promise<RenderFunctionResult> {
+export async function renderViaFunction(
+  request: RenderFunctionRequest,
+): Promise<RenderFunctionResult> {
   const config = renderFunctionConfig()
   if (!config) throw new Error('Render function is not configured on this deployment.')
 
