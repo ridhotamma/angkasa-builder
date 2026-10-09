@@ -835,6 +835,19 @@ export function schemeCssVars(scheme: SchemeColors): Record<string, string> {
     '--chakra-colors-brand-muted': mix(button, background, 0.7),
     '--chakra-colors-brand-subtle': mix(button, background, 0.85),
     '--chakra-colors-brand-focus-ring': button,
+    // The default-palette controls: a component that never named a palette —
+    // the store's phone link, a pagination arrow — reads `colorPalette.fg`.
+    // Chakra's root rule for that mapping substitutes its `gray` reference
+    // once, on `html`, so the `gray-*` overrides below can never reach it
+    // through inheritance; the virtual palette has to be declared here, on the
+    // band itself, to follow the scheme.
+    '--chakra-colors-color-palette-fg': text,
+    '--chakra-colors-color-palette-contrast': background,
+    '--chakra-colors-color-palette-subtle': mix(background, text, 0.1),
+    '--chakra-colors-color-palette-muted': mix(background, text, 0.05),
+    '--chakra-colors-color-palette-emphasized': mix(text, background, 0.6),
+    '--chakra-colors-color-palette-solid': text,
+    '--chakra-colors-color-palette-focus-ring': button,
     // The band's own neutral controls: an icon button on the band reads the
     // `gray` palette, which would otherwise still point at the page's ink.
     '--chakra-colors-gray-fg': text,

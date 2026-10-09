@@ -5,6 +5,7 @@ import {
   DEFAULT_THEME_SETTINGS,
   imageFileIds,
   isWithinSchedule,
+  mix,
   parseVideoUrl,
   productIds,
   readSectionStyle,
@@ -265,6 +266,19 @@ describe('colour schemes', () => {
   test('scheme variables are only ever hex colours', () => {
     const vars = schemeCssVars(resolveScheme(DEFAULT_THEME_SETTINGS, 'inverse'))
     for (const value of Object.values(vars)) expect(value).toMatch(/^#[0-9a-f]{6}$/)
+  })
+
+  test('controls that never named a palette read the band, not the page', () => {
+    // Chakra bakes `colorPalette.fg` on `html` with its gray reference already
+    // substituted, so the band's `gray-*` overrides cannot reach a
+    // default-palette control — the store's phone link. The virtual palette
+    // itself has to sit in the band's variables.
+    const scheme = resolveScheme(DEFAULT_THEME_SETTINGS, 'inverse')
+    const vars = schemeCssVars(scheme)
+    expect(vars['--chakra-colors-color-palette-fg']).toBe(scheme.text)
+    expect(vars['--chakra-colors-color-palette-subtle']).toBe(
+      mix(scheme.background, scheme.text, 0.1),
+    )
   })
 
   test('animation defaults to none for a theme that never chose', () => {
