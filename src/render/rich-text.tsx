@@ -53,7 +53,7 @@ export function RichTextView({
       {...style}
     >
       {doc.content.map((block, index) => (
-        <Block key={index} block={block} />
+        <Block key={index} block={block} inheritColor={inheritColor} />
       ))}
     </Stack>
   )
@@ -65,7 +65,7 @@ export function RichTextView({
   )
 }
 
-function Block({ block }: { block: RichBlock }) {
+function Block({ block, inheritColor }: { block: RichBlock; inheritColor?: boolean }) {
   switch (block.type) {
     case 'paragraph':
       // An empty paragraph is a blank line the seller left on purpose.
@@ -75,7 +75,7 @@ function Block({ block }: { block: RichBlock }) {
         <Heading
           as={block.attrs.level === 2 ? 'h3' : 'h4'}
           size={block.attrs.level === 2 ? 'lg' : 'md'}
-          color="fg"
+          color={inheritColor ? 'inherit' : 'fg'}
           mt="2"
         >
           {inlineNodes(block.content)}
@@ -91,7 +91,7 @@ function Block({ block }: { block: RichBlock }) {
           gap="1"
         >
           {block.content.map((item, index) => (
-            <ListItem key={index} item={item} />
+            <ListItem key={index} item={item} inheritColor={inheritColor} />
           ))}
         </List.Root>
       )
@@ -101,7 +101,7 @@ function Block({ block }: { block: RichBlock }) {
           <Blockquote.Content>
             <Stack gap="3">
               {block.content.map((inner, index) => (
-                <Block key={index} block={inner} />
+                <Block key={index} block={inner} inheritColor={inheritColor} />
               ))}
             </Stack>
           </Blockquote.Content>
@@ -110,7 +110,7 @@ function Block({ block }: { block: RichBlock }) {
   }
 }
 
-function ListItem({ item }: { item: RichListItem }) {
+function ListItem({ item, inheritColor }: { item: RichListItem; inheritColor?: boolean }) {
   return (
     <List.Item>
       {item.content.map((block, index) =>
@@ -120,7 +120,7 @@ function ListItem({ item }: { item: RichListItem }) {
             {inlineNodes(block.content)}
           </Box>
         ) : (
-          <Block key={index} block={block} />
+          <Block key={index} block={block} inheritColor={inheritColor} />
         ),
       )}
     </List.Item>

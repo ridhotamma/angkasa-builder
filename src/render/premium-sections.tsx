@@ -617,15 +617,12 @@ export function EditorialStatement({ settings }: SectionProps) {
           textWrap="balance"
         />
       )}
-      <ThemeText
-        as="div"
+      <RichTextView
+        doc={readRichText(settings, 'body')}
         elementKey={textElementKey('body')}
         field="body"
-        inline={false}
-        css={{ '& *': { color: 'inherit' } }}
-      >
-        <RichTextView doc={readRichText(settings, 'body')} />
-      </ThemeText>
+        inheritColor={Boolean(src)}
+      />
       <ButtonRow settings={settings} align={align} onImage={Boolean(src)} />
     </Stack>
   )
