@@ -55,7 +55,13 @@ import {
 import { ImageWithFallback, Tooltip } from '@repo/theme'
 
 import { readBoolean, readLink, readList, readText, type FieldValues } from '../model/fields'
-import { isMegaMenu, type MenuItem } from '../model/menus'
+import {
+  buildFooterFallbackMenu,
+  buildMobileFallbackMenu,
+  isMegaMenu,
+  type CatalogNavEntry,
+  type MenuItem,
+} from '../model/menus'
 import { isContentWidth } from '../model/section-style'
 import { resolveScheme, schemeCssVars, SCHEME_KEYS, type SchemeKey } from '../model/settings'
 import { BOLD_BORDER_WIDTH, BOLD_INK, boldShadow } from './bold'
@@ -279,13 +285,16 @@ function MobileMenu({
   items,
   shop,
   bottom,
+  defaultOpen = false,
 }: {
   items: MenuItem[]
   shop: ChromeShop
   /** Rows under the menu — the account row, and whatever the host pins with it. */
   bottom?: ReactNode
+  /** Initial drawer state. Closed in production; open in render tests. */
+  defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const overlay = useOverlayProps()
   if (items.length === 0 && !bottom) return null
 
@@ -409,6 +418,15 @@ export interface StoreHeaderProps {
   header: FieldValues
   shop: ChromeShop
   menu: MenuItem[]
+  /**
+   * The shop's catalogue for the phone drawer's fallback menu. When `menu`
+   * is empty a fresh shop would otherwise open a blank sheet — so the
+   * drawer lists the catalogue instead (categories, collections, or one
+   * collapsible group per kind when both exist). The desktop bar
+   * deliberately stays empty: one clean row, never a full catalogue.
+   */
+  categories?: readonly CatalogNavEntry[]
+  collections?: readonly CatalogNavEntry[]
   /** The search box, for the classic layout's middle column on a desktop. */
   searchField?: ReactNode
   /** A search icon that opens the search — the phone bar gets it, and the non-classic desktops too. */
@@ -431,6 +449,12 @@ export interface StoreHeaderProps {
   drawerFooter?: ReactNode
   /** Trailing controls for a host that has no separate cart and account slots. */
   actions?: ReactNode
+  /**
+   * Initial phone-drawer state. Closed everywhere in production; tests
+   * render it open to assert what the sheet holds. Mirrors the drawer's
+   * own uncontrolled `defaultOpen`.
+   */
+  drawerDefaultOpen?: boolean
   /**
    * See-through over the page's first section, until the shopper scrolls.
    * The host decides — the setting asks for it, but only a home page that
@@ -526,6 +550,8 @@ export function StoreHeader({
   header,
   shop,
   menu,
+  categories = [],
+  collections = [],
   searchField,
   searchButton,
   cart,
@@ -533,6 +559,7 @@ export function StoreHeader({
   drawerAccount: drawerAccountProp,
   drawerFooter,
   actions,
+  drawerDefaultOpen = false,
   transparent = false,
 }: StoreHeaderProps) {
   const layout = readText(header, 'layout') || 'classic'
@@ -541,6 +568,7 @@ export function StoreHeader({
   const showSearch = readBoolean(header, 'showSearch')
   const ref = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
+  const text = useRenderText()
 
   // Read from the header's own window, which in the editor is the preview's.
   useEffect(() => {
@@ -609,6 +637,18 @@ export function StoreHeader({
     (drawerAccount ?? drawerFooter)
   )
 
+  // The phone drawer never opens blank on a fresh shop: with no configured
+  // menu it falls back to the catalogue — categories, collections, or one
+  // collapsible group per kind when both exist. The desktop bar keeps the
+  // configured menu only, so it stays one clean row.
+  const mobileMenu =
+    menu.length > 0
+      ? menu
+      : buildMobileFallbackMenu(categories, collections, {
+          categories: text('filters'),
+          collections: text('filtersCollections'),
+        })
+
   // The phone bar is one design in every layout: a menu button with the brand
   // beside it, and search and the cart on the right. The account is not here —
   // it waits at the bottom of the menu, where its name can be written out.
@@ -626,7 +666,12 @@ export function StoreHeader({
       hideFrom="md"
     >
       <HStack gap="2.5" minW="0">
-        <MobileMenu items={menu} shop={shop} bottom={drawerBottom} />
+        <MobileMenu
+          items={mobileMenu}
+          shop={shop}
+          bottom={drawerBottom}
+          defaultOpen={drawerDefaultOpen}
+        />
       </HStack>
       <Box minW="0" maxW="full" justifySelf="center">
         <Logo shop={shop} centered />
@@ -644,7 +689,12 @@ export function StoreHeader({
       hideFrom="md"
     >
       <HStack gap="2.5" minW="0">
-        <MobileMenu items={menu} shop={shop} bottom={drawerBottom} />
+        <MobileMenu
+          items={mobileMenu}
+          shop={shop}
+          bottom={drawerBottom}
+          defaultOpen={drawerDefaultOpen}
+        />
         <Box minW="0">
           <Logo shop={shop} />
         </Box>
@@ -1022,6 +1072,13 @@ export interface StoreFooterProps {
   footer: FieldValues
   shop: ChromeShop
   menu: MenuItem[]
+  /**
+   * The shop's catalogue for the footer's fallback columns. When `menu` is
+   * empty every category and collection gets a home here — one column per
+   * kind that exists — so a fresh shop's footer already leads somewhere.
+   */
+  categories?: readonly CatalogNavEntry[]
+  collections?: readonly CatalogNavEntry[]
   /** Published pages that ask to be in the footer, used while the footer menu is empty. */
   pages: Array<{ title: string; slug: string }>
   labels: { information: string; followUs: string; links: string }
@@ -1035,6 +1092,8 @@ export function StoreFooter({
   footer,
   shop,
   menu,
+  categories = [],
+  collections = [],
   pages,
   labels,
   bottom,
@@ -1045,10 +1104,21 @@ export function StoreFooter({
   const about = readText(footer, 'about') || shop.description || ''
   const socials = readBoolean(footer, 'showSocials') ? (shop.socialLinks ?? []) : []
   const showContact = readBoolean(footer, 'showContact')
+  const text = useRenderText()
+
+  // A configured footer menu always wins; otherwise every category and
+  // collection gets its own column.
+  const effectiveMenu =
+    menu.length > 0
+      ? menu
+      : buildFooterFallbackMenu(categories, collections, {
+          categories: text('filters'),
+          collections: text('filtersCollections'),
+        })
 
   // Top-level links with children are columns; loose top-level links share one.
-  const columns = menu.filter((item) => item.children.length > 0)
-  const loose = menu.filter((item) => item.children.length === 0)
+  const columns = effectiveMenu.filter((item) => item.children.length > 0)
+  const loose = effectiveMenu.filter((item) => item.children.length === 0)
   const showPages = readBoolean(footer, 'showPages') && menu.length === 0 && pages.length > 0
 
   return (

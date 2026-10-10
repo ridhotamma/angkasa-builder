@@ -74,6 +74,8 @@ export function TemplateSnapshotPage({
             header={content.layout.header}
             shop={shop}
             menu={[]}
+            categories={data.categories}
+            collections={data.collections}
             cart={standIn(LuShoppingBag)}
             account={standIn(LuUser)}
             searchButton={standIn(LuSearch)}
@@ -93,6 +95,8 @@ export function TemplateSnapshotPage({
             footer={content.layout.footer}
             shop={shop}
             menu={[]}
+            categories={data.categories}
+            collections={data.collections}
             pages={[]}
             labels={{ information: '', followUs: '', links: '' }}
             flush={edges.flushBottom}

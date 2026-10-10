@@ -1319,6 +1319,8 @@ function Builder({
         header={layout.header}
         shop={shop}
         menu={menus.main}
+        categories={data.categories}
+        collections={data.collections}
         searchField={
           <Box
             h="8"
@@ -1354,6 +1356,8 @@ function Builder({
               footer={layout.footer}
               shop={shop}
               menu={menus.footer}
+              categories={data.categories}
+              collections={data.collections}
               pages={footerPages}
               labels={{
                 information: t('footerInformation'),

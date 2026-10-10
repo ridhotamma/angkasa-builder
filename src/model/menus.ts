@@ -120,3 +120,118 @@ export function isMenuHandle(value: unknown): value is MenuHandle {
 export function isMegaMenu(item: MenuItem): boolean {
   return item.children.some((child) => child.children.length > 0)
 }
+
+/* -------------------------------------------------------------------------- */
+/* Catalogue fallbacks                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One category or collection as navigation needs it: a name and the slug its
+ * link points at. The header and footer only read these two, so both the live
+ * storefront and the editor preview can map their own rows into it.
+ */
+export interface CatalogNavEntry {
+  id: string
+  name: string
+  slug: string
+}
+
+export interface CatalogNavLabels {
+  /** Heading for the categories group, already in the shopper's language. */
+  categories: string
+  /** Heading for the collections group, already in the shopper's language. */
+  collections: string
+}
+
+function categoryItem(entry: CatalogNavEntry): MenuItem {
+  return {
+    id: `fallback-category-${entry.id}`,
+    label: entry.name,
+    link: { kind: 'category', slug: entry.slug },
+    children: [],
+  }
+}
+
+function collectionItem(entry: CatalogNavEntry): MenuItem {
+  return {
+    id: `fallback-collection-${entry.id}`,
+    label: entry.name,
+    link: { kind: 'collection', slug: entry.slug },
+    children: [],
+  }
+}
+
+/**
+ * The phone drawer's menu when the seller configured no main menu.
+ *
+ * A fresh shop has no navigation rows yet, and an empty drawer reads as a
+ * broken shop — so the catalogue stands in:
+ *
+ * - both categories and collections: two collapsible groups, one per kind;
+ * - only categories: every category as its own row;
+ * - only collections: every collection as its own row;
+ * - neither: nothing, so the drawer keeps its account rows only.
+ *
+ * Desktop navigation deliberately stays empty: the desktop bar is one clean
+ * row, and a full catalogue there is clutter rather than wayfinding.
+ */
+export function buildMobileFallbackMenu(
+  categories: readonly CatalogNavEntry[],
+  collections: readonly CatalogNavEntry[],
+  labels: CatalogNavLabels,
+): MenuItem[] {
+  const hasCategories = categories.length > 0
+  const hasCollections = collections.length > 0
+
+  if (hasCategories && hasCollections) {
+    return [
+      {
+        id: 'fallback-categories',
+        label: labels.categories,
+        link: { kind: 'none' },
+        children: categories.map(categoryItem),
+      },
+      {
+        id: 'fallback-collections',
+        label: labels.collections,
+        link: { kind: 'none' },
+        children: collections.map(collectionItem),
+      },
+    ]
+  }
+  if (hasCategories) return categories.map(categoryItem)
+  if (hasCollections) return collections.map(collectionItem)
+  return []
+}
+
+/**
+ * The footer's menu when the seller configured none.
+ *
+ * Every category and collection gets a home: one column per kind that exists,
+ * so a fresh shop's footer already leads somewhere. A configured footer menu
+ * always wins — this only fills the gap.
+ */
+export function buildFooterFallbackMenu(
+  categories: readonly CatalogNavEntry[],
+  collections: readonly CatalogNavEntry[],
+  labels: CatalogNavLabels,
+): MenuItem[] {
+  const columns: MenuItem[] = []
+  if (categories.length > 0) {
+    columns.push({
+      id: 'fallback-categories',
+      label: labels.categories,
+      link: { kind: 'none' },
+      children: categories.map(categoryItem),
+    })
+  }
+  if (collections.length > 0) {
+    columns.push({
+      id: 'fallback-collections',
+      label: labels.collections,
+      link: { kind: 'none' },
+      children: collections.map(collectionItem),
+    })
+  }
+  return columns
+}
