@@ -696,7 +696,10 @@ function locationsFor(settings: FieldValues, data: StorefrontRenderData): StoreL
   return []
 }
 
-function hasPin(entry: StoreLocationEntry): boolean {
+/** Narrows an entry to one with a real pin, so callers need no `!` on the coordinates. */
+function hasPin(
+  entry: StoreLocationEntry,
+): entry is StoreLocationEntry & { latitude: number; longitude: number } {
   return entry.latitude !== null && entry.longitude !== null
 }
 
@@ -755,8 +758,8 @@ export function StoreLocations({ settings }: SectionProps) {
   const showMap = readBoolean(settings, 'showMap')
   const points = entries.filter(hasPin).map((entry) => ({
     id: entry.id,
-    latitude: entry.latitude!,
-    longitude: entry.longitude!,
+    latitude: entry.latitude,
+    longitude: entry.longitude,
     label: entry.name,
   }))
 

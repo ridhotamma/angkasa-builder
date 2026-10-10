@@ -809,6 +809,33 @@ export function resolveScheme(settings: ThemeSettings, key: SchemeKey): SchemeCo
 }
 
 /**
+ * The palette tokens a band exposes for one virtual palette.
+ *
+ * `color-palette` is what a control that never named a palette reads — the
+ * store's phone link, a pagination arrow. Chakra bakes `colorPalette.fg` on
+ * `html` with its `gray` reference already substituted, so the band's `gray-*`
+ * overrides can never reach it through inheritance; the virtual palette has to
+ * be declared on the band itself. `gray` is what the band's own neutral
+ * controls (an icon button) read. The two carry identical values and must stay
+ * so — hence one builder.
+ */
+function paletteVars(
+  prefix: 'color-palette' | 'gray',
+  scheme: SchemeColors,
+): Record<string, string> {
+  const { background, text, button } = scheme
+  return {
+    [`--chakra-colors-${prefix}-fg`]: text,
+    [`--chakra-colors-${prefix}-contrast`]: background,
+    [`--chakra-colors-${prefix}-subtle`]: mix(background, text, 0.1),
+    [`--chakra-colors-${prefix}-muted`]: mix(background, text, 0.05),
+    [`--chakra-colors-${prefix}-emphasized`]: mix(text, background, 0.6),
+    [`--chakra-colors-${prefix}-solid`]: text,
+    [`--chakra-colors-${prefix}-focus-ring`]: button,
+  }
+}
+
+/**
  * The Chakra variables a section band overrides to wear a scheme. The same
  * semantic tokens as the page's (`bg`, `fg`, `border`, `brand.solid`), so
  * every section — and every card, button and link inside it — follows the
@@ -835,28 +862,9 @@ export function schemeCssVars(scheme: SchemeColors): Record<string, string> {
     '--chakra-colors-brand-muted': mix(button, background, 0.7),
     '--chakra-colors-brand-subtle': mix(button, background, 0.85),
     '--chakra-colors-brand-focus-ring': button,
-    // The default-palette controls: a component that never named a palette —
-    // the store's phone link, a pagination arrow — reads `colorPalette.fg`.
-    // Chakra's root rule for that mapping substitutes its `gray` reference
-    // once, on `html`, so the `gray-*` overrides below can never reach it
-    // through inheritance; the virtual palette has to be declared here, on the
-    // band itself, to follow the scheme.
-    '--chakra-colors-color-palette-fg': text,
-    '--chakra-colors-color-palette-contrast': background,
-    '--chakra-colors-color-palette-subtle': mix(background, text, 0.1),
-    '--chakra-colors-color-palette-muted': mix(background, text, 0.05),
-    '--chakra-colors-color-palette-emphasized': mix(text, background, 0.6),
-    '--chakra-colors-color-palette-solid': text,
-    '--chakra-colors-color-palette-focus-ring': button,
-    // The band's own neutral controls: an icon button on the band reads the
-    // `gray` palette, which would otherwise still point at the page's ink.
-    '--chakra-colors-gray-fg': text,
-    '--chakra-colors-gray-contrast': background,
-    '--chakra-colors-gray-subtle': mix(background, text, 0.1),
-    '--chakra-colors-gray-muted': mix(background, text, 0.05),
-    '--chakra-colors-gray-emphasized': mix(text, background, 0.6),
-    '--chakra-colors-gray-solid': text,
-    '--chakra-colors-gray-focus-ring': button,
+    // The band's virtual palettes (see `paletteVars`).
+    ...paletteVars('color-palette', scheme),
+    ...paletteVars('gray', scheme),
   }
 }
 
