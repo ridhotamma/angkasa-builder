@@ -60,6 +60,7 @@ import {
   buildMobileFallbackMenu,
   isMegaMenu,
   type CatalogNavEntry,
+  type CatalogNavLabels,
   type MenuItem,
 } from '../model/menus'
 import { isContentWidth } from '../model/section-style'
@@ -103,6 +104,49 @@ function useSchemeCss(value: string): BoxProps {
     bg: 'bg',
     color: 'fg',
   }
+}
+
+/** Out of the flow when see-through: fixed to stay put, absolute to scroll away. */
+function headerPosition(
+  transparent: boolean,
+  sticky: boolean,
+): 'fixed' | 'absolute' | 'sticky' | 'relative' {
+  if (transparent) return sticky ? 'fixed' : 'absolute'
+  return sticky ? 'sticky' : 'relative'
+}
+
+/** The catalogue headings the fallback menus group under, in the shopper's language. */
+function catalogLabels(text: ReturnType<typeof useRenderText>): CatalogNavLabels {
+  return { categories: text('filters'), collections: text('filtersCollections') }
+}
+
+/** The configured menu when it has rows, otherwise whatever the fallback builds. */
+function resolveMenu(menu: MenuItem[], fallback: () => MenuItem[]): MenuItem[] {
+  if (menu.length > 0) return menu
+  return fallback()
+}
+
+/**
+ * The drawer's bottom rows. With the tab bar on the account is a tab, so the
+ * drawer keeps only what the host pins beyond it; otherwise the account and the
+ * pinned footer stack, each present only when given.
+ */
+function drawerRows({
+  tabs,
+  account,
+  footer,
+}: {
+  tabs: boolean
+  account?: ReactNode
+  footer?: ReactNode
+}): ReactNode {
+  if (tabs) return footer
+  return (
+    <>
+      {account}
+      {footer}
+    </>
+  )
 }
 
 /* -------------------------------------------------------------------------- */
@@ -405,6 +449,160 @@ function Logo({ shop, centered = false }: { shop: ChromeShop; centered?: boolean
 }
 
 /**
+ * The phone's top bar: one design in every layout, with two arrangements.
+ *
+ * The menu button sits left and the brand beside it; search and the cart sit
+ * right. The account is not here — it waits at the bottom of the menu, where
+ * its name can be written out. With the tab bar on, the bar keeps the menu
+ * button and search around the centred brand; the cart and the account move
+ * down to `StoreTabBar`, whose tabs are destinations rather than the whole menu.
+ */
+function MobileBar({
+  tabs,
+  menu,
+  shop,
+  drawerBottom,
+  drawerOpen,
+  search,
+  cart,
+  actions,
+}: {
+  tabs: boolean
+  menu: MenuItem[]
+  shop: ChromeShop
+  drawerBottom?: ReactNode
+  drawerOpen: boolean
+  search: ReactNode
+  cart?: ReactNode
+  actions?: ReactNode
+}) {
+  if (tabs) {
+    return (
+      <Grid
+        data-mobile-bar=""
+        templateColumns="minmax(0, 1fr) auto minmax(0, 1fr)"
+        alignItems="center"
+        gap="2"
+        hideFrom="md"
+      >
+        <HStack gap="2.5" minW="0">
+          <MobileMenu items={menu} shop={shop} bottom={drawerBottom} defaultOpen={drawerOpen} />
+        </HStack>
+        <Box minW="0" maxW="full" justifySelf="center">
+          <Logo shop={shop} centered />
+        </Box>
+        <HStack gap="1" justifySelf="end" minW="0" flexShrink="0">
+          {search}
+        </HStack>
+      </Grid>
+    )
+  }
+  return (
+    <Grid
+      data-mobile-bar=""
+      templateColumns="minmax(0, 1fr) auto"
+      alignItems="center"
+      gap="2"
+      hideFrom="md"
+    >
+      <HStack gap="2.5" minW="0">
+        <MobileMenu items={menu} shop={shop} bottom={drawerBottom} defaultOpen={drawerOpen} />
+        <Box minW="0">
+          <Logo shop={shop} />
+        </Box>
+      </HStack>
+      <HStack gap="1" justifySelf="end" minW="0" flexShrink="0">
+        {cart ? (
+          <>
+            {search}
+            {cart}
+          </>
+        ) : (
+          actions
+        )}
+      </HStack>
+    </Grid>
+  )
+}
+
+/** The desktop's header row: one clean bar per layout, never a full catalogue. */
+function DesktopBar({
+  layout,
+  menu,
+  shop,
+  search,
+  searchField,
+  showSearch,
+  trailing,
+}: {
+  layout: string
+  menu: MenuItem[]
+  shop: ChromeShop
+  search: ReactNode
+  searchField?: ReactNode
+  showSearch: boolean
+  trailing: ReactNode
+}) {
+  if (layout === 'centered') {
+    return (
+      <Stack data-desktop-bar="" gap="2" hideBelow="md">
+        {/* The middle track may shrink, so a long shop name truncates rather
+            than running under the icons beside it. */}
+        <Grid
+          templateColumns="minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr)"
+          alignItems="center"
+          gap="3"
+        >
+          <HStack />
+          <Logo shop={shop} centered />
+          <HStack gap="1" justifySelf="end" ms="auto" flexShrink="0">
+            {/* This layout has no middle column for the full field, so the
+                desktop keeps the icon beside the cart and the account. */}
+            {search}
+            {trailing}
+          </HStack>
+        </Grid>
+        <DesktopMenu items={menu} justify="center" />
+      </Stack>
+    )
+  }
+  if (layout === 'inline') {
+    return (
+      <Flex data-desktop-bar="" align="center" gap="6" hideBelow="md">
+        <Box flexShrink="0" maxW="16rem" minW="0">
+          <Logo shop={shop} />
+        </Box>
+        <Box flex="1" minW="0">
+          <DesktopMenu items={menu} justify="start" />
+        </Box>
+        <HStack gap="1" ms="auto" flexShrink="0">
+          {search}
+          {trailing}
+        </HStack>
+      </Flex>
+    )
+  }
+  return (
+    <Stack data-desktop-bar="" gap="2" hideBelow="md">
+      <Grid
+        templateColumns="minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)"
+        alignItems="center"
+        gap="4"
+      >
+        <Box minW="0">
+          <Logo shop={shop} />
+        </Box>
+        <Box>{showSearch ? searchField : null}</Box>
+        <HStack gap="1" justifySelf="end" ms="auto" flexShrink="0">
+          {trailing}
+        </HStack>
+      </Grid>
+      <DesktopMenu items={menu} justify="start" />
+    </Stack>
+  )
+}
+
+/**
  * Whether the header goes see-through over a page laid out as `edges` (from
  * `pageEdges`): the setting asks for it, and the page opens with an
  * edge-to-edge banner — there has to be something to see through to. The
@@ -605,9 +803,7 @@ export function StoreHeader({
   }, [transparent])
 
   const clear = transparent && !scrolled
-  // Out of the flow when see-through: fixed if it should stay on screen,
-  // absolute if it should scroll away with the banner.
-  const position = transparent ? (sticky ? 'fixed' : 'absolute') : sticky ? 'sticky' : 'relative'
+  const position = headerPosition(transparent, sticky)
   const search = showSearch ? searchButton : null
 
   // A host with separate cart and account slots gets the cart in the phone
@@ -623,147 +819,43 @@ export function StoreHeader({
       actions
     )
   const drawerAccount = drawerAccountProp ?? account
-  // The drawer's bottom rows. With the tab bar on, the account is a tab, so
-  // the drawer skips it and keeps only what the host pins beyond it — the
-  // storefront's colour-mode switch, which has no other phone home there.
-  const drawerBottom = tabs ? (
-    drawerFooter
-  ) : drawerAccount && drawerFooter ? (
-    <>
-      {drawerAccount}
-      {drawerFooter}
-    </>
-  ) : (
-    (drawerAccount ?? drawerFooter)
-  )
+  // With the tab bar on, the account is a tab, so the drawer skips it and keeps
+  // only what the host pins beyond it — the storefront's colour-mode switch,
+  // which has no other phone home there.
+  const drawerBottom = drawerRows({ tabs, account: drawerAccount, footer: drawerFooter })
 
   // The phone drawer never opens blank on a fresh shop: with no configured
   // menu it falls back to the catalogue — categories, collections, or one
   // collapsible group per kind when both exist. The desktop bar keeps the
   // configured menu only, so it stays one clean row.
-  const mobileMenu =
-    menu.length > 0
-      ? menu
-      : buildMobileFallbackMenu(categories, collections, {
-          categories: text('filters'),
-          collections: text('filtersCollections'),
-        })
-
-  // The phone bar is one design in every layout: a menu button with the brand
-  // beside it, and search and the cart on the right. The account is not here —
-  // it waits at the bottom of the menu, where its name can be written out.
-  //
-  // With the tab bar on, the bar keeps the menu button on the left and search
-  // on the right, around the centred brand; only the cart and the account move
-  // down to `StoreTabBar`, whose own tabs are destinations rather than the
-  // whole menu.
-  const mobileBar = tabs ? (
-    <Grid
-      data-mobile-bar=""
-      templateColumns="minmax(0, 1fr) auto minmax(0, 1fr)"
-      alignItems="center"
-      gap="2"
-      hideFrom="md"
-    >
-      <HStack gap="2.5" minW="0">
-        <MobileMenu
-          items={mobileMenu}
-          shop={shop}
-          bottom={drawerBottom}
-          defaultOpen={drawerDefaultOpen}
-        />
-      </HStack>
-      <Box minW="0" maxW="full" justifySelf="center">
-        <Logo shop={shop} centered />
-      </Box>
-      <HStack gap="1" justifySelf="end" minW="0" flexShrink="0">
-        {search}
-      </HStack>
-    </Grid>
-  ) : (
-    <Grid
-      data-mobile-bar=""
-      templateColumns="minmax(0, 1fr) auto"
-      alignItems="center"
-      gap="2"
-      hideFrom="md"
-    >
-      <HStack gap="2.5" minW="0">
-        <MobileMenu
-          items={mobileMenu}
-          shop={shop}
-          bottom={drawerBottom}
-          defaultOpen={drawerDefaultOpen}
-        />
-        <Box minW="0">
-          <Logo shop={shop} />
-        </Box>
-      </HStack>
-      <HStack gap="1" justifySelf="end" minW="0" flexShrink="0">
-        {cart ? (
-          <>
-            {search}
-            {cart}
-          </>
-        ) : (
-          actions
-        )}
-      </HStack>
-    </Grid>
+  const mobileMenu = resolveMenu(menu, () =>
+    buildMobileFallbackMenu(categories, collections, catalogLabels(text)),
   )
 
-  const desktopBar =
-    layout === 'centered' ? (
-      <Stack data-desktop-bar="" gap="2" hideBelow="md">
-        {/* The middle track may shrink, so a long shop name truncates rather
-            than running under the icons beside it. */}
-        <Grid
-          templateColumns="minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr)"
-          alignItems="center"
-          gap="3"
-        >
-          <HStack />
-          <Logo shop={shop} centered />
-          <HStack gap="1" justifySelf="end" ms="auto" flexShrink="0">
-            {/* This layout has no middle column for the full field, so the
-                desktop keeps the icon beside the cart and the account. */}
-            {search}
-            {desktopTrailing}
-          </HStack>
-        </Grid>
-        <DesktopMenu items={menu} justify="center" />
-      </Stack>
-    ) : layout === 'inline' ? (
-      <Flex data-desktop-bar="" align="center" gap="6" hideBelow="md">
-        <Box flexShrink="0" maxW="16rem" minW="0">
-          <Logo shop={shop} />
-        </Box>
-        <Box flex="1" minW="0">
-          <DesktopMenu items={menu} justify="start" />
-        </Box>
-        <HStack gap="1" ms="auto" flexShrink="0">
-          {search}
-          {desktopTrailing}
-        </HStack>
-      </Flex>
-    ) : (
-      <Stack data-desktop-bar="" gap="2" hideBelow="md">
-        <Grid
-          templateColumns="minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)"
-          alignItems="center"
-          gap="4"
-        >
-          <Box minW="0">
-            <Logo shop={shop} />
-          </Box>
-          <Box>{showSearch ? searchField : null}</Box>
-          <HStack gap="1" justifySelf="end" ms="auto" flexShrink="0">
-            {desktopTrailing}
-          </HStack>
-        </Grid>
-        <DesktopMenu items={menu} justify="start" />
-      </Stack>
-    )
+  const mobileBar = (
+    <MobileBar
+      tabs={tabs}
+      menu={mobileMenu}
+      shop={shop}
+      drawerBottom={drawerBottom}
+      drawerOpen={drawerDefaultOpen}
+      search={search}
+      cart={cart}
+      actions={actions}
+    />
+  )
+
+  const desktopBar = (
+    <DesktopBar
+      layout={layout}
+      menu={menu}
+      shop={shop}
+      search={search}
+      searchField={searchField}
+      showSearch={showSearch}
+      trailing={desktopTrailing}
+    />
+  )
 
   const bar = (
     <>
@@ -1108,18 +1200,15 @@ export function StoreFooter({
 
   // A configured footer menu always wins; otherwise every category and
   // collection gets its own column.
-  const effectiveMenu =
-    menu.length > 0
-      ? menu
-      : buildFooterFallbackMenu(categories, collections, {
-          categories: text('filters'),
-          collections: text('filtersCollections'),
-        })
+  const effectiveMenu = resolveMenu(menu, () =>
+    buildFooterFallbackMenu(categories, collections, catalogLabels(text)),
+  )
 
   // Top-level links with children are columns; loose top-level links share one.
   const columns = effectiveMenu.filter((item) => item.children.length > 0)
   const loose = effectiveMenu.filter((item) => item.children.length === 0)
   const showPages = readBoolean(footer, 'showPages') && menu.length === 0 && pages.length > 0
+  const columnCount = columns.length + (loose.length > 0 ? 1 : 0) + (showPages ? 1 : 0)
 
   return (
     <Box
@@ -1138,7 +1227,7 @@ export function StoreFooter({
           <Grid
             templateColumns={{
               base: '1fr',
-              md: `minmax(0, 1.4fr) repeat(${Math.max(1, columns.length + (loose.length ? 1 : 0) + (showPages ? 1 : 0))}, minmax(0, 1fr))`,
+              md: `minmax(0, 1.4fr) repeat(${Math.max(1, columnCount)}, minmax(0, 1fr))`,
             }}
             gap={{ base: '8', md: '10' }}
           >

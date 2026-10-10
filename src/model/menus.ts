@@ -161,6 +161,21 @@ function collectionItem(entry: CatalogNavEntry): MenuItem {
   }
 }
 
+/** One collapsible group of a kind's entries, or `null` when there are none. */
+function catalogGroup(
+  kind: 'categories' | 'collections',
+  label: string,
+  entries: readonly CatalogNavEntry[],
+): MenuItem | null {
+  if (entries.length === 0) return null
+  return {
+    id: `fallback-${kind}`,
+    label,
+    link: { kind: 'none' },
+    children: entries.map(kind === 'categories' ? categoryItem : collectionItem),
+  }
+}
+
 /**
  * The phone drawer's menu when the seller configured no main menu.
  *
@@ -180,28 +195,11 @@ export function buildMobileFallbackMenu(
   collections: readonly CatalogNavEntry[],
   labels: CatalogNavLabels,
 ): MenuItem[] {
-  const hasCategories = categories.length > 0
-  const hasCollections = collections.length > 0
-
-  if (hasCategories && hasCollections) {
-    return [
-      {
-        id: 'fallback-categories',
-        label: labels.categories,
-        link: { kind: 'none' },
-        children: categories.map(categoryItem),
-      },
-      {
-        id: 'fallback-collections',
-        label: labels.collections,
-        link: { kind: 'none' },
-        children: collections.map(collectionItem),
-      },
-    ]
-  }
-  if (hasCategories) return categories.map(categoryItem)
-  if (hasCollections) return collections.map(collectionItem)
-  return []
+  const groups = buildFooterFallbackMenu(categories, collections, labels)
+  // Both kinds exist: two collapsible groups, one per kind.
+  if (groups.length > 1) return groups
+  // One kind only: list its entries flat, with no heading between tap and link.
+  return groups.flatMap((group) => group.children)
 }
 
 /**
@@ -216,22 +214,8 @@ export function buildFooterFallbackMenu(
   collections: readonly CatalogNavEntry[],
   labels: CatalogNavLabels,
 ): MenuItem[] {
-  const columns: MenuItem[] = []
-  if (categories.length > 0) {
-    columns.push({
-      id: 'fallback-categories',
-      label: labels.categories,
-      link: { kind: 'none' },
-      children: categories.map(categoryItem),
-    })
-  }
-  if (collections.length > 0) {
-    columns.push({
-      id: 'fallback-collections',
-      label: labels.collections,
-      link: { kind: 'none' },
-      children: collections.map(collectionItem),
-    })
-  }
-  return columns
+  return [
+    catalogGroup('categories', labels.categories, categories),
+    catalogGroup('collections', labels.collections, collections),
+  ].filter((group): group is MenuItem => group !== null)
 }
