@@ -152,7 +152,6 @@ export function Multicolumn({ settings }: SectionProps) {
                         fontWeight="semibold"
                         fontSize="sm"
                         mt="1"
-                        data-sweep=""
                       >
                         {linkLabel} →
                       </SmartLink>

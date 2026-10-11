@@ -65,9 +65,9 @@ export function ThemeScope({
       {...props}
     >
       {/* The same effect rules the storefront inlines, so the editor preview
-          and snapshots sweep and transition like the live page. Unlayered
-          like the variables; data-attribute scoped, so dashboard chrome
-          beside the preview is untouched. */}
+          and snapshots transition like the live page. Unlayered like the
+          variables; data-attribute scoped, so dashboard chrome beside the
+          preview is untouched. */}
       <style>{effectCss(settings)}</style>
       {children}
     </Box>

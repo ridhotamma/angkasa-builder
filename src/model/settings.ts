@@ -960,8 +960,7 @@ export function themeModeCssVars(
 }
 
 /**
- * Storefront-only effect rules, as stylesheet text: underline sweeps for
- * links that opt in with `data-sweep`, and page transitions between
+ * Storefront-only effect rules, as stylesheet text: page transitions between
  * same-document navigations.
  *
  * Token-only and layout-free, like the variables above — and like them, safe
@@ -969,15 +968,8 @@ export function themeModeCssVars(
  * motion off keeps instant navigations. Reduced motion always wins.
  */
 export function effectCss(settings: ThemeSettings): string {
-  const sweep =
-    'a[data-sweep]{text-decoration:none;background-image:linear-gradient(currentColor,currentColor);' +
-    'background-size:0% 1px;background-repeat:no-repeat;background-position:left calc(100% - 1px);' +
-    'transition:background-size 260ms ease;}' +
-    'a[data-sweep]:hover{background-size:100% 1px;}' +
-    '@media (prefers-reduced-motion:reduce){a[data-sweep]{transition:none;}}'
-  if (settings.animation === 'none') return sweep
+  if (settings.animation === 'none') return ''
   return (
-    sweep +
     '@view-transition{navigation:auto;}' +
     '::view-transition-old(root){animation:pb-page-out 220ms ease both;}' +
     '::view-transition-new(root){animation:pb-page-in 300ms ease both;}' +

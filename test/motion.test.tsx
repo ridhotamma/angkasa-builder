@@ -267,12 +267,28 @@ describe('scrolling-text extras', () => {
 })
 
 describe('effect stylesheet', () => {
-  test('sweeps always ship; page transitions only with motion on', () => {
-    expect(effectCss(DEFAULT_THEME_SETTINGS)).toContain('a[data-sweep]')
-    expect(effectCss(DEFAULT_THEME_SETTINGS)).not.toContain('@view-transition')
+  test('page transitions only ship with motion on', () => {
+    expect(effectCss(DEFAULT_THEME_SETTINGS)).toBe('')
     const expressive = effectCss({ ...DEFAULT_THEME_SETTINGS, animation: 'expressive' })
     expect(expressive).toContain('@view-transition')
     expect(expressive).toContain('prefers-reduced-motion')
+  })
+
+  test('column CTAs draw no hover underline', () => {
+    const html = page([
+      createSection('multicolumn', {
+        items: [
+          {
+            title: 'Tailoring',
+            text: 'Made to measure',
+            linkLabel: 'Shop tailoring',
+            link: { kind: 'url', href: 'https://example.com/tailoring' },
+          },
+        ],
+      }),
+    ])
+    expect(html).toContain('Shop tailoring')
+    expect(html).not.toContain('data-sweep')
   })
 })
 
