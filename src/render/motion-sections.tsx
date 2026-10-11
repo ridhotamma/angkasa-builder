@@ -67,8 +67,11 @@ function stackCardTop(index: number): string {
  * Cards pinning one over another as the page scrolls, each peeking from
  * under the next and shrinking into the pile. Pinning is plain CSS sticky;
  * the shrink is a ScrollTrigger scrub, so it works in every browser rather
- * than only where CSS scroll-driven animations do. Every top-level block is
- * one card; pages built before the pile took blocks keep their fixed cards.
+ * than only where CSS scroll-driven animations do. A card shrinks across
+ * exactly the one-card travel that ends when the next card docks below it,
+ * so the pile resolves one card at a time instead of every card easing at
+ * once. Every top-level block is one card; pages built before the pile took
+ * blocks keep their fixed cards.
  */
 export function StackedCards({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
@@ -85,9 +88,36 @@ export function StackedCards({ settings }: SectionProps) {
     stack,
     ({ gsap }) => {
       const element = stack.current
-      const scroller = element?.ownerDocument.documentElement
-      if (!element || !scroller) return
-      element.querySelectorAll<HTMLElement>('[data-stack-card]').forEach((card) => {
+      const doc = element?.ownerDocument
+      const scroller = doc?.documentElement
+      const view = doc?.defaultView
+      if (!element || !scroller || !view) return
+      const cards = Array.from(element.querySelectorAll<HTMLElement>('[data-stack-card]'))
+
+      /**
+       * The scroll position at which each card lands on its sticky line: the
+       * pile's flow top (the container is never pinned, so its rect is true)
+       * carried down by the heights and gaps of the cards above, less the
+       * offset this card is pinned by. Re-measured per card so a dock stays
+       * exact however tall a card grows once its content or image lands.
+       */
+      const docks = () => {
+        const gap = Number.parseFloat(view.getComputedStyle(element).rowGap) || 0
+        let cursor = element.getBoundingClientRect().top + view.scrollY
+        return cards.map((card) => {
+          const line = Number.parseFloat(view.getComputedStyle(card).top) || 0
+          const dock = cursor - line
+          cursor += card.offsetHeight + gap
+          return dock
+        })
+      }
+      const dockAt = (index: number) => docks()[index] ?? 0
+
+      cards.forEach((card, index) => {
+        // The front card has nothing riding over it: it stays whole. Every
+        // card behind shrinks from its own dock to the next card's, so one
+        // card finishes exactly as its successor begins — never overlapping.
+        if (index === cards.length - 1) return
         gsap.fromTo(
           card,
           { scale: 1, filter: 'brightness(1)' },
@@ -98,9 +128,10 @@ export function StackedCards({ settings }: SectionProps) {
             scrollTrigger: {
               trigger: card,
               scroller,
-              start: 'top top',
-              end: 'bottom top',
+              start: () => dockAt(index),
+              end: () => dockAt(index + 1),
               scrub: true,
+              invalidateOnRefresh: true,
             },
           },
         )
