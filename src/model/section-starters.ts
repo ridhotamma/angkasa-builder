@@ -85,7 +85,9 @@ const photoCardBlock = (image: string, title: string, body: string) => ({
   },
 })
 
-/** A stacked card: image, heading and a line, the pile's own shell around it. */
+/** A stacked card: image, heading and a line, the pile's own shell around it.
+ *  Wide pictures keep the card short enough that its heading and text stay in
+ *  view once the card pins below the header. */
 const cardColumnBlock = (image: string, title: string, body: string) => ({
   type: 'column',
   settings: {
@@ -93,7 +95,7 @@ const cardColumnBlock = (image: string, title: string, body: string) => ({
     padding: 'none',
     width: 'full',
     align: 'left',
-    blocks: [imageBlock(image, '4/3'), headingBlock(title, 'h3', 'lg'), textBlock(body)],
+    blocks: [imageBlock(image, '16/9'), headingBlock(title, 'h3', 'lg'), textBlock(body)],
   },
 })
 

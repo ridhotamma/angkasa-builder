@@ -25,6 +25,7 @@ export {
 export {
   hasTabBar,
   HEADER_HEIGHT_VAR,
+  HEADER_OFFSET_VAR,
   isHeaderTransparent,
   StoreFooter,
   StoreHeader,

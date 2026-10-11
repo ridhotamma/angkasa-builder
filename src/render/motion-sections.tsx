@@ -25,7 +25,7 @@ import {
 import { isRichDocEmpty } from '../model/rich-text'
 import { resolveScheme, schemeCssVars } from '../model/settings'
 import { BlockChildren, BlockStrip, useDropTarget } from './blocks-section'
-import { HEADER_HEIGHT_VAR } from './chrome'
+import { STICKY_BELOW_HEADER } from './chrome'
 import { SectionColumn } from './column'
 import { useRenderEnvironment } from './context'
 import { schemeCss } from './frame'
@@ -44,6 +44,24 @@ import { alignOf, useEmptyText, type SectionProps } from './sections'
 /* -------------------------------------------------------------------------- */
 /* Stacked cards                                                              */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * How far down each card peeks from under the one before it, in the theme's
+ * own spacing scale — so a denser or airier theme moves the pile with every
+ * other gap on the page.
+ */
+const STACK_STEP = 'var(--chakra-spacing-7)'
+
+/**
+ * Where one card in the pile stops: the same header-aware offset every other
+ * sticky panel uses (`STICKY_BELOW_HEADER`), plus this card's step in the
+ * pile. Anything else would put the cards at a different line than the store
+ * map, the product info or the story picture.
+ */
+function stackCardTop(index: number): string {
+  const step = index === 0 ? '' : ` + ${index} * ${STACK_STEP}`
+  return `calc(${STICKY_BELOW_HEADER}${step})`
+}
 
 /**
  * Cards pinning one over another as the page scrolls, each peeking from
@@ -105,13 +123,7 @@ export function StackedCards({ settings }: SectionProps) {
       <Stack ref={stack} gap="6" {...(custom ? drop : {})}>
         {blocks.length > 0
           ? blocks.map((block, index) => (
-              <Box
-                key={block.id}
-                data-stack-card=""
-                position="sticky"
-                // Below the store header, each card a thumb lower than the last.
-                top={`calc(var(${HEADER_HEIGHT_VAR}, 76px) + ${16 + index * 28}px)`}
-              >
+              <Box key={block.id} data-stack-card="" position="sticky" top={stackCardTop(index)}>
                 <Box
                   rounded="l3"
                   overflow="hidden"
@@ -134,13 +146,7 @@ export function StackedCards({ settings }: SectionProps) {
               const title = readText(item, 'title')
               const linkLabel = readText(item, 'linkLabel')
               return (
-                <Box
-                  key={item.id}
-                  data-stack-card=""
-                  position="sticky"
-                  // Below the store header, each card a thumb lower than the last.
-                  top={`calc(var(${HEADER_HEIGHT_VAR}, 76px) + ${16 + index * 28}px)`}
-                >
+                <Box key={item.id} data-stack-card="" position="sticky" top={stackCardTop(index)}>
                   <Box
                     rounded="l3"
                     overflow="hidden"

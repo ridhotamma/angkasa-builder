@@ -19,6 +19,7 @@ import {
 import {
   sampleStorefrontData,
   SectionsRenderer,
+  STICKY_BELOW_HEADER,
   Tilt,
   type RenderEnvironment,
 } from '../src/render/index'
@@ -247,6 +248,58 @@ describe('stacked-cards section', () => {
     expect(html).toContain('Block card two')
     expect(html).not.toContain('Legacy card')
     expect(html.match(/data-stack-card/g) ?? []).toHaveLength(2)
+  })
+
+  test('every card sticks on the shared header line, a spacing step lower each', () => {
+    // The same calculation as the store map, the product info and the story
+    // picture — anchored to the header's real on-screen height — with each
+    // card in the pile riding the theme's own spacing scale.
+    const blocks = page([
+      createSection('stacked-cards', {
+        heading: 'Piled blocks',
+        content: 'blocks',
+        blocks: [
+          { type: 'heading', settings: { text: 'Card one' } },
+          { type: 'heading', settings: { text: 'Card two' } },
+        ],
+      }),
+    ])
+    expect(blocks).toContain(`top:calc(${STICKY_BELOW_HEADER})`)
+    expect(blocks).toContain(`top:calc(${STICKY_BELOW_HEADER} + 1 * var(--chakra-spacing-7))`)
+
+    const cards = page([
+      createSection('stacked-cards', {
+        heading: 'Piled cards',
+        items: [
+          { title: 'Card one', text: '', image: '' },
+          { title: 'Card two', text: '', image: '' },
+        ],
+      }),
+    ])
+    expect(cards).toContain(`top:calc(${STICKY_BELOW_HEADER})`)
+    expect(cards).toContain(`top:calc(${STICKY_BELOW_HEADER} + 1 * var(--chakra-spacing-7))`)
+  })
+
+  test('the sticky line leaves room for a floating header', () => {
+    // A see-through header takes no room in the flow (`--store-header-height`
+    // is zero), but it is fixed and turns solid over the page — so anything
+    // sticking below it must key off its real height instead.
+    expect(STICKY_BELOW_HEADER).toContain('--store-header-offset')
+    expect(STICKY_BELOW_HEADER).not.toContain('--store-header-height')
+  })
+})
+
+describe('scrolling-story section', () => {
+  test('the picture sticks on the same header line as every other panel', () => {
+    const html = page([
+      createSection('scrolling-story', {
+        heading: 'How it is made',
+        steps: [{ image: '', heading: 'It starts with a sketch', body: '' }],
+      }),
+    ])
+    expect(html).toContain('How it is made')
+    expect(html).toContain('It starts with a sketch')
+    expect(html).toContain(`top:${STICKY_BELOW_HEADER}`)
   })
 })
 

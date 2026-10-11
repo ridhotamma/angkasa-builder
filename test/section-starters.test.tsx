@@ -99,6 +99,22 @@ describe('section starters', () => {
     }
   })
 
+  test('the stacking cards ship wide pictures, so a pinned card keeps its words in view', () => {
+    const section = createStarterSection('stacked-cards', null, NOW)
+    const columns = (section.settings.blocks ?? []) as Array<{
+      settings?: { blocks?: Array<{ type?: string; settings?: { ratio?: string } }> }
+    }>
+    const ratios = columns.flatMap((column) =>
+      (column.settings?.blocks ?? [])
+        .filter((block) => block.type === 'image')
+        .map((block) => block.settings?.ratio),
+    )
+    // One picture per card, each wide enough that the heading and text below
+    // it still fit under the header once the card pins.
+    expect(ratios).toHaveLength(3)
+    for (const ratio of ratios) expect(ratio).toBe('16/9')
+  })
+
   test('a preset wins over the starter, key by key', () => {
     const preset: SectionPreset = {
       key: 'test',

@@ -30,7 +30,7 @@ import {
   SECTION_STICKY_ENABLED,
 } from '../model/section-style'
 import { effectCss, themeCssVars, themeModeCssVars, type ThemeSettings } from '../model/settings'
-import { HEADER_HEIGHT_VAR } from './chrome'
+import { HEADER_OFFSET_VAR } from './chrome'
 import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
 import { SectionFrame } from './frame'
 import { requestMotionRefresh } from './motion/engine'
@@ -273,7 +273,7 @@ const SectionItem = memo(function SectionItem({
   )
   // Every drawn section lands below the sticky header when a section link
   // scrolls to it, and carries the anchor that link targets (`anchorId`).
-  const anchorStyle = { scrollMarginTop: `var(${HEADER_HEIGHT_VAR}, 0px)` }
+  const anchorStyle = { scrollMarginTop: `var(${HEADER_OFFSET_VAR}, 0px)` }
 
   if (!pickable)
     return (

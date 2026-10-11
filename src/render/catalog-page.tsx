@@ -32,7 +32,7 @@ import { useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 
 import { readBoolean, readText } from '../model/fields'
-import { HEADER_HEIGHT_VAR } from './chrome'
+import { HEADER_OFFSET_VAR } from './chrome'
 import { previewListing, useRenderEnvironment, type StorefrontListingData } from './context'
 import { useRenderText } from './copy'
 import { ProductCard, SmartLink } from './primitives'
@@ -52,7 +52,7 @@ function usePageHref(): (page: number) => string {
 }
 
 /** How far under the sticky store header a pinned filter row sits. */
-const STICKY_UNDER_HEADER = `var(${HEADER_HEIGHT_VAR}, 76px)`
+const STICKY_UNDER_HEADER = `var(${HEADER_OFFSET_VAR}, 76px)`
 
 /** The classes a category filter row can wear. */
 const FILTER_STYLES = ['chips', 'underline', 'select'] as const

@@ -729,15 +729,27 @@ const HEADER_CONTROL_VARS = {
   '--chakra-colors-gray-emphasized': 'color-mix(in srgb, currentColor 18%, transparent)',
 } as const
 
-/** The header's height as the page sees it; `StoreHeader` keeps it current. */
+/**
+ * The room the header takes from the page; `StoreHeader` keeps it current.
+ * Zero while a see-through header floats over a banner and is not in flow.
+ */
 export const HEADER_HEIGHT_VAR = '--store-header-height'
+
+/**
+ * Where the sticky line sits below the header; `StoreHeader` keeps it current.
+ * Its real height while the header stays on screen — a floating header is
+ * fixed and turns solid over the page, so content must clear it even while
+ * `HEADER_HEIGHT_VAR` is zero — or zero when the header scrolls away with the
+ * page. Anything sticking below the chrome keys off this.
+ */
+export const HEADER_OFFSET_VAR = '--store-header-offset'
 
 /**
  * Where a sticky panel stops: a gap below the header's real height, whatever
  * its layout, menu row and announcement strip make it. The fallback is the
  * classic header, for the server's HTML before the header has measured itself.
  */
-export const STICKY_BELOW_HEADER = `calc(var(${HEADER_HEIGHT_VAR}, 76px) + var(--chakra-spacing-4))`
+export const STICKY_BELOW_HEADER = `calc(var(${HEADER_OFFSET_VAR}, 76px) + var(--chakra-spacing-4))`
 
 /**
  * The header as the theme lays it out. Sticky unless the seller turned that
@@ -778,29 +790,34 @@ export function StoreHeader({
     return () => view.removeEventListener('scroll', read)
   }, [transparent])
 
-  // How much of the screen the header takes from the page, for a full-screen
-  // banner (`HERO_HEIGHT.screen`): its real height — the layout, the menu row
-  // and the announcement strip all change it — or nothing when it floats over
-  // the banner. On the document root, since the banner is not inside the
-  // header; in the editor that is the preview's own document.
+  // How much of the screen the header takes, for a full-screen banner
+  // (`HERO_HEIGHT.screen`): its real height — the layout, the menu row and
+  // the announcement strip all change it — or nothing when it floats over the
+  // banner. The offset anything sticky below the header must leave is its
+  // real height only while the header stays on screen: a floating or sticky
+  // header is fixed and paints over the content scrolling beneath it, while
+  // one that scrolls away takes no room at all. On the document root, since
+  // the banner is not inside the header; in the editor that is the preview's
+  // own document.
   useEffect(() => {
     const element = ref.current
     const view = element?.ownerDocument.defaultView
     if (!element || !view) return
     const root = element.ownerDocument.documentElement
-    const write = () =>
-      root.style.setProperty(
-        HEADER_HEIGHT_VAR,
-        transparent ? '0px' : `${element.getBoundingClientRect().height}px`,
-      )
+    const write = () => {
+      const height = `${element.getBoundingClientRect().height}px`
+      root.style.setProperty(HEADER_HEIGHT_VAR, transparent ? '0px' : height)
+      root.style.setProperty(HEADER_OFFSET_VAR, sticky ? height : '0px')
+    }
     write()
     const observer = new view.ResizeObserver(write)
     observer.observe(element)
     return () => {
       observer.disconnect()
       root.style.removeProperty(HEADER_HEIGHT_VAR)
+      root.style.removeProperty(HEADER_OFFSET_VAR)
     }
-  }, [transparent])
+  }, [transparent, sticky])
 
   const clear = transparent && !scrolled
   const position = headerPosition(transparent, sticky)
@@ -884,8 +901,10 @@ export function StoreHeader({
       css={clear ? { ...CLEAR_VARS, ...HEADER_CONTROL_VARS } : HEADER_CONTROL_VARS}
     >
       {/* Before the measurement above can run — the server's HTML — a
-          see-through header is already known to take no room. */}
+          see-through header is already known to take no room, and a header
+          that scrolls away is already known to leave nothing to clear. */}
       {transparent && <style>{`:root{${HEADER_HEIGHT_VAR}:0px}`}</style>}
+      {!sticky && <style>{`:root{${HEADER_OFFSET_VAR}:0px}`}</style>}
       <AnnouncementStrip header={header} />
       <Container maxW={contentWidthOf(header)} px={{ base: '4', md: '6' }} py="3">
         {bar}

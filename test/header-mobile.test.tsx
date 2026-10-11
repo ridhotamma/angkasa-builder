@@ -129,3 +129,27 @@ describe('the phone bar', () => {
     expect(html.slice(html.indexOf('data-desktop-bar'))).toContain('ACTIONS')
   })
 })
+
+describe('the sticky line the header keeps', () => {
+  test('a see-through header is already known to take no room in the flow', () => {
+    const html = render(
+      <StoreHeader
+        header={{ layout: 'classic', sticky: true, showSearch: true }}
+        shop={shop}
+        menu={MENU}
+        transparent
+      />,
+    )
+    // The banner starts at the very top; nothing is measured for the flow.
+    expect(html).toContain(':root{--store-header-height:0px}')
+    // It is still fixed over the page, so the sticky line keeps its height.
+    expect(html).not.toContain(':root{--store-header-offset:0px}')
+  })
+
+  test('a header that scrolls away leaves nothing to clear', () => {
+    const html = header({ sticky: false })
+    expect(html).toContain(':root{--store-header-offset:0px}')
+    // It sits in the flow, so it still takes its height from the page.
+    expect(html).not.toContain(':root{--store-header-height:0px}')
+  })
+})
