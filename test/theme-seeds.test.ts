@@ -24,6 +24,8 @@ const EXPECTED = [
   'preloved',
   'retro',
   'organic',
+  'tech',
+  'playful',
 ]
 
 describe('platform theme seeds', () => {

@@ -1,11 +1,11 @@
 /**
  * The platform's starter themes, as data.
  *
- * Ten complete `ThemeContent`s — settings, header, footer and a home template
- * — covering the styles a new shop is most likely to ask for: brutalist,
- * minimalist, bold, modern, editorial, elegant, and two marketplace looks
- * (an Amazon-style general store and a Preloved-style thrift marketplace),
- * plus retro and organic.
+ * Twelve complete `ThemeContent`s — settings, header, footer and a home
+ * template — covering the styles a new shop is most likely to ask for:
+ * brutalist, minimalist, bold, modern, editorial, elegant, tech, playful, and
+ * two marketplace looks (an Amazon-style general store and a Preloved-style
+ * thrift marketplace), plus retro and organic.
  *
  * They are **seed data**, not a runtime fallback: `scripts/seed-themes.ts`
  * writes each one as a `scope: 'platform'` row of `themes`, after which the
@@ -1327,6 +1327,212 @@ const organic = makeSeed(
 )
 
 /* -------------------------------------------------------------------------- */
+/* Tech                                                                       */
+/* -------------------------------------------------------------------------- */
+
+const tech = makeSeed(
+  'tech',
+  'Tech',
+  {
+    en: 'Neon on obsidian: a dark, precise storefront for electronics, gadgets and digital goods.',
+    id: 'Neon di atas obsidian: etalase gelap yang presisi untuk elektronik, gawai, dan produk digital.',
+  },
+  110,
+  ['tech-futuristic', 'sora-clean', 'neon-midnight'],
+  () => ({
+    settings: lookSettings('tech-futuristic', {
+      // A deeper indigo band so white copy clears the contrast guard; the
+      // obsidian palette's own subtle and inverse bands stay as they are.
+      schemes: { brand: { background: '#4f46e5', text: '#ffffff', button: '#c7d2fe' } },
+    }),
+    header: {
+      layout: 'inline',
+      sticky: true,
+      showSearch: true,
+      announcementScheme: 'brand',
+      announcements: [
+        { text: 'Bebas ongkir untuk pembelian di atas Rp 500.000', link: { kind: 'none' } },
+      ],
+    },
+    footer: {
+      colorScheme: 'subtle',
+      about: 'Toko elektronik dan gawai resmi — bergaransi distributor, dikirim cepat.',
+      showContact: true,
+      showPages: true,
+      showSocials: true,
+    },
+    home: [
+      heroComposed({
+        heading: 'Gawai yang bekerja untukmu.',
+        body: 'Elektronik, aksesori, dan perlengkapan digital pilihan — resmi dan bergaransi.',
+        primary: 'Belanja sekarang',
+        secondary: 'Lihat spesifikasi',
+        tone: 'subtle',
+      }),
+      section('scrolling-text', {
+        items: [
+          { text: 'GARANSI RESMI' },
+          { text: 'KIRIM HARI INI' },
+          { text: 'HARGA JELAS' },
+          { text: 'SUDAH DIUJI' },
+        ],
+        size: 'lg',
+        separator: 'dot',
+        speed: 'fast',
+        uppercase: true,
+      }),
+      section('category-rail', { heading: 'Kategori', layout: 'tiles', limit: 6 }),
+      section('featured-collection', { heading: 'Paling dicari', limit: 10, columns: '5' }),
+      imageTextComposed({
+        heading: 'Spesifikasi jujur, tanpa jargon.',
+        body: 'Setiap produk kami uji dan tulis apa adanya — daya tahan, isi kotak, dan siapa yang melayaninya.',
+        button: 'Cara memilih',
+        imageSide: 'right',
+      }),
+      featuresComposed(
+        [
+          {
+            icon: 'shield',
+            title: 'Garansi resmi',
+            text: 'Semua unit bergaransi distributor resmi.',
+          },
+          {
+            icon: 'truck',
+            title: 'Kirim hari ini',
+            text: 'Pesan sebelum sore, dikirim hari yang sama.',
+          },
+          {
+            icon: 'refresh',
+            title: 'Tukar 14 hari',
+            text: 'Unit bermasalah ditukar dengan yang baru.',
+          },
+          {
+            icon: 'award',
+            title: 'Terkurasi',
+            text: 'Hanya merek dan model yang kami pakai sendiri.',
+          },
+        ],
+        'Kenapa belanja di sini',
+      ),
+      cardsComposed(
+        [
+          { title: 'Gadget harian', text: 'Ponsel, audio, dan wearable yang benar-benar dipakai.' },
+          { title: 'Peralatan kerja', text: 'Laptop dan aksesori untuk kerja dari mana saja.' },
+          { title: 'Rumah pintar', text: 'Perangkat yang membuat rumah lebih ringkas.' },
+        ],
+        'Belanja per kebutuhan',
+      ),
+      section('collection-tabs', { heading: 'Jelajahi koleksi', limit: 8, columns: '4', tabs: [] }),
+      // Marquee testimonials rather than `reviewsComposed`: its cards read the
+      // theme's own surfaces, where the block helper's fixed light panels would
+      // not sit right on an obsidian page.
+      section('testimonials', {
+        heading: 'Kata pengguna',
+        layout: 'marquee',
+        direction: 'left',
+        speed: 'normal',
+        items: REVIEWS,
+      }),
+      section('faq', {
+        heading: 'Pertanyaan umum',
+        items: FAQ_ITEMS,
+        align: 'left',
+        width: 'narrow',
+      }),
+      section('latest-products', { heading: 'Baru masuk', limit: 12, columns: '5' }),
+    ],
+  }),
+)
+
+/* -------------------------------------------------------------------------- */
+/* Playful                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const playful = makeSeed(
+  'playful',
+  'Playful',
+  {
+    en: 'Candy colour, rounded shapes and bouncy motion — for toys, snacks, bakeries and gifts.',
+    id: 'Warna permen, bentuk membulat, dan animasi lincah — untuk mainan, camilan, toko kue, dan hadiah.',
+  },
+  120,
+  ['playful-candy', 'soft-candy', 'bold-pop'],
+  () => ({
+    settings: lookSettings('playful-candy'),
+    header: {
+      layout: 'classic',
+      sticky: true,
+      showSearch: true,
+      announcementScheme: 'brand',
+      announcements: [{ text: 'Stiker lucu gratis di setiap pesanan', link: { kind: 'none' } }],
+    },
+    footer: {
+      colorScheme: 'subtle',
+      about: 'Mainan, camilan, dan hadiah pilihan untuk hari kecil yang lebih ceria.',
+      showContact: true,
+      showPages: true,
+      showSocials: true,
+    },
+    home: [
+      heroComposed({
+        heading: 'Senang itu penting.',
+        body: 'Mainan, camilan, dan hadiah yang bikin hari kecil lebih ceria.',
+        primary: 'Mulai pilih',
+        secondary: 'Lihat hadiah',
+        align: 'center',
+        tone: 'brand',
+      }),
+      section('scrolling-text', {
+        items: [
+          { text: 'BANYAK BONUS' },
+          { text: 'AMAN UNTUK ANAK' },
+          { text: 'KIRIM CEPAT' },
+          { text: 'DIKEMAS RAPI' },
+        ],
+        size: 'lg',
+        separator: 'star',
+        speed: 'normal',
+        uppercase: true,
+      }),
+      section('category-rail', { heading: 'Kategori seru', layout: 'tiles', limit: 6 }),
+      section('featured-collection', { heading: 'Paling disukai', limit: 10, columns: '4' }),
+      cardsComposed(
+        [
+          { title: 'Mainan edukatif', text: 'Belajar sambil bermain, aman untuk si kecil.' },
+          { title: 'Camilan aman', text: 'Bahan jelas dan kemasan rapat.' },
+          { title: 'Hadiah spesial', text: 'Dikemas siap diberi, cocok untuk kejutan.' },
+        ],
+        'Pilih sesuai suasana',
+      ),
+      featuresComposed(
+        [
+          { icon: 'heart', title: 'Aman untuk anak', text: 'Bahan non-toksik dan bersertifikat.' },
+          { icon: 'refresh', title: 'Tukar 7 hari', text: 'Salah pilih? Tukar dengan mudah.' },
+          { icon: 'truck', title: 'Kirim cepat', text: 'Dikemas rapi, dikirim di hari yang sama.' },
+          { icon: 'gift', title: 'Bonus kecil', text: 'Ada kejutan di setiap paket.' },
+        ],
+        'Janji kami',
+      ),
+      section('testimonials', {
+        heading: 'Kata orang tua',
+        layout: 'marquee',
+        direction: 'left',
+        speed: 'normal',
+        items: REVIEWS,
+      }),
+      section('collection-tabs', { heading: 'Koleksi tema', limit: 8, columns: '4', tabs: [] }),
+      section('faq', {
+        heading: 'Pertanyaan umum',
+        items: FAQ_ITEMS,
+        align: 'center',
+        width: 'narrow',
+      }),
+      section('latest-products', { heading: 'Baru datang', limit: 12, columns: '4' }),
+    ],
+  }),
+)
+
+/* -------------------------------------------------------------------------- */
 
 /** Every platform theme seed, in library order. */
 export const THEME_SEEDS: readonly ThemeSeed[] = [
@@ -1340,6 +1546,8 @@ export const THEME_SEEDS: readonly ThemeSeed[] = [
   preloved,
   retro,
   organic,
+  tech,
+  playful,
 ]
 
 /** The seed with `slug`, or `null`. */
