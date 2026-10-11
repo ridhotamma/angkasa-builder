@@ -15,6 +15,7 @@
  * http(s) is emptied — so a stored row can never take the page down.
  */
 
+import { isAssetKey } from '@repo/appwrite-config'
 import { z } from 'zod'
 
 import { findFont, isFontFamily } from '../model/font-library'
@@ -489,6 +490,12 @@ const ID = /^[a-zA-Z0-9_-]{1,36}$/
  * Appwrite ids, or a hotlinked stock photo (`https://images.pexels.com/...#credit`).
  * Pixabay serves both its original CDN renditions and `pixabay.com/get/` ones.
  */
+/**
+ * A media reference: an Appwrite file id, an S3 asset key written after the
+ * direct-upload migration (`isAssetKey`), or a hotlinked stock photo
+ * (`https://images.pexels.com/...#credit`). Pixabay serves both its original
+ * CDN renditions and `pixabay.com/get/` ones.
+ */
 const FILE_ID =
   /^(?:[a-zA-Z0-9._-]{1,36}|https:\/\/(?:cdn\.pixabay\.com|pixabay\.com\/get|images\.pexels\.com|images\.unsplash\.com)\/[^\s"'<>]{1,500})$/
 
@@ -527,7 +534,7 @@ const hex = (fallback: string) =>
 const fileId = z
   .string()
   .trim()
-  .refine((value) => FILE_ID.test(value))
+  .refine((value) => FILE_ID.test(value) || isAssetKey(value))
   .nullable()
   .catch(null)
 

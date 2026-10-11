@@ -11,7 +11,7 @@
  * still renders, and a hand-crafted payload can only ever produce a valid one.
  */
 
-import { hasCoordinates, sanitizeStockPhoto } from '@repo/appwrite-config'
+import { hasCoordinates, isAssetKey, sanitizeStockPhoto } from '@repo/appwrite-config'
 
 import { sanitizeLink, NO_LINK, type Link } from './links'
 import { EMPTY_RICH_DOC, sanitizeRichDoc, type RichDoc } from './rich-text'
@@ -259,9 +259,9 @@ export type FieldValues = { [key: string]: JsonValue }
 const ID = /^[A-Za-z0-9_-]{1,64}$/
 const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
-/** Whether a value is a media file id (as opposed to a stock photo URL). */
+/** Whether a value is a media file id: a legacy Appwrite id, or an S3 asset key. */
 export function isMediaFileId(value: unknown): value is string {
-  return typeof value === 'string' && ID.test(value)
+  return typeof value === 'string' && (ID.test(value) || isAssetKey(value))
 }
 
 /**
@@ -291,11 +291,12 @@ export interface VideoRef {
   id: string
 }
 
-/** The id shapes each source uses. A YouTube id is 11 URL-safe characters, Vimeo's is digits. */
-const VIDEO_ID: Record<VideoSource, RegExp> = {
-  upload: ID,
-  youtube: /^[A-Za-z0-9_-]{11}$/,
-  vimeo: /^\d{1,12}$/,
+/** The id shapes each source uses. A YouTube id is 11 URL-safe characters, Vimeo's digits. */
+const VIDEO_ID: Record<VideoSource, (id: string) => boolean> = {
+  // An uploaded video is a media file id — a legacy id or an S3 asset key.
+  upload: (id) => isMediaFileId(id),
+  youtube: (id) => /^[A-Za-z0-9_-]{11}$/.test(id),
+  vimeo: (id) => /^\d{1,12}$/.test(id),
 }
 
 export function sanitizeVideo(value: unknown, uploadOnly = false): VideoRef | null {
@@ -305,7 +306,7 @@ export function sanitizeVideo(value: unknown, uploadOnly = false): VideoRef | nu
   if (typeof source !== 'string' || typeof id !== 'string') return null
   if (!(VIDEO_SOURCES as readonly string[]).includes(source)) return null
   if (uploadOnly && source !== 'upload') return null
-  return VIDEO_ID[source as VideoSource].test(id) ? { source: source as VideoSource, id } : null
+  return VIDEO_ID[source as VideoSource](id) ? { source: source as VideoSource, id } : null
 }
 
 /**
