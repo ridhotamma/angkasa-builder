@@ -11,6 +11,7 @@ import {
   DEFAULT_THEME_SETTINGS,
   parseVideoUrl,
   readSectionStyle,
+  sectionAnchorId,
   sectionSchema,
   type SectionInstance,
 } from '../src/index'
@@ -18,6 +19,7 @@ import { surfacePaint } from '../src/render/dividers'
 import { spinStep } from '../src/render/premium-sections'
 import {
   embedUrl,
+  pageEdges,
   sampleStorefrontData,
   SectionsRenderer,
   type RenderEnvironment,
@@ -348,5 +350,85 @@ describe('floating contact theming', () => {
       />,
     )
     expect(html).toContain('--chakra-colors-brand-solid:#123456')
+  })
+})
+
+describe('a floating section takes no space in the page', () => {
+  const contact = (style: Record<string, unknown> = {}) =>
+    createSection(
+      'floating-contact',
+      { whatsapp: '08123456789', email: 'hi@shop.test', showTop: true },
+      style,
+    )
+
+  /** The opening tag of the element carrying a section's anchor id. */
+  function wrapperTag(html: string, sectionId: string): string {
+    const at = html.indexOf(`id="${sectionAnchorId(sectionId)}"`)
+    expect(at, sectionId).toBeGreaterThan(-1)
+    const start = html.lastIndexOf('<', at)
+    return html.slice(start, html.indexOf('>', at) + 1)
+  }
+
+  function classNames(tag: string): string[] {
+    const match = tag.match(/class="([^"]*)"/)
+    return match?.[1] ? match[1].split(/\s+/).filter(Boolean) : []
+  }
+
+  /** Every declaration block for a class, so its responsive rules are seen too. */
+  function classRules(html: string, className: string): string {
+    const out: string[] = []
+    const needle = `.${className}{`
+    let at = html.indexOf(needle)
+    while (at >= 0) {
+      const start = at + needle.length
+      out.push(html.slice(start, html.indexOf('}', start)))
+      at = html.indexOf(needle, start)
+    }
+    return out.join(' ')
+  }
+
+  function stylesOf(html: string, tag: string): string {
+    return classNames(tag)
+      .map((className) => classRules(html, className))
+      .join(' ')
+  }
+
+  test('the page edges look past it to the sections that paint space', () => {
+    const band = createSection('rich-text', { heading: 'Band' }, { width: 'edge' })
+    const edges = { flushTop: true, flushBottom: true, bannerFirst: true }
+    expect(pageEdges([contact(), band])).toEqual(edges)
+    expect(pageEdges([band, contact()])).toEqual(edges)
+  })
+
+  test('the sections around it keep exactly one gap', () => {
+    const first = createSection('rich-text', { heading: 'First' }, { width: 'edge' })
+    const second = createSection('rich-text', { heading: 'Second' }, { width: 'edge' })
+    const withFloat = render(<SectionsRenderer sections={[first, contact(), second]} env={env()} />)
+    const without = render(<SectionsRenderer sections={[first, second]} env={env()} />)
+    // Full-bleed bands touch across a floating section instead of opening a
+    // page gap before and after it: each wrapper is drawn as without it.
+    expect(wrapperTag(withFloat, first.id)).toBe(wrapperTag(without, first.id))
+    expect(wrapperTag(withFloat, second.id)).toBe(wrapperTag(without, second.id))
+    expect(stylesOf(withFloat, wrapperTag(withFloat, second.id))).toContain('margin-top:0')
+  })
+
+  test('its frame takes no padding and paints no divider, whatever the style asks', () => {
+    const dressed = contact({
+      colorScheme: 'subtle',
+      dividerTop: 'wave',
+      dividerBottom: 'wave',
+      paddingTop: 'lg',
+      paddingBottom: 'lg',
+    })
+    const html = render(<SectionsRenderer sections={[dressed]} env={env()} />)
+    const wrapperAt = html.indexOf(`id="${sectionAnchorId(dressed.id)}"`)
+    const frameAt = html.indexOf('<div', html.indexOf('>', wrapperAt) + 1)
+    const frameTag = html.slice(frameAt, html.indexOf('>', frameAt) + 1)
+    const rules = stylesOf(html, frameTag)
+    expect(rules).toContain('padding-top:0')
+    expect(rules).toContain('padding-bottom:0')
+    expect(rules).not.toContain('padding-top:var')
+    expect(rules).not.toContain('padding-bottom:var')
+    expect(html).not.toContain('mask-image')
   })
 })

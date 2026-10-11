@@ -102,6 +102,13 @@ export interface SectionSchema {
    * only the catalogue is narrowed.
    */
   hidden?: boolean
+  /**
+   * Paints outside the page flow — a pinned overlay (the floating contact),
+   * not a band. The frame gives it no padding and the layout skips it when
+   * spacing sections and judging the page's edges, so it never pushes the
+   * page around.
+   */
+  floating?: boolean
   /** Style a freshly added section starts with, e.g. edge to edge for a video. */
   defaultStyle?: Record<string, unknown>
   presets?: readonly SectionPreset[]
@@ -2934,6 +2941,11 @@ const BY_TYPE = new Map<string, SectionSchema>(
 
 export function sectionSchema(type: string): SectionSchema | null {
   return BY_TYPE.get(type) ?? null
+}
+
+/** Whether `type` paints outside the page flow — see `SectionSchema.floating`. */
+export function isFloatingSection(type: string): boolean {
+  return BY_TYPE.get(type)?.floating === true
 }
 
 export function isSectionType(type: unknown): type is SectionType {

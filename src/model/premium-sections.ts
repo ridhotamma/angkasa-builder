@@ -425,6 +425,7 @@ export const PREMIUM_SECTION_SCHEMAS = [
     category: 'store',
     icon: 'chat',
     max: 1,
+    floating: true,
     name: { en: 'Floating contact', id: 'Kontak mengambang' },
     description: {
       en: 'A WhatsApp and email button pinned to the corner, plus a back-to-top control.',

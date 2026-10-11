@@ -29,6 +29,7 @@ import {
   scheduleState,
   SECTION_STICKY_ENABLED,
 } from '../model/section-style'
+import { isFloatingSection } from '../model/sections'
 import { effectCss, themeCssVars, themeModeCssVars, type ThemeSettings } from '../model/settings'
 import { HEADER_OFFSET_VAR } from './chrome'
 import { RenderProvider, useRenderEnvironment, type RenderEnvironment } from './context'
@@ -150,7 +151,11 @@ export interface PageEdges {
 export const NO_PAGE_EDGES: PageEdges = { flushTop: false, flushBottom: false, bannerFirst: false }
 
 export function pageEdges(drawn: readonly SectionInstance[]): PageEdges {
-  const resolved = resolveLinkedSections(drawn)
+  // Floating sections paint outside the flow, so the painted first and last
+  // are the first and last of the sections that actually take space.
+  const resolved = resolveLinkedSections(drawn).filter(
+    (section) => !isFloatingSection(section.type),
+  )
   const first = resolved[0]
   const last = resolved[resolved.length - 1]
   return {
@@ -162,6 +167,18 @@ export function pageEdges(drawn: readonly SectionInstance[]): PageEdges {
 
 /** The space between two sections in the page column. */
 const SECTION_GAP = { base: '10', md: '14' } as const
+
+/** The nearest section before `index` that takes part in the page flow. */
+function flowBefore(
+  visible: readonly SectionInstance[],
+  index: number,
+): SectionInstance | undefined {
+  for (let i = index - 1; i >= 0; i--) {
+    const candidate = visible[i]
+    if (candidate && !isFloatingSection(candidate.type)) return candidate
+  }
+  return undefined
+}
 
 export function SectionsRenderer({
   sections,
@@ -192,16 +209,20 @@ export function SectionsRenderer({
         {visible.map((section, index) => {
           // Two full-bleed sections in a row touch, like bands on a poster:
           // the page gap between them would be a strip of page background.
-          // Their own "space above/below" is what separates them.
-          const previous = visible[index - 1]
+          // Their own "space above/below" is what separates them. A floating
+          // section paints outside the flow, so it never carries the gap and
+          // is skipped when looking for the neighbour a gap is measured from.
+          const previous = flowBefore(visible, index)
+          const floating = isFloatingSection(section.type)
           const bleed = isFullBleed(section)
-          const flush = !previous || (bleed && isFullBleed(previous))
+          const flush = floating || !previous || (bleed && isFullBleed(previous))
           const selected = section.id === selectedId
           return (
             <SectionItem
               key={section.id}
               section={section}
               flush={flush}
+              floating={floating}
               pickable={Boolean(onSelect) && (pickable?.(section) ?? true)}
               selected={selected}
               first={index === 0}
@@ -224,6 +245,7 @@ export function SectionsRenderer({
 const SectionItem = memo(function SectionItem({
   section,
   flush,
+  floating,
   pickable,
   selected,
   first,
@@ -232,6 +254,7 @@ const SectionItem = memo(function SectionItem({
 }: {
   section: SectionInstance
   flush: boolean
+  floating: boolean
   pickable: boolean
   selected: boolean
   first: boolean
@@ -265,7 +288,11 @@ const SectionItem = memo(function SectionItem({
   const rendered = (
     <SectionIdContext.Provider value={section.id}>
       <SectionElementsContext.Provider value={section.elements ?? NO_ELEMENTS}>
-        <SectionFrame style={section.style} background={sectionBackground(section)}>
+        <SectionFrame
+          style={section.style}
+          background={sectionBackground(section)}
+          floating={floating}
+        >
           <Section settings={section.settings} />
         </SectionFrame>
       </SectionElementsContext.Provider>

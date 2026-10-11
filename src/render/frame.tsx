@@ -106,11 +106,18 @@ export function isSectionScheduledIn(style: FieldValues, now: Date): boolean {
 export function SectionFrame({
   style: stored,
   background,
+  floating = false,
   children,
 }: {
   style: FieldValues
   /** The section's own background when its renderer paints one (see `sectionBackground`). */
   background?: SectionBackground | null
+  /**
+   * Paints outside the page flow (see `SectionSchema.floating`): a pinned
+   * overlay, so the frame contributes no height around it — its content is
+   * out of flow and any padding or divider would be invisible space.
+   */
+  floating?: boolean
   children: ReactNode
 }) {
   const { settings, imageUrl } = useRenderEnvironment()
@@ -160,8 +167,8 @@ export function SectionFrame({
       },
       color: style.scheme ? 'fg' : undefined,
     }),
-    pt: padding(style.paddingTop, banded),
-    pb: padding(style.paddingBottom, banded),
+    pt: floating ? '0' : padding(style.paddingTop, banded),
+    pb: floating ? '0' : padding(style.paddingBottom, banded),
   }
 
   const pattern = paint.pattern
@@ -213,7 +220,7 @@ export function SectionFrame({
   )
 
   const dividerTop =
-    style.dividerTop !== 'none' ? (
+    !floating && style.dividerTop !== 'none' ? (
       <SectionDivider
         shape={style.dividerTop}
         position="top"
@@ -222,7 +229,7 @@ export function SectionFrame({
       />
     ) : null
   const dividerBottom =
-    style.dividerBottom !== 'none' ? (
+    !floating && style.dividerBottom !== 'none' ? (
       <SectionDivider
         shape={style.dividerBottom}
         position="bottom"
