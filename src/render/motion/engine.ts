@@ -56,13 +56,28 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null
  * Re-measure every ScrollTrigger, debounced. Called when a document's
  * resources land and when the editor redraws sections, so a trigger's
  * start/end never strands where they were before an image or an edit.
+ *
+ * The window's own scroll is captured here and put back after the refresh.
+ * GSAP scrolls the scroller to zero to measure, then restores the position it
+ * recorded — but that recording happens *at refresh time*, which after a
+ * navigation is a moment when the page has just been reset to the top and the
+ * sections are still settling their own heights. A restore can then land the
+ * reader part-way down a page they only just arrived on. Pinning the scroll to
+ * what it was the instant before the refresh makes the re-measure invisible.
  */
 export function requestMotionRefresh(delay = 120): void {
   if (!pending) return
   if (refreshTimer !== null) clearTimeout(refreshTimer)
   refreshTimer = setTimeout(() => {
     refreshTimer = null
-    void pending?.then(({ ScrollTrigger }) => ScrollTrigger.refresh())
+    void pending?.then(({ ScrollTrigger }) => {
+      const view = globalThis.window
+      const before = view ? { x: view.scrollX, y: view.scrollY } : null
+      ScrollTrigger.refresh()
+      if (view && before && (view.scrollX !== before.x || view.scrollY !== before.y)) {
+        view.scrollTo(before.x, before.y)
+      }
+    })
   }, delay)
 }
 
