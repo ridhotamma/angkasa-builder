@@ -518,6 +518,22 @@ describe('colour', () => {
     // A fractional token keeps Chakra's escaped dot in the variable name.
     expect(scaled['--chakra-spacing-0\\.5']).toBe('0.1475rem')
   })
+
+  test('page width moves every container token, and leaves them alone by default', () => {
+    // The default emits nothing: the storefront as it always was.
+    expect(themeCssVars(DEFAULT_THEME_SETTINGS)['--chakra-sizes-6xl']).toBeUndefined()
+
+    const narrow = themeCssVars({ ...DEFAULT_THEME_SETTINGS, pageWidth: 'narrow' })
+    expect(narrow['--chakra-sizes-6xl']).toBe('61.2rem')
+    expect(narrow['--chakra-sizes-3xl']).toBe('40.8rem')
+
+    const wide = themeCssVars({ ...DEFAULT_THEME_SETTINGS, pageWidth: 'wide' })
+    expect(wide['--chakra-sizes-6xl']).toBe('86.4rem')
+
+    // An unknown value from another release reads as the default.
+    const unknown = sanitizeThemeSettings({ pageWidth: 'gigantic' })
+    expect(themeCssVars(unknown)['--chakra-sizes-6xl']).toBeUndefined()
+  })
 })
 
 describe('editing a section list', () => {

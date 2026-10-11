@@ -31,6 +31,8 @@ import {
   DENSITIES,
   DENSITY_LABELS,
   OPTION_LABELS,
+  PAGE_WIDTH_LABELS,
+  PAGE_WIDTHS,
   POPUP_KIND_LABELS,
   POPUP_KINDS,
   RADIUS_OPTIONS,
@@ -578,6 +580,15 @@ export function ThemeSettingsPanel({
               options={DENSITIES.map((value) => ({ value, label: l(DENSITY_LABELS[value]) }))}
               onChange={(density) =>
                 onChange({ ...settings, density: density as ThemeSettings['density'] })
+              }
+            />
+          </Labeled>
+          <Labeled label={t('pageWidth')} help={t('pageWidthHelp')}>
+            <SelectInput
+              value={settings.pageWidth}
+              options={PAGE_WIDTHS.map((value) => ({ value, label: l(PAGE_WIDTH_LABELS[value]) }))}
+              onChange={(pageWidth) =>
+                onChange({ ...settings, pageWidth: pageWidth as ThemeSettings['pageWidth'] })
               }
             />
           </Labeled>

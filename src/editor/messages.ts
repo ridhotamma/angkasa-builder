@@ -78,6 +78,11 @@ const MESSAGES = {
     en: 'Scales every gap, padding, card and control together.',
     id: 'Menskalakan semua jarak, padding, kartu, dan kontrol sekaligus.',
   },
+  pageWidth: { en: 'Page width', id: 'Lebar halaman' },
+  pageWidthHelp: {
+    en: 'Narrows or widens the whole site — sections, header, footer and catalogue pages together.',
+    id: 'Menyempitkan atau melebarkan seluruh situs — bagian, header, footer, dan halaman katalog sekaligus.',
+  },
   contrastText: {
     en: 'Text on this background is hard to read. Pick a darker text or lighter background.',
     id: 'Teks di latar ini sulit dibaca. Pilih teks lebih gelap atau latar lebih terang.',

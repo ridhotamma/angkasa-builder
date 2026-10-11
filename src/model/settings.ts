@@ -138,6 +138,22 @@ export const DENSITY_LABELS: Record<Density, Localized> = {
   airy: { en: 'Airy', id: 'Lega' },
 }
 
+/**
+ * How wide the page runs, site-wide. A token remap, not free CSS: every content
+ * width in the storefront — a section's `contentWidth`, the header and footer
+ * columns, the catalogue's page column, article and product pages — is a Chakra
+ * container token, so scaling those tokens on the theme's scope narrows or
+ * widens the whole site at once. `default` leaves every token as Chakra's own.
+ */
+export const PAGE_WIDTHS = ['default', 'narrow', 'wide'] as const
+export type PageWidth = (typeof PAGE_WIDTHS)[number]
+
+export const PAGE_WIDTH_LABELS: Record<PageWidth, Localized> = {
+  default: { en: 'Default', id: 'Bawaan' },
+  narrow: { en: 'Narrow', id: 'Sempit' },
+  wide: { en: 'Wide', id: 'Lebar' },
+}
+
 /* -------------------------------------------------------------------------- */
 /* Splash screen                                                              */
 /* -------------------------------------------------------------------------- */
@@ -301,6 +317,8 @@ export interface ThemeSettings {
   typeScale: TypeScale
   /** One step for every gap, padding and control size: tight, cozy or airy. */
   density: Density
+  /** How wide the page column and every content width run, site-wide. */
+  pageWidth: PageWidth
   /**
    * The seller's own colours for a scheme. A scheme without one follows the
    * theme's colours (see `resolveScheme`), so changing the brand colour
@@ -332,6 +350,7 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   // saved before these knobs existed reads exactly the same.
   typeScale: 'default',
   density: 'cozy',
+  pageWidth: 'default',
   schemes: {},
   // Off for a theme that never chose: a storefront that did not move yesterday
   // should not start moving after a deploy.
@@ -376,6 +395,7 @@ const settingsSchema = z.object({
     .catch(DEFAULT_THEME_SETTINGS.cardHover),
   typeScale: z.enum(TYPE_SCALES).catch(DEFAULT_THEME_SETTINGS.typeScale),
   density: z.enum(DENSITIES).catch(DEFAULT_THEME_SETTINGS.density),
+  pageWidth: z.enum(PAGE_WIDTHS).catch(DEFAULT_THEME_SETTINGS.pageWidth),
   schemes: z
     .object(
       Object.fromEntries(
@@ -545,6 +565,32 @@ const DENSITY_FACTOR: Record<Density, number> = {
   airy: 1.18,
 }
 
+/**
+ * How far each page width moves Chakra's container tokens. The page column
+ * (6xl, 72rem) is the anchor: narrow runs it at ~61rem, wide at ~86rem, and
+ * every other container follows by the same factor so a hero and a reading
+ * column stay in proportion to the page.
+ */
+const PAGE_WIDTH_FACTOR: Record<PageWidth, number> = {
+  default: 1,
+  narrow: 0.85,
+  wide: 1.2,
+}
+
+/** Chakra's container-size tokens, in rem — the ladder a page width scales. */
+const CONTAINER_SIZES_REM: Record<string, number> = {
+  sm: 24,
+  md: 28,
+  lg: 32,
+  xl: 36,
+  '2xl': 42,
+  '3xl': 48,
+  '4xl': 56,
+  '5xl': 64,
+  '6xl': 72,
+  '7xl': 80,
+}
+
 /** Chakra's default font sizes, in rem — the base each scale multiplies. */
 const FONT_SIZE_REM: Record<string, number> = {
   '2xs': 0.625,
@@ -597,6 +643,22 @@ function scaleCssVars(settings: ThemeSettings): Record<string, string> {
     for (const unit of SPACING_UNITS) {
       vars[spacingVar(unit)] = rem(unit * 0.25 * density)
     }
+  }
+  return vars
+}
+
+/**
+ * The page width, as the Chakra container-token overrides that move every
+ * content width at once — every `maxW` a section, the header, the footer, the
+ * catalogue and the reading pages pick is one of these tokens. `default`
+ * emits nothing, so an untouched theme declares exactly what it did before.
+ */
+function pageWidthCssVars(settings: ThemeSettings): Record<string, string> {
+  const factor = PAGE_WIDTH_FACTOR[settings.pageWidth]
+  if (factor === 1) return {}
+  const vars: Record<string, string> = {}
+  for (const [token, base] of Object.entries(CONTAINER_SIZES_REM)) {
+    vars[`--chakra-sizes-${token}`] = rem(base * factor)
   }
   return vars
 }
@@ -734,9 +796,11 @@ export function themeCssVarGroups(settings: ThemeSettings): {
     '--chakra-colors-gray-focus-ring': 'var(--chakra-colors-brand-focus-ring)',
   })
 
-  // Type and density scale Chakra's own tokens, so every section — and the
-  // chrome around it — follows without a renderer knowing the setting exists.
+  // Type, density and page width scale Chakra's own tokens, so every section —
+  // and the chrome around it, and every catalogue and reading page — follows
+  // without a renderer knowing the settings exist.
   Object.assign(always, scaleCssVars(settings))
+  Object.assign(always, pageWidthCssVars(settings))
 
   const surfaces: Record<string, string> = {
     '--chakra-colors-brand-fg': contrastRatio(brand, background) >= 3 ? brand : ramp[700],
