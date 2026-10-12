@@ -472,7 +472,10 @@ export function DataTable({
     <Table.ScrollArea borderWidth="1px" borderColor="border.subtle" rounded="l3">
       <Table.Root size="sm" striped={striped} interactive={false}>
         <Table.Header>
-          <Table.Row bg="bg.muted">
+          {/* Transparent like the body: the muted header read as a disabled
+              row above the stripes. The semibold text and the line variant's
+              bottom border already set it apart. */}
+          <Table.Row bg="transparent">
             {table.columns.map((column, index) => (
               <Table.ColumnHeader key={index} fontWeight="semibold" color="fg" whiteSpace="nowrap">
                 {column}
