@@ -5,7 +5,7 @@
  * Off by default. Shown once per session unless the seller unchecks it, and
  * never stored anywhere: dismissing a cookie bar only remembers the choice in
  * `sessionStorage`, no collection, no consent database. The editor never
- * mounts it on load; the Theme tab's replay button renders it on demand.
+ * mounts it on load; the theme settings' replay button renders it on demand.
  */
 
 import { Box, Button, CloseButton, Dialog, Flex, Heading, Stack, Text } from '@chakra-ui/react'

@@ -8,7 +8,7 @@
  * click. A page without JavaScript still opens: the exit is a pure CSS
  * animation, so the overlay hides itself even when no bundle arrives.
  *
- * The editor never plays it on load; the Theme tab's replay button renders
+ * The editor never plays it on load; the theme settings' replay button renders
  * the same component with `replay`, so what the seller previews is what a
  * shopper sees. Snapshots draw their own document and never mount it.
  */
