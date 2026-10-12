@@ -27,7 +27,7 @@ import { useState } from 'react'
 import { Tooltip } from '@repo/theme'
 
 import { ICON_NAMES, NO_ICON, resolveIconName, type IconName } from '../model/icons'
-import { ICON_GLYPHS } from '../render/icons'
+import { ICON_GLYPHS } from './icon-glyphs'
 
 import { useEditorText } from './messages'
 

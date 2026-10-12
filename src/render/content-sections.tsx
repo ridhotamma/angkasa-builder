@@ -43,7 +43,7 @@ import { NO_LINK, type Link } from '../model/links'
 import { STICKY_BELOW_HEADER } from './chrome'
 import { useRenderEnvironment, type StorefrontRenderData } from './context'
 import { useRenderText } from './copy'
-import { iconGlyph } from './icons'
+import { FeatureIcon } from './icons'
 import { Tilt } from './motion'
 import { useMotionEffect } from './motion/engine'
 import {
@@ -561,37 +561,34 @@ export function IconFeatures({ settings }: SectionProps) {
           columns={gridColumns(readText(settings, 'columns'), readText(settings, 'mobileColumns'))}
           gap={{ base: '6', md: '8' }}
         >
-          {items.map((item) => {
-            const glyph = iconGlyph(readText(item, 'icon'))
-            return (
-              <Stack
-                key={item.id}
-                gap="3"
-                align={align === 'center' ? 'center' : 'start'}
-                textAlign={align}
-              >
-                {circle ? (
-                  <Circle size={{ base: '12', md: '14' }} bg="brand.subtle" color="brand.fg">
-                    {glyph && <Icon as={glyph} boxSize={{ base: '5', md: '6' }} />}
-                  </Circle>
-                ) : (
-                  glyph && <Icon as={glyph} boxSize="8" color="brand.fg" />
+          {items.map((item) => (
+            <Stack
+              key={item.id}
+              gap="3"
+              align={align === 'center' ? 'center' : 'start'}
+              textAlign={align}
+            >
+              {circle ? (
+                <Circle size={{ base: '12', md: '14' }} bg="brand.subtle" color="brand.fg">
+                  <FeatureIcon name={readText(item, 'icon')} boxSize={{ base: '5', md: '6' }} />
+                </Circle>
+              ) : (
+                <FeatureIcon name={readText(item, 'icon')} boxSize="8" color="brand.fg" />
+              )}
+              <Stack gap="1">
+                {readText(item, 'title') && (
+                  <Text fontWeight="semibold" fontSize={{ base: 'sm', md: 'md' }}>
+                    {readText(item, 'title')}
+                  </Text>
                 )}
-                <Stack gap="1">
-                  {readText(item, 'title') && (
-                    <Text fontWeight="semibold" fontSize={{ base: 'sm', md: 'md' }}>
-                      {readText(item, 'title')}
-                    </Text>
-                  )}
-                  {readText(item, 'text') && (
-                    <Text fontSize="sm" color="fg.muted">
-                      {readText(item, 'text')}
-                    </Text>
-                  )}
-                </Stack>
+                {readText(item, 'text') && (
+                  <Text fontSize="sm" color="fg.muted">
+                    {readText(item, 'text')}
+                  </Text>
+                )}
               </Stack>
-            )
-          })}
+            </Stack>
+          ))}
         </SimpleGrid>
       )}
     </Stack>

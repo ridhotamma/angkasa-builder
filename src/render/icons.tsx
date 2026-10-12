@@ -1,159 +1,65 @@
 /**
- * The glyph for each name in the icon catalogue (`ICON_NAMES`).
+ * The storefront's icon renderer.
  *
- * The map is keyed by `IconName`, so TypeScript fails the build if a catalogue
- * name has no glyph here — the catalogue and its glyphs can never drift.
+ * The catalogue is large (200+), but a page only ever draws a handful, so the
+ * glyphs are split: a small eager core (the icons most likely above the fold)
+ * is bundled, and every other icon is its own chunk pulled in on demand. A
+ * storefront therefore ships only the icons its pages actually render — see
+ * `scripts/generate-icons.ts` for the generated modules behind this.
+ *
+ * The catalogue names live in `model/icons`; the glyphs are generated.
  */
 
-import type { IconType } from 'react-icons'
-import {
-  LuAward,
-  LuBadgeCheck,
-  LuBanknote,
-  LuBookOpen,
-  LuCake,
-  LuCalendar,
-  LuCamera,
-  LuCar,
-  LuClock,
-  LuCoffee,
-  LuCreditCard,
-  LuCrown,
-  LuDroplet,
-  LuFileText,
-  LuFlame,
-  LuGift,
-  LuGlobe,
-  LuHand,
-  LuHandshake,
-  LuHeart,
-  LuImage,
-  LuLeaf,
-  LuLock,
-  LuMail,
-  LuMapPin,
-  LuMegaphone,
-  LuMessageCircle,
-  LuPackage,
-  LuPalette,
-  LuPawPrint,
-  LuPhone,
-  LuPlane,
-  LuReceipt,
-  LuRefreshCw,
-  LuRuler,
-  LuScissors,
-  LuSend,
-  LuSettings,
-  LuShieldCheck,
-  LuShoppingBag,
-  LuShoppingCart,
-  LuSparkles,
-  LuSprout,
-  LuStar,
-  LuStore,
-  LuSun,
-  LuTag,
-  LuTicket,
-  LuTimer,
-  LuTruck,
-  LuUser,
-  LuUsers,
-  LuUtensils,
-  LuVideo,
-  LuWallet,
-  LuWrench,
-} from 'react-icons/lu'
+import { Icon, type IconProps } from '@chakra-ui/react'
+import { lazy, Suspense } from 'react'
 
 import { NO_ICON, resolveIconName, type IconName } from '../model/icons'
+import { CORE_ICONS } from './core-icons'
+import type { GlyphComponent } from './glyph'
+import sparkles from './glyphs/sparkles'
+import { ICON_LOADERS } from './icon-loaders'
 
-export const ICON_GLYPHS: Record<IconName, IconType> = {
-  // Commerce and trust
-  truck: LuTruck,
-  banknote: LuBanknote,
-  'shield-check': LuShieldCheck,
-  'refresh-cw': LuRefreshCw,
-  package: LuPackage,
-  'shopping-bag': LuShoppingBag,
-  'shopping-cart': LuShoppingCart,
-  store: LuStore,
-  tag: LuTag,
-  ticket: LuTicket,
-  receipt: LuReceipt,
-  wallet: LuWallet,
-  'credit-card': LuCreditCard,
-  handshake: LuHandshake,
+/**
+ * One lazy component per non-core icon, made once so its identity is stable
+ * across renders — a fresh `lazy()` every render would remount the glyph.
+ */
+const LAZY_GLYPHS = new Map<IconName, GlyphComponent>()
 
-  // Contact and support
-  phone: LuPhone,
-  mail: LuMail,
-  send: LuSend,
-  'message-circle': LuMessageCircle,
-  megaphone: LuMegaphone,
-
-  // Place and delivery
-  'map-pin': LuMapPin,
-  globe: LuGlobe,
-  car: LuCar,
-  plane: LuPlane,
-
-  // Time
-  clock: LuClock,
-  calendar: LuCalendar,
-  timer: LuTimer,
-
-  // Nature
-  leaf: LuLeaf,
-  sprout: LuSprout,
-  sun: LuSun,
-  droplet: LuDroplet,
-  flame: LuFlame,
-
-  // Food and drink
-  coffee: LuCoffee,
-  utensils: LuUtensils,
-  cake: LuCake,
-
-  // People
-  user: LuUser,
-  users: LuUsers,
-
-  // Symbols and status
-  star: LuStar,
-  heart: LuHeart,
-  gift: LuGift,
-  award: LuAward,
-  'badge-check': LuBadgeCheck,
-  sparkles: LuSparkles,
-  crown: LuCrown,
-  lock: LuLock,
-
-  // Tools and media
-  settings: LuSettings,
-  wrench: LuWrench,
-  ruler: LuRuler,
-  scissors: LuScissors,
-  palette: LuPalette,
-  camera: LuCamera,
-  video: LuVideo,
-  image: LuImage,
-
-  // Knowledge and documents
-  'book-open': LuBookOpen,
-  'file-text': LuFileText,
-
-  // Animals and health
-  hand: LuHand,
-  'paw-print': LuPawPrint,
+function lazyGlyph(name: IconName): GlyphComponent {
+  let glyph = LAZY_GLYPHS.get(name)
+  if (!glyph) {
+    glyph = lazy(ICON_LOADERS[name])
+    LAZY_GLYPHS.set(name, glyph)
+  }
+  return glyph
 }
 
 /**
- * The glyph a stored icon name draws, or `null` when the seller picked "No
- * icon". A name with no glyph (a layout from a newer release) falls back to a
- * sparkle, the way an unknown section falls back to nothing.
+ * The component a stored icon name draws: a core glyph, a lazily loaded one, or
+ * `null` when the seller picked "No icon". A name with no glyph (a layout from
+ * a newer release) falls back to a sparkle.
  */
-export function iconGlyph(name: string): IconType | null {
+export function iconGlyph(name: string): GlyphComponent | null {
   if (name === NO_ICON) return null
   const resolved = resolveIconName(name)
-  return resolved ? ICON_GLYPHS[resolved] : LuSparkles
+  if (!resolved) return sparkles
+  return CORE_ICONS[resolved] ?? lazyGlyph(resolved)
+}
+
+/**
+ * One icon, ready to render. The Suspense boundary is what lets a non-core
+ * glyph stream in (server) or pop in (client) instead of blocking the page;
+ * core glyphs and "No icon" render synchronously.
+ */
+export function FeatureIcon({
+  name,
+  ...props
+}: { name: string } & Omit<IconProps, 'as' | 'children'>) {
+  const glyph = iconGlyph(name)
+  if (!glyph) return null
+  return (
+    <Suspense fallback={null}>
+      <Icon as={glyph} {...props} />
+    </Suspense>
+  )
 }

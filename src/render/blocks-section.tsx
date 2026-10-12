@@ -101,7 +101,7 @@ import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { useMounted, usePrefersReducedMotion, useResponsive } from './hooks'
-import { iconGlyph } from './icons'
+import { FeatureIcon } from './icons'
 import { VideoFrame } from './media'
 import { Parallax, ScrollReveal } from './motion'
 import {
@@ -754,12 +754,12 @@ function IconBlock({ block }: { block: BlockValue }) {
   const size = readToken(block.settings, 'size', ICON_SIZE_KEYS, 'md')
   const tone = readToken(block.settings, 'tone', ICON_TONE_KEYS, 'brand')
   const color = blockTextOverrides(block).color
-  const glyph = iconGlyph(readText(block.settings, 'icon'))
-  if (!glyph) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.icon} />
+  const name = readText(block.settings, 'icon')
+  if (!name) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.icon} />
   return (
     <Flex justify={ALIGN_JUSTIFY[align]}>
-      <Icon
-        as={glyph}
+      <FeatureIcon
+        name={name}
         boxSize={ICON_SIZES[size]}
         color={color ?? (tone === 'inherit' ? 'currentColor' : ICON_TONES[tone])}
         aria-hidden

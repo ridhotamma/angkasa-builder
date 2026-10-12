@@ -49,7 +49,7 @@ import { STICKY_BELOW_HEADER } from './chrome'
 import { previewProductDetail, useRenderEnvironment, type StorefrontProductDetail } from './context'
 import { useRenderText } from './copy'
 import { DataTable } from './content-sections'
-import { iconGlyph } from './icons'
+import { FeatureIcon } from './icons'
 import {
   EmptyNotice,
   Paragraphs,
@@ -648,15 +648,17 @@ function Block({ block, product }: { block: BlockValue; product: StorefrontProdu
       if (items.length === 0) return null
       return (
         <SimpleGrid columns={2} gap="2">
-          {items.map((item) => {
-            const glyph = iconGlyph(readText(item, 'icon'))
-            return (
-              <HStack key={item.id} gap="2.5" p="2.5" rounded="l2" bg="bg.subtle" fontSize="sm">
-                {glyph && <Icon as={glyph} boxSize="4.5" color="brand.fg" flexShrink="0" />}
-                <Text lineClamp={2}>{readText(item, 'text')}</Text>
-              </HStack>
-            )
-          })}
+          {items.map((item) => (
+            <HStack key={item.id} gap="2.5" p="2.5" rounded="l2" bg="bg.subtle" fontSize="sm">
+              <FeatureIcon
+                name={readText(item, 'icon')}
+                boxSize="4.5"
+                color="brand.fg"
+                flexShrink="0"
+              />
+              <Text lineClamp={2}>{readText(item, 'text')}</Text>
+            </HStack>
+          ))}
         </SimpleGrid>
       )
     }
