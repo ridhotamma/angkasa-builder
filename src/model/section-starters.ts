@@ -469,12 +469,20 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
         text: 'On every order over Rp 200.000, nationwide.',
       },
       {
-        icon: 'shield',
+        icon: 'shield-check',
         title: 'Secure payments',
         text: 'QRIS, transfer and e-wallets — all encrypted.',
       },
-      { icon: 'refresh', title: 'Easy returns', text: 'Unused items can go back within 14 days.' },
-      { icon: 'chat', title: 'Real support', text: 'A person answers, usually within the hour.' },
+      {
+        icon: 'refresh-cw',
+        title: 'Easy returns',
+        text: 'Unused items can go back within 14 days.',
+      },
+      {
+        icon: 'message-circle',
+        title: 'Real support',
+        text: 'A person answers, usually within the hour.',
+      },
     ],
   }),
   multicolumn: () => ({

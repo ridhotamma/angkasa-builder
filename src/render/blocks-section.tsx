@@ -101,7 +101,7 @@ import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { useMounted, usePrefersReducedMotion, useResponsive } from './hooks'
-import { featureIcon } from './icons'
+import { iconGlyph } from './icons'
 import { VideoFrame } from './media'
 import { Parallax, ScrollReveal } from './motion'
 import {
@@ -262,6 +262,7 @@ const BLOCK_PLACEHOLDERS = {
   image: { en: 'Upload your image', id: 'Unggah gambar Anda' },
   video: { en: 'Pick a video', id: 'Pilih video' },
   badge: { en: 'Write a badge label', id: 'Tulis label lencana' },
+  icon: { en: 'Pick an icon', id: 'Pilih ikon' },
   collapsible: { en: 'Write a question and its answer', id: 'Tulis pertanyaan dan jawabannya' },
   collapsibleBody: { en: 'Write the answer', id: 'Tulis jawabannya' },
   drop: { en: 'Drag a block here', id: 'Seret blok ke sini' },
@@ -753,10 +754,12 @@ function IconBlock({ block }: { block: BlockValue }) {
   const size = readToken(block.settings, 'size', ICON_SIZE_KEYS, 'md')
   const tone = readToken(block.settings, 'tone', ICON_TONE_KEYS, 'brand')
   const color = blockTextOverrides(block).color
+  const glyph = iconGlyph(readText(block.settings, 'icon'))
+  if (!glyph) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.icon} />
   return (
     <Flex justify={ALIGN_JUSTIFY[align]}>
       <Icon
-        as={featureIcon(readText(block.settings, 'icon'))}
+        as={glyph}
         boxSize={ICON_SIZES[size]}
         color={color ?? (tone === 'inherit' ? 'currentColor' : ICON_TONES[tone])}
         aria-hidden

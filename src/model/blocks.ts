@@ -14,7 +14,6 @@
 import { BLOCK_STYLE_FIELDS } from './block-style'
 import type { BlockSchema, BlockValue, BlocksField, Field, FieldValues, JsonValue } from './fields'
 import { isRecord, newId } from './fields'
-import { FEATURE_ICONS, FEATURE_ICON_LABELS } from './icons'
 import {
   alignmentField,
   buttonHoverField,
@@ -383,10 +382,9 @@ const icon: BlockSchema = {
   },
   fields: [
     {
-      kind: 'select',
+      kind: 'icon',
       key: 'icon',
       label: { en: 'Icon', id: 'Ikon' },
-      options: FEATURE_ICONS.map((value) => ({ value, label: FEATURE_ICON_LABELS[value] })),
       default: 'sparkles',
     },
     {
@@ -1205,7 +1203,7 @@ const BLOCK_PRESETS = [
                   blocks: [
                     {
                       type: 'icon',
-                      settings: { icon: 'shield', size: 'lg', tone: 'brand', align: 'left' },
+                      settings: { icon: 'shield-check', size: 'lg', tone: 'brand', align: 'left' },
                     },
                     {
                       type: 'heading',

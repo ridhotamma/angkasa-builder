@@ -14,14 +14,14 @@
 import { BLOCK_STYLE_FIELDS } from './block-style'
 import { blocksSectionSchema, customSectionSchema, BLOCK_TYPES } from './blocks'
 import type { BlockSchema, Field, ItemField, ListField, RichTextField, TextField } from './fields'
-import { FEATURE_ICONS, FEATURE_ICON_LABELS, type FeatureIcon } from './icons'
+import type { IconName } from './icons'
 import type { Localized } from './localized'
 import { PREMIUM_SECTION_SCHEMAS } from './premium-sections'
 
 // The icon catalogue lives in `./icons` so the primitive blocks can use it
 // without importing this module (which imports them). Re-exported here for
 // the API's existing readers.
-export { FEATURE_ICONS, type FeatureIcon } from './icons'
+export { ICON_NAMES, type IconName } from './icons'
 
 /**
  * Where a template can use a section. Omitted means everywhere but the product
@@ -387,11 +387,10 @@ const imageAlt: ItemField = {
   default: '',
 }
 
-const iconField = (fallback: FeatureIcon): ItemField => ({
-  kind: 'select',
+const iconField = (fallback: IconName): ItemField => ({
+  kind: 'icon',
   key: 'icon',
   label: { en: 'Icon', id: 'Ikon' },
-  options: FEATURE_ICONS.map((value) => ({ value, label: FEATURE_ICON_LABELS[value] })),
   default: fallback,
 })
 
@@ -2300,9 +2299,9 @@ export const SECTION_SCHEMAS = [
         settings: {
           items: [
             { icon: 'truck', title: 'Free shipping', text: 'On orders over Rp 200.000' },
-            { icon: 'cash', title: 'Cash on delivery', text: 'Pay when it arrives' },
-            { icon: 'refresh', title: '7-day returns', text: 'Change your mind, no fuss' },
-            { icon: 'shield', title: '100% original', text: 'Straight from the brand' },
+            { icon: 'banknote', title: 'Cash on delivery', text: 'Pay when it arrives' },
+            { icon: 'refresh-cw', title: '7-day returns', text: 'Change your mind, no fuss' },
+            { icon: 'shield-check', title: '100% original', text: 'Straight from the brand' },
           ],
         },
         style: { colorScheme: 'subtle' },

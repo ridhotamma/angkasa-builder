@@ -516,13 +516,17 @@ const TRUST_ITEMS = [
     title: 'Gratis ongkir',
     text: 'Untuk pesanan di atas Rp 300.000, ke seluruh Indonesia.',
   },
-  { icon: 'cash', title: 'COD tersedia', text: 'Bayar di tempat untuk area yang didukung kurir.' },
   {
-    icon: 'refresh',
+    icon: 'banknote',
+    title: 'COD tersedia',
+    text: 'Bayar di tempat untuk area yang didukung kurir.',
+  },
+  {
+    icon: 'refresh-cw',
     title: 'Retur 7 hari',
     text: 'Tidak cocok? Ajukan pengembalian dengan mudah.',
   },
-  { icon: 'shield', title: 'Pembayaran aman', text: 'Dana ditahan sampai barang diterima.' },
+  { icon: 'shield-check', title: 'Pembayaran aman', text: 'Dana ditahan sampai barang diterima.' },
 ]
 
 const FAQ_ITEMS = [
@@ -1144,9 +1148,13 @@ const preloved = makeSeed(
       }),
       section('category-rail', { heading: 'Jelajahi kategori', layout: 'tiles', limit: 6 }),
       featuresComposed([
-        { icon: 'shield', title: 'Rekber aman', text: 'Dana diteruskan setelah barang diterima.' },
         {
-          icon: 'badge',
+          icon: 'shield-check',
+          title: 'Rekber aman',
+          text: 'Dana diteruskan setelah barang diterima.',
+        },
+        {
+          icon: 'badge-check',
           title: 'Penjual terverifikasi',
           text: 'Identitas dan ulasan asli dari pembeli.',
         },
@@ -1155,7 +1163,11 @@ const preloved = makeSeed(
           title: 'Ongkir dihitung',
           text: 'Tarif kurir otomatis di halaman produk.',
         },
-        { icon: 'refresh', title: 'Bisa retur', text: 'Barang tidak sesuai? Ajukan pengembalian.' },
+        {
+          icon: 'refresh-cw',
+          title: 'Bisa retur',
+          text: 'Barang tidak sesuai? Ajukan pengembalian.',
+        },
       ]),
       section('collection-shelves', { limit: 8, columns: '4' }),
       section('featured-collection', { heading: 'Pilihan editor', limit: 10, columns: '5' }),
@@ -1392,7 +1404,7 @@ const tech = makeSeed(
       featuresComposed(
         [
           {
-            icon: 'shield',
+            icon: 'shield-check',
             title: 'Garansi resmi',
             text: 'Semua unit bergaransi distributor resmi.',
           },
@@ -1402,7 +1414,7 @@ const tech = makeSeed(
             text: 'Pesan sebelum sore, dikirim hari yang sama.',
           },
           {
-            icon: 'refresh',
+            icon: 'refresh-cw',
             title: 'Tukar 14 hari',
             text: 'Unit bermasalah ditukar dengan yang baru.',
           },
@@ -1507,7 +1519,7 @@ const playful = makeSeed(
       featuresComposed(
         [
           { icon: 'heart', title: 'Aman untuk anak', text: 'Bahan non-toksik dan bersertifikat.' },
-          { icon: 'refresh', title: 'Tukar 7 hari', text: 'Salah pilih? Tukar dengan mudah.' },
+          { icon: 'refresh-cw', title: 'Tukar 7 hari', text: 'Salah pilih? Tukar dengan mudah.' },
           { icon: 'truck', title: 'Kirim cepat', text: 'Dikemas rapi, dikirim di hari yang sama.' },
           { icon: 'gift', title: 'Bonus kecil', text: 'Ada kejutan di setiap paket.' },
         ],

@@ -13,6 +13,7 @@
 
 import { hasCoordinates, isAssetKey, sanitizeStockPhoto } from '@repo/appwrite-config'
 
+import { NO_ICON, resolveIconName, type IconName } from './icons'
 import { sanitizeLink, NO_LINK, type Link } from './links'
 import { EMPTY_RICH_DOC, sanitizeRichDoc, type RichDoc } from './rich-text'
 import type { Localized } from './localized'
@@ -118,6 +119,15 @@ export interface BooleanField extends BaseField {
   default: boolean
 }
 
+/**
+ * One glyph from the shared icon set (`./icons`), by its Lucide name. `''` is a
+ * real value: the seller picked "No icon", and the renderer draws nothing.
+ */
+export interface IconField extends BaseField {
+  kind: 'icon'
+  default: IconName
+}
+
 /** An opaque colour as `#rrggbb` — the only shape a stored colour may take. */
 export interface ColorField extends BaseField {
   kind: 'color'
@@ -186,6 +196,7 @@ export type ItemField =
   | CoordinatesField
   | SelectField
   | BooleanField
+  | IconField
   | ColorField
   | ImageField
   | LinkField
@@ -483,6 +494,8 @@ export function defaultForField(field: Field): JsonValue {
       return field.default
     case 'boolean':
       return field.default
+    case 'icon':
+      return field.default
     case 'color':
       return field.default
     case 'image':
@@ -612,6 +625,10 @@ function sanitizeField(
         : field.default
     case 'boolean':
       return typeof value === 'boolean' ? value : field.default
+    // `''` is a real answer — the seller cleared the icon — so only an absent
+    // or unknown name falls back to the field's own default.
+    case 'icon':
+      return value === NO_ICON ? NO_ICON : (resolveIconName(value) ?? field.default)
     // A colour ends up inside a CSS value, so nothing but a hex code gets through.
     case 'color':
       return typeof value === 'string' && HEX_COLOR.test(value)

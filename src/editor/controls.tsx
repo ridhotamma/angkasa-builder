@@ -81,6 +81,7 @@ import {
   type ListField,
 } from '../model/fields'
 import { NO_LINK, type Link, type LinkKind } from '../model/links'
+import { IconPicker } from './icon-picker'
 import {
   DateTimeControl,
   PointControl,
@@ -1021,6 +1022,15 @@ function FieldControl({
             </Switch.Root>
           </HStack>
         </Field.Root>
+      )
+    case 'icon':
+      return (
+        <Labeled label={label} help={help}>
+          <IconPicker
+            value={typeof value === 'string' ? value : field.default}
+            onChange={onChange}
+          />
+        </Labeled>
       )
     case 'color':
       return (
