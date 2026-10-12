@@ -14,24 +14,13 @@ import { localize, type Localized } from '../model/localized'
 
 const MESSAGES = {
   sections: { en: 'Sections', id: 'Bagian' },
-  themeSettings: { en: 'Theme settings', id: 'Pengaturan tema' },
-  themeSettingsHelp: {
-    en: 'Colours, fonts and shape for your whole store.',
-    id: 'Warna, font, dan bentuk untuk seluruh toko Anda.',
-  },
+  theme: { en: 'Theme', id: 'Tema' },
   addSection: { en: 'Add section', id: 'Tambah bagian' },
   noSections: {
     en: 'No sections yet. Add one to start building this page.',
     id: 'Belum ada bagian. Tambahkan satu untuk mulai menyusun halaman ini.',
   },
   back: { en: 'All sections', id: 'Semua bagian' },
-  backTo: { en: 'Back to', id: 'Kembali ke' },
-  closePanel: { en: 'Close', id: 'Tutup' },
-  inspectorEmpty: { en: 'Nothing selected', id: 'Belum ada yang dipilih' },
-  inspectorEmptyHelp: {
-    en: 'Pick a section in the list or click one in the preview to edit it here.',
-    id: 'Pilih bagian di daftar atau klik di pratinjau untuk mengeditnya di sini.',
-  },
   hide: { en: 'Hide', id: 'Sembunyikan' },
   show: { en: 'Show', id: 'Tampilkan' },
   duplicate: { en: 'Duplicate', id: 'Duplikat' },
@@ -124,6 +113,10 @@ const MESSAGES = {
   preview: { en: 'Preview', id: 'Pratinjau' },
   close: { en: 'Close editor', id: 'Tutup editor' },
   done: { en: 'Done', id: 'Selesai' },
+  resizePanel: {
+    en: 'Drag to resize the panel; double-click to reset',
+    id: 'Seret untuk mengubah lebar panel; klik dua kali untuk mengembalikan',
+  },
   unsaved: { en: 'Unsaved changes', id: 'Belum disimpan' },
   moreActions: { en: 'More actions', id: 'Aksi lainnya' },
   unsavedTitle: { en: 'Save your changes?', id: 'Simpan perubahan Anda?' },
@@ -133,6 +126,10 @@ const MESSAGES = {
   },
   keepEditing: { en: 'Keep editing', id: 'Lanjut mengedit' },
   discard: { en: 'Discard changes', id: 'Buang perubahan' },
+  previewNote: {
+    en: 'Click a section in the preview to edit it.',
+    id: 'Klik bagian di pratinjau untuk mengeditnya.',
+  },
   bold: { en: 'Bold', id: 'Tebal' },
   italic: { en: 'Italic', id: 'Miring' },
   underline: { en: 'Underline', id: 'Garis bawah' },
@@ -271,7 +268,7 @@ const MESSAGES = {
     id: 'Klik bagian untuk mengeditnya; klik judul untuk langsung mengetik.',
   },
 
-  // Theme settings
+  // Theme tab
   colorSchemes: { en: 'Colour schemes', id: 'Skema warna' },
   colorSchemesHelp: {
     en: 'Sections can wear one of these instead of the page colours. Automatic schemes follow your brand colours.',

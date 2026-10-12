@@ -191,8 +191,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'colorScheme',
     label: { en: 'Colour scheme', id: 'Skema warna' },
     help: {
-      en: 'Set the scheme colours in Theme settings.',
-      id: 'Atur warna skema di Pengaturan tema.',
+      en: 'Set the scheme colours in the Theme tab.',
+      id: 'Atur warna skema di tab Tema.',
     },
     options: (['default', ...SCHEME_KEYS] as const).map((value) => ({
       value,

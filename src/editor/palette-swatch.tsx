@@ -1,5 +1,5 @@
 /**
- * Shared palette previews for the theme settings and the look picker.
+ * Shared palette previews for the theme tab and the look picker.
  *
  * One place draws a palette's colours so the quick selector, the look cards,
  * the palette cards and the AI recommendation all show the same swatches.

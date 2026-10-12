@@ -1,9 +1,9 @@
 /**
  * The editor's frame: a full-screen dialog over the dashboard.
  *
- * Full screen because the editor is three columns side by side — the section
- * list, a storefront-width preview and the inspector — and inside the
- * dashboard's own sidebar and header none of them had room. The header bar carries what the page header used
+ * Full screen because the editor is two panes side by side — the section list
+ * and a storefront-width preview — and inside the dashboard's own sidebar and
+ * header neither had room. The header bar carries what the page header used
  * to: a close button, the title, status badges and the save/publish actions.
  *
  * Closing — the X, Escape — never throws work away silently. With unsaved
@@ -139,25 +139,19 @@ export function BuilderDialog({
             </Flex>
 
             <Dialog.Body flex="1" minH="0" p="0" display="flex">
-              {/* On a wide screen the body is exactly the screen, edge to edge,
-                  and the editor's columns scroll themselves; a screen's alerts
-                  above it become flat banners. On a narrow one everything
-                  stacks, and the whole body scrolls instead. */}
+              {/* On a wide screen the body is exactly the screen and the two
+                  panes scroll themselves; on a narrow one they stack, and the
+                  whole body scrolls instead. */}
               <ScrollArea.Root size="xs" flex="1" minH="0">
                 <ScrollArea.Viewport>
                   <ScrollArea.Content
                     display="flex"
                     flexDirection="column"
-                    gap={{ base: '4', lg: '0' }}
+                    gap="4"
                     h={{ lg: 'full' }}
-                    px={{ base: '3', md: '5', lg: '0' }}
-                    py={{ base: '4', lg: '0' }}
-                    css={{
-                      '& > [data-scope="alert"][data-part="root"]': {
-                        borderRadius: { lg: '0' },
-                      },
-                    }}
-                    // Vertical scrolling only — see `Panel`.
+                    px={{ base: '3', md: '5' }}
+                    py="4"
+                    // Vertical scrolling only — see the panel in `builder.tsx`.
                     style={{ minWidth: 0 }}
                   >
                     <FooterSlot.Provider value={footer}>{children}</FooterSlot.Provider>

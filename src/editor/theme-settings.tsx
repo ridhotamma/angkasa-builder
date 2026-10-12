@@ -1,4 +1,4 @@
-/** The theme settings: colours, fonts and shape, with the contrast check live. */
+/** The theme tab: colours, fonts and shape, with the contrast check live. */
 
 import {
   Accordion,
@@ -76,7 +76,7 @@ function Heading({ children }: { children: string }) {
 }
 
 /**
- * One collapsible group in the theme settings, the same accordion the block-style
+ * One collapsible group in the Theme tab, the same accordion the block-style
  * overrides use: the whole settings list reads as a short set of headings and
  * opens only where the seller is working.
  */
