@@ -13,18 +13,7 @@
  * is where unreadable combinations are repaired.
  */
 
-import {
-  AspectRatio,
-  Box,
-  chakra,
-  Flex,
-  Grid,
-  Heading,
-  Icon,
-  Image,
-  Stack,
-  Text,
-} from '@chakra-ui/react'
+import { AspectRatio, Box, chakra, Flex, Grid, Heading, Icon, Stack, Text } from '@chakra-ui/react'
 import type { ComponentProps, ReactNode } from 'react'
 import {
   FaFacebookF,
@@ -51,6 +40,8 @@ import {
   LuStore,
 } from 'react-icons/lu'
 import { SiShopee } from 'react-icons/si'
+
+import { Image } from '@repo/theme'
 
 import { contrastRatio, mix, readableOn } from '../model/settings'
 import { boldButton, boldCard } from '../render/bold'

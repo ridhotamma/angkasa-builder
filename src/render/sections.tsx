@@ -22,7 +22,6 @@ import {
   HStack,
   Icon,
   IconButton,
-  Image,
   Marquee,
   SimpleGrid,
   Skeleton,
@@ -33,7 +32,7 @@ import {
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react'
 import { LuChevronLeft, LuChevronRight, LuMinus, LuPlus } from 'react-icons/lu'
 
-import { ImageWithFallback } from '@repo/theme'
+import { Image, ImageWithFallback } from '@repo/theme'
 import { useLocale } from '@repo/i18n'
 
 import {

@@ -13,7 +13,6 @@ import {
   Heading,
   HStack,
   Icon,
-  Image,
   Link as ChakraLink,
   SimpleGrid,
   Stack,
@@ -26,7 +25,7 @@ import { LuClock, LuMail, LuMapPin, LuNavigation, LuPhone } from 'react-icons/lu
 
 import { StoreMap } from '@repo/geoapify/store-map'
 import { externalMapUrl } from '@repo/geoapify/urls'
-import { ImageWithFallback } from '@repo/theme'
+import { Image, ImageWithFallback } from '@repo/theme'
 
 import {
   readBoolean,

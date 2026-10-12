@@ -1,7 +1,9 @@
 /** The video and parallax banners — the hero's moving relatives. */
 
-import { Box, Image } from '@chakra-ui/react'
+import { Box } from '@chakra-ui/react'
 import { useRef } from 'react'
+
+import { Image } from '@repo/theme'
 
 import { readText, readVideo } from '../model/fields'
 import { useRenderEnvironment } from './context'

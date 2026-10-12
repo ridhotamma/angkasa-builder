@@ -14,7 +14,6 @@ import {
   Grid,
   HStack,
   IconButton,
-  Image,
   Marquee,
   Popover,
   Portal,
@@ -24,7 +23,7 @@ import {
 import { useState } from 'react'
 import { LuChevronLeft, LuChevronRight, LuPlus } from 'react-icons/lu'
 
-import { ImageWithFallback } from '@repo/theme'
+import { Image, ImageWithFallback } from '@repo/theme'
 
 import {
   readBoolean,
