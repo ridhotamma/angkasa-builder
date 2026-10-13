@@ -27,6 +27,11 @@ export interface RenderFunctionRequest {
   viewport?: { width: number; height: number }
   /** JPEG only: 40–100, default 90. */
   quality?: number
+  /**
+   * PNG/JPEG only: capture at this fraction of the viewport (0.1–1, default
+   * 1) — the page lays out at full size, the bitmap is smaller.
+   */
+  scale?: number
 }
 
 /** Returned on success — `bytes` is a fresh copy on its own `ArrayBuffer`. */
