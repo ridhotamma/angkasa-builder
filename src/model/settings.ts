@@ -804,6 +804,8 @@ export function themeCssVarGroups(settings: ThemeSettings): {
 
   const surfaces: Record<string, string> = {
     '--chakra-colors-brand-fg': contrastRatio(brand, background) >= 3 ? brand : ramp[700],
+    // An outline button's frame matches its label (see the theme's `brand.border`).
+    '--chakra-colors-brand-border': contrastRatio(brand, background) >= 3 ? brand : ramp[700],
     '--chakra-colors-brand-muted': mix(brand, background, 0.75),
     '--chakra-colors-brand-subtle': mix(brand, background, 0.88),
 
@@ -923,6 +925,7 @@ export function schemeCssVars(scheme: SchemeColors): Record<string, string> {
     '--chakra-colors-brand-contrast': readableOn(button),
     '--chakra-colors-brand-emphasized': mix(button, readableOn(button), 0.14),
     '--chakra-colors-brand-fg': contrastRatio(button, background) >= 3 ? button : text,
+    '--chakra-colors-brand-border': contrastRatio(button, background) >= 3 ? button : text,
     '--chakra-colors-brand-muted': mix(button, background, 0.7),
     '--chakra-colors-brand-subtle': mix(button, background, 0.85),
     '--chakra-colors-brand-focus-ring': button,
@@ -996,7 +999,8 @@ function alternateModeVars(
   // A light theme in dark mode keeps Chakra's own dark surfaces and only
   // moves its brand ink; a dark theme in light mode swaps its page and text.
   if (!designedForDark) {
-    return { '--chakra-colors-brand-fg': darkModeBrandFg(settings.colors.brand) }
+    const fg = darkModeBrandFg(settings.colors.brand)
+    return { '--chakra-colors-brand-fg': fg, '--chakra-colors-brand-border': fg }
   }
   return themeCssVarGroups({
     ...settings,

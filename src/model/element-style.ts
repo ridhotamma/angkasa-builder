@@ -235,7 +235,6 @@ interface ToneSpec {
   tint: string
   /** Readable text on the tint, for a hover fill. */
   tintContrast: string
-  border?: string
 }
 
 /**
@@ -291,7 +290,6 @@ function toneSpec(
         contrast: 'var(--chakra-colors-fg)',
         tint: 'var(--chakra-colors-fg)',
         tintContrast: 'var(--chakra-colors-bg)',
-        border: 'var(--chakra-colors-border)',
       }
     case 'custom': {
       // An unset fill falls back to the brand token, and an unset label to the
@@ -333,7 +331,7 @@ export function buttonAppearance(
       return {
         bg: 'transparent',
         color: spec.tint,
-        borderColor: spec.border ?? spec.tint,
+        borderColor: spec.tint,
         borderWidth: '1px',
         hoverBg: 'color-mix(in srgb, currentColor 10%, transparent)',
         sweepBg: spec.tint,
