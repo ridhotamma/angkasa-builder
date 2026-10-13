@@ -14,6 +14,7 @@ export { screenshotHtml, SNAPSHOT_VIEWPORT } from './screenshot'
 export {
   renderFunctionConfig,
   renderViaFunction,
+  type RenderFunctionMime,
   type RenderFunctionRequest,
   type RenderFunctionResult,
 } from './remote'

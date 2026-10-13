@@ -13,19 +13,32 @@
  * must never be `VITE_`-prefixed into a client bundle.
  */
 
+export type RenderFunctionMime = 'application/pdf' | 'image/png' | 'image/jpeg'
+
 export interface RenderFunctionRequest {
-  action: 'pdf' | 'png'
+  action: 'pdf' | 'png' | 'jpeg'
   html: string
-  /** PDF only: 'a4' or 'thermal' (100×150 mm label). */
-  size?: 'a4' | 'thermal'
-  /** PNG only: capture viewport; the function clamps it. */
+  /**
+   * PDF only: 'a4', 'thermal' (100×150 mm label), or a page size in pixels
+   * (AI Studio carousels: one page per slide).
+   */
+  size?: 'a4' | 'thermal' | { width: number; height: number }
+  /** PNG/JPEG only: capture viewport; the function clamps it. */
   viewport?: { width: number; height: number }
+  /** JPEG only: 40–100, default 90. */
+  quality?: number
 }
 
 /** Returned on success — `bytes` is a fresh copy on its own `ArrayBuffer`. */
 export interface RenderFunctionResult {
-  mime: 'application/pdf' | 'image/png'
+  mime: RenderFunctionMime
   bytes: Uint8Array<ArrayBuffer>
+}
+
+const MIME_FOR_ACTION: Record<RenderFunctionRequest['action'], RenderFunctionMime> = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpeg: 'image/jpeg',
 }
 
 interface RenderFunctionConfig {
@@ -43,7 +56,7 @@ export function renderFunctionConfig(): RenderFunctionConfig | null {
 
 interface RenderFunctionResponse {
   ok: boolean
-  mime?: 'application/pdf' | 'image/png'
+  mime?: RenderFunctionMime
   data?: string
   error?: string
 }
@@ -88,7 +101,7 @@ export async function renderViaFunction(
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   return {
-    mime: payload.mime ?? (request.action === 'png' ? 'image/png' : 'application/pdf'),
+    mime: payload.mime ?? MIME_FOR_ACTION[request.action],
     bytes,
   }
 }
