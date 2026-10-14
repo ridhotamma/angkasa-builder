@@ -29,6 +29,9 @@ import { LuX } from 'react-icons/lu'
 import { EditorMenu, type EditorMenuItem } from './actions'
 import { useEditorText } from './messages'
 
+/** The whole window: the viewport plus the scrollbar strip the page reserves. */
+const FULL_WIDTH = 'calc(100dvw + var(--scrollbar-width, 0px))'
+
 /**
  * The strip under the dialog's scrolling body, for what must stay on screen
  * while the editor scrolls — the phone's "view preview" button. It lives
@@ -93,8 +96,20 @@ export function BuilderDialog({
     >
       <Portal>
         <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content rounded="none" display="flex" flexDirection="column" h="100dvh">
+        {/* Edge to edge, including the strip the page keeps for its scrollbar.
+            The theme reserves it (scrollbar-gutter: stable on html), and
+            100dvw leaves it out, so the editor ended a scrollbar's width short
+            of the right edge — a wider margin there than on the left. The
+            scroll lock names the strip's width in --scrollbar-width. */}
+        <Dialog.Positioner w={FULL_WIDTH}>
+          <Dialog.Content
+            rounded="none"
+            display="flex"
+            flexDirection="column"
+            h="100dvh"
+            w="full"
+            maxW={FULL_WIDTH}
+          >
             <Flex
               as="header"
               align="center"
