@@ -65,6 +65,12 @@ export interface BuilderDialogProps {
    * panels in bottom sheets.
    */
   fill?: boolean
+  /**
+   * Escape asks to close the editor (the default). A canvas editor turns it
+   * off: there Escape lets go of the selection or the tool in hand, and only
+   * the close button leaves.
+   */
+  closeOnEscape?: boolean
   children: ReactNode
 }
 
@@ -76,6 +82,7 @@ export function BuilderDialog({
   dirty,
   onClose,
   fill = false,
+  closeOnEscape = true,
   children,
 }: BuilderDialogProps) {
   const { t } = useEditorText()
@@ -94,8 +101,9 @@ export function BuilderDialog({
     <Dialog.Root
       open
       size="full"
+      closeOnEscape={closeOnEscape}
       motionPreset="none"
-      // Escape and the close button both land here; the dialog itself never
+      // Escape (unless turned off) and the close button both land here; the dialog itself never
       // closes on its own.
       onOpenChange={({ open }) => {
         if (!open) requestClose()
