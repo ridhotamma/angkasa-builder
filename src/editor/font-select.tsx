@@ -12,10 +12,16 @@
  * The trigger stays in the interface font — a control whose own text changes
  * face while browsing reads as a glitch, not a preview. The storefront never
  * sees any of this; it requests only the two families the theme ends up using.
+ *
+ * The library is ~300 families, so the list is virtualised: only the rows in
+ * view are in the DOM, and the popup scrolls a spacer of their total height.
+ * Keyboard navigation still reaches every row — as Ark highlights one out of
+ * view, it is scrolled into view.
  */
 
 import { Combobox, createListCollection, Portal, ScrollArea, Stack, Text } from '@chakra-ui/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { FONT_OPTIONS, type FontCategory } from '../model/font-library'
 import { fontHref, fontStack } from '../model/settings'
@@ -30,6 +36,11 @@ const CATEGORY_LABELS: Record<FontCategory, { en: string; id: string }> = {
 }
 
 const PREVIEW_ATTR = 'data-font-preview'
+
+/** A row's starting height — a family line and its category — before it is measured. */
+const ROW_HEIGHT = 44
+/** Rows kept mounted beyond the viewport, so a fast scroll never shows a gap. */
+const OVERSCAN = 8
 
 /** Keep one preview stylesheet in the document, swapped to `family`. */
 function usePreviewFont(family: string | null): void {
@@ -58,6 +69,7 @@ export function FontSelect({
   const { t, l } = useEditorText()
   const [query, setQuery] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const collection = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -70,6 +82,21 @@ export function FontSelect({
   }, [query])
 
   usePreviewFont(preview ?? value)
+
+  const virtualizer = useVirtualizer({
+    count: collection.items.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: OVERSCAN,
+  })
+
+  // Ark highlights a value, not an index; scroll that row into view so keyboard
+  // navigation works even though off-screen rows are not mounted.
+  const revealHighlighted = (highlighted: string | null) => {
+    if (highlighted === null || !scrollRef.current) return
+    const index = collection.items.findIndex((item) => item.value === highlighted)
+    if (index >= 0) virtualizer.scrollToIndex(index, { align: 'auto' })
+  }
 
   return (
     <Combobox.Root
@@ -84,9 +111,10 @@ export function FontSelect({
       defaultInputValue={value}
       onInputValueChange={({ inputValue }) => setQuery(inputValue)}
       onValueChange={({ value: next }) => onChange(next[0] ?? '')}
-      onHighlightChange={({ highlightedValue }) =>
+      onHighlightChange={({ highlightedValue }) => {
         setPreview(typeof highlightedValue === 'string' ? highlightedValue : null)
-      }
+        revealHighlighted(typeof highlightedValue === 'string' ? highlightedValue : null)
+      }}
       positioning={{ sameWidth: true }}
     >
       <Combobox.Control>
@@ -99,22 +127,47 @@ export function FontSelect({
         <Combobox.Positioner>
           <Combobox.Content p="0" maxH="none" overflow="hidden">
             <ScrollArea.Root size="xs" maxH="xs">
-              <ScrollArea.Viewport style={{ overscrollBehavior: 'contain' }}>
+              <ScrollArea.Viewport ref={scrollRef} style={{ overscrollBehavior: 'contain' }}>
                 <ScrollArea.Content p="1">
                   <Combobox.Empty>{t('fontNone')}</Combobox.Empty>
-                  {collection.items.map((item) => (
-                    <Combobox.Item item={item} key={item.value}>
-                      <Stack gap="0" minW="0" flex="1">
-                        <Text truncate style={{ fontFamily: fontStack(item.value) }}>
-                          {item.label}
-                        </Text>
-                        <Text fontSize="2xs" color="fg.subtle">
-                          {l(CATEGORY_LABELS[item.category])}
-                        </Text>
-                      </Stack>
-                      <Combobox.ItemIndicator />
-                    </Combobox.Item>
-                  ))}
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '100%',
+                      height: virtualizer.getTotalSize(),
+                    }}
+                  >
+                    {virtualizer.getVirtualItems().map((row) => {
+                      const item = collection.items[row.index]!
+                      return (
+                        <Combobox.Item
+                          key={item.value}
+                          item={item}
+                          ref={virtualizer.measureElement}
+                          data-index={row.index}
+                          aria-setsize={collection.items.length}
+                          aria-posinset={row.index + 1}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            transform: `translateY(${row.start}px)`,
+                          }}
+                        >
+                          <Stack gap="0" minW="0" flex="1">
+                            <Text truncate style={{ fontFamily: fontStack(item.value) }}>
+                              {item.label}
+                            </Text>
+                            <Text fontSize="2xs" color="fg.subtle">
+                              {l(CATEGORY_LABELS[item.category])}
+                            </Text>
+                          </Stack>
+                          <Combobox.ItemIndicator />
+                        </Combobox.Item>
+                      )
+                    })}
+                  </div>
                 </ScrollArea.Content>
               </ScrollArea.Viewport>
               <ScrollArea.Scrollbar />

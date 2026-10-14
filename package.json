@@ -30,6 +30,7 @@
     "@repo/geoapify": "workspace:*",
     "@repo/i18n": "workspace:*",
     "@repo/theme": "workspace:*",
+    "@tanstack/react-virtual": "^3.14.14",
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
