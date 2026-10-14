@@ -1,7 +1,7 @@
 /** `@repo/page-builder/editor` — the editor both dashboards render. */
 
 export { PageBuilder, type FrameDetails, type PageBuilderProps } from './builder'
-export { BuilderDialog, type BuilderDialogProps } from './builder-dialog'
+export { BuilderDialog, useBuilderDialogFooter, type BuilderDialogProps } from './builder-dialog'
 export { EditorMenu, EditorSettings, UnsavedIndicator, type EditorMenuItem } from './actions'
 export { ColorInput, FieldsForm, LinkControl, NumberControl, SelectInput } from './controls'
 export { FontSelect } from './font-select'

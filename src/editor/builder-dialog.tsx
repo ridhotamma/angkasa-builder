@@ -59,6 +59,12 @@ export interface BuilderDialogProps {
   dirty: boolean
   /** Called once the editor may actually close — after discarding. */
   onClose: () => void
+  /**
+   * The body is exactly the screen at every width, not only from `lg` up —
+   * for an editor that lays out its own scrolling, like a canvas with its
+   * panels in bottom sheets.
+   */
+  fill?: boolean
   children: ReactNode
 }
 
@@ -69,6 +75,7 @@ export function BuilderDialog({
   menu,
   dirty,
   onClose,
+  fill = false,
   children,
 }: BuilderDialogProps) {
   const { t } = useEditorText()
@@ -163,7 +170,7 @@ export function BuilderDialog({
                     display="flex"
                     flexDirection="column"
                     gap="4"
-                    h={{ lg: 'full' }}
+                    h={fill ? 'full' : { lg: 'full' }}
                     px={{ base: '3', md: '5' }}
                     py="4"
                     // Vertical scrolling only — see the panel in `builder.tsx`.
