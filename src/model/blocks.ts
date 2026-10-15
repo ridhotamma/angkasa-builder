@@ -135,6 +135,10 @@ const button: BlockSchema = {
 const image: BlockSchema = {
   type: 'image',
   name: { en: 'Image', id: 'Gambar' },
+  description: {
+    en: 'A single picture, with a shape and corners.',
+    id: 'Satu gambar, dengan bentuk dan sudut.',
+  },
   fields: [
     { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
     {
@@ -620,16 +624,18 @@ const rating: BlockSchema = {
 }
 
 /**
- * A heading that folds open to reveal its answer — one FAQ item, a shipping
- * note, anything explained on demand. Neighbouring collapsible blocks each
- * fold on their own, so stacking a few builds an FAQ without a list field.
+ * A heading that folds open to reveal its content — one FAQ item, a shipping
+ * note, anything explained on demand. Its content is nested blocks, like every
+ * other container (a column, a photo card), so an answer can be a paragraph, a
+ * picture list, a button — not only rich text. Neighbouring collapsible blocks
+ * each fold on their own, so stacking a few builds an FAQ without a list field.
  */
 const collapsible: BlockSchema = {
   type: 'collapsible',
   name: { en: 'Collapsible', id: 'Lipatan' },
   description: {
-    en: 'A heading that opens to show its answer — an FAQ item, or anything explained on demand.',
-    id: 'Judul yang membuka untuk menampilkan jawabannya — item tanya jawab, atau apa pun yang dijelaskan saat dibutuhkan.',
+    en: 'A heading that opens to reveal any blocks — an FAQ item, or anything explained on demand.',
+    id: 'Judul yang membuka untuk menampilkan blok apa pun — item tanya jawab, atau apa pun yang dijelaskan saat dibutuhkan.',
   },
   fields: [
     {
@@ -639,13 +645,7 @@ const collapsible: BlockSchema = {
       max: 120,
       default: '',
     },
-    {
-      kind: 'richtext',
-      key: 'body',
-      label: { en: 'Answer', id: 'Jawaban' },
-      max: 3000,
-      default: '',
-    },
+    nested('blocks', { en: 'Content', id: 'Konten' }, 20),
     {
       kind: 'boolean',
       key: 'open',

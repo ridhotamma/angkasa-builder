@@ -573,6 +573,18 @@ const BLOCK_ALIASES: Record<
       ],
     }),
   },
+  // A collapsible's one rich-text answer became nested content blocks, so its
+  // content can be anything a container holds.
+  collapsible: {
+    type: 'collapsible',
+    transform: (settings) =>
+      Array.isArray(settings.blocks)
+        ? settings
+        : {
+            ...settings,
+            blocks: settings.body ? [{ type: 'richtext', settings: { body: settings.body } }] : [],
+          },
+  },
 }
 
 /** The consolidated type and settings for a raw block, or it unchanged. */

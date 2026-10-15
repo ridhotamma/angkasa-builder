@@ -938,9 +938,10 @@ function RatingBlock({ block }: { block: BlockValue }) {
  */
 function CollapsibleBlock({ block }: { block: BlockValue }) {
   const heading = readText(block.settings, 'heading')
-  const doc = readRichText(block.settings, 'body')
-  const empty = isRichDocEmpty(doc)
-  if (!heading && empty) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.collapsible} />
+  const children = readBlocks(block.settings, 'blocks')
+  if (!heading && children.length === 0) {
+    return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.collapsible} />
+  }
   return (
     <Accordion.Root
       collapsible
@@ -957,11 +958,7 @@ function CollapsibleBlock({ block }: { block: BlockValue }) {
         </Accordion.ItemTrigger>
         <Accordion.ItemContent>
           <Accordion.ItemBody pt="0">
-            {empty ? (
-              <BlockPlaceholder label={BLOCK_PLACEHOLDERS.collapsibleBody} />
-            ) : (
-              <RichTextView doc={doc} style={blockTextOverrides(block)} />
-            )}
+            <BlockList blocks={children} gap="md" parentId={block.id} />
           </Accordion.ItemBody>
         </Accordion.ItemContent>
       </Accordion.Item>

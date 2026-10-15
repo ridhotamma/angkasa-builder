@@ -199,6 +199,21 @@ describe('consolidated block types', () => {
     })
   })
 
+  test('a collapsible answer becomes nested content blocks', () => {
+    const [block] = readBlocks(
+      sanitizeValues([field], {
+        blocks: [
+          { id: 'c', type: 'collapsible', settings: { heading: 'Q', body: 'A rich answer' } },
+        ],
+      }),
+      'blocks',
+    )!
+    expect(block!.type).toBe('collapsible')
+    // The old one-body answer is now a rich-text child, so any blocks can go in.
+    expect(block!.settings.body).toBeUndefined()
+    expect(readBlocks(block!.settings, 'blocks').map((child) => child.type)).toEqual(['richtext'])
+  })
+
   test('two fixed columns become a two-column grid', () => {
     const [block] = readBlocks(
       sanitizeValues([field], {
