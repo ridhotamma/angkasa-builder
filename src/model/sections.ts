@@ -16,7 +16,8 @@ import { blocksSectionSchema, customSectionSchema, BLOCK_TYPES } from './blocks'
 import type { BlockSchema, Field, ItemField, ListField, RichTextField, TextField } from './fields'
 import type { IconName } from './icons'
 import type { Localized } from './localized'
-import { PREMIUM_SECTION_SCHEMAS } from './premium-sections'
+import { CONSOLIDATED_SECTION_SCHEMAS, consolidatedAlias } from './consolidated-sections'
+import { FEATURE_SECTION_SCHEMAS } from './feature-sections'
 
 // The icon catalogue lives in `./icons` so the primitive blocks can use it
 // without importing this module (which imports them). Re-exported here for
@@ -141,7 +142,9 @@ export function isSectionAllowed(schema: SectionSchema, scope: SectionScope): bo
  * a layout that already holds one keeps rendering, duplicating and saving it.
  */
 export function isSectionOffered(schema: SectionSchema, scope: SectionScope): boolean {
-  return !schema.hidden && isSectionAllowed(schema, scope)
+  // A type a consolidated section replaces is kept for stored layouts but never
+  // offered — the consolidated card is the one the seller sees.
+  return !schema.hidden && !consolidatedAlias(schema.type) && isSectionAllowed(schema, scope)
 }
 
 /** The presets the picker offers for a section, in order; hidden ones stay usable in stored layouts. */
@@ -549,7 +552,8 @@ const PRODUCT_INFO_BLOCKS: readonly BlockSchema[] = [
 export const SECTION_SCHEMAS = [
   blocksSectionSchema,
   customSectionSchema,
-  ...PREMIUM_SECTION_SCHEMAS,
+  ...CONSOLIDATED_SECTION_SCHEMAS,
+  ...FEATURE_SECTION_SCHEMAS,
   {
     type: 'announcement-bar',
     scopes: EVERYWHERE,

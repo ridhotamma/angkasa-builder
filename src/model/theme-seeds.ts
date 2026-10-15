@@ -632,7 +632,12 @@ const brutalist = makeSeed(
         uppercase: true,
       }),
       section('category-rail', { heading: 'Pilih jalur', layout: 'tiles', limit: 6 }),
-      section('featured-collection', { heading: 'Rilisan minggu ini', limit: 8, columns: '4' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Rilisan minggu ini',
+        limit: 8,
+        columns: '4',
+      }),
       imageTextComposed({
         heading: 'Dibuat orang, bukan mesin.',
         body: 'Setiap jahitan dikerjakan penjahit lokal. Kami memakai bahan sisa dan kain deadstock agar tidak ada yang terbuang.',
@@ -661,7 +666,12 @@ const brutalist = makeSeed(
         align: 'left',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Semua produk', limit: 12, columns: '4' }),
+      section('product-list', {
+        source: 'latest',
+        heading: 'Semua produk',
+        limit: 12,
+        columns: '4',
+      }),
     ],
   }),
 )
@@ -704,7 +714,12 @@ const minimalist = makeSeed(
         primary: 'Mulai belanja',
         tone: 'default',
       }),
-      section('latest-products', { heading: 'Pilihan terbaru', limit: 8, columns: '4' }),
+      section('product-list', {
+        source: 'latest',
+        heading: 'Pilihan terbaru',
+        limit: 8,
+        columns: '4',
+      }),
       section(
         'blocks',
         {
@@ -749,7 +764,12 @@ const minimalist = makeSeed(
         width: 'narrow',
       }),
       reviewsComposed(REVIEWS, 'Ulasan'),
-      section('featured-collection', { heading: 'Koleksi pilihan', limit: 8, columns: '4' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Koleksi pilihan',
+        limit: 8,
+        columns: '4',
+      }),
     ],
   }),
 )
@@ -799,7 +819,12 @@ const bold = makeSeed(
         speed: 'fast',
         uppercase: true,
       }),
-      section('featured-collection', { heading: 'Sedang naik', limit: 10, columns: '5' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Sedang naik',
+        limit: 10,
+        columns: '5',
+      }),
       cardsComposed(
         [
           { title: 'Warna berani', text: 'Palet yang tidak pernah setengah hati.' },
@@ -809,21 +834,33 @@ const bold = makeSeed(
         'Yang bikin beda',
       ),
       featuresComposed(TRUST_ITEMS),
-      section('testimonials', {
+      section('quotes', {
+        variant: 'quotes',
         heading: 'Kata mereka',
         layout: 'marquee',
         direction: 'left',
         speed: 'normal',
         items: REVIEWS,
       }),
-      section('collection-tabs', { heading: 'Pilih suasana', limit: 8, columns: '4', tabs: [] }),
+      section('product-list', {
+        source: 'tabs',
+        heading: 'Pilih suasana',
+        limit: 8,
+        columns: '4',
+        tabs: [],
+      }),
       section('faq', {
         heading: 'Masih ragu?',
         items: FAQ_ITEMS,
         align: 'center',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Semua yang baru', limit: 12, columns: '5' }),
+      section('product-list', {
+        source: 'latest',
+        heading: 'Semua yang baru',
+        limit: 12,
+        columns: '5',
+      }),
     ],
   }),
 )
@@ -868,14 +905,25 @@ const modern = makeSeed(
         tone: 'subtle',
       }),
       featuresComposed(TRUST_ITEMS),
-      section('featured-collection', { heading: 'Paling dicari', limit: 10, columns: '5' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Paling dicari',
+        limit: 10,
+        columns: '5',
+      }),
       imageTextComposed({
         heading: 'Cek dulu, belanja kemudian.',
         body: 'Setiap produk punya foto asli, ukuran detail, dan ulasan pembeli sungguhan.',
         button: 'Cara belanja',
         imageSide: 'left',
       }),
-      section('collection-tabs', { heading: 'Jelajahi koleksi', limit: 8, columns: '4', tabs: [] }),
+      section('product-list', {
+        source: 'tabs',
+        heading: 'Jelajahi koleksi',
+        limit: 8,
+        columns: '4',
+        tabs: [],
+      }),
       reviewsComposed(REVIEWS, 'Dipercaya ribuan pembeli'),
       section('faq', {
         heading: 'Pertanyaan yang sering muncul',
@@ -883,7 +931,7 @@ const modern = makeSeed(
         align: 'left',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Baru masuk', limit: 12, columns: '5' }),
+      section('product-list', { source: 'latest', heading: 'Baru masuk', limit: 12, columns: '5' }),
       noteComposed(
         'Butuh bantuan memilih?',
         'Tim kami siap membantu lewat WhatsApp setiap hari, 09.00–21.00 WIB.',
@@ -922,7 +970,12 @@ const editorial = makeSeed(
         body: 'Sepuluh potong yang dibuat untuk dipakai bertahun-tahun, bukan satu musim.',
         button: 'Baca cerita',
       }),
-      section('featured-collection', { heading: 'Koleksi utama', limit: 8, columns: '4' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Koleksi utama',
+        limit: 8,
+        columns: '4',
+      }),
       imageTextComposed({
         heading: 'Di balik layar.',
         body: 'Kami bekerja dengan penjahit kecil di tiga kota, memakai kain sisa dari pabrik tekstil.',
@@ -944,7 +997,12 @@ const editorial = makeSeed(
         align: 'left',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Semua koleksi', limit: 12, columns: '4' }),
+      section('product-list', {
+        source: 'latest',
+        heading: 'Semua koleksi',
+        limit: 12,
+        columns: '4',
+      }),
     ],
   }),
 )
@@ -979,7 +1037,12 @@ const elegant = makeSeed(
         button: 'Lihat koleksi',
         imageSide: 'right',
       }),
-      section('featured-collection', { heading: 'Pilihan butik', limit: 8, columns: '4' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Pilihan butik',
+        limit: 8,
+        columns: '4',
+      }),
       statementComposed({
         eyebrow: 'Sejak 1998',
         heading: 'Satu potong untuk seumur hidup.',
@@ -1007,7 +1070,7 @@ const elegant = makeSeed(
         align: 'left',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Koleksi', limit: 8, columns: '4' }),
+      section('product-list', { source: 'latest', heading: 'Koleksi', limit: 8, columns: '4' }),
     ],
   }),
 )
@@ -1065,10 +1128,15 @@ const marketplace = makeSeed(
         tone: 'inverse',
       }),
       section('category-rail', { heading: 'Kategori populer', layout: 'tiles', limit: 6 }),
-      section('featured-collection', { heading: 'Terlaris minggu ini', limit: 10, columns: '5' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Terlaris minggu ini',
+        limit: 10,
+        columns: '5',
+      }),
       featuresComposed(TRUST_ITEMS, 'Belanja tanpa khawatir'),
-      section('collection-shelves', { limit: 6, columns: '4' }),
-      section('latest-products', { heading: 'Baru masuk', limit: 12, columns: '5' }),
+      section('product-list', { source: 'shelves', limit: 6, columns: '4' }),
+      section('product-list', { source: 'latest', heading: 'Baru masuk', limit: 12, columns: '5' }),
       section('promo-codes', {
         heading: 'Voucher yang bisa dipakai',
         items: [
@@ -1169,8 +1237,13 @@ const preloved = makeSeed(
           text: 'Barang tidak sesuai? Ajukan pengembalian.',
         },
       ]),
-      section('collection-shelves', { limit: 8, columns: '4' }),
-      section('featured-collection', { heading: 'Pilihan editor', limit: 10, columns: '5' }),
+      section('product-list', { source: 'shelves', limit: 8, columns: '4' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Pilihan editor',
+        limit: 10,
+        columns: '5',
+      }),
       cardsComposed(
         [
           {
@@ -1192,7 +1265,12 @@ const preloved = makeSeed(
         align: 'left',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Baru diunggah', limit: 12, columns: '5' }),
+      section('product-list', {
+        source: 'latest',
+        heading: 'Baru diunggah',
+        limit: 12,
+        columns: '5',
+      }),
     ],
   }),
 )
@@ -1235,7 +1313,12 @@ const retro = makeSeed(
         speed: 'slow',
         uppercase: true,
       }),
-      section('featured-collection', { heading: 'Sedang diseduh', limit: 8, columns: '4' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Sedang diseduh',
+        limit: 8,
+        columns: '4',
+      }),
       imageTextComposed({
         heading: 'Disangrai setiap minggu.',
         body: 'Biji dari petani Sumatra dan Jawa, disangrai dalam batch 5 kg agar selalu segar.',
@@ -1257,7 +1340,12 @@ const retro = makeSeed(
         align: 'left',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Dari rak kami', limit: 12, columns: '4' }),
+      section('product-list', {
+        source: 'latest',
+        heading: 'Dari rak kami',
+        limit: 12,
+        columns: '4',
+      }),
       section('category-rail', { heading: 'Kategori', layout: 'tiles', limit: 6 }),
     ],
   }),
@@ -1298,7 +1386,12 @@ const organic = makeSeed(
         'Dari kebun ke rak.',
         'Kami bekerja langsung dengan petani dan perajin. Tidak ada bahan sintetis, tidak ada kemasan sekali pakai.',
       ),
-      section('featured-collection', { heading: 'Paling dicintai', limit: 8, columns: '4' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Paling dicintai',
+        limit: 8,
+        columns: '4',
+      }),
       imageTextComposed({
         heading: 'Bahan yang bisa dilacak.',
         body: 'Setiap produk menuliskan asal bahan dan siapa yang membuatnya.',
@@ -1333,7 +1426,12 @@ const organic = makeSeed(
         align: 'left',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Semua produk', limit: 12, columns: '4' }),
+      section('product-list', {
+        source: 'latest',
+        heading: 'Semua produk',
+        limit: 12,
+        columns: '4',
+      }),
     ],
   }),
 )
@@ -1394,7 +1492,12 @@ const tech = makeSeed(
         uppercase: true,
       }),
       section('category-rail', { heading: 'Kategori', layout: 'tiles', limit: 6 }),
-      section('featured-collection', { heading: 'Paling dicari', limit: 10, columns: '5' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Paling dicari',
+        limit: 10,
+        columns: '5',
+      }),
       imageTextComposed({
         heading: 'Spesifikasi jujur, tanpa jargon.',
         body: 'Setiap produk kami uji dan tulis apa adanya — daya tahan, isi kotak, dan siapa yang melayaninya.',
@@ -1434,11 +1537,18 @@ const tech = makeSeed(
         ],
         'Belanja per kebutuhan',
       ),
-      section('collection-tabs', { heading: 'Jelajahi koleksi', limit: 8, columns: '4', tabs: [] }),
+      section('product-list', {
+        source: 'tabs',
+        heading: 'Jelajahi koleksi',
+        limit: 8,
+        columns: '4',
+        tabs: [],
+      }),
       // Marquee testimonials rather than `reviewsComposed`: its cards read the
       // theme's own surfaces, where the block helper's fixed light panels would
       // not sit right on an obsidian page.
-      section('testimonials', {
+      section('quotes', {
+        variant: 'quotes',
         heading: 'Kata pengguna',
         layout: 'marquee',
         direction: 'left',
@@ -1451,7 +1561,7 @@ const tech = makeSeed(
         align: 'left',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Baru masuk', limit: 12, columns: '5' }),
+      section('product-list', { source: 'latest', heading: 'Baru masuk', limit: 12, columns: '5' }),
     ],
   }),
 )
@@ -1507,7 +1617,12 @@ const playful = makeSeed(
         uppercase: true,
       }),
       section('category-rail', { heading: 'Kategori seru', layout: 'tiles', limit: 6 }),
-      section('featured-collection', { heading: 'Paling disukai', limit: 10, columns: '4' }),
+      section('product-list', {
+        source: 'collection',
+        heading: 'Paling disukai',
+        limit: 10,
+        columns: '4',
+      }),
       cardsComposed(
         [
           { title: 'Mainan edukatif', text: 'Belajar sambil bermain, aman untuk si kecil.' },
@@ -1525,21 +1640,33 @@ const playful = makeSeed(
         ],
         'Janji kami',
       ),
-      section('testimonials', {
+      section('quotes', {
+        variant: 'quotes',
         heading: 'Kata orang tua',
         layout: 'marquee',
         direction: 'left',
         speed: 'normal',
         items: REVIEWS,
       }),
-      section('collection-tabs', { heading: 'Koleksi tema', limit: 8, columns: '4', tabs: [] }),
+      section('product-list', {
+        source: 'tabs',
+        heading: 'Koleksi tema',
+        limit: 8,
+        columns: '4',
+        tabs: [],
+      }),
       section('faq', {
         heading: 'Pertanyaan umum',
         items: FAQ_ITEMS,
         align: 'center',
         width: 'narrow',
       }),
-      section('latest-products', { heading: 'Baru datang', limit: 12, columns: '4' }),
+      section('product-list', {
+        source: 'latest',
+        heading: 'Baru datang',
+        limit: 12,
+        columns: '4',
+      }),
     ],
   }),
 )

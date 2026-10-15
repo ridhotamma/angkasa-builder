@@ -56,7 +56,8 @@ describe('the catalogue template', () => {
       createSection('catalog-products'),
       createSection('rich-text', { heading: 'About' }),
     ])
-    expect(types(sections)).toEqual(['hero', 'catalog-header', 'catalog-products', 'rich-text'])
+    // `hero` converges on the consolidated `banner`; the order is untouched.
+    expect(types(sections)).toEqual(['banner', 'catalog-header', 'catalog-products', 'rich-text'])
   })
 
   test('a saved template survives a write and a read unchanged', () => {

@@ -1,11 +1,15 @@
 /**
- * The premium section library (docs/PREMIUM-VISUALS.md, Tier 3 and the local
- * Tier 4 pieces): newsletter capture, video backgrounds, masonry and social
- * walls, team and press, an editorial statement, a split-screen band, a video
- * testimonial wall, a floating contact cluster and a 360° spin.
+ * The storefront feature sections (docs/PREMIUM-VISUALS.md, Tier 3 and the
+ * local Tier 4 pieces): newsletter capture, video backgrounds, masonry and
+ * social walls, team and press, an editorial statement, a split-screen band, a
+ * video testimonial wall, a floating contact cluster and a 360° spin.
+ *
+ * Not a plan gate: every one of these is offered to every shop on the builder,
+ * exactly like the core sections. "Feature" here means a richer look, nothing
+ * about entitlement.
  *
  * Same model as every other section: pure data here, renderers in
- * `../render/premium-sections`, sanitised by the same field engine, drawn by
+ * `../render/feature-sections`, sanitised by the same field engine, drawn by
  * the same `SectionFrame`. Nothing here adds a collection or a second engine.
  */
 
@@ -160,7 +164,7 @@ const overlayField: Field = choice(
 /* Sections                                                                   */
 /* -------------------------------------------------------------------------- */
 
-export const PREMIUM_SECTION_SCHEMAS = [
+export const FEATURE_SECTION_SCHEMAS = [
   {
     type: 'newsletter',
     category: 'promotion',

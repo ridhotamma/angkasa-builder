@@ -10,6 +10,15 @@ import { ParallaxBanner, VideoHero } from './banner-sections'
 import { BlocksSection } from './blocks-section'
 import { CollectionTabs, Countdown, FeaturedProduct, PromoCodes } from './commerce-sections'
 import {
+  Banner,
+  Cards,
+  Gallery,
+  ProductList,
+  Quotes,
+  Statement,
+  Story,
+} from './consolidated-sections'
+import {
   ContactCta,
   IconFeatures,
   Multicolumn,
@@ -36,12 +45,19 @@ import {
 import { CatalogHeader, CatalogProducts } from './catalog-page'
 import { PinnedScroll, ScrollRail, StackedCards } from './motion-sections'
 import { ProductInfo, ProductReviews, RelatedProducts } from './product-page'
-import { PREMIUM_SECTION_RENDERERS } from './premium-sections'
+import { FEATURE_SECTION_RENDERERS } from './feature-sections'
 import { BASE_SECTION_RENDERERS, type SectionProps } from './sections'
 
 export const SECTION_RENDERERS = {
   ...BASE_SECTION_RENDERERS,
-  ...PREMIUM_SECTION_RENDERERS,
+  ...FEATURE_SECTION_RENDERERS,
+  banner: Banner,
+  'product-list': ProductList,
+  gallery: Gallery,
+  quotes: Quotes,
+  cards: Cards,
+  statement: Statement,
+  story: Story,
   blocks: BlocksSection,
   custom: BlocksSection,
   'video-hero': VideoHero,

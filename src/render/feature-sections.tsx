@@ -1,6 +1,6 @@
 /**
- * The premium sections' renderers (docs/PREMIUM-VISUALS.md, Tier 3 and the
- * local Tier 4 pieces).
+ * The storefront feature sections' renderers (docs/PREMIUM-VISUALS.md, Tier 3
+ * and the local Tier 4 pieces).
  *
  * Every one receives already-sanitised settings, draws its final state on the
  * server, and stands down for reduced motion. Media plays only when the
@@ -1061,8 +1061,8 @@ export function Spin360({ settings }: SectionProps) {
   )
 }
 
-/** The premium sections, keyed by the same `type` as their schemas. */
-export const PREMIUM_SECTION_RENDERERS = {
+/** The feature sections, keyed by the same `type` as their schemas. */
+export const FEATURE_SECTION_RENDERERS = {
   newsletter: Newsletter,
   'background-video': BackgroundVideoSection,
   'masonry-gallery': MasonryGallery,

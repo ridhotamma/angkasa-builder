@@ -150,14 +150,21 @@ describe('sections', () => {
       },
     ])
     expect(sections).toHaveLength(1)
+    // `latest-products` converges on the consolidated `product-list` with its
+    // `source` set; a 9999 limit and a 42 heading fall back to the merged type's
+    // defaults, and the unknown `style` key is dropped as before.
+    expect(sections[0]!.type).toBe('product-list')
     expect(sections[0]!.settings).toEqual({
-      heading: 'New arrivals',
+      source: 'latest',
+      collectionId: '',
+      heading: '',
       layout: 'grid',
       bentoText: 'always',
-      limit: 12,
+      limit: 8,
       columns: '3',
       mobileColumns: '2',
       showAll: true,
+      tabs: [],
     })
     expect(sections[0]!.settings).not.toHaveProperty('style')
   })

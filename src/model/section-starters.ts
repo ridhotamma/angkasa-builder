@@ -553,6 +553,86 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
       { text: 'Order on WhatsApp' },
     ],
   }),
+
+  /* Consolidated families -------------------------------------------------- */
+
+  banner: () => ({
+    media: 'image',
+    image: P.boutique,
+    heading: 'New season, new favourites',
+    subheading: 'Discover pieces made to last.',
+    buttonLabel: 'Shop now',
+    buttonLink: { kind: 'home' },
+    align: 'center',
+    contentPosition: 'middle',
+    height: 'lg',
+    overlay: 'dark',
+  }),
+  gallery: () => ({
+    layout: 'grid',
+    heading: 'From the shop',
+    items: [
+      { image: P.storeRack, caption: 'The rack', link: { kind: 'none' } },
+      { image: P.bags, caption: 'Everyday bags', link: { kind: 'none' } },
+      { image: P.watch, caption: 'Timepieces', link: { kind: 'none' } },
+    ],
+    columns: '3',
+    mobileColumns: '2',
+  }),
+  quotes: () => ({
+    variant: 'quotes',
+    heading: 'What our customers say',
+    layout: 'grid',
+    items: [
+      { quote: 'Fast delivery and lovely packaging.', author: 'Rina', role: 'Jakarta' },
+      { quote: 'The quality surprised me.', author: 'Budi', role: 'Bandung' },
+      { quote: 'Will order again.', author: 'Sari', role: 'Surabaya' },
+    ],
+  }),
+  cards: () => ({
+    card: 'text',
+    heading: 'Why shop with us',
+    columns: '3',
+    mobileColumns: '1',
+    items: [
+      {
+        image: P.packaging,
+        title: 'Careful packing',
+        text: 'Every order wrapped by hand.',
+        link: { kind: 'none' },
+      },
+      {
+        image: P.checkout,
+        title: 'Easy checkout',
+        text: 'Pay in whatever way suits you.',
+        link: { kind: 'none' },
+      },
+      {
+        image: P.shopFront,
+        title: 'A real shop',
+        text: 'Come see us in person.',
+        link: { kind: 'none' },
+      },
+    ],
+  }),
+  statement: () => ({
+    layout: 'contained',
+    image: P.fashionModel,
+    heading: 'Made with care',
+    body: doc('We make small batches, by hand, with materials chosen to last.'),
+    buttonLabel: 'Our story',
+    buttonLink: { kind: 'none' },
+    align: 'left',
+  }),
+  story: () => ({
+    style: 'chapters',
+    heading: 'How it is made',
+    items: [
+      { image: P.teamwork, heading: 'Designed', body: doc('Every piece starts as a sketch.') },
+      { image: P.packaging, heading: 'Made', body: doc('Cut and sewn in our studio.') },
+      { image: P.bags, heading: 'Shipped', body: doc('Packed carefully and sent out.') },
+    ],
+  }),
 }
 
 /**

@@ -16,7 +16,7 @@ import {
   type SectionInstance,
 } from '../src/index'
 import { surfacePaint } from '../src/render/dividers'
-import { spinStep } from '../src/render/premium-sections'
+import { spinStep } from '../src/render/feature-sections'
 import {
   embedUrl,
   pageEdges,
@@ -43,7 +43,7 @@ const TYPES = [
 
 function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
   return {
-    data: sampleStorefrontData('Premium Shop'),
+    data: sampleStorefrontData('Feature Shop'),
     settings: { ...DEFAULT_THEME_SETTINGS, splash: { ...DEFAULT_THEME_SETTINGS.splash } },
     mode: 'live',
     imageUrl: () => IMAGE,
@@ -96,7 +96,7 @@ const SECTIONS: SectionInstance[] = [
   createSection('split-screen', { heading: 'Half and half', image: 'half' }),
   createSection('social-wall', {
     heading: 'Community',
-    handle: '@premium',
+    handle: '@ourstore',
     items: [{ image: 's', caption: 'Summer drop', link: { kind: 'none' } }],
   }),
   createSection('floating-contact', {
@@ -114,8 +114,8 @@ const SECTIONS: SectionInstance[] = [
   }),
 ]
 
-describe('premium section library', () => {
-  test('every premium type is registered with an icon and a category', () => {
+describe('feature section library', () => {
+  test('every feature type is registered with an icon and a category', () => {
     for (const type of TYPES) {
       const schema = sectionSchema(type)
       expect(schema, type).not.toBeNull()
@@ -125,7 +125,7 @@ describe('premium section library', () => {
     }
   })
 
-  test('draws every premium section on the storefront', () => {
+  test('draws every feature section on the storefront', () => {
     const html = render(<SectionsRenderer sections={SECTIONS} env={env()} />)
     for (const text of [
       'Newsletter please',
@@ -142,7 +142,7 @@ describe('premium section library', () => {
       'Made slowly',
       'Half and half',
       'Community',
-      '@premium',
+      '@ourstore',
       'Summer drop',
       'Turn it',
       'Drag to spin',

@@ -27,6 +27,7 @@ import {
   type FieldValues,
   type JsonValue,
 } from './fields'
+import { consolidateSettings, consolidatedAlias } from './consolidated-sections'
 import { sanitizeElements } from './element-style'
 import { sanitizeLayout, type ThemeLayout } from './layout'
 import { SECTION_STYLE_FIELDS } from './section-style'
@@ -241,11 +242,16 @@ export function sanitizeSections(value: unknown, scope: SectionScope = 'home'): 
     if (out.length >= MAX_SECTIONS) break
     if (!isRecord(raw) || !isSectionType(raw.type)) continue
 
-    const schema = sectionSchema(raw.type)!
+    // An old family member converges on its consolidated type here: the stored
+    // settings ride along under the variant field, so the page keeps its content
+    // and gains the new catalogue the next time it is saved.
+    const alias = consolidatedAlias(raw.type)
+    const type: SectionType = alias ? (alias.type as SectionType) : raw.type
+    const schema = sectionSchema(type)!
     if (!isSectionAllowed(schema, scope)) continue
-    const count = counts.get(schema.type) ?? 0
+    const count = counts.get(type) ?? 0
     if (schema.max !== undefined && count >= schema.max) continue
-    counts.set(schema.type, count + 1)
+    counts.set(type, count + 1)
 
     let id = typeof raw.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(raw.id) ? raw.id : newId()
     if (seen.has(id)) id = newId()
@@ -259,9 +265,12 @@ export function sanitizeSections(value: unknown, scope: SectionScope = 'home'): 
     const overrides = sanitizeOverrideShape(raw.overrides)
     out.push({
       id,
-      type: raw.type,
+      type,
       hidden: raw.hidden === true,
-      settings: sanitizeValues(schema.fields, raw.settings),
+      settings: sanitizeValues(
+        schema.fields,
+        alias ? consolidateSettings(alias, raw.settings) : raw.settings,
+      ),
       style: sanitizeValues(SECTION_STYLE_FIELDS, raw.style),
       ...(Object.keys(elements).length > 0 && { elements }),
       ...(linkedTo && { linkedTo }),

@@ -51,7 +51,8 @@ describe('article template', () => {
       { id: 'c', type: 'article-content', settings: {} },
       { id: 'h', type: 'article-header', settings: {} },
     ])
-    expect(types(repaired)).toEqual(['hero', 'article-content', 'article-header'])
+    // `hero` converges on the consolidated `banner`; the order is untouched.
+    expect(types(repaired)).toEqual(['banner', 'article-content', 'article-header'])
   })
 
   test('the product buy box cannot sit in an article template', () => {
