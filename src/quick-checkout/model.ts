@@ -1062,12 +1062,12 @@ const THEME_RADIUS: Record<QcRadius, RadiusOption> = {
 }
 
 /**
- * The page's look as storefront theme settings, for a simple store.
+ * The page's look as storefront theme settings, for a Quick Checkout store.
  *
- * A simple store's shopper starts on the Quick Checkout page and may go on to
- * a product page, the cart or checkout — storefront screens, drawn from theme
- * settings. Those take the page's colours, fonts and shape from here, so the
- * shop does not change its face halfway through a purchase.
+ * A Quick Checkout store's shopper starts on the Quick Checkout page and may go
+ * on to a product page, the cart or checkout — storefront screens, drawn from
+ * theme settings. Those take the page's colours, fonts and shape from here, so
+ * the shop does not change its face halfway through a purchase.
  *
  * The page's background colour is the theme's (a gradient's first stop, an
  * image's tint), and its text is repaired against that the way `qcPalette`

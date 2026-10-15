@@ -1,6 +1,6 @@
 /**
- * A simple store's look on the storefront's own screens: the Quick Checkout
- * page's colours, fonts and shape, as theme settings.
+ * A Quick Checkout store's look on the storefront's own screens: the Quick
+ * Checkout page's colours, fonts and shape, as theme settings.
  */
 
 import { describe, expect, test } from 'bun:test'
