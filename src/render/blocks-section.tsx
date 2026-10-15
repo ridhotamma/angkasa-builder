@@ -723,8 +723,15 @@ function RichTextBlock({ block }: { block: BlockValue }) {
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   return (
-    <Box {...contentLayout(width, align)} fontSize={size} {...blockTextOverrides(block)}>
-      <RichTextView doc={doc} align={align === 'center' ? 'center' : 'left'} />
+    <Box {...contentLayout(width, align)}>
+      {/* The overrides go on the text element itself, not a wrapper: the rich
+          view's own stack sets its colour, so a wrapper's colour — hover
+          included — would never reach the words. */}
+      <RichTextView
+        doc={doc}
+        align={align === 'center' ? 'center' : 'left'}
+        style={{ fontSize: size, ...blockTextOverrides(block) }}
+      />
     </Box>
   )
 }

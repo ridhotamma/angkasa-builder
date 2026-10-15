@@ -330,3 +330,65 @@ describe('the photo card block', () => {
     expect(preview).toContain('Upload your image')
   })
 })
+
+describe('block text overrides', () => {
+  test('a hover text colour reaches the rich text, not only the heading', () => {
+    const doc = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'lorem ipsum' }] }],
+    }
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('blocks', {
+            blocks: [
+              {
+                id: 'r',
+                type: 'richtext',
+                settings: { body: doc },
+                style: { hoverColor: 'custom', hoverColorCustom: '#ff0000' },
+              },
+            ],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    // The hover colour is mirrored into the property the rich text reads, so the
+    // words change too — not only the heading.
+    expect(html).toMatch(/--pb-ink:\s*#ff0000/)
+    expect(html).toContain('var(--pb-ink')
+  })
+
+  test("a block's Text colour override reaches a nested rich text", () => {
+    const doc = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'lorem ipsum' }] }],
+    }
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('blocks', {
+            blocks: [
+              {
+                id: 'g',
+                type: 'grid',
+                style: { color: 'custom', textColorCustom: '#ffffff' },
+                settings: {
+                  columns: '1',
+                  blocks: [{ id: 'r', type: 'richtext', settings: { body: doc } }],
+                },
+              },
+            ],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    // The Grid's colour becomes `--pb-ink`, which the nested rich text reads —
+    // a heading would inherit it directly, but a rich-text paragraph names its
+    // own muted ink, so it needs the property.
+    expect(html).toMatch(/--pb-ink:\s*#ffffff/)
+    expect(html).toContain('var(--pb-ink')
+  })
+})

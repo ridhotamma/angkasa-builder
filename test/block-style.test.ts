@@ -185,6 +185,19 @@ describe('resolving a block style to CSS', () => {
     expect(blockStyleCss({ position: 'default', opacity: 100 })).toEqual({})
   })
 
+  test('a rounded block clips its content, unless an overflow is chosen', () => {
+    // Otherwise a photo child squares the corners back off on top of the
+    // rounding, and "Corners" reads as doing nothing.
+    expect(blockStyleCss({ borderRadius: 'lg' })).toMatchObject({
+      borderRadius: '0.5rem',
+      overflow: 'hidden',
+    })
+    // An explicit Overflow choice still wins.
+    expect(blockStyleCss({ borderRadius: 'lg', overflow: 'visible' }).overflow).toBe('visible')
+    // No corners, no clip.
+    expect(blockStyleCss({}).overflow).toBeUndefined()
+  })
+
   test('theme colour tokens resolve to the theme variables', () => {
     // Text can name the whole theme vocabulary, accent included.
     expect(blockStyleCss({ color: 'accent' })).toMatchObject({ color: 'var(--pb-accent)' })
@@ -466,6 +479,8 @@ describe('hover reactions', () => {
       boxShadow: '0 8px 24px rgb(0 0 0 / 0.12)',
       textDecoration: 'underline',
       color: 'var(--chakra-colors-brand-solid)',
+      // Mirrored as a custom property, so nested text with its own colour follows.
+      '--pb-ink': 'var(--chakra-colors-brand-solid)',
     })
     expect(String(css.transition)).toContain('transform 200ms')
     // Never `all`: it animates layout and janks.
@@ -484,7 +499,11 @@ describe('hover reactions', () => {
       hoverColorCustom: '#ff0000',
       hoverBackgroundColor: '#00ff00',
     })
-    expect(css['&:hover']).toEqual({ color: '#ff0000', backgroundColor: '#00ff00' })
+    expect(css['&:hover']).toEqual({
+      color: '#ff0000',
+      backgroundColor: '#00ff00',
+      '--pb-ink': '#ff0000',
+    })
   })
 
   test('hover tokens survive sanitising and defaults are dropped', () => {

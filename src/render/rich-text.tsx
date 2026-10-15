@@ -9,6 +9,7 @@
 import { Blockquote, Box, Heading, Link, List, Stack, Text } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 
+import { BLOCK_INK_VAR } from '../model/block-style'
 import {
   isRichDocEmpty,
   type RichBlock,
@@ -47,7 +48,10 @@ export function RichTextView({
     <Stack
       gap="3"
       textAlign={align}
-      color={inheritColor ? 'inherit' : 'fg.muted'}
+      // Muted ink by default, but a surrounding block's Text colour (seen through
+      // the `BLOCK_INK_VAR` custom property) wins — so a rich text follows the
+      // same override a heading in the same block does.
+      color={inheritColor ? 'inherit' : `var(${BLOCK_INK_VAR}, var(--chakra-colors-fg-muted))`}
       lineHeight="tall"
       {...overrides}
       {...style}

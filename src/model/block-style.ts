@@ -711,6 +711,13 @@ export interface BlockStyleCss {
 
 const NO_STYLE: BlockStyleCss = {}
 
+/**
+ * The custom property a block's Text colour is mirrored into. It inherits down
+ * the tree, so text that names its own colour — a rich-text paragraph's muted
+ * ink — can still follow a surrounding block's colour. Read by `RichTextView`.
+ */
+export const BLOCK_INK_VAR = '--pb-ink'
+
 const INSET: Record<string, string> = {
   auto: 'auto',
   '0': '0',
@@ -1072,6 +1079,11 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   } else {
     set('color', token(style, 'color', TEXT_COLOR))
   }
+  // Mirror the colour as a custom property. It inherits down the tree, so text
+  // that names its own colour — a rich-text paragraph's muted ink — can still
+  // follow a surrounding block's Text colour; plain CSS inheritance never
+  // reaches a child that sets its own colour.
+  if (out.color !== undefined) out[BLOCK_INK_VAR] = out.color
   set('fontFamily', token(style, 'fontFamily', FONT_FAMILY))
   set('fontWeight', token(style, 'fontWeight', FONT_WEIGHT))
   set('lineHeight', token(style, 'lineHeight', LINE_HEIGHT))
@@ -1108,6 +1120,10 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   const borderColor = readText(style, 'borderColor')
   if (borderColorTheme) out.borderColor = borderColorTheme
   else if (borderColor) out.borderColor = borderColor
+  // A rounded block clips its content: without this a photo child draws its own
+  // corners back over the rounding, and "Corners" looks like it does nothing.
+  // An explicit Overflow choice still wins.
+  if (out.borderRadius !== undefined && out.overflow === undefined) out.overflow = 'hidden'
 
   // Effects
   const opacity = style.opacity
@@ -1142,6 +1158,9 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
     const value = token(style, 'hoverColor', TEXT_COLOR)
     if (value) hover.color = value
   }
+  // The hover rule updates the same custom property, so the rich text follows
+  // a hover colour too (on the block itself or, with the group trigger, a card).
+  if (hover.color !== undefined) hover[BLOCK_INK_VAR] = hover.color
   const hoverBackgroundTheme = token(style, 'hoverBackgroundTheme', THEME_COLOR)
   const hoverBackground = readText(style, 'hoverBackgroundColor')
   if (hoverBackgroundTheme) hover.backgroundColor = hoverBackgroundTheme
