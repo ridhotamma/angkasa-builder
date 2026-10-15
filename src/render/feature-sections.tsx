@@ -51,6 +51,7 @@ import { BackgroundVideo, VideoFrame } from './media'
 import {
   ButtonRow,
   EmptyNotice,
+  FullBleed,
   PageColumn,
   SectionHeading,
   SmartLink,
@@ -691,7 +692,12 @@ export function SplitScreen({ settings }: SectionProps) {
   const minH = SPLIT_MIN_H[(readText(settings, 'minHeight') as keyof typeof SPLIT_MIN_H) ?? 'lg']
 
   return (
-    <Box
+    // `FullBleed` so the photo half reaches the page edge whatever the
+    // section's width is set to. Without it, a split left at the default
+    // "contained" width clipped the photo to the column and the look collapsed
+    // into "Image and text" with a different padding — the two are meant to be
+    // plainly different: a card in the column, or a photo that bleeds.
+    <FullBleed
       position="relative"
       minH={{ md: minH }}
       bg="bg"
@@ -727,8 +733,8 @@ export function SplitScreen({ settings }: SectionProps) {
             gridColumn={{ md: imageRight ? '1' : '2' }}
             align="center"
             py={{ base: '6', md: '12' }}
-            pe={{ base: '0', md: imageRight ? '10' : '0' }}
-            ps={{ base: '0', md: imageRight ? '0' : '10' }}
+            pe={{ base: '0', md: imageRight ? '16' : '0' }}
+            ps={{ base: '0', md: imageRight ? '0' : '16' }}
           >
             <Stack gap="4" maxW="xl">
               <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
@@ -742,7 +748,7 @@ export function SplitScreen({ settings }: SectionProps) {
           </Flex>
         </Grid>
       </PageColumn>
-    </Box>
+    </FullBleed>
   )
 }
 

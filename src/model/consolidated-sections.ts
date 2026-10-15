@@ -608,8 +608,8 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
     icon: 'image-text',
     name: { en: 'Statement', id: 'Pernyataan' },
     description: {
-      en: 'A photo with a message — contained beside the photo, split half and half, or full-bleed behind giant type.',
-      id: 'Foto dengan pesan — di samping foto, terbagi separuh, atau penuh dengan tipografi besar.',
+      en: 'A photo with a message — a card beside the words, a full-width photo split half and half, or a photo behind giant type.',
+      id: 'Foto dengan pesan — kartu di samping teks, foto selebar layar terbagi dua, atau foto di belakang tipografi besar.',
     },
     fields: [
       choice(
