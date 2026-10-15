@@ -27,15 +27,14 @@ import {
 } from '@chakra-ui/react'
 import {
   createContext,
-  Fragment,
   useContext,
   useEffect,
   useMemo,
   useRef,
   type ComponentProps,
-  type ComponentType,
   type MouseEvent,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import { LuChevronLeft, LuChevronRight, LuHeart } from 'react-icons/lu'
 
@@ -61,7 +60,7 @@ import { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
-import { SplitText, Tilt } from './motion'
+import { SplitText, useTilt } from './motion'
 
 /**
  * Props for every dialog and drawer a section opens (photo viewer, size
@@ -1029,10 +1028,16 @@ function shineCss() {
   }
 }
 
-/** The movement an effect set adds to the card's own `:hover` rule. */
-function liftCss(effects: ReadonlySet<string>, bold: boolean) {
+/**
+ * The movement an effect set adds to the card's own `:hover` rule. A tilt owns
+ * the card's `transform` (GSAP writes it), so the CSS lift stands down when the
+ * two would otherwise fight over the same property.
+ */
+function liftCss(effects: ReadonlySet<string>, bold: boolean, tilt: boolean) {
   const hover: Record<string, string> = {}
-  if (effects.has('lift')) hover.transform = bold ? 'translate(-2px, -2px)' : 'translateY(-4px)'
+  if (!tilt && effects.has('lift')) {
+    hover.transform = bold ? 'translate(-2px, -2px)' : 'translateY(-4px)'
+  }
   if (effects.has('shadow')) {
     hover.boxShadow = bold ? boldShadow(BOLD_INK, 6) : 'var(--chakra-shadows-lg)'
   }
@@ -1051,14 +1056,17 @@ export function cardHoverProps(settings: ThemeSettings): BoxProps {
   if (effects.size === 0) return {}
   const outline = effects.has('outline')
   const shine = effects.has('shine')
+  const tilt = effects.has('tilt')
   return {
     // The ring and shine overlays are absolutely placed, so the card anchors them.
     ...((outline || shine) && { position: 'relative' as const }),
-    transition: 'transform 250ms ease, box-shadow 250ms ease',
+    // Tilt transforms the card itself, so its `transform` must not be CSS-
+    // transitioned too — GSAP would fight the easing. Only the shadow transitions.
+    transition: tilt ? 'box-shadow 250ms ease' : 'transform 250ms ease, box-shadow 250ms ease',
     css: {
       ...(outline && outlineCss()),
       ...(shine && shineCss()),
-      ...liftCss(effects, settings.cardStyle === 'hard'),
+      ...liftCss(effects, settings.cardStyle === 'hard', tilt),
       ...(effects.has('zoom') && { '&:hover img': { transform: 'scale(1.05)' } }),
       '@media (prefers-reduced-motion: reduce)': {
         '&:hover': { transform: 'none' },
@@ -1075,16 +1083,17 @@ export interface CardTheme {
   flat: boolean
   hover: BoxProps
   /**
-   * Wraps the card for the 3D `tilt`, or is a pass-through when the theme does
-   * not ask for it (no extra element). Cards whose layout cannot take an extra
-   * wrapper — a bento grid tile, a rail's flex item — simply do not use it.
+   * Attach to the card's own root element to give it the 3D `tilt` — never a
+   * wrapper, so a tilt can never change the card's box in the layout. A no-op
+   * ref when the theme does not ask for tilt.
    */
-  Tilt: ComponentType<{ children: ReactNode }>
+  tiltRef: RefObject<HTMLDivElement | null>
 }
 
 /**
  * Everything a card wears from the theme, in one call, so every card in every
- * section is drawn the same way: `const { frame, hover, Tilt } = useCard()`.
+ * section is drawn the same way:
+ * `const { frame, hover, tiltRef } = useCard()`.
  */
 export function useCard(): CardTheme {
   const { settings } = useRenderEnvironment()
@@ -1092,9 +1101,7 @@ export function useCard(): CardTheme {
     frame: cardFrame(settings.cardStyle),
     flat: settings.cardStyle === 'flat',
     hover: cardHoverProps(settings),
-    Tilt: (settings.cardHover.includes('tilt') ? Tilt : Fragment) as ComponentType<{
-      children: ReactNode
-    }>,
+    tiltRef: useTilt(settings.cardHover.includes('tilt')),
   }
 }
 
@@ -1137,62 +1144,61 @@ export function WishlistButton({
 
 export function ProductCard({ product }: { product: StorefrontProductCard }) {
   const { data, formatPrice } = useRenderEnvironment()
-  const { frame, flat, hover, Tilt } = useCard()
+  const { frame, flat, hover, tiltRef } = useCard()
 
   return (
-    <Tilt>
-      <Card.Root
-        position="relative"
-        w="full"
+    <Card.Root
+      ref={tiltRef}
+      position="relative"
+      w="full"
+      h="full"
+      bg="bg.panel"
+      rounded="l3"
+      overflow="hidden"
+      {...frame}
+      {...hover}
+    >
+      <SmartLink
+        link={{ kind: 'product', slug: product.slug }}
+        display="flex"
+        flexDirection="column"
         h="full"
-        bg="bg.panel"
-        rounded="l3"
-        overflow="hidden"
-        {...frame}
-        {...hover}
       >
-        <SmartLink
-          link={{ kind: 'product', slug: product.slug }}
-          display="flex"
-          flexDirection="column"
-          h="full"
+        <AspectRatio
+          ratio={1}
+          bg="bg.subtle"
+          flexShrink="0"
+          rounded={flat ? 'l3' : undefined}
+          overflow="hidden"
         >
-          <AspectRatio
-            ratio={1}
-            bg="bg.subtle"
-            flexShrink="0"
-            rounded={flat ? 'l3' : undefined}
-            overflow="hidden"
-          >
-            <ImageWithFallback
-              src={product.imageUrl ?? undefined}
-              alt={product.name}
-              objectFit="cover"
-              loading="lazy"
-              transition="transform 600ms ease"
-            />
-          </AspectRatio>
-          <Stack gap="1.5" p={flat ? '2' : { base: '3', sm: '3.5' }} flex="1">
-            <Text fontSize={{ base: 'sm', sm: 'md' }} fontWeight="medium" lineClamp={2}>
-              {product.name}
+          <ImageWithFallback
+            src={product.imageUrl ?? undefined}
+            alt={product.name}
+            objectFit="cover"
+            loading="lazy"
+            transition="transform 600ms ease"
+          />
+        </AspectRatio>
+        <Stack gap="1.5" p={flat ? '2' : { base: '3', sm: '3.5' }} flex="1">
+          <Text fontSize={{ base: 'sm', sm: 'md' }} fontWeight="medium" lineClamp={2}>
+            {product.name}
+          </Text>
+          <Stack direction="row" gap="1.5" align="baseline" wrap="wrap">
+            <Text fontWeight="bold" fontVariantNumeric="tabular-nums">
+              {formatPrice(product.price, data.shop.currency)}
             </Text>
-            <Stack direction="row" gap="1.5" align="baseline" wrap="wrap">
-              <Text fontWeight="bold" fontVariantNumeric="tabular-nums">
-                {formatPrice(product.price, data.shop.currency)}
+            {product.compareAtPrice !== null && (
+              <Text fontSize="sm" color="fg.subtle" textDecoration="line-through">
+                {formatPrice(product.compareAtPrice, data.shop.currency)}
               </Text>
-              {product.compareAtPrice !== null && (
-                <Text fontSize="sm" color="fg.subtle" textDecoration="line-through">
-                  {formatPrice(product.compareAtPrice, data.shop.currency)}
-                </Text>
-              )}
-            </Stack>
+            )}
           </Stack>
-        </SmartLink>
-        {/* Outside the link: a button nested in an anchor is neither valid HTML
+        </Stack>
+      </SmartLink>
+      {/* Outside the link: a button nested in an anchor is neither valid HTML
           nor clickable without hijacking the navigation. */}
-        <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
-      </Card.Root>
-    </Tilt>
+      <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
+    </Card.Root>
   )
 }
 

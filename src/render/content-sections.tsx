@@ -77,7 +77,7 @@ function columnsOf(value: string, count: number, mobileColumns?: string) {
 
 export function Multicolumn({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
-  const { frame, flat, hover, Tilt } = useCard()
+  const { frame, flat, hover, tiltRef } = useCard()
   const empty = useEmptyText()
   const items = readList(settings, 'items')
   const align = alignOf(settings)
@@ -103,55 +103,55 @@ export function Multicolumn({ settings }: SectionProps) {
             const image = readText(item, 'image')
             const linkLabel = readText(item, 'linkLabel')
             return (
-              <Tilt key={item.id}>
-                <Card.Root
-                  h="full"
-                  bg="bg.panel"
-                  rounded="l3"
-                  overflow="hidden"
-                  {...frame}
-                  {...hover}
-                >
-                  {image && (
-                    <AspectRatio
-                      ratio={ratio}
-                      bg="bg.subtle"
-                      rounded={flat ? 'l3' : undefined}
-                      overflow="hidden"
-                    >
-                      <ImageWithFallback
-                        src={
-                          imageUrl(image, { width: 800, height: Math.round(800 / ratio) }) ??
-                          undefined
-                        }
-                        alt=""
-                        objectFit="cover"
-                        loading="lazy"
-                        transition="transform 600ms ease"
-                      />
-                    </AspectRatio>
+              <Card.Root
+                key={item.id}
+                ref={tiltRef}
+                h="full"
+                bg="bg.panel"
+                rounded="l3"
+                overflow="hidden"
+                {...frame}
+                {...hover}
+              >
+                {image && (
+                  <AspectRatio
+                    ratio={ratio}
+                    bg="bg.subtle"
+                    rounded={flat ? 'l3' : undefined}
+                    overflow="hidden"
+                  >
+                    <ImageWithFallback
+                      src={
+                        imageUrl(image, { width: 800, height: Math.round(800 / ratio) }) ??
+                        undefined
+                      }
+                      alt=""
+                      objectFit="cover"
+                      loading="lazy"
+                      transition="transform 600ms ease"
+                    />
+                  </AspectRatio>
+                )}
+                <Card.Body gap="2" textAlign={align} p={flat ? '2' : '5'} pt={flat ? '4' : '5'}>
+                  {readText(item, 'title') && (
+                    <Heading as="h3" size="md">
+                      {readText(item, 'title')}
+                    </Heading>
                   )}
-                  <Card.Body gap="2" textAlign={align} p={flat ? '2' : '5'} pt={flat ? '4' : '5'}>
-                    {readText(item, 'title') && (
-                      <Heading as="h3" size="md">
-                        {readText(item, 'title')}
-                      </Heading>
-                    )}
-                    <Paragraphs text={readText(item, 'text')} align={align} />
-                    {linkLabel && (
-                      <SmartLink
-                        link={readLink(item, 'link')}
-                        color="brand.fg"
-                        fontWeight="semibold"
-                        fontSize="sm"
-                        mt="1"
-                      >
-                        {linkLabel} →
-                      </SmartLink>
-                    )}
-                  </Card.Body>
-                </Card.Root>
-              </Tilt>
+                  <Paragraphs text={readText(item, 'text')} align={align} />
+                  {linkLabel && (
+                    <SmartLink
+                      link={readLink(item, 'link')}
+                      color="brand.fg"
+                      fontWeight="semibold"
+                      fontSize="sm"
+                      mt="1"
+                    >
+                      {linkLabel} →
+                    </SmartLink>
+                  )}
+                </Card.Body>
+              </Card.Root>
             )
           })}
         </SimpleGrid>
@@ -746,7 +746,7 @@ function LocationActions({ entry, directions }: { entry: StoreLocationEntry; dir
 
 export function StoreLocations({ settings }: SectionProps) {
   const { data, imageUrl } = useRenderEnvironment()
-  const { frame, hover, Tilt } = useCard()
+  const { frame, hover, tiltRef } = useCard()
   const empty = useEmptyText()
   const entries = locationsFor(settings, data)
   const locator = readText(settings, 'layout') === 'locator'
@@ -866,27 +866,33 @@ export function StoreLocations({ settings }: SectionProps) {
         {entries.map((entry) => {
           const directions = directionsFor(entry)
           return (
-            <Tilt key={entry.id}>
-              <Card.Root bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
-                {entry.image && (
-                  <AspectRatio ratio={16 / 9} bg="bg.subtle">
-                    <ImageWithFallback
-                      src={imageUrl(entry.image, { width: 800, height: 450 }) ?? undefined}
-                      alt=""
-                      objectFit="cover"
-                      loading="lazy"
-                    />
-                  </AspectRatio>
-                )}
-                <Card.Body gap="3">
-                  <Heading as="h3" size="md">
-                    {entry.name}
-                  </Heading>
-                  <LocationDetails entry={entry} />
-                  <LocationActions entry={entry} directions={directions} />
-                </Card.Body>
-              </Card.Root>
-            </Tilt>
+            <Card.Root
+              key={entry.id}
+              ref={tiltRef}
+              bg="bg.panel"
+              rounded="l3"
+              overflow="hidden"
+              {...frame}
+              {...hover}
+            >
+              {entry.image && (
+                <AspectRatio ratio={16 / 9} bg="bg.subtle">
+                  <ImageWithFallback
+                    src={imageUrl(entry.image, { width: 800, height: 450 }) ?? undefined}
+                    alt=""
+                    objectFit="cover"
+                    loading="lazy"
+                  />
+                </AspectRatio>
+              )}
+              <Card.Body gap="3">
+                <Heading as="h3" size="md">
+                  {entry.name}
+                </Heading>
+                <LocationDetails entry={entry} />
+                <LocationActions entry={entry} directions={directions} />
+              </Card.Body>
+            </Card.Root>
           )
         })}
       </SimpleGrid>

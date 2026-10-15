@@ -76,7 +76,7 @@ export {
 export { SECTION_RENDERERS } from './registry'
 export { SectionDivider } from './dividers'
 export type { DividerShape } from '../model/section-style'
-export { SplitText, Tilt, VelocityMarquee } from './motion'
+export { SplitText, useTilt, VelocityMarquee } from './motion'
 export { SitePopup } from './popup'
 export { SplashScreen, splashSkipScript, type SplashShop } from './splash'
 export type { SectionProps } from './sections'

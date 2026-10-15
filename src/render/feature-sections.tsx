@@ -21,7 +21,7 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react'
 import { createPortal } from 'react-dom'
 import { FaWhatsapp } from 'react-icons/fa6'
 import { LuArrowUp, LuMail, LuPlay, LuRotate3D } from 'react-icons/lu'
@@ -211,7 +211,7 @@ export function MasonryGallery({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const overlay = useOverlayProps()
-  const { frame, hover, Tilt } = useCard()
+  const { frame, hover, tiltRef } = useCard()
   const items = readList(settings, 'items').filter((item) => readText(item, 'image'))
   const [active, setActive] = useState<number | null>(null)
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
@@ -235,52 +235,52 @@ export function MasonryGallery({ settings }: SectionProps) {
           if (!src) return null
           const link = readLink(item, 'link')
           return (
-            <Tilt key={item.id}>
-              <Box
-                as="div"
-                position="relative"
-                rounded="l2"
-                overflow="hidden"
-                {...frame}
-                {...hover}
+            <Box
+              key={item.id}
+              ref={tiltRef}
+              as="div"
+              position="relative"
+              rounded="l2"
+              overflow="hidden"
+              {...frame}
+              {...hover}
+            >
+              <IconButton
+                aria-label={readText(item, 'alt') || 'Open photo'}
+                variant="plain"
+                display="block"
+                w="full"
+                h="auto"
+                p="0"
+                cursor="zoom-in"
+                onClick={() => setActive(index)}
               >
-                <IconButton
-                  aria-label={readText(item, 'alt') || 'Open photo'}
-                  variant="plain"
-                  display="block"
+                <ImageWithFallback
+                  src={src}
+                  alt={readText(item, 'alt')}
                   w="full"
-                  h="auto"
-                  p="0"
-                  cursor="zoom-in"
-                  onClick={() => setActive(index)}
+                  objectFit="cover"
+                  loading="lazy"
+                  transition="transform 600ms ease"
+                />
+              </IconButton>
+              {link.kind !== 'none' && (
+                <SmartLink
+                  link={link}
+                  position="absolute"
+                  bottom="2"
+                  right="2"
+                  bg="blackAlpha.600"
+                  color="white"
+                  rounded="full"
+                  px="2.5"
+                  py="1"
+                  fontSize="xs"
                 >
-                  <ImageWithFallback
-                    src={src}
-                    alt={readText(item, 'alt')}
-                    w="full"
-                    objectFit="cover"
-                    loading="lazy"
-                    transition="transform 600ms ease"
-                  />
-                </IconButton>
-                {link.kind !== 'none' && (
-                  <SmartLink
-                    link={link}
-                    position="absolute"
-                    bottom="2"
-                    right="2"
-                    bg="blackAlpha.600"
-                    color="white"
-                    rounded="full"
-                    px="2.5"
-                    py="1"
-                    fontSize="xs"
-                  >
-                    {readText(item, 'alt') || 'View'}
-                  </SmartLink>
-                )}
-              </Box>
-            </Tilt>
+                  {readText(item, 'alt') || 'View'}
+                </SmartLink>
+              )}
+            </Box>
           )
         })}
       </Box>
@@ -334,7 +334,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const overlay = useOverlayProps()
-  const { frame, hover, Tilt } = useCard()
+  const { frame, hover, tiltRef } = useCard()
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'name') || readText(item, 'quote') || readVideo(item, 'video'),
   )
@@ -369,48 +369,54 @@ export function VideoTestimonials({ settings }: SectionProps) {
             posterId ? imageUrl(posterId, { width: 800, height: 450 }) : null,
           )
           return (
-            <Tilt key={item.id}>
-              <Box bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
-                <Stack gap="3">
-                  <Box position="relative" bg="bg.subtle">
-                    <AspectRatio ratio={16 / 9}>
-                      {poster ? (
-                        <ImageWithFallback src={poster} alt="" objectFit="cover" loading="lazy" />
-                      ) : (
-                        <Box />
-                      )}
-                    </AspectRatio>
-                    {itemVideo && (
-                      <IconButton
-                        aria-label="Play testimonial"
-                        position="absolute"
-                        inset="0"
-                        m="auto"
-                        boxSize="12"
-                        rounded="full"
-                        colorPalette="brand"
-                        onClick={() => setActive(item)}
-                      >
-                        <LuPlay />
-                      </IconButton>
+            <Box
+              key={item.id}
+              ref={tiltRef}
+              bg="bg.panel"
+              rounded="l3"
+              overflow="hidden"
+              {...frame}
+              {...hover}
+            >
+              <Stack gap="3">
+                <Box position="relative" bg="bg.subtle">
+                  <AspectRatio ratio={16 / 9}>
+                    {poster ? (
+                      <ImageWithFallback src={poster} alt="" objectFit="cover" loading="lazy" />
+                    ) : (
+                      <Box />
                     )}
-                  </Box>
-                  <Stack gap="1.5" p="4" pt="0">
-                    {readText(item, 'quote') && (
-                      <Text color="fg.muted" lineHeight="tall">
-                        “{readText(item, 'quote')}”
-                      </Text>
-                    )}
-                    <Text fontWeight="semibold">{readText(item, 'name')}</Text>
-                    {readText(item, 'role') && (
-                      <Text fontSize="sm" color="fg.muted">
-                        {readText(item, 'role')}
-                      </Text>
-                    )}
-                  </Stack>
+                  </AspectRatio>
+                  {itemVideo && (
+                    <IconButton
+                      aria-label="Play testimonial"
+                      position="absolute"
+                      inset="0"
+                      m="auto"
+                      boxSize="12"
+                      rounded="full"
+                      colorPalette="brand"
+                      onClick={() => setActive(item)}
+                    >
+                      <LuPlay />
+                    </IconButton>
+                  )}
+                </Box>
+                <Stack gap="1.5" p="4" pt="0">
+                  {readText(item, 'quote') && (
+                    <Text color="fg.muted" lineHeight="tall">
+                      “{readText(item, 'quote')}”
+                    </Text>
+                  )}
+                  <Text fontWeight="semibold">{readText(item, 'name')}</Text>
+                  {readText(item, 'role') && (
+                    <Text fontSize="sm" color="fg.muted">
+                      {readText(item, 'role')}
+                    </Text>
+                  )}
                 </Stack>
-              </Box>
-            </Tilt>
+              </Stack>
+            </Box>
           )
         })}
       </SimpleGrid>
@@ -453,7 +459,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
 export function Team({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
-  const { frame, flat, hover, Tilt } = useCard()
+  const { frame, flat, hover, tiltRef } = useCard()
   const align = alignOf(settings)
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'name') || readText(item, 'photo'),
@@ -504,11 +510,9 @@ export function Team({ settings }: SectionProps) {
             </Stack>
           )
           return (
-            <Tilt key={item.id}>
-              <Box bg="bg.panel" rounded="l3" p="4" {...frame} {...hover}>
-                {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
-              </Box>
-            </Tilt>
+            <Box key={item.id} ref={tiltRef} bg="bg.panel" rounded="l3" p="4" {...frame} {...hover}>
+              {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
+            </Box>
           )
         })}
       </SimpleGrid>
@@ -523,7 +527,7 @@ export function Team({ settings }: SectionProps) {
 export function Press({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
-  const { frame, hover, Tilt } = useCard()
+  const { frame, hover, tiltRef } = useCard()
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'source') || readText(item, 'quote') || readText(item, 'logo'),
   )
@@ -561,11 +565,9 @@ export function Press({ settings }: SectionProps) {
       </Stack>
     )
     return (
-      <Tilt key={item.id}>
-        <Box bg="bg.panel" rounded="l3" p="5" {...frame} {...hover}>
-          {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
-        </Box>
-      </Tilt>
+      <Box key={item.id} ref={tiltRef} bg="bg.panel" rounded="l3" p="5" {...frame} {...hover}>
+        {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
+      </Box>
     )
   }
 
@@ -751,7 +753,7 @@ export function SplitScreen({ settings }: SectionProps) {
 export function SocialWall({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
-  const { frame, hover, Tilt } = useCard()
+  const { frame, hover, tiltRef } = useCard()
   const items = readList(settings, 'items').filter((item) => readText(item, 'image'))
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
   const handle = readText(settings, 'handle')
@@ -778,6 +780,7 @@ export function SocialWall({ settings }: SectionProps) {
           const link = readLink(item, 'link')
           const tile = (
             <Box
+              ref={tiltRef}
               position="relative"
               rounded="l1"
               overflow="hidden"
@@ -813,9 +816,9 @@ export function SocialWall({ settings }: SectionProps) {
             </Box>
           )
           return (
-            <Tilt key={item.id}>
+            <Fragment key={item.id}>
               {link.kind === 'none' ? tile : <SmartLink link={link}>{tile}</SmartLink>}
-            </Tilt>
+            </Fragment>
           )
         })}
       </SimpleGrid>

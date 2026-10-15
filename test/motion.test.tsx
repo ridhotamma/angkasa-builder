@@ -20,7 +20,7 @@ import {
   sampleStorefrontData,
   SectionsRenderer,
   STICKY_BELOW_HEADER,
-  Tilt,
+  useTilt,
   type RenderEnvironment,
 } from '../src/render/index'
 import { dividerContainerStyle, surfacePaint } from '../src/render/dividers'
@@ -346,13 +346,19 @@ describe('effect stylesheet', () => {
 })
 
 describe('pointer primitives', () => {
-  test('tilt renders statically without JavaScript', () => {
-    const tilted = render(
-      <Tilt>
-        <span>Card</span>
-      </Tilt>,
-    )
+  test('a tilted card renders its own markup statically, with no wrapper', () => {
+    function Card() {
+      const ref = useTilt(true)
+      return (
+        <div ref={ref} data-card="">
+          Card
+        </div>
+      )
+    }
+    const tilted = render(<Card />)
     expect(tilted).toContain('Card')
+    // The tilt is a ref on the card itself; no wrapper element is added.
+    expect(tilted).toContain('data-card')
     expect(tilted).not.toContain('rotateY')
   })
 })

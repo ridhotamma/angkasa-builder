@@ -11,10 +11,10 @@
  */
 
 import { Box, Flex, type BoxProps } from '@chakra-ui/react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 import type { EntrancePreset } from '../model/section-style'
-import { revealRootMargin, useMotionEffect } from './motion/engine'
+import { loadMotion, revealRootMargin, useMotionEffect } from './motion/engine'
 
 /**
  * Whether the shopper asked their device for less motion. Server-safe:
@@ -101,58 +101,64 @@ export function SplitText({ text, ...props }: { text: string } & BoxProps) {
 }
 
 /**
- * A card leaning toward the pointer in 3D, easing flat on leave. Subtle by
- * default — a few degrees read as tactile, more reads as a toy.
+ * A card leaning toward the pointer in 3D, easing flat on leave. Returns a ref
+ * to attach to the card element itself — never a wrapper — so the tilt can
+ * never change the card's box in the layout. A no-op when disabled, under
+ * reduced motion, or on a touch pointer (there is nothing to lean toward).
  */
-export function Tilt({
-  children,
-  max = 7,
-  ...props
-}: {
-  children: ReactNode
-  /** Maximum lean in degrees, each way. */
-  max?: number
-} & BoxProps) {
+export function useTilt(enabled: boolean, max = 7): RefObject<HTMLDivElement | null> {
   const ref = useRef<HTMLDivElement>(null)
 
-  useMotionEffect(
-    ref,
-    ({ gsap }) => {
-      const element = ref.current
-      const view = element?.ownerDocument.defaultView
-      if (!element || !view) return
-      if (view.matchMedia('(pointer: coarse)').matches) return
+  useEffect(() => {
+    const element = ref.current
+    const view = element?.ownerDocument.defaultView
+    if (!enabled || !element || !view) return
+    if (view.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (view.matchMedia('(pointer: coarse)').matches) return
 
-      gsap.set(element, { transformPerspective: 900, transformStyle: 'preserve-3d' })
-      const rotateX = gsap.quickTo(element, 'rotationX', { duration: 0.45, ease: 'power3.out' })
-      const rotateY = gsap.quickTo(element, 'rotationY', { duration: 0.45, ease: 'power3.out' })
-      const onMove = (event: PointerEvent) => {
-        const rect = element.getBoundingClientRect()
-        if (rect.width === 0 || rect.height === 0) return
-        const px = (event.clientX - rect.left) / rect.width - 0.5
-        const py = (event.clientY - rect.top) / rect.height - 0.5
-        rotateY(px * max * 2)
-        rotateX(-py * max * 2)
-      }
-      const onLeave = () => {
-        rotateX(0)
-        rotateY(0)
-      }
-      element.addEventListener('pointermove', onMove)
-      element.addEventListener('pointerleave', onLeave)
-      return () => {
-        element.removeEventListener('pointermove', onMove)
-        element.removeEventListener('pointerleave', onLeave)
-      }
-    },
-    [max],
-  )
+    let cancelled = false
+    let revert: (() => void) | undefined
+    void loadMotion()
+      .then(({ gsap }) => {
+        const target = ref.current
+        if (cancelled || !target) return
+        const context = gsap.context(() => {
+          // Perspective only, never `preserve-3d`: a shared 3D space lifts the
+          // card's own picture and badges onto separate planes, which fights its
+          // `overflow: hidden` clipping and rounding. The lean reads the same.
+          gsap.set(target, { transformPerspective: 900 })
+          const rotateX = gsap.quickTo(target, 'rotationX', { duration: 0.45, ease: 'power3.out' })
+          const rotateY = gsap.quickTo(target, 'rotationY', { duration: 0.45, ease: 'power3.out' })
+          const onMove = (event: PointerEvent) => {
+            const rect = target.getBoundingClientRect()
+            if (rect.width === 0 || rect.height === 0) return
+            const px = (event.clientX - rect.left) / rect.width - 0.5
+            const py = (event.clientY - rect.top) / rect.height - 0.5
+            rotateY(px * max * 2)
+            rotateX(-py * max * 2)
+          }
+          const onLeave = () => {
+            rotateX(0)
+            rotateY(0)
+          }
+          target.addEventListener('pointermove', onMove)
+          target.addEventListener('pointerleave', onLeave)
+          return () => {
+            target.removeEventListener('pointermove', onMove)
+            target.removeEventListener('pointerleave', onLeave)
+          }
+        }, target)
+        revert = () => context.revert()
+      })
+      .catch(() => undefined)
 
-  return (
-    <Box ref={ref} willChange="transform" {...props}>
-      {children}
-    </Box>
-  )
+    return () => {
+      cancelled = true
+      revert?.()
+    }
+  }, [enabled, max])
+
+  return ref
 }
 
 /**

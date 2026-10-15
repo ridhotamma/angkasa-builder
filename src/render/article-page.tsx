@@ -125,41 +125,39 @@ function Cover({ article, ratio = 16 / 9 }: { article: StorefrontArticleCard; ra
  * its row — the same card in both places, under the theme's card style.
  */
 export function ArticleCard({ article }: { article: StorefrontArticleCard }) {
-  const { frame, flat, hover, Tilt } = useCard()
+  const { frame, flat, hover, tiltRef } = useCard()
   return (
-    <Tilt>
-      <Box h="full" bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
-        <SmartLink
-          link={{ kind: 'article', blogHandle: article.blogHandle, slug: article.slug }}
-          display="flex"
-          flexDirection="column"
-          h="full"
-        >
-          {(article.coverUrl || !flat) && (
-            <AspectRatio ratio={16 / 10} bg="bg.subtle" flexShrink="0" overflow="hidden">
-              <ImageWithFallback
-                src={article.coverUrl ?? undefined}
-                alt={article.title}
-                objectFit="cover"
-                loading="lazy"
-                transition="transform 600ms ease"
-              />
-            </AspectRatio>
-          )}
-          <Stack gap="2" p={flat ? '2' : { base: '4', md: '5' }} flex="1">
-            <MetaLine article={article} showAuthor={false} />
-            <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="semibold" lineClamp={2}>
-              {article.title}
+    <Box ref={tiltRef} h="full" bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
+      <SmartLink
+        link={{ kind: 'article', blogHandle: article.blogHandle, slug: article.slug }}
+        display="flex"
+        flexDirection="column"
+        h="full"
+      >
+        {(article.coverUrl || !flat) && (
+          <AspectRatio ratio={16 / 10} bg="bg.subtle" flexShrink="0" overflow="hidden">
+            <ImageWithFallback
+              src={article.coverUrl ?? undefined}
+              alt={article.title}
+              objectFit="cover"
+              loading="lazy"
+              transition="transform 600ms ease"
+            />
+          </AspectRatio>
+        )}
+        <Stack gap="2" p={flat ? '2' : { base: '4', md: '5' }} flex="1">
+          <MetaLine article={article} showAuthor={false} />
+          <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="semibold" lineClamp={2}>
+            {article.title}
+          </Text>
+          {article.summary && (
+            <Text fontSize="sm" color="fg.muted" lineClamp={3}>
+              {article.summary}
             </Text>
-            {article.summary && (
-              <Text fontSize="sm" color="fg.muted" lineClamp={3}>
-                {article.summary}
-              </Text>
-            )}
-          </Stack>
-        </SmartLink>
-      </Box>
-    </Tilt>
+          )}
+        </Stack>
+      </SmartLink>
+    </Box>
   )
 }
 

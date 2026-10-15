@@ -123,15 +123,15 @@ describe('card hover', () => {
     expect(html).toMatch(/::before\{display:none/)
   })
 
-  test('tilt wraps the card in the 3D lean, and only when chosen', () => {
-    const tilted = render(
-      'cards',
-      { card: 'text', items: [{ title: 'A' }] },
-      { cardHover: ['tilt'] },
-    )
-    expect(tilted).toContain('will-change:transform')
-    const still = render('cards', { card: 'text', items: [{ title: 'A' }] }, { cardHover: [] })
-    expect(still).not.toContain('will-change:transform')
+  test('tilt stands the CSS lift and its transform transition down', () => {
+    // The tilt transforms the card itself (GSAP); the CSS lift would fight it,
+    // so it and its `transform` transition stand down — the shadow still moves.
+    const tilted = render('latest-products', {}, { cardHover: ['lift', 'tilt'] })
+    expect(tilted).not.toMatch(LIFT)
+    expect(tilted).not.toContain('transform 250ms ease, box-shadow')
+    // Without tilt, the lift is back.
+    const lifted = render('latest-products', {}, { cardHover: ['lift'] })
+    expect(lifted).toMatch(LIFT)
   })
 
   test('none at all leaves the cards still', () => {

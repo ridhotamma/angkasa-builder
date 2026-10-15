@@ -573,7 +573,7 @@ function IntroBand({ settings }: { settings: FieldValues }) {
 
 function CategoryRail({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
-  const { frame, hover, Tilt } = useCard()
+  const { frame, hover, tiltRef } = useCard()
   const empty = useEmptyText()
   const categories = data.categories.slice(0, readNumber(settings, 'limit', 12))
 
@@ -592,27 +592,33 @@ function CategoryRail({ settings }: SectionProps) {
       ) : (
         <SimpleGrid columns={{ base: 3, md: 5, lg: 6 }} gap="3">
           {categories.map((category) => (
-            <Tilt key={category.id}>
-              <Card.Root bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
-                <SmartLink link={{ kind: 'category', slug: category.slug }} display="block">
-                  <AspectRatio ratio={1} bg="bg.subtle">
-                    <ImageWithFallback
-                      src={category.imageUrl ?? undefined}
-                      alt=""
-                      objectFit="cover"
-                      loading="lazy"
-                      fallbackIconSize="6"
-                      transition="transform 600ms ease"
-                    />
-                  </AspectRatio>
-                  <Box p="2.5">
-                    <Text fontSize="sm" fontWeight="medium" textAlign="center" lineClamp={2}>
-                      {category.name}
-                    </Text>
-                  </Box>
-                </SmartLink>
-              </Card.Root>
-            </Tilt>
+            <Card.Root
+              key={category.id}
+              ref={tiltRef}
+              bg="bg.panel"
+              rounded="l3"
+              overflow="hidden"
+              {...frame}
+              {...hover}
+            >
+              <SmartLink link={{ kind: 'category', slug: category.slug }} display="block">
+                <AspectRatio ratio={1} bg="bg.subtle">
+                  <ImageWithFallback
+                    src={category.imageUrl ?? undefined}
+                    alt=""
+                    objectFit="cover"
+                    loading="lazy"
+                    fallbackIconSize="6"
+                    transition="transform 600ms ease"
+                  />
+                </AspectRatio>
+                <Box p="2.5">
+                  <Text fontSize="sm" fontWeight="medium" textAlign="center" lineClamp={2}>
+                    {category.name}
+                  </Text>
+                </Box>
+              </SmartLink>
+            </Card.Root>
           ))}
         </SimpleGrid>
       )}
@@ -1080,7 +1086,7 @@ function ImageWithText({ settings }: SectionProps) {
 
 function ImageGallery({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
-  const { frame, flat, hover, Tilt } = useCard()
+  const { frame, flat, hover, tiltRef } = useCard()
   const empty = useEmptyText()
   const items = readList(settings, 'items')
 
@@ -1098,38 +1104,38 @@ function ImageGallery({ settings }: SectionProps) {
             const fileId = readText(item, 'image')
             const caption = readText(item, 'caption')
             return (
-              <Tilt key={item.id}>
-                <Card.Root
-                  h="full"
-                  bg="bg.panel"
-                  rounded="l3"
-                  overflow="hidden"
-                  {...frame}
-                  {...hover}
-                >
-                  <SmartLink link={readLink(item, 'link')} display="block">
-                    <AspectRatio
-                      ratio={1}
-                      bg="bg.subtle"
-                      rounded={flat ? 'l3' : undefined}
-                      overflow="hidden"
-                    >
-                      <ImageWithFallback
-                        src={(fileId && imageUrl(fileId, { width: 600, height: 600 })) || undefined}
-                        alt={caption}
-                        objectFit="cover"
-                        loading="lazy"
-                        transition="transform 600ms ease"
-                      />
-                    </AspectRatio>
-                    {caption && (
-                      <Text fontSize="sm" color="fg.muted" p={flat ? '2' : '3'}>
-                        {caption}
-                      </Text>
-                    )}
-                  </SmartLink>
-                </Card.Root>
-              </Tilt>
+              <Card.Root
+                key={item.id}
+                ref={tiltRef}
+                h="full"
+                bg="bg.panel"
+                rounded="l3"
+                overflow="hidden"
+                {...frame}
+                {...hover}
+              >
+                <SmartLink link={readLink(item, 'link')} display="block">
+                  <AspectRatio
+                    ratio={1}
+                    bg="bg.subtle"
+                    rounded={flat ? 'l3' : undefined}
+                    overflow="hidden"
+                  >
+                    <ImageWithFallback
+                      src={(fileId && imageUrl(fileId, { width: 600, height: 600 })) || undefined}
+                      alt={caption}
+                      objectFit="cover"
+                      loading="lazy"
+                      transition="transform 600ms ease"
+                    />
+                  </AspectRatio>
+                  {caption && (
+                    <Text fontSize="sm" color="fg.muted" p={flat ? '2' : '3'}>
+                      {caption}
+                    </Text>
+                  )}
+                </SmartLink>
+              </Card.Root>
             )
           })}
         </SimpleGrid>
@@ -1319,7 +1325,7 @@ function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; au
 
 /** The quote, then who said it — with their photo, or their initials without one. */
 function TestimonialCard({ item }: { item: TestimonialItem }) {
-  const { frame, hover, Tilt } = useCard()
+  const { frame, hover, tiltRef } = useCard()
   const { imageUrl } = useRenderEnvironment()
   const author = readText(item, 'author')
   const role = readText(item, 'role')
@@ -1327,48 +1333,46 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
   const src = avatar ? imageUrl(avatar, { width: 96, height: 96 }) : null
 
   return (
-    <Tilt>
-      <Card.Root bg="bg.subtle" rounded="l3" w="full" h="full" {...frame} {...hover}>
-        <Card.Body gap="4" justifyContent="space-between">
-          <Text fontSize="lg" lineHeight="tall">
-            “{readText(item, 'quote')}”
-          </Text>
-          {(author || src) && (
-            <HStack gap="3">
-              <Avatar.Root size="md" flexShrink="0">
-                <Avatar.Fallback name={author || undefined} />
-                {/* A plain image over the initials rather than `Avatar.Image`,
+    <Card.Root ref={tiltRef} bg="bg.subtle" rounded="l3" w="full" h="full" {...frame} {...hover}>
+      <Card.Body gap="4" justifyContent="space-between">
+        <Text fontSize="lg" lineHeight="tall">
+          “{readText(item, 'quote')}”
+        </Text>
+        {(author || src) && (
+          <HStack gap="3">
+            <Avatar.Root size="md" flexShrink="0">
+              <Avatar.Fallback name={author || undefined} />
+              {/* A plain image over the initials rather than `Avatar.Image`,
                   which stays hidden until its script runs — a cached photo
                   would otherwise never appear. */}
-                {src && (
-                  <ImageWithFallback
-                    src={src}
-                    alt=""
-                    fallback={false}
-                    position="absolute"
-                    inset="0"
-                    boxSize="full"
-                    objectFit="cover"
-                    rounded="inherit"
-                    loading="lazy"
-                  />
-                )}
-              </Avatar.Root>
-              <Box minW="0">
-                <Text fontWeight="semibold" truncate>
-                  {author}
+              {src && (
+                <ImageWithFallback
+                  src={src}
+                  alt=""
+                  fallback={false}
+                  position="absolute"
+                  inset="0"
+                  boxSize="full"
+                  objectFit="cover"
+                  rounded="inherit"
+                  loading="lazy"
+                />
+              )}
+            </Avatar.Root>
+            <Box minW="0">
+              <Text fontWeight="semibold" truncate>
+                {author}
+              </Text>
+              {role && (
+                <Text fontSize="sm" color="fg.muted" truncate>
+                  {role}
                 </Text>
-                {role && (
-                  <Text fontSize="sm" color="fg.muted" truncate>
-                    {role}
-                  </Text>
-                )}
-              </Box>
-            </HStack>
-          )}
-        </Card.Body>
-      </Card.Root>
-    </Tilt>
+              )}
+            </Box>
+          </HStack>
+        )}
+      </Card.Body>
+    </Card.Root>
   )
 }
 
