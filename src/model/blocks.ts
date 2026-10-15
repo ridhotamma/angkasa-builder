@@ -28,7 +28,7 @@ import {
   textSizeField,
 } from './element-style'
 import type { Localized } from './localized'
-import type { SectionSchema } from './sections'
+import type { SectionPreset, SectionSchema } from './sections'
 
 /* -------------------------------------------------------------------------- */
 /* Block schemas                                                              */
@@ -83,28 +83,6 @@ const heading: BlockSchema = {
       default: 'h2',
     },
     headingSizeField(),
-    alignmentField(),
-    contentWidthField(),
-  ],
-}
-
-const text: BlockSchema = {
-  type: 'text',
-  name: { en: 'Text', id: 'Teks' },
-  description: {
-    en: 'A paragraph. Blank lines make new paragraphs.',
-    id: 'Sebuah paragraf. Baris kosong memisahkan paragraf.',
-  },
-  fields: [
-    {
-      kind: 'textarea',
-      key: 'body',
-      label: { en: 'Text', id: 'Teks' },
-      max: 2000,
-      rows: 5,
-      default: '',
-    },
-    textSizeField(),
     alignmentField(),
     contentWidthField(),
   ],
@@ -201,10 +179,43 @@ const spacer: BlockSchema = {
   type: 'spacer',
   name: { en: 'Spacer', id: 'Penyela' },
   description: {
-    en: 'A deliberate gap on the spacing scale.',
-    id: 'Jeda dengan skala jarak yang sama.',
+    en: 'A deliberate gap on the spacing scale — add a line and it becomes a divider.',
+    id: 'Jeda dengan skala jarak yang sama — tambahkan garis dan menjadi pembatas.',
   },
-  fields: [spaceField('size', { en: 'Height', id: 'Tinggi' }, 'md')],
+  fields: [
+    spaceField('size', { en: 'Height', id: 'Tinggi' }, 'md'),
+    {
+      kind: 'boolean',
+      key: 'line',
+      label: { en: 'Show a line', id: 'Tampilkan garis' },
+      default: false,
+    },
+    {
+      kind: 'select',
+      key: 'thickness',
+      label: { en: 'Line thickness', id: 'Ketebalan garis' },
+      options: [
+        { value: 'thin', label: { en: 'Hairline', id: 'Sangat tipis' } },
+        { value: 'medium', label: { en: 'Thin', id: 'Tipis' } },
+        { value: 'thick', label: { en: 'Thick', id: 'Tebal' } },
+      ],
+      default: 'thin',
+    },
+    {
+      kind: 'select',
+      key: 'tone',
+      label: { en: 'Line colour', id: 'Warna garis' },
+      options: [
+        { value: 'subtle', label: { en: 'Subtle', id: 'Samar' } },
+        { value: 'border', label: { en: 'Border', id: 'Garis tepi' } },
+        { value: 'strong', label: { en: 'Strong', id: 'Kuat' } },
+        { value: 'brand', label: { en: 'Brand', id: 'Brand' } },
+      ],
+      default: 'border',
+    },
+    contentWidthField(),
+    alignmentField(),
+  ],
 }
 
 const column: BlockSchema = {
@@ -220,42 +231,6 @@ const column: BlockSchema = {
     spaceField('padding', { en: 'Vertical padding', id: 'Jarak dalam' }, 'none'),
     contentWidthField(),
     alignmentField(),
-  ],
-}
-
-const columns: BlockSchema = {
-  type: 'columns',
-  name: { en: 'Two columns', id: 'Dua kolom' },
-  description: {
-    en: 'Two columns side by side, stacking on phones.',
-    id: 'Dua kolom berdampingan, menumpuk di ponsel.',
-  },
-  fields: [
-    {
-      kind: 'select',
-      key: 'layout',
-      label: { en: 'Layout', id: 'Tata letak' },
-      options: [
-        { value: 'equal', label: { en: 'Equal halves', id: 'Dua bagian sama' } },
-        { value: 'leftWide', label: { en: 'Wider left', id: 'Kiri lebih lebar' } },
-        { value: 'rightWide', label: { en: 'Wider right', id: 'Kanan lebih lebar' } },
-      ],
-      default: 'equal',
-    },
-    spaceField('gap', { en: 'Gap', id: 'Jarak' }, 'lg'),
-    {
-      kind: 'select',
-      key: 'align',
-      label: { en: 'Vertical alignment', id: 'Perataan vertikal' },
-      options: [
-        { value: 'start', label: { en: 'Top', id: 'Atas' } },
-        { value: 'center', label: { en: 'Middle', id: 'Tengah' } },
-        { value: 'end', label: { en: 'Bottom', id: 'Bawah' } },
-      ],
-      default: 'start',
-    },
-    nested('left', { en: 'Left column', id: 'Kolom kiri' }, 20),
-    nested('right', { en: 'Right column', id: 'Kolom kanan' }, 20),
   ],
 }
 
@@ -330,6 +305,18 @@ const grid: BlockSchema = {
       })),
       default: '2',
     },
+    {
+      kind: 'select',
+      key: 'widths',
+      label: { en: 'Column widths', id: 'Lebar kolom' },
+      options: [
+        { value: 'equal', label: { en: 'Equal halves', id: 'Dua bagian sama' } },
+        { value: 'leftWide', label: { en: 'Wider left', id: 'Kiri lebih lebar' } },
+        { value: 'rightWide', label: { en: 'Wider right', id: 'Kanan lebih lebar' } },
+      ],
+      default: 'equal',
+      showWhen: { key: 'columns', is: ['2'] },
+    },
     spaceField('gap', { en: 'Gap', id: 'Jarak' }, 'md'),
     {
       kind: 'select',
@@ -368,6 +355,7 @@ const richText: BlockSchema = {
       max: 3000,
       default: '',
     },
+    textSizeField(),
     alignmentField(),
     contentWidthField(),
   ],
@@ -412,43 +400,6 @@ const icon: BlockSchema = {
       ],
       default: 'brand',
     },
-    alignmentField(),
-  ],
-}
-
-const divider: BlockSchema = {
-  type: 'divider',
-  name: { en: 'Divider', id: 'Pembatas' },
-  description: {
-    en: 'A horizontal line, with room above and below.',
-    id: 'Garis mendatar, dengan ruang di atas dan bawahnya.',
-  },
-  fields: [
-    spaceField('spacing', { en: 'Space around', id: 'Jarak sekeliling' }, 'md'),
-    {
-      kind: 'select',
-      key: 'thickness',
-      label: { en: 'Thickness', id: 'Ketebalan' },
-      options: [
-        { value: 'thin', label: { en: 'Hairline', id: 'Sangat tipis' } },
-        { value: 'medium', label: { en: 'Thin', id: 'Tipis' } },
-        { value: 'thick', label: { en: 'Thick', id: 'Tebal' } },
-      ],
-      default: 'thin',
-    },
-    {
-      kind: 'select',
-      key: 'tone',
-      label: { en: 'Colour', id: 'Warna' },
-      options: [
-        { value: 'subtle', label: { en: 'Subtle', id: 'Samar' } },
-        { value: 'border', label: { en: 'Border', id: 'Garis tepi' } },
-        { value: 'strong', label: { en: 'Strong', id: 'Kuat' } },
-        { value: 'brand', label: { en: 'Brand', id: 'Brand' } },
-      ],
-      default: 'border',
-    },
-    contentWidthField(),
     alignmentField(),
   ],
 }
@@ -975,19 +926,16 @@ const marquee: BlockSchema = {
 
 BLOCK_TYPES.push(
   heading,
-  text,
+  richText,
   button,
   image,
   spacer,
   column,
-  columns,
   row,
   grid,
   slider,
   marquee,
-  richText,
   icon,
-  divider,
   video,
   map,
   badge,
@@ -1014,1044 +962,7 @@ export function blockSchema(type: string): BlockSchema | null {
  * Ids are deliberately absent: the sanitiser gives each block a fresh one,
  * so two copies of a preset never share ids.
  */
-const BLOCK_PRESETS = [
-  {
-    key: 'hero-split',
-    name: { en: 'Hero — split', id: 'Sampul — terbagi' },
-    description: {
-      en: 'A headline, text and a button beside a photo.',
-      id: 'Judul, teks, dan tombol di samping foto.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'grid',
-          settings: {
-            columns: '2',
-            gap: 'xl',
-            align: 'center',
-            stackOnMobile: true,
-            padding: 'none',
-            blocks: [
-              {
-                type: 'column',
-                settings: {
-                  gap: 'md',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Judul yang jelas dan percaya diri',
-                        level: 'h1',
-                        size: '3xl',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Satu-dua kalimat tentang kenapa pembeli harus memilih toko ini.',
-                        size: 'lg',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'button',
-                      settings: {
-                        label: 'Belanja sekarang',
-                        link: { kind: 'none' },
-                        size: 'lg',
-                        padding: 'default',
-                        width: 'auto',
-                        align: 'left',
-                        variant: 'solid',
-                        tone: 'brand',
-                        hover: 'fill-up',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                settings: {
-                  gap: 'md',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'image',
-                      settings: {
-                        image: '',
-                        alt: 'Foto produk',
-                        ratio: '4/3',
-                        rounded: 'lg',
-                        width: 'full',
-                        align: 'left',
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-  {
-    key: 'feature-grid',
-    name: { en: 'Features — three icons', id: 'Fitur — tiga ikon' },
-    description: {
-      en: 'Three promises, each with an icon, a title and a line of text.',
-      id: 'Tiga janji, masing-masing dengan ikon, judul, dan satu baris teks.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'grid',
-          settings: {
-            columns: '3',
-            gap: 'lg',
-            align: 'start',
-            stackOnMobile: true,
-            padding: 'none',
-            blocks: [
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'icon',
-                      settings: { icon: 'leaf', size: 'lg', tone: 'brand', align: 'left' },
-                    },
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Alami',
-                        level: 'h3',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Bahan yang bisa dilacak asalnya.',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'icon',
-                      settings: { icon: 'truck', size: 'lg', tone: 'brand', align: 'left' },
-                    },
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Kirim cepat',
-                        level: 'h3',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Dikirim di hari yang sama.',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'icon',
-                      settings: { icon: 'shield-check', size: 'lg', tone: 'brand', align: 'left' },
-                    },
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Aman',
-                        level: 'h3',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Dana ditahan sampai barang tiba.',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-  {
-    key: 'pricing-3',
-    name: { en: 'Pricing — three tiers', id: 'Harga — tiga paket' },
-    description: {
-      en: 'Three price cards side by side, the middle one highlighted.',
-      id: 'Tiga kartu harga berdampingan, yang tengah disorot.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'grid',
-          settings: {
-            columns: '3',
-            gap: 'lg',
-            align: 'stretch',
-            stackOnMobile: true,
-            padding: 'none',
-            blocks: [
-              {
-                type: 'column',
-                style: {
-                  borderWidth: '1',
-                  borderColor: '#e5e5e5',
-                  borderRadius: 'lg',
-                  padding: 'md',
-                },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    { type: 'heading', settings: { text: 'Mulai', level: 'h3', size: 'md' } },
-                    { type: 'heading', settings: { text: 'Rp 99.000', level: 'h2', size: 'xl' } },
-                    { type: 'text', settings: { body: 'Untuk toko yang baru membuka.' } },
-                    {
-                      type: 'button',
-                      settings: {
-                        label: 'Pilih paket',
-                        link: { kind: 'none' },
-                        variant: 'outline',
-                        tone: 'brand',
-                        width: 'full',
-                        align: 'left',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                style: {
-                  borderWidth: '2',
-                  borderColor: '#111111',
-                  borderRadius: 'lg',
-                  padding: 'md',
-                  backgroundColor: '#f7f7f2',
-                },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    { type: 'heading', settings: { text: 'Tumbuh', level: 'h3', size: 'md' } },
-                    { type: 'heading', settings: { text: 'Rp 199.000', level: 'h2', size: 'xl' } },
-                    { type: 'text', settings: { body: 'Untuk toko yang sedang naik.' } },
-                    {
-                      type: 'button',
-                      settings: {
-                        label: 'Pilih paket',
-                        link: { kind: 'none' },
-                        variant: 'solid',
-                        tone: 'brand',
-                        width: 'full',
-                        align: 'left',
-                        hover: 'fill-up',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                style: {
-                  borderWidth: '1',
-                  borderColor: '#e5e5e5',
-                  borderRadius: 'lg',
-                  padding: 'md',
-                },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    { type: 'heading', settings: { text: 'Besar', level: 'h3', size: 'md' } },
-                    { type: 'heading', settings: { text: 'Rp 399.000', level: 'h2', size: 'xl' } },
-                    { type: 'text', settings: { body: 'Untuk tim dan banyak produk.' } },
-                    {
-                      type: 'button',
-                      settings: {
-                        label: 'Hubungi kami',
-                        link: { kind: 'none' },
-                        variant: 'outline',
-                        tone: 'brand',
-                        width: 'full',
-                        align: 'left',
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-  {
-    key: 'faq-list',
-    name: { en: 'FAQ — questions and answers', id: 'Tanya jawab — daftar' },
-    description: {
-      en: 'A stack of question-and-answer pairs.',
-      id: 'Tumpukan pasangan pertanyaan dan jawaban.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'column',
-          settings: {
-            gap: 'lg',
-            padding: 'none',
-            width: 'medium',
-            align: 'left',
-            blocks: [
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Berapa lama pengirimannya?',
-                        level: 'h3',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Diproses 1×24 jam, tiba 1–4 hari tergantung kota.',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Apakah bisa COD?',
-                        level: 'h3',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Bisa, untuk area yang didukung kurir.',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Bagaimana cara retur?',
-                        level: 'h3',
-                        size: 'md',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Ajukan dalam 7 hari lewat halaman pesanan.',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-  {
-    key: 'cta-band',
-    name: { en: 'Call to action — centered band', id: 'Ajakan — pita tengah' },
-    description: {
-      en: 'A short message and a button on a brand-coloured band.',
-      id: 'Pesan singkat dan tombol di pita warna brand.',
-    },
-    settings: {
-      gap: 'md',
-      blocks: [
-        {
-          type: 'column',
-          settings: {
-            gap: 'md',
-            padding: 'none',
-            width: 'medium',
-            align: 'center',
-            blocks: [
-              {
-                type: 'heading',
-                settings: {
-                  text: 'Siap mulai?',
-                  level: 'h2',
-                  size: '2xl',
-                  align: 'center',
-                  width: 'full',
-                },
-              },
-              {
-                type: 'text',
-                settings: {
-                  body: 'Gabung bersama ribuan pembeli yang sudah menemukan barang favoritnya.',
-                  size: 'lg',
-                  align: 'center',
-                  width: 'full',
-                },
-              },
-              {
-                type: 'button',
-                settings: {
-                  label: 'Mulai sekarang',
-                  link: { kind: 'none' },
-                  size: 'lg',
-                  padding: 'default',
-                  width: 'auto',
-                  align: 'center',
-                  variant: 'solid',
-                  tone: 'brand',
-                  hover: 'fill-up',
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-    style: { colorScheme: 'brand', paddingTop: 'xl', paddingBottom: 'xl' },
-  },
-  {
-    key: 'stats-row',
-    name: { en: 'Stats — three numbers', id: 'Statistik — tiga angka' },
-    description: {
-      en: 'Three big numbers with a line each.',
-      id: 'Tiga angka besar dengan satu baris penjelasan.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'grid',
-          settings: {
-            columns: '3',
-            gap: 'lg',
-            align: 'start',
-            stackOnMobile: true,
-            padding: 'none',
-            blocks: [
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'center',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: '10rb+',
-                        level: 'h2',
-                        size: '2xl',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: { body: 'Pesanan dikirim', align: 'center', width: 'full' },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'center',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: '4,9/5',
-                        level: 'h2',
-                        size: '2xl',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: { body: 'Rating pembeli', align: 'center', width: 'full' },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'center',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: '24 jam',
-                        level: 'h2',
-                        size: '2xl',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: { body: 'Balasan tim kami', align: 'center', width: 'full' },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-  {
-    key: 'statement',
-    name: { en: 'Statement — editorial', id: 'Pernyataan — editorial' },
-    description: {
-      en: 'A large centred statement over a dark band.',
-      id: 'Pernyataan besar di tengah pita gelap.',
-    },
-    settings: {
-      gap: 'md',
-      blocks: [
-        {
-          type: 'column',
-          settings: {
-            gap: 'md',
-            padding: 'none',
-            width: 'medium',
-            align: 'center',
-            blocks: [
-              {
-                type: 'badge',
-                settings: { text: 'Kabar terbaru', tone: 'subtle', size: 'sm', align: 'center' },
-              },
-              {
-                type: 'heading',
-                settings: {
-                  text: 'Satu pernyataan yang jelas',
-                  level: 'h2',
-                  size: '3xl',
-                  align: 'center',
-                  width: 'full',
-                },
-              },
-              {
-                type: 'richtext',
-                settings: {
-                  body: 'Dua-tiga kalimat yang menjelaskan kenapa ini penting, dengan penekanan pada hal yang benar-benar kamu percaya.',
-                  align: 'center',
-                  width: 'full',
-                },
-              },
-              {
-                type: 'button',
-                settings: {
-                  label: 'Baca selengkapnya',
-                  link: { kind: 'none' },
-                  size: 'lg',
-                  padding: 'default',
-                  width: 'auto',
-                  align: 'center',
-                  variant: 'outline',
-                  tone: 'brand',
-                  hover: 'fill-up',
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-    style: { colorScheme: 'inverse', paddingTop: 'xl', paddingBottom: 'xl' },
-  },
-  {
-    key: 'image-text',
-    name: { en: 'Image and text', id: 'Gambar dan teks' },
-    description: {
-      en: 'A photo beside a heading, a paragraph and a button.',
-      id: 'Foto di samping judul, paragraf, dan tombol.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'grid',
-          settings: {
-            columns: '2',
-            gap: 'xl',
-            align: 'center',
-            stackOnMobile: true,
-            padding: 'none',
-            blocks: [
-              {
-                type: 'image',
-                settings: {
-                  image: '',
-                  alt: 'Foto produk',
-                  ratio: '4/3',
-                  rounded: 'lg',
-                  width: 'full',
-                  align: 'left',
-                },
-              },
-              {
-                type: 'column',
-                settings: {
-                  gap: 'md',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: { text: 'Judul bagian', level: 'h2', size: 'xl' },
-                    },
-                    {
-                      type: 'richtext',
-                      settings: {
-                        body: 'Ceritakan bahan, proses, atau alasan barang ini dibuat.',
-                        align: 'left',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'button',
-                      settings: {
-                        label: 'Selengkapnya',
-                        link: { kind: 'none' },
-                        size: 'md',
-                        padding: 'default',
-                        width: 'auto',
-                        align: 'left',
-                        variant: 'solid',
-                        tone: 'brand',
-                        hover: 'fill-up',
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-  {
-    key: 'cards-three',
-    name: { en: 'Cards — three', id: 'Kartu — tiga' },
-    description: {
-      en: 'Three bordered cards with a title and a line of text each.',
-      id: 'Tiga kartu bergaris dengan judul dan satu baris teks.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'grid',
-          settings: {
-            columns: '3',
-            gap: 'lg',
-            align: 'stretch',
-            stackOnMobile: true,
-            padding: 'none',
-            blocks: [
-              {
-                type: 'column',
-                style: {
-                  padding: 'md',
-                  borderRadius: 'lg',
-                  borderWidth: '1',
-                  borderColor: '#e5e5e5',
-                },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    { type: 'heading', settings: { text: 'Judul kartu', level: 'h3', size: 'md' } },
-                    { type: 'text', settings: { body: 'Satu-dua baris penjelasan singkat.' } },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                style: {
-                  padding: 'md',
-                  borderRadius: 'lg',
-                  borderWidth: '1',
-                  borderColor: '#e5e5e5',
-                },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    { type: 'heading', settings: { text: 'Judul kartu', level: 'h3', size: 'md' } },
-                    { type: 'text', settings: { body: 'Satu-dua baris penjelasan singkat.' } },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                style: {
-                  padding: 'md',
-                  borderRadius: 'lg',
-                  borderWidth: '1',
-                  borderColor: '#e5e5e5',
-                },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    { type: 'heading', settings: { text: 'Judul kartu', level: 'h3', size: 'md' } },
-                    { type: 'text', settings: { body: 'Satu-dua baris penjelasan singkat.' } },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-  {
-    key: 'photo-cards',
-    name: { en: 'Cards — photos with text', id: 'Kartu — foto dengan teks' },
-    description: {
-      en: 'Three cards, each a full photo with a title and a line centred on it.',
-      id: 'Tiga kartu, masing-masing foto penuh dengan judul dan satu baris teks di tengahnya.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'heading',
-          settings: {
-            text: 'Pilih favoritmu',
-            level: 'h2',
-            size: 'xl',
-            align: 'center',
-            width: 'full',
-          },
-        },
-        {
-          type: 'grid',
-          settings: {
-            columns: '3',
-            gap: 'lg',
-            align: 'stretch',
-            stackOnMobile: true,
-            padding: 'none',
-            blocks: [
-              {
-                type: 'media-card',
-                settings: {
-                  image: '',
-                  alt: '',
-                  overlay: 'gradient',
-                  contentPosition: 'middle',
-                  height: 'md',
-                  padding: 'md',
-                  gap: 'sm',
-                  rounded: 'lg',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Judul kartu',
-                        level: 'h3',
-                        size: 'lg',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Satu-dua baris penjelasan singkat.',
-                        size: 'md',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'media-card',
-                settings: {
-                  image: '',
-                  alt: '',
-                  overlay: 'gradient',
-                  contentPosition: 'middle',
-                  height: 'md',
-                  padding: 'md',
-                  gap: 'sm',
-                  rounded: 'lg',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Judul kartu',
-                        level: 'h3',
-                        size: 'lg',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Satu-dua baris penjelasan singkat.',
-                        size: 'md',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                type: 'media-card',
-                settings: {
-                  image: '',
-                  alt: '',
-                  overlay: 'gradient',
-                  contentPosition: 'middle',
-                  height: 'md',
-                  padding: 'md',
-                  gap: 'sm',
-                  rounded: 'lg',
-                  blocks: [
-                    {
-                      type: 'heading',
-                      settings: {
-                        text: 'Judul kartu',
-                        level: 'h3',
-                        size: 'lg',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                    {
-                      type: 'text',
-                      settings: {
-                        body: 'Satu-dua baris penjelasan singkat.',
-                        size: 'md',
-                        align: 'center',
-                        width: 'full',
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-  {
-    key: 'reviews-three',
-    name: { en: 'Reviews — three cards', id: 'Ulasan — tiga kartu' },
-    description: {
-      en: 'Three customer quotes in soft cards.',
-      id: 'Tiga kutipan pelanggan dalam kartu lembut.',
-    },
-    settings: {
-      gap: 'lg',
-      blocks: [
-        {
-          type: 'grid',
-          settings: {
-            columns: '3',
-            gap: 'lg',
-            align: 'stretch',
-            stackOnMobile: true,
-            padding: 'none',
-            blocks: [
-              {
-                type: 'column',
-                style: { padding: 'md', borderRadius: 'lg', backgroundColor: '#f5f5f5' },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'text',
-                      settings: { body: '“Kualitasnya melebihi ekspektasi.”', size: 'lg' },
-                    },
-                    { type: 'heading', settings: { text: 'Rina', level: 'h3', size: 'md' } },
-                    { type: 'text', settings: { body: 'Jakarta' } },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                style: { padding: 'md', borderRadius: 'lg', backgroundColor: '#f5f5f5' },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    {
-                      type: 'text',
-                      settings: { body: '“Sampainya cepat dan packing rapi.”', size: 'lg' },
-                    },
-                    { type: 'heading', settings: { text: 'Bagas', level: 'h3', size: 'md' } },
-                    { type: 'text', settings: { body: 'Bandung' } },
-                  ],
-                },
-              },
-              {
-                type: 'column',
-                style: { padding: 'md', borderRadius: 'lg', backgroundColor: '#f5f5f5' },
-                settings: {
-                  gap: 'sm',
-                  padding: 'none',
-                  width: 'full',
-                  align: 'left',
-                  blocks: [
-                    { type: 'text', settings: { body: '“Adminnya cepat membantu.”', size: 'lg' } },
-                    { type: 'heading', settings: { text: 'Sari', level: 'h3', size: 'md' } },
-                    { type: 'text', settings: { body: 'Surabaya' } },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-] as const
+const BLOCK_PRESETS: readonly SectionPreset[] = []
 
 // `as const` keeps the section's type a literal, so the library's union of
 // section types does not widen to `string` where this schema is registered.
@@ -2071,7 +982,7 @@ export const blocksSectionSchema = {
       label: { en: 'Content', id: 'Konten' },
       max: 60,
       blocks: BLOCK_TYPES,
-      defaultBlocks: ['heading', 'text', 'button'],
+      defaultBlocks: ['heading', 'richtext', 'button'],
       styleFields: BLOCK_STYLE_FIELDS,
     },
     spaceField('gap', { en: 'Spacing between blocks', id: 'Jarak antar blok' }, 'md'),

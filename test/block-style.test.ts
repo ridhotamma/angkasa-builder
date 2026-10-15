@@ -445,7 +445,7 @@ describe('layout blocks', () => {
       ],
     })
     expect(readBlocks(values, 'blocks').map((block) => block.type)).toEqual(['row', 'grid'])
-    expect(findBlock([field], values, 'r-child')?.block.type).toBe('text')
+    expect(findBlock([field], values, 'r-child')?.block.type).toBe('richtext')
     expect(findBlock([field], values, 'g-child')?.block.type).toBe('heading')
     expect(createSection('blocks', { blocks: [] })).toBeTruthy()
   })

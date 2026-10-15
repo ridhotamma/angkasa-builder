@@ -438,27 +438,29 @@ export function AddPalette({
         </Stack>
       ) : (
         <Stack gap="5">
-          <Stack gap="2">
-            <GroupHeading>{t('paletteLayouts')}</GroupHeading>
-            <SimpleGrid columns={1} gap="2">
-              {blockPresets
-                .filter((preset) => match(l(preset.name), l(preset.description)))
-                .map((preset) => (
-                  <PaletteCard
-                    key={preset.key}
-                    item={{
-                      kind: 'blocks',
-                      blocks: presetBlocks(preset),
-                      label: l(preset.name),
-                    }}
-                    name={l(preset.name)}
-                    description={l(preset.description)}
-                    icon={<Icon as={LuLayoutGrid} boxSize="4.5" />}
-                    onAdd={() => onAddBlocks(presetBlocks(preset), l(preset.name))}
-                  />
-                ))}
-            </SimpleGrid>
-          </Stack>
+          {blockPresets.length > 0 && (
+            <Stack gap="2">
+              <GroupHeading>{t('paletteLayouts')}</GroupHeading>
+              <SimpleGrid columns={1} gap="2">
+                {blockPresets
+                  .filter((preset) => match(l(preset.name), l(preset.description)))
+                  .map((preset) => (
+                    <PaletteCard
+                      key={preset.key}
+                      item={{
+                        kind: 'blocks',
+                        blocks: presetBlocks(preset),
+                        label: l(preset.name),
+                      }}
+                      name={l(preset.name)}
+                      description={l(preset.description)}
+                      icon={<Icon as={LuLayoutGrid} boxSize="4.5" />}
+                      onAdd={() => onAddBlocks(presetBlocks(preset), l(preset.name))}
+                    />
+                  ))}
+              </SimpleGrid>
+            </Stack>
+          )}
           <Stack gap="2">
             <GroupHeading>{t('palettePrimitives')}</GroupHeading>
             <SimpleGrid columns={1} gap="2">

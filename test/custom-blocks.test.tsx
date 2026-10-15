@@ -147,10 +147,11 @@ function render(node: ReactNode): string {
 describe('custom blocks and widgets', () => {
   test('a registered widget becomes a first-class block', () => {
     const stored = readBlocks(section().settings, 'blocks')
+    // The `text` block converges on `richtext` through the block alias.
     expect(stored.map((block) => block.type)).toEqual([
       'test-widget-calculator',
       'test-custom-layout',
-      'text',
+      'richtext',
     ])
     expect(registeredBlock('test-widget-calculator')?.name.en).toBe('Calculator')
     expect(layoutBlock.type).toBe('test-custom-layout')

@@ -45,7 +45,7 @@ const headingBlock = (text: string, level = 'h2', size = 'lg') => ({
 })
 
 const textBlock = (body: string, size = 'md') => ({
-  type: 'text',
+  type: 'richtext',
   settings: { body, size, align: 'left', width: 'full' },
 })
 

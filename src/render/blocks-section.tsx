@@ -223,20 +223,17 @@ function BlockView({ block }: { block: BlockValue }) {
 /** The built-in blocks; a registered renderer of the same type wins. */
 const BUILT_IN_BLOCKS: Record<string, BlockRenderer> = {
   heading: HeadingBlock,
-  text: TextBlock,
   button: ButtonBlock,
   image: ImageBlock,
   'media-card': MediaCardBlock,
   spacer: SpacerBlock,
   column: ColumnBlock,
-  columns: ColumnsBlock,
   row: RowBlock,
   grid: GridBlock,
   slider: SliderBlock,
   marquee: MarqueeBlock,
   richtext: RichTextBlock,
   icon: IconBlock,
-  divider: DividerBlock,
   video: VideoBlock,
   map: MapBlock,
   badge: BadgeBlock,
@@ -525,35 +522,6 @@ function HeadingBlock({ block }: { block: BlockValue }) {
   )
 }
 
-function TextBlock({ block }: { block: BlockValue }) {
-  const { mode, editing } = useRenderEnvironment()
-  const sectionId = useContext(SectionIdContext)
-  const value = readText(block.settings, 'body')
-  const editingThis =
-    mode === 'preview' &&
-    Boolean(editing?.onEditBlockText) &&
-    Boolean(sectionId) &&
-    editing?.selectedBlockId === block.id
-  if (!value && !editingThis) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.text} />
-  const size = TEXT_FONT_SIZE[readToken(block.settings, 'size', TEXT_SIZES, 'md')]
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
-  const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
-  return (
-    <BlockText
-      block={block}
-      field="body"
-      value={value}
-      as="p"
-      color="fg.muted"
-      fontSize={size}
-      lineHeight="tall"
-      whiteSpace="pre-line"
-      {...contentLayout(width, align)}
-      {...blockTextOverrides(block)}
-    />
-  )
-}
-
 function ButtonBlock({ block }: { block: BlockValue }) {
   const { settings } = useRenderEnvironment()
   const label = readText(block.settings, 'label')
@@ -714,8 +682,34 @@ function MediaCardBlock({ block }: { block: BlockValue }) {
   )
 }
 
+const DIVIDER_THICKNESS: Record<string, string> = {
+  thin: '1px',
+  medium: '2px',
+  thick: '4px',
+}
+const DIVIDER_THICKNESS_KEYS = ['thin', 'medium', 'thick'] as const
+
+const DIVIDER_TONES: Record<string, string> = {
+  subtle: 'var(--chakra-colors-border-subtle)',
+  border: 'var(--chakra-colors-border)',
+  strong: 'var(--chakra-colors-fg)',
+  brand: 'var(--chakra-colors-brand-solid)',
+}
+const DIVIDER_TONE_KEYS = ['subtle', 'border', 'strong', 'brand'] as const
+
+/** A gap on the spacing scale — a spacer with `line` set draws the rule. */
 function SpacerBlock({ block }: { block: BlockValue }) {
-  return <Box h={SPACE_HEIGHT[readToken(block.settings, 'size', SPACES, 'md')]} aria-hidden />
+  const size = readToken(block.settings, 'size', SPACES, 'md')
+  if (!readBoolean(block.settings, 'line')) return <Box h={SPACE_HEIGHT[size]} aria-hidden />
+  const thickness = readToken(block.settings, 'thickness', DIVIDER_THICKNESS_KEYS, 'thin')
+  const tone = readToken(block.settings, 'tone', DIVIDER_TONE_KEYS, 'border')
+  const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  return (
+    <Box py={SPACE_GAP[size]} {...contentLayout(width, align)}>
+      <Box h={DIVIDER_THICKNESS[thickness]} bg={DIVIDER_TONES[tone]} rounded="full" />
+    </Box>
+  )
 }
 
 /* -------------------------------------------------------------------------- */
@@ -725,15 +719,12 @@ function SpacerBlock({ block }: { block: BlockValue }) {
 function RichTextBlock({ block }: { block: BlockValue }) {
   const doc = readRichText(block.settings, 'body')
   if (isRichDocEmpty(doc)) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.richtext} />
+  const size = TEXT_FONT_SIZE[readToken(block.settings, 'size', TEXT_SIZES, 'md')]
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   return (
-    <Box {...contentLayout(width, align)}>
-      <RichTextView
-        doc={doc}
-        align={align === 'center' ? 'center' : 'left'}
-        style={blockTextOverrides(block)}
-      />
+    <Box {...contentLayout(width, align)} fontSize={size} {...blockTextOverrides(block)}>
+      <RichTextView doc={doc} align={align === 'center' ? 'center' : 'left'} />
     </Box>
   )
 }
@@ -765,34 +756,6 @@ function IconBlock({ block }: { block: BlockValue }) {
         aria-hidden
       />
     </Flex>
-  )
-}
-
-const DIVIDER_THICKNESS: Record<string, string> = {
-  thin: '1px',
-  medium: '2px',
-  thick: '4px',
-}
-const DIVIDER_THICKNESS_KEYS = ['thin', 'medium', 'thick'] as const
-
-const DIVIDER_TONES: Record<string, string> = {
-  subtle: 'var(--chakra-colors-border-subtle)',
-  border: 'var(--chakra-colors-border)',
-  strong: 'var(--chakra-colors-fg)',
-  brand: 'var(--chakra-colors-brand-solid)',
-}
-const DIVIDER_TONE_KEYS = ['subtle', 'border', 'strong', 'brand'] as const
-
-function DividerBlock({ block }: { block: BlockValue }) {
-  const spacing = readToken(block.settings, 'spacing', SPACES, 'md')
-  const thickness = readToken(block.settings, 'thickness', DIVIDER_THICKNESS_KEYS, 'thin')
-  const tone = readToken(block.settings, 'tone', DIVIDER_TONE_KEYS, 'border')
-  const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
-  return (
-    <Box py={SPACE_GAP[spacing]} {...contentLayout(width, align)}>
-      <Box h={DIVIDER_THICKNESS[thickness]} bg={DIVIDER_TONES[tone]} rounded="full" />
-    </Box>
   )
 }
 
@@ -1035,41 +998,6 @@ const COLUMN_JUSTIFY: Record<string, string> = {
 }
 
 const COLUMN_LAYOUTS = ['equal', 'leftWide', 'rightWide'] as const
-const COLUMN_ALIGNS = ['start', 'center', 'end'] as const
-
-function ColumnsBlock({ block }: { block: BlockValue }) {
-  const layout = readToken(block.settings, 'layout', COLUMN_LAYOUTS, 'equal')
-  const align = readToken(block.settings, 'align', COLUMN_ALIGNS, 'start')
-  const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'lg')]
-  const justify = COLUMN_JUSTIFY[align]
-  return (
-    // The grid stretches, so each side's stack fills the tallest column's
-    // height — that height is what a sticky block inside a column travels
-    // within. The chosen alignment then packs the side's blocks in its stack
-    // rather than floating a content-height stack in the row.
-    <Grid
-      templateColumns={{ base: '1fr', md: COLUMN_LAYOUT[layout] }}
-      gap={gap}
-      alignItems="stretch"
-      data-block-hover-group=""
-    >
-      <BlockList
-        blocks={readBlocks(block.settings, 'left')}
-        gap={gap}
-        parentId={block.id}
-        fieldKey="left"
-        justify={justify}
-      />
-      <BlockList
-        blocks={readBlocks(block.settings, 'right')}
-        gap={gap}
-        parentId={block.id}
-        fieldKey="right"
-        justify={justify}
-      />
-    </Grid>
-  )
-}
 
 const ROW_ALIGNS = ['start', 'center', 'end', 'stretch'] as const
 const ROW_JUSTIFIES = ['start', 'center', 'end', 'between', 'around', 'evenly'] as const
@@ -1135,6 +1063,12 @@ function RowBlock({ block }: { block: BlockValue }) {
 function GridBlock({ block }: { block: BlockValue }) {
   const drop = useDropTarget(block.id, 'blocks')
   const columns = Math.min(6, Math.max(1, Number(readText(block.settings, 'columns')) || 2))
+  const widths = readToken(block.settings, 'widths', COLUMN_LAYOUTS, 'equal')
+  // A two-column grid may split unequally; any other count is equal tracks.
+  const track =
+    columns === 2 && widths !== 'equal'
+      ? COLUMN_LAYOUT[widths]
+      : `repeat(${columns}, minmax(0, 1fr))`
   const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'md')]
   const align = readToken(block.settings, 'align', ROW_ALIGNS, 'stretch')
   const stack = readBoolean(block.settings, 'stackOnMobile')
@@ -1149,10 +1083,7 @@ function GridBlock({ block }: { block: BlockValue }) {
   }
   return (
     <Grid
-      templateColumns={{
-        base: stack ? '1fr' : `repeat(${columns}, minmax(0, 1fr))`,
-        md: `repeat(${columns}, minmax(0, 1fr))`,
-      }}
+      templateColumns={{ base: stack ? '1fr' : track, md: track }}
       gap={gap}
       alignItems={ROW_ALIGN[align]}
       p={padding}

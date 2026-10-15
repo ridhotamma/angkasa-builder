@@ -110,7 +110,7 @@ const bHeading = (text: string, o: TextOptions = {}): RawBlock => ({
 })
 
 const bText = (body: string, o: TextOptions = {}): RawBlock => ({
-  type: 'text',
+  type: 'richtext',
   settings: { body, size: o.size ?? 'md', align: o.align ?? 'left', width: o.width ?? 'full' },
 })
 

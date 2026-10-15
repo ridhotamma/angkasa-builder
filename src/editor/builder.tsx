@@ -580,7 +580,7 @@ function Builder({
       return
     }
 
-    const donor = createSection('custom', { blocks: item.blocks as never })
+    const donor = createSection('blocks', { blocks: item.blocks as never })
     const created = readBlocks(donor.settings, 'blocks')
 
     if (target.kind === 'blocks') {

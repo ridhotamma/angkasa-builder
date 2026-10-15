@@ -447,7 +447,7 @@ export function SectionList({
         }}
         onAddSection={(type, preset) => insert(createStarterSection(type, preset))}
         onAddBlocks={(blocks: readonly PaletteBlock[]) =>
-          insert(createSection('custom', { blocks }))
+          insert(createSection('blocks', { blocks }))
         }
         onPaste={() => {
           if (!copied) return

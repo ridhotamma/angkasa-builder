@@ -46,13 +46,16 @@ const TREE = [
   },
   {
     id: 'cols',
-    type: 'columns',
+    type: 'grid',
     settings: {
-      layout: 'leftWide',
+      columns: '2',
+      widths: 'leftWide',
       gap: 'lg',
       align: 'center',
-      left: [{ id: 'left', type: 'heading', settings: { text: 'Left side' } }],
-      right: [{ id: 'right', type: 'text', settings: { body: 'Right side' } }],
+      blocks: [
+        { id: 'left', type: 'heading', settings: { text: 'Left side' } },
+        { id: 'right', type: 'richtext', settings: { body: 'Right side' } },
+      ],
     },
   },
   { id: 'gap', type: 'spacer', settings: { size: 'xl' } },
@@ -119,11 +122,11 @@ describe('blocks section, on the storefront', () => {
       blocks: [
         {
           id: 'cols',
-          type: 'columns',
+          type: 'grid',
           settings: {
-            layout: 'equal',
+            columns: '2',
             align: 'start',
-            left: [
+            blocks: [
               {
                 id: 'left',
                 type: 'column',
@@ -132,8 +135,8 @@ describe('blocks section, on the storefront', () => {
                 },
                 style: { position: 'sticky' },
               },
+              { id: 'r', type: 'richtext', settings: { body: 'Right side' } },
             ],
-            right: [{ id: 'r', type: 'text', settings: { body: 'Right side' } }],
           },
         },
       ],
@@ -176,7 +179,7 @@ describe('blocks section, in the editor preview', () => {
           onEditText: () => undefined,
           onEditBlockText: () => undefined,
           onSelectBlock: () => undefined,
-          selectedBlockId: 'body',
+          selectedBlockId: 'title',
         },
       })}
     />,
@@ -187,37 +190,22 @@ describe('blocks section, in the editor preview', () => {
       expect(html).toContain(`data-block-id="${id}"`)
     }
     expect(html).toContain('data-block-label')
-    expect(html).toContain('>Text<')
+    expect(html).toContain('>Rich text<')
   })
 
   test('block lists are marked as drop targets for the palette', () => {
     expect(html).toContain('data-block-list')
     expect(html).toContain('data-parent-id="cols"')
-    expect(html).toContain('data-field-key="left"')
+    expect(html).toContain('data-field-key="blocks"')
     // The top-level list names the section, not a block.
     expect(html).toContain('data-parent-id=""')
   })
 
-  test('only the selected text block becomes editable', () => {
+  test('only the selected block becomes editable', () => {
     const editable = html.match(/contenteditable="plaintext-only"/gi) ?? []
     expect(editable).toHaveLength(1)
-    // The editable field is the selected paragraph, not the heading.
-    expect(html).toContain('First line')
-  })
-
-  test('a columns side is a stretched stack, so a sticky column can travel', () => {
-    const at = html.indexOf('data-field-key="left"')
-    const element = html.slice(html.lastIndexOf('<', at), html.indexOf('>', at))
-    const cls =
-      element
-        .match(/class="([^"]+)"/)?.[1]
-        ?.split(/\s+/)
-        .pop() ?? ''
-    const rule = html.match(new RegExp(`\\.${cls}\\{([^}]*)\\}`))?.[1] ?? ''
-    // The chosen alignment packs the side inside a full-height stack; a
-    // content-height grid item would leave a sticky column no room to stick.
-    expect(rule).toContain('flex-direction:column')
-    expect(rule).toContain('justify-content:center')
+    // The editable field is the selected heading, not another block.
+    expect(html).toContain('Made by hand')
   })
 })
 

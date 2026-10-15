@@ -20,7 +20,7 @@ import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '
 const PRIMITIVES = [
   'richtext',
   'icon',
-  'divider',
+  'spacer',
   'video',
   'badge',
   'rating',
@@ -43,10 +43,11 @@ const TREE = [
   },
   { id: 'ic', type: 'icon', settings: { icon: 'truck', size: 'lg', tone: 'brand', align: 'left' } },
   {
-    id: 'dv',
-    type: 'divider',
+    id: 'sp',
+    type: 'spacer',
     settings: {
-      spacing: 'md',
+      size: 'md',
+      line: true,
       thickness: 'thin',
       tone: 'border',
       width: 'narrow',
@@ -112,7 +113,7 @@ describe('the expanded primitive library', () => {
     expect(readBlocks(values, 'blocks').map((block) => block.type)).toEqual([
       'richtext',
       'icon',
-      'divider',
+      'spacer',
       'badge',
       'video',
     ])
@@ -130,66 +131,25 @@ describe('the expanded primitive library', () => {
   })
 })
 
-describe('the ready-made primitive layouts', () => {
-  const schema = sectionSchema('blocks')!
-  const presets = schema.presets ?? []
-
-  test('every preset builds a non-empty, already-sanitised tree', () => {
-    const fields = sectionSchema('blocks')!.fields
-    expect(presets.map((preset) => preset.key)).toEqual([
-      'hero-split',
-      'feature-grid',
-      'pricing-3',
-      'faq-list',
-      'cta-band',
-      'stats-row',
-      'statement',
-      'image-text',
-      'cards-three',
-      'photo-cards',
-      'reviews-three',
-    ])
-    for (const preset of presets) {
-      const built = createSection('blocks', preset.settings as never, preset.style as never)
-      const blocks = readBlocks(built.settings, 'blocks')
-      expect(blocks.length, preset.key).toBeGreaterThan(0)
-      expect(sanitizeValues(fields, built.settings), preset.key).toEqual(built.settings)
-    }
-  })
-
-  test('the call-to-action preset wears the brand band', () => {
-    const preset = presets.find((candidate) => candidate.key === 'cta-band')!
-    const built = createSection('blocks', preset.settings as never, preset.style as never)
-    expect(built.style.colorScheme).toBe('brand')
-  })
-
-  test('a preset gives every block a fresh id, so two copies never collide', () => {
-    const preset = presets[0]!
-    const first = readBlocks(
-      createSection('blocks', preset.settings as never, preset.style as never).settings,
-      'blocks',
-    )
-    const second = readBlocks(
-      createSection('blocks', preset.settings as never, preset.style as never).settings,
-      'blocks',
-    )
-    const ids = [...first, ...second].map((block) => block.id)
-    expect(new Set(ids).size).toBe(ids.length)
+describe('the ready-made layouts', () => {
+  test('the composed block layouts were removed; the primitives are the escape hatch', () => {
+    expect(sectionSchema('blocks')!.presets ?? []).toEqual([])
   })
 })
 
 describe('the Custom section', () => {
-  test('is a thin alias of the Blocks section, offered on every page', () => {
-    const schema = sectionSchema('custom')
-    expect(schema).not.toBeNull()
-    expect(isSectionOffered(schema!, 'home')).toBe(true)
-    expect(isSectionOffered(schema!, 'page')).toBe(true)
+  test('is withdrawn, and the Blocks composer covers it', () => {
+    const custom = sectionSchema('custom')
+    expect(custom).not.toBeNull()
     // Same fields, by identity: one composer, not a second engine.
-    expect(schema!.fields).toBe(sectionSchema('blocks')!.fields)
+    expect(custom!.fields).toBe(sectionSchema('blocks')!.fields)
+    // Withdrawn from the picker; a stored `custom` section converges on `blocks`.
+    expect(isSectionOffered(custom!, 'home')).toBe(false)
+    expect(isSectionOffered(sectionSchema('blocks')!, 'home')).toBe(true)
   })
 
   test('builds and renders a primitive tree', () => {
-    const built = createSection('custom', {
+    const built = createSection('blocks', {
       blocks: [{ id: 'h', type: 'heading', settings: { text: 'Kanvas kustom' } }],
     })
     expect(readBlocks(built.settings, 'blocks')[0]!.type).toBe('heading')
@@ -201,7 +161,7 @@ describe('the Custom section', () => {
 describe('the new primitives, rendered', () => {
   const html = render(<SectionsRenderer sections={[section()]} env={env()} />)
 
-  test('rich text, badge, icon, divider and video all draw', () => {
+  test('rich text, badge, icon, spacer and video all draw', () => {
     expect(html).toContain('Teks berformat panjang.')
     expect(html).toContain('Baru')
     expect(html).toContain('<svg')
@@ -210,7 +170,7 @@ describe('the new primitives, rendered', () => {
   })
 
   test('a full-bleed block escapes the page column', () => {
-    const section = createSection('custom', {
+    const section = createSection('blocks', {
       blocks: [
         {
           id: 'hero',
@@ -227,7 +187,7 @@ describe('the new primitives, rendered', () => {
   })
 
   test('a full-width band keeps its content in the page column', () => {
-    const section = createSection('custom', {
+    const section = createSection('blocks', {
       blocks: [
         { id: 'hero', type: 'heading', settings: { text: 'Pita' }, style: { bleed: 'band' } },
       ],
@@ -243,7 +203,7 @@ describe('the new primitives, rendered', () => {
       blocks: [
         {
           id: 't',
-          type: 'text',
+          type: 'richtext',
           settings: { body: 'Gaya menang', size: 'sm' },
           style: { fontSize: '3xl', color: 'custom', textColorCustom: '#112233' },
         },
@@ -265,7 +225,7 @@ describe('the new primitives, rendered', () => {
   test('an empty block shows a placeholder in the preview, and nothing live', () => {
     const empty = createSection('blocks', {
       blocks: [
-        { id: 'txt', type: 'text', settings: { body: '' } },
+        { id: 'txt', type: 'richtext', settings: { body: '' } },
         { id: 'img', type: 'image', settings: {} },
         { id: 'btn', type: 'button', settings: { label: '' } },
         { id: 'rich', type: 'richtext', settings: { body: '' } },
@@ -295,14 +255,6 @@ describe('the new primitives, rendered', () => {
       'Drag a block here',
     ]) {
       expect(preview, note).toContain(note)
-    }
-  })
-
-  test('every preset renders on the storefront', () => {
-    for (const preset of sectionSchema('blocks')!.presets ?? []) {
-      const built = createSection('blocks', preset.settings as never, preset.style as never)
-      const presetHtml = render(<SectionsRenderer sections={[built]} env={env()} />)
-      expect(presetHtml.length, preset.key).toBeGreaterThan(500)
     }
   })
 })

@@ -15,7 +15,7 @@ import { hasCoordinates, isAssetKey, sanitizeStockPhoto } from '@repo/appwrite-c
 
 import { NO_ICON, resolveIconName, type IconName } from './icons'
 import { sanitizeLink, NO_LINK, type Link } from './links'
-import { EMPTY_RICH_DOC, sanitizeRichDoc, type RichDoc } from './rich-text'
+import { EMPTY_RICH_DOC, richDocFromPlainText, sanitizeRichDoc, type RichDoc } from './rich-text'
 import type { Localized } from './localized'
 
 interface BaseField {
@@ -538,6 +538,51 @@ function sanitizeOverrides(fields: readonly Field[], value: unknown): FieldValue
   return Object.keys(out).length > 0 ? out : undefined
 }
 
+/**
+ * Block types a consolidated block replaces: the old type, the new one, and how
+ * to move the settings across. `sanitizeBlocks` rewrites an old type before it
+ * looks it up, so a stored block converges on the new type on the next parse
+ * rather than being dropped. The three merges: a plain paragraph is a rich-text
+ * block with no marks; a divider is a spacer that draws a rule; two fixed
+ * columns are a two-column grid with a `widths` choice.
+ */
+const BLOCK_ALIASES: Record<
+  string,
+  { type: string; transform?: (settings: Record<string, unknown>) => Record<string, unknown> }
+> = {
+  text: {
+    type: 'richtext',
+    transform: (settings) => ({
+      ...settings,
+      body: richDocFromPlainText(typeof settings.body === 'string' ? settings.body : ''),
+    }),
+  },
+  divider: {
+    type: 'spacer',
+    transform: (settings) => ({ ...settings, size: settings.spacing ?? 'md', line: true }),
+  },
+  columns: {
+    type: 'grid',
+    transform: (settings) => ({
+      ...settings,
+      columns: '2',
+      widths: settings.layout ?? 'equal',
+      blocks: [
+        ...(Array.isArray(settings.left) ? settings.left : []),
+        ...(Array.isArray(settings.right) ? settings.right : []),
+      ],
+    }),
+  },
+}
+
+/** The consolidated type and settings for a raw block, or it unchanged. */
+function normalizeBlock(type: string, settings: unknown): { type: string; settings: unknown } {
+  const alias = BLOCK_ALIASES[type]
+  if (!alias) return { type, settings }
+  const source = isRecord(settings) ? settings : {}
+  return { type: alias.type, settings: alias.transform ? alias.transform(source) : source }
+}
+
 function sanitizeBlocks(
   field: BlocksField,
   value: unknown,
@@ -559,7 +604,8 @@ function sanitizeBlocks(
     if (out.length >= field.max) break
     if (budget.blocks >= MAX_BLOCKS_PER_SECTION) break
     if (!isRecord(raw) || typeof raw.type !== 'string') continue
-    const schema = field.blocks.find((block) => block.type === raw.type)
+    const normalized = normalizeBlock(raw.type, raw.settings)
+    const schema = field.blocks.find((block) => block.type === normalized.type)
     if (!schema) continue
     const count = counts.get(schema.type) ?? 0
     if (schema.max !== undefined && count >= schema.max) continue
@@ -574,7 +620,7 @@ function sanitizeBlocks(
     out.push({
       id,
       type: schema.type,
-      settings: sanitizeValues(schema.fields, raw.settings, budget, depth + 1),
+      settings: sanitizeValues(schema.fields, normalized.settings, budget, depth + 1),
       ...(style && { style }),
     })
   }

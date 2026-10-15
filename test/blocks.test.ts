@@ -29,18 +29,18 @@ function blocksField() {
   return { schema, field }
 }
 
-/** A tree `depth` blocks tall: each level is a two-column row around the next. */
+/** A tree `depth` blocks tall: each level is a grid around the next. */
 function nest(depth: number, id: string): Record<string, unknown> {
-  if (depth <= 1) return { id, type: 'text', settings: { body: `${id} leaf` } }
+  if (depth <= 1) return { id, type: 'richtext', settings: { body: `${id} leaf` } }
   return {
     id,
-    type: 'columns',
+    type: 'grid',
     settings: {
-      layout: 'equal',
+      columns: '2',
+      widths: 'equal',
       gap: 'md',
       align: 'start',
-      left: [nest(depth - 1, `${id}-inner`)],
-      right: [],
+      blocks: [nest(depth - 1, `${id}-inner`)],
     },
   }
 }
@@ -69,7 +69,7 @@ describe('blocks section schema', () => {
     expect(schema!.category).toBe('layout')
     const section = createSection('blocks')
     const blocks = readBlocks(section.settings, 'blocks')
-    expect(blocks.map((block) => block.type)).toEqual(['heading', 'text', 'button'])
+    expect(blocks.map((block) => block.type)).toEqual(['heading', 'richtext', 'button'])
   })
 
   test('every block type has a schema with fields', () => {
@@ -77,18 +77,26 @@ describe('blocks section schema', () => {
     // picker order and the tail is whatever the app added.
     expect(BLOCK_TYPES.map((block) => block.type).slice(0, 9)).toEqual([
       'heading',
-      'text',
+      'richtext',
       'button',
       'image',
       'spacer',
       'column',
-      'columns',
       'row',
       'grid',
+      'slider',
     ])
     for (const block of BLOCK_TYPES) {
       expect(blockSchema(block.type)).toBe(block)
     }
+  })
+
+  test('the merged-away types are no longer offered', () => {
+    // A stored `text`/`divider`/`columns` still converts (see below) but the
+    // picker has one block for each of those jobs now.
+    expect(blockSchema('text')).toBeNull()
+    expect(blockSchema('divider')).toBeNull()
+    expect(blockSchema('columns')).toBeNull()
   })
 })
 
@@ -109,7 +117,7 @@ describe('block sanitising', () => {
     expect(findBlock([field], values, 'deep-inner-inner-inner-inner')).toBeNull()
   })
 
-  test('unknown block types and unknown settings are dropped', () => {
+  test('unknown block types are dropped and unknown settings cleaned', () => {
     const values = sanitizeValues([field], {
       blocks: [
         { id: 'ok', type: 'spacer', settings: { size: 'lg', sneaky: 'nope' } },
@@ -118,23 +126,24 @@ describe('block sanitising', () => {
     })
     const blocks = readBlocks(values, 'blocks')
     expect(blocks.map((block) => block.id)).toEqual(['ok'])
-    expect(blocks[0]!.settings).toEqual({ size: 'lg' })
+    expect(blocks[0]!.settings).toMatchObject({ size: 'lg' })
+    expect(blocks[0]!.settings).not.toHaveProperty('sneaky')
   })
 
   test('the total block count stays inside the storage budget', () => {
     const wide = Array.from({ length: 60 }, (_, index) => ({
       id: `col-${index}`,
-      type: 'columns',
+      type: 'grid',
       settings: {
-        layout: 'equal',
+        columns: '2',
+        widths: 'equal',
         gap: 'md',
         align: 'start',
-        left: Array.from({ length: 20 }, (_, child) => ({
+        blocks: Array.from({ length: 20 }, (_, child) => ({
           id: `col-${index}-${child}`,
-          type: 'text',
+          type: 'richtext',
           settings: { body: 'x' },
         })),
-        right: [],
       },
     }))
     const values = sanitizeValues([field], { blocks: wide })
@@ -145,11 +154,71 @@ describe('block sanitising', () => {
     const values = sanitizeValues([field], {
       blocks: Array.from({ length: 80 }, (_, index) => ({
         id: `b-${index}`,
-        type: 'text',
+        type: 'richtext',
         settings: { body: 'x' },
       })),
     })
     expect(readBlocks(values, 'blocks')).toHaveLength(60)
+  })
+})
+
+describe('consolidated block types', () => {
+  const { field } = blocksField()
+
+  test('a text block becomes a rich-text block, keeping its words and size', () => {
+    const [block] = readBlocks(
+      sanitizeValues([field], {
+        blocks: [{ id: 't', type: 'text', settings: { body: 'Dua paragraf', size: 'lg' } }],
+      }),
+      'blocks',
+    )!
+    expect(block!.type).toBe('richtext')
+    expect(block!.settings.size).toBe('lg')
+    expect(JSON.stringify(block!.settings.body)).toContain('Dua paragraf')
+  })
+
+  test('a divider becomes a spacer that draws a line', () => {
+    const [block] = readBlocks(
+      sanitizeValues([field], {
+        blocks: [
+          {
+            id: 'd',
+            type: 'divider',
+            settings: { spacing: 'lg', thickness: 'thick', tone: 'brand' },
+          },
+        ],
+      }),
+      'blocks',
+    )!
+    expect(block!.type).toBe('spacer')
+    expect(block!.settings).toMatchObject({
+      size: 'lg',
+      line: true,
+      thickness: 'thick',
+      tone: 'brand',
+    })
+  })
+
+  test('two fixed columns become a two-column grid', () => {
+    const [block] = readBlocks(
+      sanitizeValues([field], {
+        blocks: [
+          {
+            id: 'c',
+            type: 'columns',
+            settings: {
+              layout: 'rightWide',
+              left: [{ id: 'l', type: 'heading', settings: { text: 'L' } }],
+              right: [{ id: 'r', type: 'heading', settings: { text: 'R' } }],
+            },
+          },
+        ],
+      }),
+      'blocks',
+    )!
+    expect(block!.type).toBe('grid')
+    expect(block!.settings).toMatchObject({ columns: '2', widths: 'rightWide' })
+    expect(readBlocks(block!.settings, 'blocks').map((child) => child.id)).toEqual(['l', 'r'])
   })
 })
 
@@ -159,11 +228,15 @@ function sampleValues() {
     blocks: [
       { id: 'a', type: 'heading', settings: { text: 'A' } },
       {
-        id: 'cols',
-        type: 'columns',
+        id: 'two',
+        type: 'grid',
         settings: {
-          left: [{ id: 'b', type: 'text', settings: { body: 'B' } }],
-          right: [{ id: 'c', type: 'text', settings: { body: 'C' } }],
+          columns: '2',
+          widths: 'equal',
+          blocks: [
+            { id: 'b', type: 'heading', settings: { text: 'B' } },
+            { id: 'c', type: 'heading', settings: { text: 'C' } },
+          ],
         },
       },
       { id: 'd', type: 'spacer', settings: { size: 'lg' } },
@@ -175,18 +248,18 @@ describe('block tree helpers', () => {
   test('finds a nested block with its position', () => {
     const { field } = blocksField()
     const found = findBlock([field], sampleValues(), 'c')
-    expect(found?.block.type).toBe('text')
-    expect(found?.index).toBe(0)
-    expect(found?.count).toBe(1)
-    expect(found?.field.key).toBe('right')
+    expect(found?.block.type).toBe('heading')
+    expect(found?.index).toBe(1)
+    expect(found?.count).toBe(2)
+    expect(found?.field.key).toBe('blocks')
   })
 
   test('updates a nested block in place', () => {
     const { field } = blocksField()
-    const next = updateBlockSettings([field], sampleValues(), 'b', { body: 'Updated' })
+    const next = updateBlockSettings([field], sampleValues(), 'b', { text: 'Updated' })
     expect(next).not.toBeNull()
     const found = findBlock([field], next!, 'b')
-    expect(found?.block.settings.body).toBe('Updated')
+    expect(found?.block.settings.text).toBe('Updated')
   })
 
   test('moves a block among its siblings and stops at the ends', () => {
@@ -195,9 +268,9 @@ describe('block tree helpers', () => {
     const moved = moveBlock([field], values, 'd', -1)
     const order = (candidate: typeof values) =>
       (candidate.blocks as Array<{ id: string }>).map((block) => block.id)
-    expect(order(moved!)).toEqual(['a', 'd', 'cols'])
-    expect(order(moveBlock([field], values, 'a', -1)!)).toEqual(['a', 'cols', 'd'])
-    expect(order(moveBlock([field], values, 'd', 1)!)).toEqual(['a', 'cols', 'd'])
+    expect(order(moved!)).toEqual(['a', 'd', 'two'])
+    expect(order(moveBlock([field], values, 'a', -1)!)).toEqual(['a', 'two', 'd'])
+    expect(order(moveBlock([field], values, 'd', 1)!)).toEqual(['a', 'two', 'd'])
   })
 
   test('duplicates a block beside itself with a fresh id', () => {
@@ -206,19 +279,18 @@ describe('block tree helpers', () => {
     expect(result).not.toBeNull()
     expect(result!.copy.id).not.toBe('a')
     const blocks = readBlocks(result!.values, 'blocks')
-    expect(blocks.map((block) => block.id)).toEqual(['a', result!.copy.id, 'cols', 'd'])
+    expect(blocks.map((block) => block.id)).toEqual(['a', result!.copy.id, 'two', 'd'])
   })
 
   test('duplicating a layout block gives its children fresh ids too', () => {
     const { field } = blocksField()
     const values = sampleValues()
-    const result = duplicateBlock([field], values, 'cols')!
-    const copyLeft = readBlocks(result.copy.settings, 'left')
-    const copyRight = readBlocks(result.copy.settings, 'right')
-    expect(copyLeft[0]!.id).not.toBe('b')
-    expect(copyRight[0]!.id).not.toBe('c')
-    expect(findBlock([field], result.values, copyLeft[0]!.id)).not.toBeNull()
-    expect(findBlock([field], result.values, 'b')?.block.settings.body).toBe('B')
+    const result = duplicateBlock([field], values, 'two')!
+    const copyChildren = readBlocks(result.copy.settings, 'blocks')
+    expect(copyChildren[0]!.id).not.toBe('b')
+    expect(copyChildren[1]!.id).not.toBe('c')
+    expect(findBlock([field], result.values, copyChildren[0]!.id)).not.toBeNull()
+    expect(findBlock([field], result.values, 'b')?.block.settings.text).toBe('B')
   })
 
   test('ids are unique across branches, not just within one list', () => {
@@ -227,32 +299,34 @@ describe('block tree helpers', () => {
       blocks: [
         {
           id: 'row',
-          type: 'columns',
+          type: 'grid',
           settings: {
-            left: [{ id: 'same', type: 'text', settings: { body: 'L' } }],
-            right: [{ id: 'same', type: 'text', settings: { body: 'R' } }],
+            columns: '2',
+            blocks: [
+              { id: 'same', type: 'heading', settings: { text: 'L' } },
+              { id: 'same', type: 'heading', settings: { text: 'R' } },
+            ],
           },
         },
       ],
     })
     const row = findBlock([field], values, 'row')!
-    const left = readBlocks(row.block.settings, 'left')[0]!
-    const right = readBlocks(row.block.settings, 'right')[0]!
-    expect(left.id).not.toBe(right.id)
+    const children = readBlocks(row.block.settings, 'blocks')
+    expect(children[0]!.id).not.toBe(children[1]!.id)
   })
 
   test('removes a block, nested ones included', () => {
     const { field } = blocksField()
     const next = removeBlock([field], sampleValues(), 'c')
     expect(findBlock([field], next!, 'c')).toBeNull()
-    const columns = findBlock([field], next!, 'cols')
-    expect(readBlocks(columns!.block.settings, 'right')).toHaveLength(0)
+    const two = findBlock([field], next!, 'two')
+    expect(readBlocks(two!.block.settings, 'blocks')).toHaveLength(1)
   })
 })
 
 describe('inserting a dragged block', () => {
   const { field } = blocksField()
-  const raw = (id: string) => ({ id, type: 'text', settings: {} })
+  const raw = (id: string) => ({ id, type: 'heading', settings: {} })
 
   test('inserts at a top-level index', () => {
     const values = sanitizeValues([field], { blocks: [raw('a'), raw('b')] })
@@ -265,17 +339,16 @@ describe('inserting a dragged block', () => {
     ])
   })
 
-  test('inserts into a nested column, addressed by its id', () => {
+  test('inserts into a nested container, addressed by its id', () => {
     const values = sampleValues()
     const block = createBlock(field, 'spacer')!
-    const next = insertBlock([field], values, { parentId: 'cols', fieldKey: 'left' }, 0, block)!
-    const columns = findBlock([field], next, 'cols')!
-    expect(readBlocks(columns.block.settings, 'left').map((candidate) => candidate.id)).toEqual([
+    const next = insertBlock([field], values, { parentId: 'two', fieldKey: 'blocks' }, 0, block)!
+    const two = findBlock([field], next, 'two')!
+    expect(readBlocks(two.block.settings, 'blocks').map((candidate) => candidate.id)).toEqual([
       block.id,
       'b',
+      'c',
     ])
-    // The other branch is untouched.
-    expect(readBlocks(columns.block.settings, 'right')).toHaveLength(1)
   })
 
   test('a stale container or a full field changes nothing', () => {

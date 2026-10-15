@@ -211,9 +211,9 @@ const bentoTextField: Field = choice(
 export interface ConsolidatedVariant {
   /** The consolidated section type. */
   type: string
-  /** The field on it that selects this look, and the value to store. */
-  field: string
-  value: string
+  /** The field on it that selects this look, and the value to store. Omitted for a plain rename. */
+  field?: string
+  value?: string
   /** Settings keys to rename when the two types named the same thing differently. */
   move?: Record<string, string>
 }
@@ -249,6 +249,10 @@ export const SECTION_ALIASES: Readonly<Record<string, ConsolidatedVariant>> = {
   // `scrolling-story` called its list `steps`; the consolidated type calls it `items`.
   'scrolling-story': { type: 'story', field: 'style', value: 'chapters', move: { steps: 'items' } },
   timeline: { type: 'story', field: 'style', value: 'timeline' },
+
+  // Two names for one composer: the editor used `custom`, templates used
+  // `blocks`; `blocks` is the one now, with the ready-made presets.
+  custom: { type: 'blocks' },
 }
 
 /** Whether `type` is an old family member that a consolidated type replaces. */
@@ -274,7 +278,7 @@ export function consolidateSettings(
       delete out[from]
     }
   }
-  out[alias.field] = alias.value
+  if (alias.field !== undefined && alias.value !== undefined) out[alias.field] = alias.value
   return out
 }
 

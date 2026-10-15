@@ -64,7 +64,15 @@ function expectKept(got: unknown, want: unknown, path: string): void {
     }
     return
   }
-  if (typeof want === 'string' && want !== '') expect(got, path).toBe(want)
+  if (typeof want === 'string' && want !== '') {
+    // A starter may set a rich-text `body` as a plain string; the sanitiser
+    // turns it into a document, so the words are the thing to keep.
+    if (got !== null && typeof got === 'object') {
+      expect(JSON.stringify(got), path).toContain(want)
+      return
+    }
+    expect(got, path).toBe(want)
+  }
 }
 
 describe('section starters', () => {
