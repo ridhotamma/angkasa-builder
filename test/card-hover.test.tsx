@@ -1,6 +1,7 @@
 /**
- * The theme's card hover effects: any of a brand outline, an image zoom, a
- * lift and a shadow on product and category cards.
+ * The theme's card hover effects — outline, zoom, lift, shadow, 3D tilt, shine
+ * sweep — the same set on every card: product, category, testimonial, person,
+ * press, video testimonial, article and store.
  */
 
 import { describe, expect, test } from 'bun:test'
@@ -47,6 +48,8 @@ const OUTLINE = /:hover::after\{[^}]*border-color:var\(--chakra-colors-brand-sol
 const OUTLINE_BASE = /::after\{[^}]*border:2px solid transparent/
 const ZOOM = /:hover img\{[^}]*transform:scale\(1\.05\)/
 const LIFT = /:hover\{[^}]*transform:translateY\(-4px\)/
+const SHINE_BASE = /::before\{[^}]*translateX\(-130%\)/
+const SHINE_HOVER = /:hover::before\{[^}]*translateX\(130%\)/
 
 describe('card hover', () => {
   test('defaults to the outline and zoom every card had before', () => {
@@ -67,20 +70,49 @@ describe('card hover', () => {
     expect(sanitizeThemeSettings({ cardHover: [] }).cardHover).toEqual([])
   })
 
-  test('applies the chosen effects to product and category cards alike', () => {
-    for (const [type, section] of [
+  test('every card wears the same chosen effects', () => {
+    // Product, category, bento, columns, people, quotes, press, video quotes
+    // and stores: one setting, one result — no card opts out.
+    const cases: ReadonlyArray<[SectionType, Record<string, unknown>]> = [
       ['latest-products', {}],
       ['latest-products', { layout: 'bento' }],
       ['category-rail', {}],
       ['category-rail', { layout: 'bento' }],
-    ] as const) {
+      ['cards', { card: 'text', items: [{ title: 'A', text: 'B' }] }],
+      ['cards', { card: 'person', items: [{ name: 'A', role: 'B' }] }],
+      ['quotes', { variant: 'quotes', items: [{ quote: 'Q', author: 'A' }] }],
+      ['quotes', { variant: 'press', items: [{ source: 'S', quote: 'Q' }] }],
+      ['quotes', { variant: 'video', items: [{ name: 'A', quote: 'Q' }] }],
+      ['store-locations', { items: [{ name: 'Store', address: 'Jl. Contoh 1' }] }],
+      ['scroll-rail', { items: [{ title: 'A', text: 'B' }] }],
+      ['stacked-cards', { items: [{ title: 'A', text: 'B' }] }],
+    ]
+    for (const [type, section] of cases) {
       const html = render(type, section, { cardHover: ['lift', 'shadow'] })
       expect(html, `${type} ${JSON.stringify(section)}`).toMatch(LIFT)
       expect(html).toContain('box-shadow:var(--chakra-shadows-lg)')
       expect(html).not.toMatch(OUTLINE)
-      expect(html).not.toMatch(OUTLINE_BASE)
       expect(html).not.toMatch(ZOOM)
     }
+  })
+
+  test('the shine sweep is an overlay that runs on hover', () => {
+    const html = render('latest-products', {}, { cardHover: ['shine'] })
+    expect(html).toMatch(SHINE_BASE)
+    expect(html).toMatch(SHINE_HOVER)
+    // Reduced motion drops it, like the other moving effects.
+    expect(html).toMatch(/::before\{display:none/)
+  })
+
+  test('tilt wraps the card in the 3D lean, and only when chosen', () => {
+    const tilted = render(
+      'cards',
+      { card: 'text', items: [{ title: 'A' }] },
+      { cardHover: ['tilt'] },
+    )
+    expect(tilted).toContain('will-change:transform')
+    const still = render('cards', { card: 'text', items: [{ title: 'A' }] }, { cardHover: [] })
+    expect(still).not.toContain('will-change:transform')
   })
 
   test('none at all leaves the cards still', () => {

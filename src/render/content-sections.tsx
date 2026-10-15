@@ -43,15 +43,16 @@ import { STICKY_BELOW_HEADER } from './chrome'
 import { useRenderEnvironment, type StorefrontRenderData } from './context'
 import { useRenderText } from './copy'
 import { FeatureIcon } from './icons'
-import { Tilt } from './motion'
 import { useMotionEffect } from './motion/engine'
 import {
+  CardTilt,
   EditableText,
   EmptyNotice,
   gridColumns,
   Paragraphs,
   SectionHeading,
   SmartLink,
+  useCardHover,
   useCardStyle,
 } from './primitives'
 import { RichTextView } from './rich-text'
@@ -79,6 +80,7 @@ function columnsOf(value: string, count: number, mobileColumns?: string) {
 export function Multicolumn({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const { frame, flat } = useCardStyle()
+  const hover = useCardHover()
   const empty = useEmptyText()
   const items = readList(settings, 'items')
   const align = alignOf(settings)
@@ -104,19 +106,14 @@ export function Multicolumn({ settings }: SectionProps) {
             const image = readText(item, 'image')
             const linkLabel = readText(item, 'linkLabel')
             return (
-              <Tilt key={item.id}>
+              <CardTilt key={item.id}>
                 <Card.Root
                   h="full"
                   bg="bg.panel"
                   rounded="l3"
                   overflow="hidden"
-                  css={{
-                    '&:hover img': { transform: 'scale(1.05)' },
-                    '@media (prefers-reduced-motion: reduce)': {
-                      '&:hover img': { transform: 'none' },
-                    },
-                  }}
                   {...frame}
+                  {...hover}
                 >
                   {image && (
                     <AspectRatio
@@ -157,7 +154,7 @@ export function Multicolumn({ settings }: SectionProps) {
                     )}
                   </Card.Body>
                 </Card.Root>
-              </Tilt>
+              </CardTilt>
             )
           })}
         </SimpleGrid>
@@ -753,6 +750,7 @@ function LocationActions({ entry, directions }: { entry: StoreLocationEntry; dir
 export function StoreLocations({ settings }: SectionProps) {
   const { data, imageUrl } = useRenderEnvironment()
   const { frame } = useCardStyle()
+  const hover = useCardHover()
   const empty = useEmptyText()
   const entries = locationsFor(settings, data)
   const locator = readText(settings, 'layout') === 'locator'
@@ -872,25 +870,27 @@ export function StoreLocations({ settings }: SectionProps) {
         {entries.map((entry) => {
           const directions = directionsFor(entry)
           return (
-            <Card.Root key={entry.id} bg="bg.panel" rounded="l3" overflow="hidden" {...frame}>
-              {entry.image && (
-                <AspectRatio ratio={16 / 9} bg="bg.subtle">
-                  <ImageWithFallback
-                    src={imageUrl(entry.image, { width: 800, height: 450 }) ?? undefined}
-                    alt=""
-                    objectFit="cover"
-                    loading="lazy"
-                  />
-                </AspectRatio>
-              )}
-              <Card.Body gap="3">
-                <Heading as="h3" size="md">
-                  {entry.name}
-                </Heading>
-                <LocationDetails entry={entry} />
-                <LocationActions entry={entry} directions={directions} />
-              </Card.Body>
-            </Card.Root>
+            <CardTilt key={entry.id}>
+              <Card.Root bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
+                {entry.image && (
+                  <AspectRatio ratio={16 / 9} bg="bg.subtle">
+                    <ImageWithFallback
+                      src={imageUrl(entry.image, { width: 800, height: 450 }) ?? undefined}
+                      alt=""
+                      objectFit="cover"
+                      loading="lazy"
+                    />
+                  </AspectRatio>
+                )}
+                <Card.Body gap="3">
+                  <Heading as="h3" size="md">
+                    {entry.name}
+                  </Heading>
+                  <LocationDetails entry={entry} />
+                  <LocationActions entry={entry} directions={directions} />
+                </Card.Body>
+              </Card.Root>
+            </CardTilt>
           )
         })}
       </SimpleGrid>

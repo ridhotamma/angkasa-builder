@@ -50,11 +50,13 @@ import { usePrefersReducedMotion } from './hooks'
 import { BackgroundVideo, VideoFrame } from './media'
 import {
   ButtonRow,
+  CardTilt,
   EmptyNotice,
   PageColumn,
   SectionHeading,
   SmartLink,
   ThemeText,
+  useCardHover,
   useCardStyle,
   useOverlayProps,
 } from './primitives'
@@ -327,6 +329,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
   const empty = useEmptyText()
   const overlay = useOverlayProps()
   const { frame } = useCardStyle()
+  const hover = useCardHover()
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'name') || readText(item, 'quote') || readVideo(item, 'video'),
   )
@@ -361,46 +364,48 @@ export function VideoTestimonials({ settings }: SectionProps) {
             posterId ? imageUrl(posterId, { width: 800, height: 450 }) : null,
           )
           return (
-            <Box key={item.id} bg="bg.panel" rounded="l3" overflow="hidden" {...frame}>
-              <Stack gap="3">
-                <Box position="relative" bg="bg.subtle">
-                  <AspectRatio ratio={16 / 9}>
-                    {poster ? (
-                      <ImageWithFallback src={poster} alt="" objectFit="cover" loading="lazy" />
-                    ) : (
-                      <Box />
+            <CardTilt key={item.id}>
+              <Box bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
+                <Stack gap="3">
+                  <Box position="relative" bg="bg.subtle">
+                    <AspectRatio ratio={16 / 9}>
+                      {poster ? (
+                        <ImageWithFallback src={poster} alt="" objectFit="cover" loading="lazy" />
+                      ) : (
+                        <Box />
+                      )}
+                    </AspectRatio>
+                    {itemVideo && (
+                      <IconButton
+                        aria-label="Play testimonial"
+                        position="absolute"
+                        inset="0"
+                        m="auto"
+                        boxSize="12"
+                        rounded="full"
+                        colorPalette="brand"
+                        onClick={() => setActive(item)}
+                      >
+                        <LuPlay />
+                      </IconButton>
                     )}
-                  </AspectRatio>
-                  {itemVideo && (
-                    <IconButton
-                      aria-label="Play testimonial"
-                      position="absolute"
-                      inset="0"
-                      m="auto"
-                      boxSize="12"
-                      rounded="full"
-                      colorPalette="brand"
-                      onClick={() => setActive(item)}
-                    >
-                      <LuPlay />
-                    </IconButton>
-                  )}
-                </Box>
-                <Stack gap="1.5" p="4" pt="0">
-                  {readText(item, 'quote') && (
-                    <Text color="fg.muted" lineHeight="tall">
-                      “{readText(item, 'quote')}”
-                    </Text>
-                  )}
-                  <Text fontWeight="semibold">{readText(item, 'name')}</Text>
-                  {readText(item, 'role') && (
-                    <Text fontSize="sm" color="fg.muted">
-                      {readText(item, 'role')}
-                    </Text>
-                  )}
+                  </Box>
+                  <Stack gap="1.5" p="4" pt="0">
+                    {readText(item, 'quote') && (
+                      <Text color="fg.muted" lineHeight="tall">
+                        “{readText(item, 'quote')}”
+                      </Text>
+                    )}
+                    <Text fontWeight="semibold">{readText(item, 'name')}</Text>
+                    {readText(item, 'role') && (
+                      <Text fontSize="sm" color="fg.muted">
+                        {readText(item, 'role')}
+                      </Text>
+                    )}
+                  </Stack>
                 </Stack>
-              </Stack>
-            </Box>
+              </Box>
+            </CardTilt>
           )
         })}
       </SimpleGrid>
@@ -444,6 +449,7 @@ export function Team({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const { frame, flat } = useCardStyle()
+  const hover = useCardHover()
   const align = alignOf(settings)
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'name') || readText(item, 'photo'),
@@ -494,9 +500,11 @@ export function Team({ settings }: SectionProps) {
             </Stack>
           )
           return (
-            <Box key={item.id} bg="bg.panel" rounded="l3" p="4" {...frame}>
-              {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
-            </Box>
+            <CardTilt key={item.id}>
+              <Box bg="bg.panel" rounded="l3" p="4" {...frame} {...hover}>
+                {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
+              </Box>
+            </CardTilt>
           )
         })}
       </SimpleGrid>
@@ -512,6 +520,7 @@ export function Press({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const { frame } = useCardStyle()
+  const hover = useCardHover()
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'source') || readText(item, 'quote') || readText(item, 'logo'),
   )
@@ -549,9 +558,11 @@ export function Press({ settings }: SectionProps) {
       </Stack>
     )
     return (
-      <Box key={item.id} bg="bg.panel" rounded="l3" p="5" {...frame}>
-        {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
-      </Box>
+      <CardTilt key={item.id}>
+        <Box bg="bg.panel" rounded="l3" p="5" {...frame} {...hover}>
+          {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
+        </Box>
+      </CardTilt>
     )
   }
 

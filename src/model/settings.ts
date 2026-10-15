@@ -97,11 +97,14 @@ export const CARD_STYLES = ['border', 'shadow', 'flat', 'hard'] as const
 export const ANIMATION_STYLES = ['none', 'subtle', 'expressive'] as const
 
 /**
- * What a product or category card does when the shopper points at it. A set,
- * not one choice: the effects combine, and the default — a brand outline and
- * a slow image zoom — is what every card did before the setting existed.
+ * What every card does when the shopper points at it — the same set for a
+ * product, a category, a testimonial, a person, a press quote, an article, a
+ * photo card: one setting, no card gets its own effects. A set, not one
+ * choice: the effects combine, and the default — a brand outline and a slow
+ * image zoom — is what every card did before the setting existed. `tilt` leans
+ * the card toward the pointer (a wrapper, see `CardTilt`); the rest are CSS.
  */
-export const CARD_HOVER_EFFECTS = ['outline', 'zoom', 'lift', 'shadow'] as const
+export const CARD_HOVER_EFFECTS = ['outline', 'zoom', 'lift', 'shadow', 'tilt', 'shine'] as const
 export type CardHoverEffect = (typeof CARD_HOVER_EFFECTS)[number]
 
 export const CARD_HOVER_LABELS: Record<CardHoverEffect, Localized> = {
@@ -109,6 +112,8 @@ export const CARD_HOVER_LABELS: Record<CardHoverEffect, Localized> = {
   zoom: { en: 'Image zoom', id: 'Gambar membesar' },
   lift: { en: 'Lift', id: 'Terangkat' },
   shadow: { en: 'Shadow', id: 'Bayangan' },
+  tilt: { en: '3D tilt (follows the pointer)', id: 'Miring 3D (mengikuti kursor)' },
+  shine: { en: 'Shine sweep', id: 'Kilau menyapu' },
 }
 
 /**

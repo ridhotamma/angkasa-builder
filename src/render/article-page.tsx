@@ -35,7 +35,14 @@ import {
   type StorefrontArticleDetail,
 } from './context'
 import { useRenderText } from './copy'
-import { EmptyNotice, SectionHeading, SmartLink, useCardStyle } from './primitives'
+import {
+  CardTilt,
+  EmptyNotice,
+  SectionHeading,
+  SmartLink,
+  useCardHover,
+  useCardStyle,
+} from './primitives'
 import type { SectionProps } from './sections'
 
 function useArticle(): StorefrontArticleDetail | null {
@@ -126,52 +133,41 @@ function Cover({ article, ratio = 16 / 9 }: { article: StorefrontArticleCard; ra
  */
 export function ArticleCard({ article }: { article: StorefrontArticleCard }) {
   const { frame, flat } = useCardStyle()
+  const hover = useCardHover()
   return (
-    <Box
-      h="full"
-      bg="bg.panel"
-      rounded="l3"
-      overflow="hidden"
-      transition="border-color 150ms"
-      _hover={{ borderColor: 'brand.emphasized' }}
-      css={{
-        '&:hover img': { transform: 'scale(1.05)' },
-        '@media (prefers-reduced-motion: reduce)': {
-          '&:hover img': { transform: 'none' },
-        },
-      }}
-      {...frame}
-    >
-      <SmartLink
-        link={{ kind: 'article', blogHandle: article.blogHandle, slug: article.slug }}
-        display="flex"
-        flexDirection="column"
-        h="full"
-      >
-        {(article.coverUrl || !flat) && (
-          <AspectRatio ratio={16 / 10} bg="bg.subtle" flexShrink="0" overflow="hidden">
-            <ImageWithFallback
-              src={article.coverUrl ?? undefined}
-              alt={article.title}
-              objectFit="cover"
-              loading="lazy"
-              transition="transform 600ms ease"
-            />
-          </AspectRatio>
-        )}
-        <Stack gap="2" p={flat ? '2' : { base: '4', md: '5' }} flex="1">
-          <MetaLine article={article} showAuthor={false} />
-          <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="semibold" lineClamp={2}>
-            {article.title}
-          </Text>
-          {article.summary && (
-            <Text fontSize="sm" color="fg.muted" lineClamp={3}>
-              {article.summary}
-            </Text>
+    <CardTilt>
+      <Box h="full" bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
+        <SmartLink
+          link={{ kind: 'article', blogHandle: article.blogHandle, slug: article.slug }}
+          display="flex"
+          flexDirection="column"
+          h="full"
+        >
+          {(article.coverUrl || !flat) && (
+            <AspectRatio ratio={16 / 10} bg="bg.subtle" flexShrink="0" overflow="hidden">
+              <ImageWithFallback
+                src={article.coverUrl ?? undefined}
+                alt={article.title}
+                objectFit="cover"
+                loading="lazy"
+                transition="transform 600ms ease"
+              />
+            </AspectRatio>
           )}
-        </Stack>
-      </SmartLink>
-    </Box>
+          <Stack gap="2" p={flat ? '2' : { base: '4', md: '5' }} flex="1">
+            <MetaLine article={article} showAuthor={false} />
+            <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="semibold" lineClamp={2}>
+              {article.title}
+            </Text>
+            {article.summary && (
+              <Text fontSize="sm" color="fg.muted" lineClamp={3}>
+                {article.summary}
+              </Text>
+            )}
+          </Stack>
+        </SmartLink>
+      </Box>
+    </CardTilt>
   )
 }
 

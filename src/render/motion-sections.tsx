@@ -36,6 +36,7 @@ import {
   Paragraphs,
   SectionHeading,
   SmartLink,
+  useCardHover,
   useCardStyle,
 } from './primitives'
 import { RichTextView } from './rich-text'
@@ -76,6 +77,7 @@ function stackCardTop(index: number): string {
 export function StackedCards({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const { frame, flat } = useCardStyle()
+  const hover = useCardHover()
   const empty = useEmptyText()
   const align = alignOf(settings)
   const custom = readText(settings, 'content') === 'blocks'
@@ -183,6 +185,7 @@ export function StackedCards({ settings }: SectionProps) {
                     overflow="hidden"
                     p={{ base: '5', md: '8' }}
                     {...frame}
+                    {...hover}
                     // A pile only reads when a card hides the one under it. A flat
                     // theme would leave every card see-through and the whole stack
                     // would show its text at once, so the surface is forced opaque
@@ -503,6 +506,7 @@ export function ScrollRail({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const { frame } = useCardStyle()
+  const hover = useCardHover()
   const custom = readText(settings, 'content') === 'blocks'
   const blocks = custom ? readBlocks(settings, 'blocks') : []
   const items = custom ? [] : readList(settings, 'items')
@@ -622,12 +626,8 @@ export function ScrollRail({ settings }: SectionProps) {
                       rounded="l3"
                       overflow="hidden"
                       bg="bg.panel"
-                      transition="transform 200ms ease, border-color 200ms ease"
-                      _hover={{ transform: 'translateY(-4px)' }}
-                      css={{
-                        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-                      }}
                       {...frame}
+                      {...hover}
                     >
                       <SmartLink link={readLink(item, 'link')} display="block" h="full">
                         {src && (

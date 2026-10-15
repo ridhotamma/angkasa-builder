@@ -59,7 +59,7 @@ import { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
-import { SplitText } from './motion'
+import { SplitText, Tilt } from './motion'
 
 /**
  * Props for every dialog and drawer a section opens (photo viewer, size
@@ -1005,14 +1005,15 @@ export function cardHoverProps(settings: ThemeSettings): BoxProps {
   if (effects.size === 0) return {}
   const bold = settings.cardStyle === 'hard'
   const outline = effects.has('outline')
+  const shine = effects.has('shine')
   const hover: Record<string, string> = {}
   if (effects.has('lift')) hover.transform = bold ? 'translate(-2px, -2px)' : 'translateY(-4px)'
   if (effects.has('shadow')) {
     hover.boxShadow = bold ? boldShadow(BOLD_INK, 6) : 'var(--chakra-shadows-lg)'
   }
   return {
-    // The ring overlay below is absolutely placed, so the card anchors it.
-    ...(outline && { position: 'relative' as const }),
+    // The ring and shine overlays are absolutely placed, so the card anchors them.
+    ...((outline || shine) && { position: 'relative' as const }),
     transition: 'transform 250ms ease, box-shadow 250ms ease',
     css: {
       ...(outline && {
@@ -1024,6 +1025,7 @@ export function cardHoverProps(settings: ThemeSettings): BoxProps {
           content: '""',
           position: 'absolute',
           inset: '0',
+          zIndex: 2,
           borderRadius: 'inherit',
           border: '2px solid transparent',
           pointerEvents: 'none',
@@ -1031,14 +1033,42 @@ export function cardHoverProps(settings: ThemeSettings): BoxProps {
         },
         '&:hover::after': { borderColor: 'var(--chakra-colors-brand-solid)' },
       }),
+      ...(shine && {
+        // A light sweeping across the card on hover. Absolutely placed above
+        // the content, clipped by the card's own corner radius.
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: '0',
+          zIndex: 1,
+          borderRadius: 'inherit',
+          pointerEvents: 'none',
+          background:
+            'linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 0.35) 50%, transparent 65%)',
+          transform: 'translateX(-130%)',
+          transition: 'transform 650ms ease',
+        },
+        '&:hover::before': { transform: 'translateX(130%)' },
+      }),
       ...(Object.keys(hover).length > 0 && { '&:hover': hover }),
       ...(effects.has('zoom') && { '&:hover img': { transform: 'scale(1.05)' } }),
       '@media (prefers-reduced-motion: reduce)': {
         '&:hover': { transform: 'none' },
         '&:hover img': { transform: 'none' },
+        ...(shine && { '&::before': { display: 'none' } }),
       },
     },
   }
+}
+
+/**
+ * Wraps a card so the theme's 3D `tilt` effect reaches it. It reads the setting
+ * itself, so every card gets the same tilt from the same place; a theme without
+ * `tilt` renders the children untouched, with no extra element.
+ */
+export function CardTilt({ children }: { children: ReactNode }) {
+  const { settings } = useRenderEnvironment()
+  return settings.cardHover.includes('tilt') ? <Tilt>{children}</Tilt> : <>{children}</>
 }
 
 /** A card's frame under the theme's card style; `flat` drops the frame entirely. */
@@ -1090,57 +1120,59 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
   const hover = useCardHover()
 
   return (
-    <Card.Root
-      position="relative"
-      w="full"
-      h="full"
-      bg="bg.panel"
-      rounded="l3"
-      overflow="hidden"
-      {...frame}
-      {...hover}
-    >
-      <SmartLink
-        link={{ kind: 'product', slug: product.slug }}
-        display="flex"
-        flexDirection="column"
+    <CardTilt>
+      <Card.Root
+        position="relative"
+        w="full"
         h="full"
+        bg="bg.panel"
+        rounded="l3"
+        overflow="hidden"
+        {...frame}
+        {...hover}
       >
-        <AspectRatio
-          ratio={1}
-          bg="bg.subtle"
-          flexShrink="0"
-          rounded={flat ? 'l3' : undefined}
-          overflow="hidden"
+        <SmartLink
+          link={{ kind: 'product', slug: product.slug }}
+          display="flex"
+          flexDirection="column"
+          h="full"
         >
-          <ImageWithFallback
-            src={product.imageUrl ?? undefined}
-            alt={product.name}
-            objectFit="cover"
-            loading="lazy"
-            transition="transform 600ms ease"
-          />
-        </AspectRatio>
-        <Stack gap="1.5" p={flat ? '2' : { base: '3', sm: '3.5' }} flex="1">
-          <Text fontSize={{ base: 'sm', sm: 'md' }} fontWeight="medium" lineClamp={2}>
-            {product.name}
-          </Text>
-          <Stack direction="row" gap="1.5" align="baseline" wrap="wrap">
-            <Text fontWeight="bold" fontVariantNumeric="tabular-nums">
-              {formatPrice(product.price, data.shop.currency)}
+          <AspectRatio
+            ratio={1}
+            bg="bg.subtle"
+            flexShrink="0"
+            rounded={flat ? 'l3' : undefined}
+            overflow="hidden"
+          >
+            <ImageWithFallback
+              src={product.imageUrl ?? undefined}
+              alt={product.name}
+              objectFit="cover"
+              loading="lazy"
+              transition="transform 600ms ease"
+            />
+          </AspectRatio>
+          <Stack gap="1.5" p={flat ? '2' : { base: '3', sm: '3.5' }} flex="1">
+            <Text fontSize={{ base: 'sm', sm: 'md' }} fontWeight="medium" lineClamp={2}>
+              {product.name}
             </Text>
-            {product.compareAtPrice !== null && (
-              <Text fontSize="sm" color="fg.subtle" textDecoration="line-through">
-                {formatPrice(product.compareAtPrice, data.shop.currency)}
+            <Stack direction="row" gap="1.5" align="baseline" wrap="wrap">
+              <Text fontWeight="bold" fontVariantNumeric="tabular-nums">
+                {formatPrice(product.price, data.shop.currency)}
               </Text>
-            )}
+              {product.compareAtPrice !== null && (
+                <Text fontSize="sm" color="fg.subtle" textDecoration="line-through">
+                  {formatPrice(product.compareAtPrice, data.shop.currency)}
+                </Text>
+              )}
+            </Stack>
           </Stack>
-        </Stack>
-      </SmartLink>
-      {/* Outside the link: a button nested in an anchor is neither valid HTML
+        </SmartLink>
+        {/* Outside the link: a button nested in an anchor is neither valid HTML
           nor clickable without hijacking the navigation. */}
-      <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
-    </Card.Root>
+        <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
+      </Card.Root>
+    </CardTilt>
   )
 }
 
