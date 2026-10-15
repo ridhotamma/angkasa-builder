@@ -43,6 +43,7 @@ import {
   LuTrash2,
 } from 'react-icons/lu'
 
+import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
 import { Tooltip } from '@repo/theme'
 
 import {
@@ -61,7 +62,6 @@ import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { AddPalette, type PaletteBlock } from './add-palette'
-import { SECTION_LINKING_ENABLED } from './features'
 import { useEditorText } from './messages'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import { sectionIcon } from './section-icons'

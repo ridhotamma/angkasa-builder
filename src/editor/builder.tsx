@@ -85,6 +85,7 @@ import {
   LuX,
 } from 'react-icons/lu'
 
+import { SECTION_LINKING_ENABLED, SECTION_STICKY_ENABLED } from '@repo/appwrite-config'
 import { Tooltip } from '@repo/theme'
 
 import {
@@ -127,11 +128,7 @@ import {
   type ThemeLayout,
 } from '../model/layout'
 import type { MenuItem } from '../model/menus'
-import {
-  SECTION_STICKY_ENABLED,
-  SECTION_STYLE_FIELDS,
-  VISIBILITY_STYLE_KEYS,
-} from '../model/section-style'
+import { SECTION_STYLE_FIELDS, VISIBILITY_STYLE_KEYS } from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { googleFontsHref, themeDesignedForDark, type ThemeSettings } from '../model/settings'
 import {
@@ -153,7 +150,6 @@ import { PaletteDragProvider, usePaletteDrag } from './add-palette'
 import { useBuilderDialogFooter } from './builder-dialog'
 import { BlockStylePanel } from './block-style-panel'
 import { CatalogueProvider } from './catalogue'
-import { SECTION_LINKING_ENABLED } from './features'
 import { DropOverlay, type DropTarget } from './preview-drop'
 import { FieldsForm, SectionLinkProvider, SelectInput } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'

@@ -8,6 +8,7 @@
 import { Box, HStack, IconButton } from '@chakra-ui/react'
 import { LuArrowDown, LuArrowUp, LuCopy, LuLink, LuLock, LuTrash2, LuUnlink } from 'react-icons/lu'
 
+import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
 import { Tooltip } from '@repo/theme'
 
 import {
@@ -20,7 +21,6 @@ import {
   type SectionInstance,
 } from '../model/content'
 import { sectionSchema } from '../model/sections'
-import { SECTION_LINKING_ENABLED } from './features'
 import { useEditorText } from './messages'
 
 export function SectionToolbar({

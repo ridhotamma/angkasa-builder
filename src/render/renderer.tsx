@@ -18,17 +18,13 @@ import {
   type ReactNode,
 } from 'react'
 
+import { SECTION_STICKY_ENABLED } from '@repo/appwrite-config'
 import { useLocale } from '@repo/i18n'
 
 import { resolveLinkedSections, type SectionInstance } from '../model/content'
 import { sectionAnchorId } from '../model/links'
 import { localize } from '../model/localized'
-import {
-  readSectionStyle,
-  SCHEDULE_LABELS,
-  scheduleState,
-  SECTION_STICKY_ENABLED,
-} from '../model/section-style'
+import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
 import { isFloatingSection } from '../model/sections'
 import { effectCss, themeCssVars, themeModeCssVars, type ThemeSettings } from '../model/settings'
 import { HEADER_OFFSET_VAR } from './chrome'

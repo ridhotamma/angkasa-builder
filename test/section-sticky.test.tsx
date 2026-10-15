@@ -15,15 +15,11 @@ import { ChakraProvider } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
+import { SECTION_STICKY_ENABLED } from '@repo/appwrite-config'
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
-import {
-  createSection,
-  DEFAULT_THEME_SETTINGS,
-  sectionAnchorId,
-  SECTION_STICKY_ENABLED,
-} from '../src/index'
+import { createSection, DEFAULT_THEME_SETTINGS, sectionAnchorId } from '../src/index'
 import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
 
 function env(): RenderEnvironment {
