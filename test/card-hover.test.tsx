@@ -24,12 +24,13 @@ function render(
   type: SectionType,
   section: Record<string, unknown>,
   theme: Partial<ThemeSettings> = {},
+  imageUrl: () => string | null = () => null,
 ): string {
   const env: RenderEnvironment = {
     data: sampleStorefrontData('Kopi Kita'),
     settings: { ...DEFAULT_THEME_SETTINGS, ...theme },
     mode: 'live',
-    imageUrl: () => null,
+    imageUrl,
     formatPrice: (amount, currency) => `${amount} ${currency}`,
   }
   return renderToString(
@@ -96,10 +97,28 @@ describe('card hover', () => {
     }
   })
 
-  test('the shine sweep is an overlay that runs on hover', () => {
+  test('gallery tiles are theme cards too', () => {
+    const url = () => 'https://img/x.jpg'
+    for (const layout of ['grid', 'masonry', 'social']) {
+      const html = render(
+        'gallery',
+        { layout, items: [{ image: 'a', caption: 'A' }] },
+        { cardHover: ['lift'] },
+        url,
+      )
+      expect(html, layout).toMatch(LIFT)
+    }
+  })
+
+  test('the shine sweep is a one-way overlay that runs on hover', () => {
     const html = render('latest-products', {}, { cardHover: ['shine'] })
+    // Rest: to the left, and with no transition — so leaving the card snaps the
+    // light back to its start rather than dragging it back across.
     expect(html).toMatch(SHINE_BASE)
+    expect(html).toMatch(/::before\{[^}]*translateX\(-130%\)[^}]*transition:none/)
+    // Hover: the sweep, with the transition that drives it.
     expect(html).toMatch(SHINE_HOVER)
+    expect(html).toMatch(/:hover::before\{[^}]*transition:transform 650ms/)
     // Reduced motion drops it, like the other moving effects.
     expect(html).toMatch(/::before\{display:none/)
   })

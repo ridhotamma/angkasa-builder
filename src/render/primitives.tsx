@@ -27,11 +27,13 @@ import {
 } from '@chakra-ui/react'
 import {
   createContext,
+  Fragment,
   useContext,
   useEffect,
   useMemo,
   useRef,
   type ComponentProps,
+  type ComponentType,
   type MouseEvent,
   type ReactNode,
 } from 'react'
@@ -984,73 +986,79 @@ export function EmptyNotice({ children }: { children: ReactNode }) {
 }
 
 /**
- * What a product or category card does on hover, from the theme's
- * `cardHover`: any of a brand outline, an image zoom, a lift and a shadow.
- * Spread on the card's root. On a bold card the shadow grows its hard shadow
- * rather than adding a soft one. Reduced motion keeps the colour and drops
- * the movement.
+ * The brand ring on hover, drawn as an overlay pseudo-element rather than an
+ * `outline`: a card's own outline paints under its children, so an opaque image
+ * box hid the top half of the ring and a full-bleed bento tile hid all of it.
  */
-export function useCardHover(): BoxProps {
-  const { settings } = useRenderEnvironment()
-  return cardHoverProps(settings)
+function outlineCss() {
+  return {
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      inset: '0',
+      zIndex: 2,
+      borderRadius: 'inherit',
+      border: '2px solid transparent',
+      pointerEvents: 'none',
+      transition: 'border-color 150ms ease',
+    },
+    '&:hover::after': { borderColor: 'var(--chakra-colors-brand-solid)' },
+  }
 }
 
 /**
- * `useCardHover` as a pure function, so the storefront's own pages can wear
- * the same effects through `storefrontLook` (they read the theme from the
- * root loader, not from a `RenderProvider`).
+ * A light sweeping across the card, left to right, on hover. No transition at
+ * rest, so leaving the card snaps the light back to its start — the sweep is
+ * one-way, never dragging back across.
  */
-export function cardHoverProps(settings: ThemeSettings): BoxProps {
-  const effects = new Set(settings.cardHover)
-  if (effects.size === 0) return {}
-  const bold = settings.cardStyle === 'hard'
-  const outline = effects.has('outline')
-  const shine = effects.has('shine')
+function shineCss() {
+  return {
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      inset: '0',
+      zIndex: 1,
+      borderRadius: 'inherit',
+      pointerEvents: 'none',
+      background:
+        'linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 0.35) 50%, transparent 65%)',
+      transform: 'translateX(-130%)',
+      transition: 'none',
+    },
+    '&:hover::before': { transform: 'translateX(130%)', transition: 'transform 650ms ease' },
+  }
+}
+
+/** The movement an effect set adds to the card's own `:hover` rule. */
+function liftCss(effects: ReadonlySet<string>, bold: boolean) {
   const hover: Record<string, string> = {}
   if (effects.has('lift')) hover.transform = bold ? 'translate(-2px, -2px)' : 'translateY(-4px)'
   if (effects.has('shadow')) {
     hover.boxShadow = bold ? boldShadow(BOLD_INK, 6) : 'var(--chakra-shadows-lg)'
   }
+  return Object.keys(hover).length > 0 ? { '&:hover': hover } : {}
+}
+
+/**
+ * What every card does when the shopper points at it, from the theme's
+ * `cardHover` — a brand outline, an image zoom, a lift, a shadow, a 3D tilt and
+ * a shine sweep. One set for every card; none has its own. A pure function, so
+ * the storefront's own pages wear it through `storefrontLook` too (they read the
+ * theme from the root loader, not from a `RenderProvider`).
+ */
+export function cardHoverProps(settings: ThemeSettings): BoxProps {
+  const effects = new Set(settings.cardHover)
+  if (effects.size === 0) return {}
+  const outline = effects.has('outline')
+  const shine = effects.has('shine')
   return {
     // The ring and shine overlays are absolutely placed, so the card anchors them.
     ...((outline || shine) && { position: 'relative' as const }),
     transition: 'transform 250ms ease, box-shadow 250ms ease',
     css: {
-      ...(outline && {
-        // Drawn as an overlay pseudo-element, not an `outline`: a card's own
-        // outline paints under its children, so an opaque image box hid the
-        // top half of the ring — and a full-bleed bento tile hid all of it.
-        // The overlay sits above the content, inset from the card's edge.
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          inset: '0',
-          zIndex: 2,
-          borderRadius: 'inherit',
-          border: '2px solid transparent',
-          pointerEvents: 'none',
-          transition: 'border-color 150ms ease',
-        },
-        '&:hover::after': { borderColor: 'var(--chakra-colors-brand-solid)' },
-      }),
-      ...(shine && {
-        // A light sweeping across the card on hover. Absolutely placed above
-        // the content, clipped by the card's own corner radius.
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          inset: '0',
-          zIndex: 1,
-          borderRadius: 'inherit',
-          pointerEvents: 'none',
-          background:
-            'linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 0.35) 50%, transparent 65%)',
-          transform: 'translateX(-130%)',
-          transition: 'transform 650ms ease',
-        },
-        '&:hover::before': { transform: 'translateX(130%)' },
-      }),
-      ...(Object.keys(hover).length > 0 && { '&:hover': hover }),
+      ...(outline && outlineCss()),
+      ...(shine && shineCss()),
+      ...liftCss(effects, settings.cardStyle === 'hard'),
       ...(effects.has('zoom') && { '&:hover img': { transform: 'scale(1.05)' } }),
       '@media (prefers-reduced-motion: reduce)': {
         '&:hover': { transform: 'none' },
@@ -1061,20 +1069,33 @@ export function cardHoverProps(settings: ThemeSettings): BoxProps {
   }
 }
 
-/**
- * Wraps a card so the theme's 3D `tilt` effect reaches it. It reads the setting
- * itself, so every card gets the same tilt from the same place; a theme without
- * `tilt` renders the children untouched, with no extra element.
- */
-export function CardTilt({ children }: { children: ReactNode }) {
-  const { settings } = useRenderEnvironment()
-  return settings.cardHover.includes('tilt') ? <Tilt>{children}</Tilt> : <>{children}</>
+/** Everything a card wears from the theme: the frame, flatness and effects. */
+export interface CardTheme {
+  frame: BoxProps
+  flat: boolean
+  hover: BoxProps
+  /**
+   * Wraps the card for the 3D `tilt`, or is a pass-through when the theme does
+   * not ask for it (no extra element). Cards whose layout cannot take an extra
+   * wrapper — a bento grid tile, a rail's flex item — simply do not use it.
+   */
+  Tilt: ComponentType<{ children: ReactNode }>
 }
 
-/** A card's frame under the theme's card style; `flat` drops the frame entirely. */
-export function useCardStyle(): { frame: BoxProps; flat: boolean } {
+/**
+ * Everything a card wears from the theme, in one call, so every card in every
+ * section is drawn the same way: `const { frame, hover, Tilt } = useCard()`.
+ */
+export function useCard(): CardTheme {
   const { settings } = useRenderEnvironment()
-  return { frame: cardFrame(settings.cardStyle), flat: settings.cardStyle === 'flat' }
+  return {
+    frame: cardFrame(settings.cardStyle),
+    flat: settings.cardStyle === 'flat',
+    hover: cardHoverProps(settings),
+    Tilt: (settings.cardHover.includes('tilt') ? Tilt : Fragment) as ComponentType<{
+      children: ReactNode
+    }>,
+  }
 }
 
 /**
@@ -1116,11 +1137,10 @@ export function WishlistButton({
 
 export function ProductCard({ product }: { product: StorefrontProductCard }) {
   const { data, formatPrice } = useRenderEnvironment()
-  const { frame, flat } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, flat, hover, Tilt } = useCard()
 
   return (
-    <CardTilt>
+    <Tilt>
       <Card.Root
         position="relative"
         w="full"
@@ -1172,7 +1192,7 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
           nor clickable without hijacking the navigation. */}
         <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
       </Card.Root>
-    </CardTilt>
+    </Tilt>
   )
 }
 
@@ -1377,8 +1397,7 @@ function ProductBentoCard({
   reveal: boolean
 }) {
   const { data, formatPrice } = useRenderEnvironment()
-  const { frame } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, hover } = useCard()
   const big = shape === 'big'
 
   return (

@@ -63,7 +63,6 @@ import {
   bentoReveal,
   bentoShape,
   ButtonRow,
-  CardTilt,
   EditableText,
   EmptyNotice,
   FullBleed,
@@ -75,8 +74,7 @@ import {
   SectionHeading,
   SmartLink,
   ThemeButton,
-  useCardHover,
-  useCardStyle,
+  useCard,
 } from './primitives'
 
 export interface SectionProps {
@@ -575,8 +573,7 @@ function IntroBand({ settings }: { settings: FieldValues }) {
 
 function CategoryRail({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
-  const { frame } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, hover, Tilt } = useCard()
   const empty = useEmptyText()
   const categories = data.categories.slice(0, readNumber(settings, 'limit', 12))
 
@@ -595,7 +592,7 @@ function CategoryRail({ settings }: SectionProps) {
       ) : (
         <SimpleGrid columns={{ base: 3, md: 5, lg: 6 }} gap="3">
           {categories.map((category) => (
-            <CardTilt key={category.id}>
+            <Tilt key={category.id}>
               <Card.Root bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
                 <SmartLink link={{ kind: 'category', slug: category.slug }} display="block">
                   <AspectRatio ratio={1} bg="bg.subtle">
@@ -615,7 +612,7 @@ function CategoryRail({ settings }: SectionProps) {
                   </Box>
                 </SmartLink>
               </Card.Root>
-            </CardTilt>
+            </Tilt>
           ))}
         </SimpleGrid>
       )}
@@ -789,8 +786,7 @@ function CategoryBento({
   /** The names show on hover only (the section's `bentoText`). */
   reveal: boolean
 }) {
-  const { frame } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, hover } = useCard()
 
   return (
     <Grid
@@ -1084,6 +1080,7 @@ function ImageWithText({ settings }: SectionProps) {
 
 function ImageGallery({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
+  const { frame, flat, hover, Tilt } = useCard()
   const empty = useEmptyText()
   const items = readList(settings, 'items')
 
@@ -1101,52 +1098,38 @@ function ImageGallery({ settings }: SectionProps) {
             const fileId = readText(item, 'image')
             const caption = readText(item, 'caption')
             return (
-              <SmartLink key={item.id} link={readLink(item, 'link')} display="block">
-                <Stack gap="2">
-                  <AspectRatio
-                    ratio={1}
-                    rounded="l3"
-                    overflow="hidden"
-                    bg="bg.subtle"
-                    position="relative"
-                    css={{
-                      // A light wipe crossing the photo on hover; still image
-                      // and no transition at all for reduced motion.
-                      '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        inset: '0',
-                        background:
-                          'linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.35) 50%, transparent 60%)',
-                        transform: 'translateX(-101%)',
-                        pointerEvents: 'none',
-                      },
-                      '&:hover::after': {
-                        transform: 'translateX(101%)',
-                        transition: 'transform 700ms ease',
-                      },
-                      '&:hover img': { transform: 'scale(1.04)' },
-                      '@media (prefers-reduced-motion: reduce)': {
-                        '&:hover::after': { transform: 'none', transition: 'none' },
-                        '&:hover img': { transform: 'none' },
-                      },
-                    }}
-                  >
-                    <ImageWithFallback
-                      src={(fileId && imageUrl(fileId, { width: 600, height: 600 })) || undefined}
-                      alt={caption}
-                      objectFit="cover"
-                      loading="lazy"
-                      transition="transform 600ms ease"
-                    />
-                  </AspectRatio>
-                  {caption && (
-                    <Text fontSize="sm" color="fg.muted">
-                      {caption}
-                    </Text>
-                  )}
-                </Stack>
-              </SmartLink>
+              <Tilt key={item.id}>
+                <Card.Root
+                  h="full"
+                  bg="bg.panel"
+                  rounded="l3"
+                  overflow="hidden"
+                  {...frame}
+                  {...hover}
+                >
+                  <SmartLink link={readLink(item, 'link')} display="block">
+                    <AspectRatio
+                      ratio={1}
+                      bg="bg.subtle"
+                      rounded={flat ? 'l3' : undefined}
+                      overflow="hidden"
+                    >
+                      <ImageWithFallback
+                        src={(fileId && imageUrl(fileId, { width: 600, height: 600 })) || undefined}
+                        alt={caption}
+                        objectFit="cover"
+                        loading="lazy"
+                        transition="transform 600ms ease"
+                      />
+                    </AspectRatio>
+                    {caption && (
+                      <Text fontSize="sm" color="fg.muted" p={flat ? '2' : '3'}>
+                        {caption}
+                      </Text>
+                    )}
+                  </SmartLink>
+                </Card.Root>
+              </Tilt>
             )
           })}
         </SimpleGrid>
@@ -1336,8 +1319,7 @@ function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; au
 
 /** The quote, then who said it — with their photo, or their initials without one. */
 function TestimonialCard({ item }: { item: TestimonialItem }) {
-  const { frame } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, hover, Tilt } = useCard()
   const { imageUrl } = useRenderEnvironment()
   const author = readText(item, 'author')
   const role = readText(item, 'role')
@@ -1345,7 +1327,7 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
   const src = avatar ? imageUrl(avatar, { width: 96, height: 96 }) : null
 
   return (
-    <CardTilt>
+    <Tilt>
       <Card.Root bg="bg.subtle" rounded="l3" w="full" h="full" {...frame} {...hover}>
         <Card.Body gap="4" justifyContent="space-between">
           <Text fontSize="lg" lineHeight="tall">
@@ -1386,7 +1368,7 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
           )}
         </Card.Body>
       </Card.Root>
-    </CardTilt>
+    </Tilt>
   )
 }
 

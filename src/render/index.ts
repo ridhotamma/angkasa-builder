@@ -56,10 +56,10 @@ export {
   buttonLook,
   cardFrame,
   cardHoverProps,
-  CardTilt,
   FullBleed,
   PAGE_WIDTH_CONTAINER,
-  useCardHover,
+  useCard,
+  type CardTheme,
 } from './primitives'
 export { RichTextView } from './rich-text'
 export {

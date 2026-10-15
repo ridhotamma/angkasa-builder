@@ -35,14 +35,7 @@ import {
   type StorefrontArticleDetail,
 } from './context'
 import { useRenderText } from './copy'
-import {
-  CardTilt,
-  EmptyNotice,
-  SectionHeading,
-  SmartLink,
-  useCardHover,
-  useCardStyle,
-} from './primitives'
+import { EmptyNotice, SectionHeading, SmartLink, useCard } from './primitives'
 import type { SectionProps } from './sections'
 
 function useArticle(): StorefrontArticleDetail | null {
@@ -132,10 +125,9 @@ function Cover({ article, ratio = 16 / 9 }: { article: StorefrontArticleCard; ra
  * its row — the same card in both places, under the theme's card style.
  */
 export function ArticleCard({ article }: { article: StorefrontArticleCard }) {
-  const { frame, flat } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, flat, hover, Tilt } = useCard()
   return (
-    <CardTilt>
+    <Tilt>
       <Box h="full" bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
         <SmartLink
           link={{ kind: 'article', blogHandle: article.blogHandle, slug: article.slug }}
@@ -167,7 +159,7 @@ export function ArticleCard({ article }: { article: StorefrontArticleCard }) {
           </Stack>
         </SmartLink>
       </Box>
-    </CardTilt>
+    </Tilt>
   )
 }
 

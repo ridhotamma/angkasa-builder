@@ -50,14 +50,12 @@ import { usePrefersReducedMotion } from './hooks'
 import { BackgroundVideo, VideoFrame } from './media'
 import {
   ButtonRow,
-  CardTilt,
   EmptyNotice,
   PageColumn,
   SectionHeading,
   SmartLink,
   ThemeText,
-  useCardHover,
-  useCardStyle,
+  useCard,
   useOverlayProps,
 } from './primitives'
 import { RichTextView } from './rich-text'
@@ -213,6 +211,7 @@ export function MasonryGallery({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const overlay = useOverlayProps()
+  const { frame, hover, Tilt } = useCard()
   const items = readList(settings, 'items').filter((item) => readText(item, 'image'))
   const [active, setActive] = useState<number | null>(null)
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
@@ -236,45 +235,52 @@ export function MasonryGallery({ settings }: SectionProps) {
           if (!src) return null
           const link = readLink(item, 'link')
           return (
-            <Box key={item.id} as="div" position="relative">
-              <IconButton
-                aria-label={readText(item, 'alt') || 'Open photo'}
-                variant="plain"
-                display="block"
-                w="full"
-                h="auto"
-                p="0"
+            <Tilt key={item.id}>
+              <Box
+                as="div"
+                position="relative"
                 rounded="l2"
                 overflow="hidden"
-                cursor="zoom-in"
-                onClick={() => setActive(index)}
-                _hover={{ opacity: 0.92 }}
+                {...frame}
+                {...hover}
               >
-                <ImageWithFallback
-                  src={src}
-                  alt={readText(item, 'alt')}
+                <IconButton
+                  aria-label={readText(item, 'alt') || 'Open photo'}
+                  variant="plain"
+                  display="block"
                   w="full"
-                  objectFit="cover"
-                  loading="lazy"
-                />
-              </IconButton>
-              {link.kind !== 'none' && (
-                <SmartLink
-                  link={link}
-                  position="absolute"
-                  bottom="2"
-                  right="2"
-                  bg="blackAlpha.600"
-                  color="white"
-                  rounded="full"
-                  px="2.5"
-                  py="1"
-                  fontSize="xs"
+                  h="auto"
+                  p="0"
+                  cursor="zoom-in"
+                  onClick={() => setActive(index)}
                 >
-                  {readText(item, 'alt') || 'View'}
-                </SmartLink>
-              )}
-            </Box>
+                  <ImageWithFallback
+                    src={src}
+                    alt={readText(item, 'alt')}
+                    w="full"
+                    objectFit="cover"
+                    loading="lazy"
+                    transition="transform 600ms ease"
+                  />
+                </IconButton>
+                {link.kind !== 'none' && (
+                  <SmartLink
+                    link={link}
+                    position="absolute"
+                    bottom="2"
+                    right="2"
+                    bg="blackAlpha.600"
+                    color="white"
+                    rounded="full"
+                    px="2.5"
+                    py="1"
+                    fontSize="xs"
+                  >
+                    {readText(item, 'alt') || 'View'}
+                  </SmartLink>
+                )}
+              </Box>
+            </Tilt>
           )
         })}
       </Box>
@@ -328,8 +334,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const overlay = useOverlayProps()
-  const { frame } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, hover, Tilt } = useCard()
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'name') || readText(item, 'quote') || readVideo(item, 'video'),
   )
@@ -364,7 +369,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
             posterId ? imageUrl(posterId, { width: 800, height: 450 }) : null,
           )
           return (
-            <CardTilt key={item.id}>
+            <Tilt key={item.id}>
               <Box bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
                 <Stack gap="3">
                   <Box position="relative" bg="bg.subtle">
@@ -405,7 +410,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
                   </Stack>
                 </Stack>
               </Box>
-            </CardTilt>
+            </Tilt>
           )
         })}
       </SimpleGrid>
@@ -448,8 +453,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
 export function Team({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
-  const { frame, flat } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, flat, hover, Tilt } = useCard()
   const align = alignOf(settings)
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'name') || readText(item, 'photo'),
@@ -500,11 +504,11 @@ export function Team({ settings }: SectionProps) {
             </Stack>
           )
           return (
-            <CardTilt key={item.id}>
+            <Tilt key={item.id}>
               <Box bg="bg.panel" rounded="l3" p="4" {...frame} {...hover}>
                 {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
               </Box>
-            </CardTilt>
+            </Tilt>
           )
         })}
       </SimpleGrid>
@@ -519,8 +523,7 @@ export function Team({ settings }: SectionProps) {
 export function Press({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
-  const { frame } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, hover, Tilt } = useCard()
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'source') || readText(item, 'quote') || readText(item, 'logo'),
   )
@@ -558,11 +561,11 @@ export function Press({ settings }: SectionProps) {
       </Stack>
     )
     return (
-      <CardTilt key={item.id}>
+      <Tilt key={item.id}>
         <Box bg="bg.panel" rounded="l3" p="5" {...frame} {...hover}>
           {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
         </Box>
-      </CardTilt>
+      </Tilt>
     )
   }
 
@@ -748,6 +751,7 @@ export function SplitScreen({ settings }: SectionProps) {
 export function SocialWall({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
+  const { frame, hover, Tilt } = useCard()
   const items = readList(settings, 'items').filter((item) => readText(item, 'image'))
   if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
   const handle = readText(settings, 'handle')
@@ -773,9 +777,22 @@ export function SocialWall({ settings }: SectionProps) {
           if (!src) return null
           const link = readLink(item, 'link')
           const tile = (
-            <Box position="relative" rounded="l1" overflow="hidden" bg="bg.subtle">
+            <Box
+              position="relative"
+              rounded="l1"
+              overflow="hidden"
+              bg="bg.subtle"
+              {...frame}
+              {...hover}
+            >
               <AspectRatio ratio={1}>
-                <ImageWithFallback src={src} alt="" objectFit="cover" loading="lazy" />
+                <ImageWithFallback
+                  src={src}
+                  alt=""
+                  objectFit="cover"
+                  loading="lazy"
+                  transition="transform 600ms ease"
+                />
               </AspectRatio>
               {readText(item, 'caption') && (
                 <Text
@@ -795,12 +812,10 @@ export function SocialWall({ settings }: SectionProps) {
               )}
             </Box>
           )
-          return link.kind === 'none' ? (
-            <Box key={item.id}>{tile}</Box>
-          ) : (
-            <SmartLink key={item.id} link={link}>
-              {tile}
-            </SmartLink>
+          return (
+            <Tilt key={item.id}>
+              {link.kind === 'none' ? tile : <SmartLink link={link}>{tile}</SmartLink>}
+            </Tilt>
           )
         })}
       </SimpleGrid>

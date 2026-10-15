@@ -29,7 +29,7 @@ import {
   ProductList,
   SectionHeading,
   ThemeButton,
-  useCardStyle,
+  useCard,
   WishlistButton,
 } from './primitives'
 import { alignOf, useEmptyText, type SectionProps } from './sections'
@@ -393,7 +393,9 @@ export function PromoCodes({ settings }: SectionProps) {
 /** A ticket-shaped voucher with a copy button — notched edges, a dashed tear line. */
 function VoucherCard({ code, title, terms }: { code: string; title: string; terms: string }) {
   const { mode } = useRenderEnvironment()
-  const { frame } = useCardStyle()
+  // The frame only: the ticket's own pseudo-elements are its notches, so the
+  // shared hover overlays would collide with them.
+  const { frame } = useCard()
   const text = useRenderText()
   const [copied, setCopied] = useState(false)
 

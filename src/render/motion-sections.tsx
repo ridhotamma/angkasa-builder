@@ -36,8 +36,7 @@ import {
   Paragraphs,
   SectionHeading,
   SmartLink,
-  useCardHover,
-  useCardStyle,
+  useCard,
 } from './primitives'
 import { RichTextView } from './rich-text'
 import { alignOf, useEmptyText, type SectionProps } from './sections'
@@ -76,8 +75,7 @@ function stackCardTop(index: number): string {
  */
 export function StackedCards({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
-  const { frame, flat } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, flat, hover } = useCard()
   const empty = useEmptyText()
   const align = alignOf(settings)
   const custom = readText(settings, 'content') === 'blocks'
@@ -505,8 +503,7 @@ export function railHeight(settings: FieldValues): { css: string; fraction: numb
 export function ScrollRail({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
-  const { frame } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, hover } = useCard()
   const custom = readText(settings, 'content') === 'blocks'
   const blocks = custom ? readBlocks(settings, 'blocks') : []
   const items = custom ? [] : readList(settings, 'items')

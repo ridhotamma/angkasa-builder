@@ -45,15 +45,13 @@ import { useRenderText } from './copy'
 import { FeatureIcon } from './icons'
 import { useMotionEffect } from './motion/engine'
 import {
-  CardTilt,
   EditableText,
   EmptyNotice,
   gridColumns,
   Paragraphs,
   SectionHeading,
   SmartLink,
-  useCardHover,
-  useCardStyle,
+  useCard,
 } from './primitives'
 import { RichTextView } from './rich-text'
 import { alignOf, useEmptyText, type SectionProps } from './sections'
@@ -79,8 +77,7 @@ function columnsOf(value: string, count: number, mobileColumns?: string) {
 
 export function Multicolumn({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
-  const { frame, flat } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, flat, hover, Tilt } = useCard()
   const empty = useEmptyText()
   const items = readList(settings, 'items')
   const align = alignOf(settings)
@@ -106,7 +103,7 @@ export function Multicolumn({ settings }: SectionProps) {
             const image = readText(item, 'image')
             const linkLabel = readText(item, 'linkLabel')
             return (
-              <CardTilt key={item.id}>
+              <Tilt key={item.id}>
                 <Card.Root
                   h="full"
                   bg="bg.panel"
@@ -154,7 +151,7 @@ export function Multicolumn({ settings }: SectionProps) {
                     )}
                   </Card.Body>
                 </Card.Root>
-              </CardTilt>
+              </Tilt>
             )
           })}
         </SimpleGrid>
@@ -749,8 +746,7 @@ function LocationActions({ entry, directions }: { entry: StoreLocationEntry; dir
 
 export function StoreLocations({ settings }: SectionProps) {
   const { data, imageUrl } = useRenderEnvironment()
-  const { frame } = useCardStyle()
-  const hover = useCardHover()
+  const { frame, hover, Tilt } = useCard()
   const empty = useEmptyText()
   const entries = locationsFor(settings, data)
   const locator = readText(settings, 'layout') === 'locator'
@@ -870,7 +866,7 @@ export function StoreLocations({ settings }: SectionProps) {
         {entries.map((entry) => {
           const directions = directionsFor(entry)
           return (
-            <CardTilt key={entry.id}>
+            <Tilt key={entry.id}>
               <Card.Root bg="bg.panel" rounded="l3" overflow="hidden" {...frame} {...hover}>
                 {entry.image && (
                   <AspectRatio ratio={16 / 9} bg="bg.subtle">
@@ -890,7 +886,7 @@ export function StoreLocations({ settings }: SectionProps) {
                   <LocationActions entry={entry} directions={directions} />
                 </Card.Body>
               </Card.Root>
-            </CardTilt>
+            </Tilt>
           )
         })}
       </SimpleGrid>
