@@ -1188,6 +1188,8 @@ function Builder({
                 onChange={onSettingsChange}
                 shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
                 priorityLookKeys={startWithLooks?.priorityKeys}
+                sections={sections}
+                onSectionsChange={onSectionsChange}
               />
             </Tabs.Content>
           </Tabs.Root>

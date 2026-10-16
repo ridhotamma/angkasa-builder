@@ -14,7 +14,7 @@
 
 import type { JsonValue } from './fields'
 import { isRecord } from './fields'
-import type { SectionInstance, PageContent } from './content'
+import { CONTENT_VERSION, type SectionInstance, type PageContent } from './content'
 import {
   readLocalizedEntry,
   readLocalizedText,
@@ -171,4 +171,19 @@ export function applyTranslationEntry(
   })
 
   return changed ? { ...content, sections } : content
+}
+
+/**
+ * The same write, over a bare section list — the editor holds the sections, not
+ * the surrounding content, and this keeps one implementation underneath both.
+ */
+export function applyTranslationToSections(
+  sections: readonly SectionInstance[],
+  path: TranslationPath,
+  locale: StorefrontLocale,
+  text: string,
+  fallback: StorefrontLocale = STOREFRONT_LOCALES[0],
+): SectionInstance[] {
+  const content: PageContent = { version: CONTENT_VERSION, sections: [...sections] }
+  return applyTranslationEntry(content, path, locale, text, fallback).sections
 }

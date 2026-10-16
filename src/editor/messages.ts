@@ -68,6 +68,21 @@ const MESSAGES = {
     id: 'Yang dilakukan kartu produk dan kategori saat pembeli mengarahkan kursor. Gabungkan sesuka hati; matikan semua untuk tanpa efek.',
   },
   size: { en: 'Size', id: 'Ukuran' },
+  localization: { en: 'Localization', id: 'Lokalisasi' },
+  localizationHelp: {
+    en: 'Translate the copy on this storefront. A field left empty falls back to the shop language.',
+    id: 'Terjemahkan teks di etalase ini. Kolom yang dikosongkan memakai bahasa toko.',
+  },
+  manageTranslation: { en: 'Manage translation', id: 'Kelola terjemahan' },
+  translationDefault: { en: 'Default', id: 'Asli' },
+  translationTarget: { en: 'Translation', id: 'Terjemahan' },
+  translationUntranslatedOnly: { en: 'Untranslated only', id: 'Belum diterjemahkan' },
+  translationEmpty: {
+    en: 'Nothing on this storefront needs translating yet.',
+    id: 'Belum ada teks yang perlu diterjemahkan.',
+  },
+  translationDone: { en: 'translated', id: 'diterjemahkan' },
+  translationClose: { en: 'Close', id: 'Tutup' },
   typeScale: { en: 'Text size', id: 'Ukuran teks' },
   typeScaleHelp: {
     en: 'Scales every heading, paragraph and label together.',

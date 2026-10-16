@@ -53,11 +53,14 @@ import {
   type SplashTone,
   type ThemeSettings,
 } from '../model/settings'
+import type { SectionInstance } from '../model/content'
+import { STOREFRONT_LOCALES, type StorefrontLocale } from '../model/localized'
 import { SitePopup } from '../render/popup'
 import { SplashScreen, type SplashShop } from '../render/splash'
 import { ColorInput, Labeled, SelectInput } from './controls'
 import { FontSelect } from './font-select'
 import { LookPickerDialog } from './look-picker-dialog'
+import { TranslationManagerDialog } from './translation-manager-dialog'
 import { useEditorText, type EditorMessage } from './messages'
 import { PaletteStrip } from './palette-swatch'
 
@@ -128,6 +131,8 @@ export function ThemeSettingsPanel({
   onChange,
   shop,
   priorityLookKeys = [],
+  sections,
+  onSectionsChange,
 }: {
   settings: ThemeSettings
   onChange: (settings: ThemeSettings) => void
@@ -135,6 +140,12 @@ export function ThemeSettingsPanel({
   shop?: SplashShop
   /** Look keys a freshly installed template suggests, shown first. */
   priorityLookKeys?: readonly string[]
+  /**
+   * The page's sections. Given together with `onSectionsChange`, the Localization
+   * group appears — translating needs the copy the sections hold.
+   */
+  sections?: readonly SectionInstance[]
+  onSectionsChange?: (sections: SectionInstance[]) => void
 }) {
   const { t, l } = useEditorText()
   // The picker opens only when the seller asks for it: a modal that opens
@@ -143,6 +154,8 @@ export function ThemeSettingsPanel({
   const [pickerOpen, setPickerOpen] = useState(false)
   // A count, so each press replays the intro; zero means it is not playing.
   const [splashPreview, setSplashPreview] = useState(0)
+  /** The language whose translation manager is open, or null. */
+  const [translation, setTranslation] = useState<StorefrontLocale | null>(null)
   const [popupPreview, setPopupPreview] = useState(0)
   const issues = contrastIssues(settings)
   const schemeIssues = schemeContrastIssues(settings)
@@ -593,6 +606,27 @@ export function ThemeSettingsPanel({
             />
           </Labeled>
         </ThemeSection>
+
+        {/* Only where the panel was handed the sections: translating needs them. */}
+        {sections && onSectionsChange && (
+          <ThemeSection
+            value="localization"
+            title={t('localization')}
+            helper={t('localizationHelp')}
+          >
+            {STOREFRONT_LOCALES.map((locale) => (
+              <Button
+                key={locale}
+                size="xs"
+                variant="outline"
+                alignSelf="start"
+                onClick={() => setTranslation(locale)}
+              >
+                {t('manageTranslation')} — {locale.toUpperCase()}
+              </Button>
+            ))}
+          </ThemeSection>
+        )}
       </Accordion.Root>
 
       {shop && splashPreview > 0 && (
@@ -616,6 +650,16 @@ export function ThemeSettingsPanel({
             onDone={() => setPopupPreview(0)}
           />
         </Portal>
+      )}
+
+      {translation && sections && onSectionsChange && (
+        <TranslationManagerDialog
+          locale={translation}
+          open
+          onOpenChange={(next) => !next && setTranslation(null)}
+          sections={sections}
+          onSectionsChange={onSectionsChange}
+        />
       )}
     </Stack>
   )
