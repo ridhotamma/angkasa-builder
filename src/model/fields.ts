@@ -16,7 +16,7 @@ import { hasCoordinates, isAssetKey, sanitizeStockPhoto } from '@repo/appwrite-c
 import { NO_ICON, resolveIconName, type IconName } from './icons'
 import { sanitizeLink, NO_LINK, type Link } from './links'
 import { EMPTY_RICH_DOC, richDocFromPlainText, sanitizeRichDoc, type RichDoc } from './rich-text'
-import type { Localized } from './localized'
+import { isLocalizedText, STOREFRONT_LOCALES, type Localized } from './localized'
 
 interface BaseField {
   key: string
@@ -287,6 +287,25 @@ function sanitizeImage(value: unknown): string {
 
 function text(value: unknown, max: number, fallback: string): string {
   return typeof value === 'string' ? value.slice(0, max) : fallback
+}
+
+/**
+ * A text or textarea value: one string, or — once translated — one per locale.
+ *
+ * Each entry is truncated like a plain string and only locales the storefront
+ * knows are kept, so a hand-crafted payload can add a translation but never an
+ * unknown locale key. A plain string sanitises exactly as it always has.
+ */
+function sanitizeTextField(value: unknown, max: number, fallback: string): JsonValue {
+  if (isLocalizedText(value)) {
+    const out: Record<string, string> = {}
+    for (const locale of STOREFRONT_LOCALES) {
+      const entry = value[locale]
+      if (typeof entry === 'string') out[locale] = entry.slice(0, max)
+    }
+    return out
+  }
+  return text(value, max, fallback)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -662,7 +681,7 @@ function sanitizeField(
   switch (field.kind) {
     case 'text':
     case 'textarea':
-      return text(value, field.max, field.default)
+      return sanitizeTextField(value, field.max, field.default)
     case 'richtext':
       return sanitizeRichDoc(value ?? field.default, field.max) as unknown as JsonValue
     case 'number': {

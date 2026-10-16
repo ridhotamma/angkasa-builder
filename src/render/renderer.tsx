@@ -13,6 +13,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -22,6 +23,7 @@ import { SECTION_STICKY_ENABLED } from '@repo/appwrite-config'
 import { useLocale } from '@repo/i18n'
 
 import { resolveLinkedSections, type SectionInstance } from '../model/content'
+import { resolveLocalizedSettings } from '../model/localize-settings'
 import { sectionAnchorId } from '../model/links'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
@@ -259,6 +261,13 @@ const SectionItem = memo(function SectionItem({
 }) {
   const Section = SECTION_RENDERERS[section.type]
   const { now } = useRenderEnvironment()
+  const { locale } = useLocale()
+  // The seller's copy, resolved to the reader's locale. Identity is preserved
+  // when nothing is translated, so a single-language shop re-renders as before.
+  const settings = useMemo(
+    () => resolveLocalizedSettings(section.type, section.settings, locale),
+    [section.type, section.settings, locale],
+  )
   if (!Section) return null
   const mt = flush ? '0' : SECTION_GAP
 
@@ -289,7 +298,7 @@ const SectionItem = memo(function SectionItem({
           background={sectionBackground(section)}
           floating={floating}
         >
-          <Section settings={section.settings} />
+          <Section settings={settings} />
         </SectionFrame>
       </SectionElementsContext.Provider>
     </SectionIdContext.Provider>

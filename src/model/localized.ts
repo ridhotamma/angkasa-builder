@@ -19,3 +19,69 @@ export interface Localized {
 export function localize(text: Localized, locale: string): string {
   return text[locale as keyof Localized] || text.en
 }
+
+/* -------------------------------------------------------------------------- */
+/* Seller-authored copy                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The locales a storefront speaks, in fallback order — the shop's own language
+ * first, English last. Adding one is one more entry here plus its catalogue in
+ * `@repo/i18n`, the same shape the package's own copy uses above.
+ */
+export const STOREFRONT_LOCALES = ['id', 'en'] as const
+export type StorefrontLocale = (typeof STOREFRONT_LOCALES)[number]
+
+/**
+ * A seller's text field: a single string while a shop speaks one language, or
+ * one string per locale once it has been translated.
+ *
+ * Storing both in the very place the string used to live — a section's settings
+ * JSON, a page's body — is what lets the storefront render per visitor without
+ * a new column anywhere: the value widens, the storage does not.
+ */
+export type LocalizedText = string | Partial<Record<StorefrontLocale, string>>
+
+/** Whether a stored value is a per-locale map (as opposed to one plain string). */
+export function isLocalizedText(
+  value: unknown,
+): value is Partial<Record<StorefrontLocale, string>> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  return STOREFRONT_LOCALES.some(
+    (locale) => typeof (value as Record<string, unknown>)[locale] === 'string',
+  )
+}
+
+/**
+ * The text to show a reader in `locale`: that locale's entry, else the shop's
+ * fallback language, else English, else the empty string.
+ *
+ * A plain string is returned unchanged, so every value written before
+ * translations existed renders exactly as it does today.
+ */
+export function readLocalizedText(
+  value: LocalizedText | null | undefined,
+  locale: string,
+  fallback: string = STOREFRONT_LOCALES[0],
+): string {
+  if (typeof value === 'string') return value
+  if (!value) return ''
+  for (const key of [locale, fallback, 'en']) {
+    const text = value[key as StorefrontLocale]
+    if (typeof text === 'string' && text.length > 0) return text
+  }
+  return ''
+}
+
+/**
+ * One locale's stored entry, with no fallback — what the translation editor
+ * shows under that locale's tab. A plain string reads as the value for every
+ * locale, since it is the only copy there is.
+ */
+export function readLocalizedEntry(
+  value: LocalizedText | null | undefined,
+  locale: StorefrontLocale,
+): string {
+  if (typeof value === 'string') return value
+  return value?.[locale] ?? ''
+}
