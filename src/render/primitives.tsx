@@ -1067,10 +1067,17 @@ export function cardHoverProps(settings: ThemeSettings): BoxProps {
       ...(outline && outlineCss()),
       ...(shine && shineCss()),
       ...liftCss(effects, settings.cardStyle === 'hard', tilt),
-      ...(effects.has('zoom') && { '&:hover img': { transform: 'scale(1.05)' } }),
+      ...(effects.has('zoom') && {
+        // The transition rides on the image itself, not on each call site:
+        // one card that forgot to repeat `transition` is a card whose image
+        // snaps instead of easing. Declared once here, so every card that
+        // zooms eases the same way and a new card gets it for free.
+        '& img': { transition: 'transform 600ms ease' },
+        '&:hover img': { transform: 'scale(1.05)' },
+      }),
       '@media (prefers-reduced-motion: reduce)': {
         '&:hover': { transform: 'none' },
-        '&:hover img': { transform: 'none' },
+        '&:hover img': { transform: 'none', transition: 'none' },
         ...(shine && { '&::before': { display: 'none' } }),
       },
     },
@@ -1176,7 +1183,6 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
             alt={product.name}
             objectFit="cover"
             loading="lazy"
-            transition="transform 600ms ease"
           />
         </AspectRatio>
         <Stack gap="1.5" p={flat ? '2' : { base: '3', sm: '3.5' }} flex="1">

@@ -48,6 +48,9 @@ function render(
 const OUTLINE = /:hover::after\{[^}]*border-color:var\(--chakra-colors-brand-solid\)/
 const OUTLINE_BASE = /::after\{[^}]*border:2px solid transparent/
 const ZOOM = /:hover img\{[^}]*transform:scale\(1\.05\)/
+// The transition that makes the zoom ease instead of snap: it rides on the
+// image's own base rule (`& img { transition: … }`), in the shared hover set.
+const IMG_ZOOM_TRANSITION = / img\{[^}]*transition:transform 600ms/
 const LIFT = /:hover\{[^}]*transform:translateY\(-4px\)/
 const SHINE_BASE = /::before\{[^}]*translateX\(-130%\)/
 const SHINE_HOVER = /:hover::before\{[^}]*translateX\(130%\)/
@@ -62,6 +65,20 @@ describe('card hover', () => {
     expect(html).toMatch(OUTLINE_BASE)
     expect(html).toMatch(ZOOM)
     expect(html).not.toMatch(LIFT)
+  })
+
+  test('the image zoom eases, not snaps — the transition is declared once', () => {
+    const html = render('latest-products', {})
+    // The image owns the transition, so a card that zooms always eases; a
+    // card that has to repeat it at its own call site is one that will forget,
+    // which is exactly what a zoom that jumped looked like.
+    expect(html).toMatch(IMG_ZOOM_TRANSITION)
+    // Reduced motion: no movement and nothing left to transition.
+    expect(html).toMatch(/:hover img\{[^}]*transform:none[^}]*transition:none/)
+    // No zoom effect, no image transition minted for it.
+    expect(render('latest-products', {}, { cardHover: ['outline'] })).not.toMatch(
+      IMG_ZOOM_TRANSITION,
+    )
   })
 
   test('drops unknown effects and keeps them in order', () => {
