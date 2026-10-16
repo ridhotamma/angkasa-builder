@@ -73,6 +73,8 @@ describe('links', () => {
   test('builds storefront routes', () => {
     expect(storefrontHref({ kind: 'collection', slug: 'sale' })).toBe('/k/sale')
     expect(storefrontHref({ kind: 'search', query: 'kaos polos' })).toBe('/search?q=kaos%20polos')
+    expect(storefrontHref({ kind: 'orderTracking' })).toBe('/track-order')
+    expect(sanitizeLink({ kind: 'orderTracking' })).toEqual({ kind: 'orderTracking' })
     expect(storefrontHref({ kind: 'none' })).toBeNull()
   })
 

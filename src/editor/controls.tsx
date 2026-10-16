@@ -437,6 +437,7 @@ export const LINK_KIND_LABELS: Record<LinkKind, EditorMessage> = {
   blog: 'linkBlog',
   article: 'linkArticle',
   search: 'linkSearch',
+  orderTracking: 'linkOrderTracking',
   section: 'linkSection',
   url: 'linkUrl',
 }
@@ -446,6 +447,7 @@ function emptyLink(kind: LinkKind): Link {
     case 'none':
     case 'home':
     case 'catalog':
+    case 'orderTracking':
       return { kind }
     case 'page':
     case 'product':
@@ -954,7 +956,8 @@ function controlDoc(value: unknown, locale: StorefrontLocale): RichDoc {
  */
 function writeControlDoc(value: unknown, locale: StorefrontLocale, doc: RichDoc): unknown {
   if (isDocValue(value)) return doc
-  if (isLocalizedValue(value, isDocValue)) return withLocalizedEntryOf(value, locale, doc, isDocValue)
+  if (isLocalizedValue(value, isDocValue))
+    return withLocalizedEntryOf(value, locale, doc, isDocValue)
   return doc
 }
 

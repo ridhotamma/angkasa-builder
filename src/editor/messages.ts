@@ -119,6 +119,7 @@ const MESSAGES = {
   linkArticle: { en: 'Article', id: 'Artikel' },
   blogTag: { en: 'Only articles tagged (optional)', id: 'Hanya artikel dengan tag (opsional)' },
   linkSearch: { en: 'Search results', id: 'Hasil pencarian' },
+  linkOrderTracking: { en: 'Order tracking', id: 'Lacak pesanan' },
   linkSection: { en: 'A section on this page', id: 'Bagian di halaman ini' },
   linkSectionPlaceholder: { en: 'Pick a section', id: 'Pilih bagian' },
   linkUrl: { en: 'Web address', id: 'Alamat web' },

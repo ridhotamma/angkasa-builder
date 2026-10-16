@@ -30,6 +30,7 @@ export const LINK_KINDS = [
   'blog',
   'article',
   'search',
+  'orderTracking',
   'section',
   'url',
 ] as const
@@ -53,6 +54,8 @@ export type Link =
   /** One article, `/blogs/<blogHandle>/<slug>` — slugs are unique per blog, not per shop. */
   | { kind: 'article'; blogHandle: string; slug: string }
   | { kind: 'search'; query: string }
+  /** The storefront's own `/track-order` screen, with no argument to carry. */
+  | { kind: 'orderTracking' }
   /**
    * Another section on the same page — what a hero's "Explore now" points at.
    * The section's id is stored and the anchor derived, so moving or renaming
@@ -116,6 +119,7 @@ const linkSchema = z.discriminatedUnion('kind', [
   }),
   z.object({ kind: z.literal('article'), blogHandle: slug, slug }),
   z.object({ kind: z.literal('search'), query: z.string().trim().min(1).max(120) }),
+  z.object({ kind: z.literal('orderTracking') }),
   // The same shape a section id is sanitised to in `model/content`.
   z.object({
     kind: z.literal('section'),
@@ -166,6 +170,8 @@ export function storefrontHref(link: Link): string | null {
       return `/blogs/${link.blogHandle}/${link.slug}`
     case 'search':
       return `/search?q=${encodeURIComponent(link.query)}`
+    case 'orderTracking':
+      return '/track-order'
     case 'section':
       return `#${sectionAnchorId(link.sectionId)}`
     case 'url':
