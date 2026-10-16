@@ -21,6 +21,8 @@ import {
   Button,
   CloseButton,
   Dialog,
+  Flex,
+  Icon,
   Input,
   Portal,
   Progress,
@@ -30,6 +32,7 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useEffect, useMemo, useState } from 'react'
+import { LuSparkles } from 'react-icons/lu'
 
 import type { SectionInstance } from '../model/content'
 import { STOREFRONT_LOCALES, type StorefrontLocale } from '../model/localized'
@@ -44,14 +47,22 @@ function fieldKey(field: TranslationField): string {
   return [field.sectionId, field.listKey ?? '', field.itemId ?? '', field.key].join('|')
 }
 
-/** How many fields carry every language but the shop's own, on a 0–1 scale. */
+/**
+ * How many fields carry every language but the shop's own, on a 0–1 scale.
+ *
+ * Counted over fields that have source copy at all (an empty heading is not
+ * "untranslated", it is blank), and only fields with a *stored* entry count as
+ * done — a field still held as one plain string reads the same in every column
+ * but is stored for none, so it is not finished.
+ */
 function completeness(fields: readonly TranslationField[], source: StorefrontLocale): number {
-  if (fields.length === 0) return 1
+  const translatable = fields.filter((field) => (field.values[source] ?? '').trim().length > 0)
+  if (translatable.length === 0) return 1
   const others = STOREFRONT_LOCALES.filter((locale) => locale !== source)
-  const done = fields.filter((field) =>
-    others.every((locale) => (field.values[locale] ?? '').trim().length > 0),
+  const done = translatable.filter((field) =>
+    others.every((locale) => field.translated.includes(locale)),
   ).length
-  return done / fields.length
+  return done / translatable.length
 }
 
 /**
@@ -101,6 +112,7 @@ export function TranslationManagerDialog({
   sections,
   onSectionsChange,
   sourceLocale = STOREFRONT_LOCALES[0],
+  onTranslate,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -108,14 +120,30 @@ export function TranslationManagerDialog({
   onSectionsChange: (sections: SectionInstance[]) => void
   /** The language the shop's own copy is written in: a plain string seeds here. */
   sourceLocale?: StorefrontLocale
+  /**
+   * Translate a batch of strings source → target, in order. Given by the host,
+   * which owns the AI call; absent where the app has no AI, and the button
+   * then does not render.
+   */
+  onTranslate?: (input: {
+    from: StorefrontLocale
+    to: StorefrontLocale
+    texts: string[]
+  }) => Promise<string[]>
 }) {
   const { t, l } = useEditorText()
   const [untranslatedOnly, setUntranslatedOnly] = useState(false)
+  const [translating, setTranslating] = useState(false)
+  const [notice, setNotice] = useState<{ kind: 'error' | 'info'; text: string } | null>(null)
 
   const fields = useMemo(() => collectTranslationFields(sections), [sections])
   const others = STOREFRONT_LOCALES.filter((locale) => locale !== sourceLocale)
   const shown = untranslatedOnly
-    ? fields.filter((field) => others.some((locale) => !(field.values[locale] ?? '').trim()))
+    ? fields.filter(
+        (field) =>
+          (field.values[sourceLocale] ?? '').trim().length > 0 &&
+          others.some((locale) => !field.translated.includes(locale)),
+      )
     : fields
   const percent = Math.round(completeness(fields, sourceLocale) * 100)
 
@@ -124,8 +152,63 @@ export function TranslationManagerDialog({
     onSectionsChange(applyTranslationToSections(sections, field, locale, text, sourceLocale))
   }
 
+  /**
+   * Fill every still-untranslated language from the shop's own copy, for the
+   * rows on screen. Only locales with no entry of their own are filled, so
+   * nothing the seller typed is overwritten; every result is written in one
+   * pass, so the editor re-renders once rather than once per field.
+   */
+  const runAi = async () => {
+    if (!onTranslate) return
+    setNotice(null)
+    setTranslating(true)
+    let next: SectionInstance[] = [...sections]
+    let filled = 0
+    try {
+      for (const locale of others) {
+        const pending = shown.filter(
+          (field) =>
+            (field.values[sourceLocale] ?? '').trim().length > 0 &&
+            !field.translated.includes(locale),
+        )
+        if (pending.length === 0) continue
+
+        const texts = pending.map((field) => (field.values[sourceLocale] ?? '').trim())
+        const translations = await onTranslate({ from: sourceLocale, to: locale, texts })
+
+        pending.forEach((field, index) => {
+          const text = translations[index]?.trim()
+          if (!text) return
+          next = applyTranslationToSections(next, field, locale, text, sourceLocale)
+          filled += 1
+        })
+      }
+
+      if (filled === 0) {
+        setNotice({ kind: 'info', text: t('translationAiNone') })
+        return
+      }
+      onSectionsChange(next)
+    } catch (error) {
+      // A language that already came back is kept: the call was paid for, and
+      // re-running would spend the tokens twice. Only the languages still
+      // outstanding are left for a retry.
+      if (filled > 0) onSectionsChange(next)
+      setNotice({
+        kind: 'error',
+        text: error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      setTranslating(false)
+    }
+  }
+
   return (
-    <Dialog.Root open={open} onOpenChange={({ open: next }) => onOpenChange(next)} placement="center">
+    <Dialog.Root
+      open={open}
+      onOpenChange={({ open: next }) => onOpenChange(next)}
+      placement="center"
+    >
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -150,9 +233,32 @@ export function TranslationManagerDialog({
                       <Progress.Range />
                     </Progress.Track>
                   </Progress.Root>
-                  <Text fontSize="xs" color="fg.muted">
-                    {percent}% {t('translationDone')}
-                  </Text>
+                  <Flex justify="space-between" align="center" gap="3">
+                    <Text fontSize="xs" color="fg.muted">
+                      {percent}% {t('translationDone')}
+                    </Text>
+                    {/* Only where the host handed the dialog an AI: it fills the
+                        languages a row is still missing, and nothing else. */}
+                    {onTranslate && (
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        colorPalette="brand"
+                        alignSelf="flex-start"
+                        onClick={() => void runAi()}
+                        loading={translating}
+                        loadingText={t('translationAiRunning')}
+                      >
+                        <Icon as={LuSparkles} />
+                        {t('translationAi')}
+                      </Button>
+                    )}
+                  </Flex>
+                  {notice && (
+                    <Text fontSize="xs" color={notice.kind === 'error' ? 'danger.fg' : 'fg.muted'}>
+                      {notice.text}
+                    </Text>
+                  )}
                 </Stack>
               </Stack>
               <Dialog.CloseTrigger asChild>

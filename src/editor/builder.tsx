@@ -1209,6 +1209,7 @@ function Builder({
                 priorityLookKeys={startWithLooks?.priorityKeys}
                 sections={sections}
                 onSectionsChange={onSectionsChange}
+                onTranslate={services.translate}
               />
             </Tabs.Content>
           </Tabs.Root>

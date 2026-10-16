@@ -8,6 +8,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   applyTranslationEntry,
   collectTranslationEntries,
+  collectTranslationFields,
   CONTENT_VERSION,
   createSection,
   type PageContent,
@@ -43,6 +44,38 @@ describe('collectTranslationEntries', () => {
     expect(quote?.source).toBe('Bagus')
     expect(quote?.target).toBe('Good')
     expect(typeof quote?.itemId).toBe('string')
+  })
+})
+
+describe('collectTranslationFields — what is actually translated', () => {
+  test('a plain string reads in every column but is stored for none', () => {
+    const section = createSection('testimonials', { heading: 'Halo' })
+    const field = collectTranslationFields([section]).find((entry) => entry.key === 'heading')!
+    // Shown in both columns (the fallback), but nothing of its own is stored —
+    // so the manager does not count it translated and the AI may fill `en`.
+    expect(field.values.id).toBe('Halo')
+    expect(field.values.en).toBe('Halo')
+    expect(field.translated).toEqual([])
+  })
+
+  test('a locale map reports exactly the locales it stores', () => {
+    const section = createSection('testimonials', { heading: { id: 'Halo' } })
+    const field = collectTranslationFields([section]).find((entry) => entry.key === 'heading')!
+    expect(field.translated).toEqual(['id'])
+    expect(field.values.en ?? '').toBe('')
+  })
+
+  test('counts copy inside a list item too', () => {
+    const section = createSection('testimonials', {
+      items: [{ quote: { id: 'Bagus' }, author: 'Sari' }],
+    })
+    const fields = collectTranslationFields([section])
+    expect(
+      fields.find((entry) => entry.listKey === 'items' && entry.key === 'quote')?.translated,
+    ).toEqual(['id'])
+    const author = fields.find((entry) => entry.listKey === 'items' && entry.key === 'author')!
+    expect(author.translated).toEqual([])
+    expect(author.values.id).toBe('Sari')
   })
 })
 

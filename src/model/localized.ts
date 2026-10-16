@@ -87,6 +87,24 @@ export function readLocalizedEntry(
 }
 
 /**
+ * The entry actually *stored* for `locale`, or `''` — the one difference from
+ * `readLocalizedEntry` being a plain string, which is the value for every
+ * locale but is stored for none.
+ *
+ * The translation manager counts a locale as translated only when it has an
+ * entry of its own: a plain string reads the same in every column, so without
+ * this an entirely untranslated field would look finished. A locale still
+ * missing its entry is exactly what the AI button fills.
+ */
+export function readStoredEntry(
+  value: LocalizedText | null | undefined,
+  locale: StorefrontLocale,
+): string {
+  if (!value || typeof value === 'string') return ''
+  return value[locale] ?? ''
+}
+
+/**
  * The value with one locale's text set — what the translation editor writes on
  * every keystroke.
  *

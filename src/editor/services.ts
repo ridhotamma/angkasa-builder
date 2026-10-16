@@ -6,6 +6,7 @@
  * Those arrive here, so the editor never imports a server function.
  */
 
+import type { StorefrontLocale } from '../model/localized'
 import type { StorefrontProductCard, StorefrontVoucherData } from '../render/context'
 
 export interface EditorOption {
@@ -51,4 +52,14 @@ export interface EditorServices {
   /** The shop's articles, for article links, each with the handle of the blog it is in. */
   articles?: readonly ArticleOption[]
   vouchers?: readonly StorefrontVoucherData[]
+  /**
+   * Translate a batch of strings from one storefront language to another, in
+   * order, for the translation manager's AI button. Omitted where the app has
+   * no AI configured, which is also how the button knows to stay hidden.
+   */
+  translate?: (input: {
+    from: StorefrontLocale
+    to: StorefrontLocale
+    texts: string[]
+  }) => Promise<string[]>
 }

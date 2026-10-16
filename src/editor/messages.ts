@@ -82,6 +82,12 @@ const MESSAGES = {
     id: 'Belum ada teks yang perlu diterjemahkan.',
   },
   translationDone: { en: 'translated', id: 'diterjemahkan' },
+  translationAi: { en: 'AI translate', id: 'Terjemahkan AI' },
+  translationAiRunning: { en: 'Translating…', id: 'Menerjemahkan…' },
+  translationAiNone: {
+    en: 'Nothing left to translate — every language already has its own text.',
+    id: 'Tidak ada yang perlu diterjemahkan — setiap bahasa sudah punya teksnya sendiri.',
+  },
   translationClose: { en: 'Close', id: 'Tutup' },
   typeScale: { en: 'Text size', id: 'Ukuran teks' },
   typeScaleHelp: {

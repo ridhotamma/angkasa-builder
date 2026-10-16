@@ -18,6 +18,7 @@ import { CONTENT_VERSION, type SectionInstance, type PageContent } from './conte
 import {
   readLocalizedEntry,
   readLocalizedText,
+  readStoredEntry,
   STOREFRONT_LOCALES,
   withLocalizedEntry,
   type Localized,
@@ -67,6 +68,13 @@ export interface TranslationField extends TranslationPath {
   section: Localized
   field: Localized
   values: Partial<Record<StorefrontLocale, string>>
+  /**
+   * The locales this field has an entry *of its own* for. A plain string is the
+   * value for every locale but is stored for none, so it appears in no list —
+   * which is what lets the manager count what is actually translated and the AI
+   * button fill exactly the locales still missing.
+   */
+  translated: StorefrontLocale[]
 }
 
 type Visit = (entry: {
@@ -118,12 +126,15 @@ function walkTranslationFields(sections: readonly SectionInstance[], visit: Visi
 export function collectTranslationFields(sections: readonly SectionInstance[]): TranslationField[] {
   const fields: TranslationField[] = []
   walkTranslationFields(sections, ({ path, section, field, value }) => {
+    const raw = asText(value)
     const values: Partial<Record<StorefrontLocale, string>> = {}
+    const translated: StorefrontLocale[] = []
     for (const locale of STOREFRONT_LOCALES) {
-      const text = readLocalizedEntry(asText(value), locale)
+      const text = readLocalizedEntry(raw, locale)
       if (text) values[locale] = text
+      if (readStoredEntry(raw, locale).trim()) translated.push(locale)
     }
-    fields.push({ ...path, section, field, values })
+    fields.push({ ...path, section, field, values, translated })
   })
   return fields
 }

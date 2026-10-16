@@ -134,6 +134,7 @@ export function ThemeSettingsPanel({
   sections,
   onSectionsChange,
   defaultLocale,
+  onTranslate,
 }: {
   settings: ThemeSettings
   onChange: (settings: ThemeSettings) => void
@@ -149,6 +150,12 @@ export function ThemeSettingsPanel({
   onSectionsChange?: (sections: SectionInstance[]) => void
   /** The shop's own language: a plain string is seeded here. Defaults to `id`. */
   defaultLocale?: StorefrontLocale
+  /** The host's AI, for the translation manager's auto-translate button. */
+  onTranslate?: (input: {
+    from: StorefrontLocale
+    to: StorefrontLocale
+    texts: string[]
+  }) => Promise<string[]>
 }) {
   const { t, l } = useEditorText()
   // The picker opens only when the seller asks for it: a modal that opens
@@ -659,6 +666,7 @@ export function ThemeSettingsPanel({
           sections={sections}
           onSectionsChange={onSectionsChange}
           sourceLocale={defaultLocale}
+          onTranslate={onTranslate}
         />
       )}
     </Stack>
