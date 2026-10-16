@@ -181,8 +181,8 @@ export const FOOTER_FIELDS: readonly Field[] = [
     key: 'showOrderTracking',
     label: { en: 'Show order tracking', id: 'Tampilkan lacak pesanan' },
     help: {
-      en: 'A link to the page where a shopper looks an order up. Hidden when the footer menu has links.',
-      id: 'Tautan ke halaman untuk mencari pesanan. Disembunyikan jika menu footer berisi tautan.',
+      en: 'A link to the page where a shopper looks an order up. Hidden when the footer menu already links to it.',
+      id: 'Tautan ke halaman untuk mencari pesanan. Disembunyikan jika menu footer sudah menautkannya.',
     },
     default: true,
   },

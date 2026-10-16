@@ -1179,6 +1179,19 @@ function ContactLine({
   )
 }
 
+/**
+ * Whether the footer menu the seller built already links to the tracking page.
+ *
+ * Walks the children too, since the link may sit under a column. A menu is the
+ * seller's own words, so their link is kept and the built-in one is dropped —
+ * the footer lists the page once either way.
+ */
+function menuLinksToOrderTracking(items: readonly MenuItem[]): boolean {
+  return items.some(
+    (item) => item.link.kind === 'orderTracking' || menuLinksToOrderTracking(item.children),
+  )
+}
+
 export interface StoreFooterProps {
   footer: FieldValues
   shop: ChromeShop
@@ -1234,11 +1247,12 @@ export function StoreFooter({
   const showPages = readBoolean(footer, 'showPages') && menu.length === 0 && pages.length > 0
   // The shop's own order-tracking page: the storefront owns the route, so the
   // link is drawn here rather than configured as a menu item — a fresh shop's
-  // footer should already lead to it. A configured footer menu still wins, as
-  // it does for the pages.
+  // footer should already lead to it. A link the *seller* added to the footer
+  // menu wins and is the only one drawn, so the footer never lists the page
+  // twice; an unrelated menu item does not hide it, unlike the pages above.
   const trackOrder = labels.trackOrder?.trim() ?? ''
   const showOrderTracking =
-    readBoolean(footer, 'showOrderTracking') && menu.length === 0 && !!trackOrder
+    readBoolean(footer, 'showOrderTracking') && !!trackOrder && !menuLinksToOrderTracking(menu)
   const showInformation = showPages || showOrderTracking
   const columnCount = columns.length + (loose.length > 0 ? 1 : 0) + (showInformation ? 1 : 0)
 

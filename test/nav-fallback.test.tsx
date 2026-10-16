@@ -235,6 +235,10 @@ describe('navigation fallback for a shop with no menus', () => {
   })
 
   describe('the built-in order-tracking link', () => {
+    // Whether the page is linked twice is a question about how many links point
+    // at it, not whether one exists — a seller's own menu link is one of them.
+    const links = (html: string) => html.split('/track-order').length - 1
+
     test('a fresh shop leads to the tracking page without configuring anything', () => {
       // No footer menu: the shop's own tracking page is drawn beside its pages.
       const f = footerHtml({
@@ -242,26 +246,78 @@ describe('navigation fallback for a shop with no menus', () => {
         pages: [{ title: 'Privacy', slug: 'kebijakan-privasi' }],
         trackOrder: 'Track order',
       })
-      expect(f).toContain('/track-order')
       expect(f).toContain('Track order')
+      expect(links(f)).toBe(1)
     })
 
     test('shown even when there are no pages to list', () => {
       const f = footerHtml({ footer: { showOrderTracking: true }, trackOrder: 'Track order' })
-      expect(f).toContain('/track-order')
+      expect(links(f)).toBe(1)
     })
 
     test('off when the seller turns it off, and no host label means no link', () => {
       const off = footerHtml({ footer: { showOrderTracking: false }, trackOrder: 'Track order' })
-      expect(off).not.toContain('/track-order')
+      expect(links(off)).toBe(0)
       const unlabelled = footerHtml({ footer: { showOrderTracking: true } })
-      expect(unlabelled).not.toContain('/track-order')
+      expect(links(unlabelled)).toBe(0)
     })
 
-    test('a configured footer menu wins, as it does for the pages', () => {
-      const foot = [{ id: 'f1', label: 'Shop', link: { kind: 'none' as const }, children: [] }]
-      const f = footerHtml({ menu: foot, footer: { showOrderTracking: true }, trackOrder: 'Lacak' })
-      expect(f).not.toContain('/track-order')
+    test('a link the seller added to the footer menu is the only one drawn', () => {
+      const foot = [
+        { id: 'f1', label: 'Help', link: { kind: 'orderTracking' as const }, children: [] },
+      ]
+      const f = footerHtml({
+        menu: foot,
+        footer: { showOrderTracking: true },
+        trackOrder: 'Track order',
+      })
+      expect(f).toContain('Help')
+      expect(f).not.toContain('Track order')
+      expect(links(f)).toBe(1)
+    })
+
+    test('an unrelated menu item does not hide it', () => {
+      // Unlike the pages, the tracking link is not the seller's to lose: only a
+      // menu link to the same page replaces it.
+      const foot = [
+        {
+          id: 'f1',
+          label: 'Shop',
+          link: { kind: 'none' as const },
+          children: [
+            { id: 'f1a', label: 'All products', link: { kind: 'catalog' as const }, children: [] },
+          ],
+        },
+      ]
+      const f = footerHtml({
+        menu: foot,
+        footer: { showOrderTracking: true },
+        trackOrder: 'Track order',
+      })
+      expect(f).toContain('Shop')
+      expect(f).toContain('Track order')
+      expect(links(f)).toBe(1)
+    })
+
+    test('a menu link nested under a column still counts', () => {
+      const foot = [
+        {
+          id: 'f1',
+          label: 'Help',
+          link: { kind: 'none' as const },
+          children: [
+            { id: 'f1a', label: 'Lacak', link: { kind: 'orderTracking' as const }, children: [] },
+          ],
+        },
+      ]
+      const f = footerHtml({
+        menu: foot,
+        footer: { showOrderTracking: true },
+        trackOrder: 'Track order',
+      })
+      expect(f).toContain('Lacak')
+      expect(f).not.toContain('Track order')
+      expect(links(f)).toBe(1)
     })
   })
 })
