@@ -1373,6 +1373,7 @@ function Builder({
                 information: t('footerInformation'),
                 followUs: t('footerFollowUs'),
                 links: t('footerLinks'),
+                trackOrder: t('footerTrackOrder'),
               }}
               bottom={t('poweredBy')}
               flush={edges.flushBottom}

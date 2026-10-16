@@ -1192,7 +1192,12 @@ export interface StoreFooterProps {
   collections?: readonly CatalogNavEntry[]
   /** Published pages that ask to be in the footer, used while the footer menu is empty. */
   pages: Array<{ title: string; slug: string }>
-  labels: { information: string; followUs: string; links: string }
+  /**
+   * `trackOrder` is optional and doubles as the switch for the built-in link to
+   * the order-tracking page: a host that supplies no label gets no link, which
+   * is how the editor's previews and the nav tests stay as they were.
+   */
+  labels: { information: string; followUs: string; links: string; trackOrder?: string }
   /** The small print under everything — "Powered by Pesanle". */
   bottom?: ReactNode
   /** The page ends in a full-bleed section, which the footer should meet with no gap. */
@@ -1227,7 +1232,15 @@ export function StoreFooter({
   const columns = effectiveMenu.filter((item) => item.children.length > 0)
   const loose = effectiveMenu.filter((item) => item.children.length === 0)
   const showPages = readBoolean(footer, 'showPages') && menu.length === 0 && pages.length > 0
-  const columnCount = columns.length + (loose.length > 0 ? 1 : 0) + (showPages ? 1 : 0)
+  // The shop's own order-tracking page: the storefront owns the route, so the
+  // link is drawn here rather than configured as a menu item — a fresh shop's
+  // footer should already lead to it. A configured footer menu still wins, as
+  // it does for the pages.
+  const trackOrder = labels.trackOrder?.trim() ?? ''
+  const showOrderTracking =
+    readBoolean(footer, 'showOrderTracking') && menu.length === 0 && !!trackOrder
+  const showInformation = showPages || showOrderTracking
+  const columnCount = columns.length + (loose.length > 0 ? 1 : 0) + (showInformation ? 1 : 0)
 
   return (
     <Box
@@ -1326,7 +1339,7 @@ export function StoreFooter({
                 </Stack>
               </Stack>
             )}
-            {showPages && (
+            {showInformation && (
               <Stack as="nav" gap="3" aria-label={labels.information}>
                 <ColumnHeading>{labels.information}</ColumnHeading>
                 <Stack gap="2" fontSize="sm" color="fg.muted">
@@ -1339,6 +1352,11 @@ export function StoreFooter({
                       {page.title}
                     </SmartLink>
                   ))}
+                  {showOrderTracking && (
+                    <SmartLink link={{ kind: 'orderTracking' }} _hover={{ color: 'fg' }}>
+                      {trackOrder}
+                    </SmartLink>
+                  )}
                 </Stack>
               </Stack>
             )}

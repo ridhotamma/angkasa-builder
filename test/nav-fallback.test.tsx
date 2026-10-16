@@ -85,6 +85,8 @@ function footerHtml(opts: {
   collections?: { id: string; name: string; slug: string }[]
   pages?: { title: string; slug: string }[]
   footer?: Record<string, unknown>
+  /** Supplied only by the tests that are about the order-tracking link. */
+  trackOrder?: string
 }) {
   return render(
     <StoreFooter
@@ -94,7 +96,12 @@ function footerHtml(opts: {
       categories={opts.categories ?? []}
       collections={opts.collections ?? []}
       pages={opts.pages ?? []}
-      labels={{ information: 'Information', followUs: 'Follow us', links: 'Links' }}
+      labels={{
+        information: 'Information',
+        followUs: 'Follow us',
+        links: 'Links',
+        trackOrder: opts.trackOrder,
+      }}
       bottom="Powered"
     />,
   )
@@ -225,5 +232,36 @@ describe('navigation fallback for a shop with no menus', () => {
     )
     expect(h).toContain('Kategori')
     expect(h).toContain('Koleksi')
+  })
+
+  describe('the built-in order-tracking link', () => {
+    test('a fresh shop leads to the tracking page without configuring anything', () => {
+      // No footer menu: the shop's own tracking page is drawn beside its pages.
+      const f = footerHtml({
+        footer: { showOrderTracking: true },
+        pages: [{ title: 'Privacy', slug: 'kebijakan-privasi' }],
+        trackOrder: 'Track order',
+      })
+      expect(f).toContain('/track-order')
+      expect(f).toContain('Track order')
+    })
+
+    test('shown even when there are no pages to list', () => {
+      const f = footerHtml({ footer: { showOrderTracking: true }, trackOrder: 'Track order' })
+      expect(f).toContain('/track-order')
+    })
+
+    test('off when the seller turns it off, and no host label means no link', () => {
+      const off = footerHtml({ footer: { showOrderTracking: false }, trackOrder: 'Track order' })
+      expect(off).not.toContain('/track-order')
+      const unlabelled = footerHtml({ footer: { showOrderTracking: true } })
+      expect(unlabelled).not.toContain('/track-order')
+    })
+
+    test('a configured footer menu wins, as it does for the pages', () => {
+      const foot = [{ id: 'f1', label: 'Shop', link: { kind: 'none' as const }, children: [] }]
+      const f = footerHtml({ menu: foot, footer: { showOrderTracking: true }, trackOrder: 'Lacak' })
+      expect(f).not.toContain('/track-order')
+    })
   })
 })

@@ -338,6 +338,7 @@ const MESSAGES = {
   footerInformation: { en: 'Information', id: 'Informasi' },
   footerFollowUs: { en: 'Follow us', id: 'Ikuti kami' },
   footerLinks: { en: 'Links', id: 'Tautan' },
+  footerTrackOrder: { en: 'Track order', id: 'Lacak pesanan' },
   poweredBy: { en: 'Powered by Pesanle', id: 'Didukung oleh Pesanle' },
   standInSearch: { en: 'Search', id: 'Cari' },
   standInCart: { en: 'Cart', id: 'Keranjang' },
