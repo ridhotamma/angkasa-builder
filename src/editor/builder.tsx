@@ -119,6 +119,7 @@ import {
   type ElementKind,
 } from '../model/element-style'
 import { readBlocks, type FieldValues } from '../model/fields'
+import { isLocalizedText, withLocalizedEntry } from '../model/localized'
 import { createStarterSection } from '../model/section-starters'
 import {
   FOOTER_FIELDS,
@@ -419,7 +420,7 @@ function Builder({
   startWithLooks,
   products,
 }: PageBuilderProps & { products: StorefrontRenderData['latest'] }) {
-  const { t, l } = useEditorText()
+  const { t, l, locale } = useEditorText()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // The block the canvas has selected inside the chosen section, if any. The
   // panel follows it; clicking the section again clears it.
@@ -531,22 +532,32 @@ function Builder({
   // so the environment below does not change with every keystroke.
   const latest = useRef({ sections, onSectionsChange })
   latest.current = { sections, onSectionsChange }
-  const onEditText = useCallback((sectionId: string, key: string, value: string) => {
-    const { sections: current, onSectionsChange: change } = latest.current
-    // A linked copy's words are its own override; the original keeps its own.
-    if (current.find((section) => section.id === sectionId)?.linkedTo) {
-      change(setSectionOverrides(current, sectionId, { [key]: value }))
-      return
-    }
-    const target = editTargetId(current, sectionId)
-    change(
-      current.map((section) =>
-        section.id === target
-          ? { ...section, settings: { ...section.settings, [key]: value } }
-          : section,
-      ),
-    )
-  }, [])
+  const onEditText = useCallback(
+    (sectionId: string, key: string, value: string) => {
+      const { sections: current, onSectionsChange: change } = latest.current
+      // A translated field stays a locale map: typing in the preview edits the
+      // language the editor is showing, and leaves the other one alone.
+      const written = (settings: FieldValues): FieldValues => {
+        const existing = settings[key]
+        return {
+          ...settings,
+          [key]: isLocalizedText(existing) ? withLocalizedEntry(existing, locale, value) : value,
+        }
+      }
+      // A linked copy's words are its own override; the original keeps its own.
+      if (current.find((section) => section.id === sectionId)?.linkedTo) {
+        change(setSectionOverrides(current, sectionId, { [key]: value }))
+        return
+      }
+      const target = editTargetId(current, sectionId)
+      change(
+        current.map((section) =>
+          section.id === target ? { ...section, settings: written(section.settings) } : section,
+        ),
+      )
+    },
+    [locale],
+  )
 
   // What the add palette is dragging, read through a ref so the drop handler
   // never closes over a stale item.
