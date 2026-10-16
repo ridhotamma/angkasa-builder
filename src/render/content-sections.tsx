@@ -290,7 +290,16 @@ export function ScrollingStory({ settings }: SectionProps) {
             </AspectRatio>
           </Box>
         </Box>
-        <Stack gap={{ base: '10', md: '0' }}>
+        <Stack
+          gap={{ base: '10', md: '0' }}
+          // Room after the last chapter, or it can never be read *at* the
+          // middle. A chapter stands 70svh tall with its copy centred, so its
+          // middle is 35svh below its top — which, once the page can scroll no
+          // further, leaves it 65svh down the viewport: below the halfway line
+          // the observer watches, so its words sat at the bottom and its
+          // picture never swapped in. That 15svh is the difference.
+          pb={{ base: '0', md: '15svh' }}
+        >
           {steps.map((step, index) => (
             <Stack
               key={step.id}

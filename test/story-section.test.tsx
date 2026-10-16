@@ -85,4 +85,11 @@ describe('the story section', () => {
     })
     expect(draw(timeline)).toContain('The first order')
   })
+
+  test('the chapters leave room under the last one', () => {
+    // Without trailing room the last chapter can never cross the halfway line
+    // the scroll observer watches: its words stay at the bottom and its picture
+    // never swaps in. Desktop only — on a phone each chapter carries its own.
+    expect(draw(createStarterSection('story'))).toContain('15svh')
+  })
 })
