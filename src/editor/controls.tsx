@@ -1435,7 +1435,9 @@ export function FieldsForm({
   return (
     <>
       {fields
-        .filter((field) => isFieldShown(field, values))
+        // `parent` is the settings a list item sits in, so an item's field can
+        // follow the section's own choice (the quotes' look, a card's type).
+        .filter((field) => isFieldShown(field, values, parent))
         .map((field) => (
           <MemoFieldControl
             key={field.key}

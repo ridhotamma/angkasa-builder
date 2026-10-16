@@ -16,12 +16,7 @@ import { hasCoordinates, isAssetKey, sanitizeStockPhoto } from '@repo/appwrite-c
 import { NO_ICON, resolveIconName, type IconName } from './icons'
 import { sanitizeLink, NO_LINK, type Link } from './links'
 import { EMPTY_RICH_DOC, richDocFromPlainText, sanitizeRichDoc, type RichDoc } from './rich-text'
-import {
-  isLocalizedText,
-  isLocalizedValue,
-  STOREFRONT_LOCALES,
-  type Localized,
-} from './localized'
+import { isLocalizedText, isLocalizedValue, STOREFRONT_LOCALES, type Localized } from './localized'
 
 interface BaseField {
   key: string
@@ -32,14 +27,30 @@ interface BaseField {
    * e.g. a marquee's direction only under the running-cards layout. Editor
    * only: the value is still stored and sanitised, so switching back restores
    * what the seller had chosen.
+   *
+   * On a *list item's* field the sibling may be a field of the section the
+   * list sits in — see the third parameter of `isFieldShown`.
    */
   showWhen?: { key: string; is: readonly string[] }
 }
 
-/** Whether a field's control belongs on screen, given its siblings' values. */
-export function isFieldShown(field: { showWhen?: BaseField['showWhen'] }, values: FieldValues) {
+/**
+ * Whether a field's control belongs on screen, given its siblings' values.
+ *
+ * `outer` is the settings a *list item* sits in. The item's own value answers
+ * first — a key the item carries is always the item's — and `outer` is
+ * consulted only for a key it does not carry, which is how an item's fields can
+ * follow the section's own choice: the quotes' `variant`, say, so a press logo
+ * does not sit in the editor under a plain customer quote.
+ */
+export function isFieldShown(
+  field: { showWhen?: BaseField['showWhen'] },
+  values: FieldValues,
+  outer?: FieldValues,
+) {
   if (!field.showWhen) return true
-  const raw = values[field.showWhen.key]
+  const key = field.showWhen.key
+  const raw = key in values ? values[key] : outer?.[key]
   // A switch reads as `'true'` / `'false'`, so a field can follow one too.
   const current = typeof raw === 'boolean' ? String(raw) : raw
   return typeof current === 'string' && field.showWhen.is.includes(current)

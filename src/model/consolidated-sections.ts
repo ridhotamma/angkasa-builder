@@ -526,18 +526,55 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         showWhen: { key: 'layout', is: ['carousel'] },
       },
       list('items', { en: 'Quotes', id: 'Kutipan' }, { en: 'Quote', id: 'Kutipan' }, 'author', 12, [
+        // Each look reads its own fields off an item, so an item declares only
+        // those — a press logo has no place under a plain customer quote. What
+        // the storefront actually reads is the map: `Testimonials` takes
+        // quote/author/avatar/role, `VideoTestimonials` quote/name/role/video/
+        // poster, and `Press` quote/source/logo/link. All three read `quote`.
         area('quote', { en: 'Quote', id: 'Kutipan' }, 600, 3),
-        text('author', { en: 'Name', id: 'Nama' }, 80),
-        text('name', { en: 'Name (press)', id: 'Nama (pers)' }, 80),
-        image('avatar', { en: 'Photo', id: 'Foto' }),
-        text('role', { en: 'Detail', id: 'Keterangan' }, 80),
-        text('source', { en: 'Source', id: 'Sumber' }, 100),
-        image('logo', { en: 'Logo', id: 'Logo' }),
-        video('video', { en: 'Video', id: 'Video' }),
-        image('poster', { en: 'Poster', id: 'Poster' }),
-        link('link', { en: 'Link', id: 'Tautan' }),
+        {
+          ...text('author', { en: 'Name', id: 'Nama' }, 80),
+          showWhen: { key: 'variant', is: ['quotes'] },
+        },
+        {
+          ...image('avatar', { en: 'Photo', id: 'Foto' }),
+          showWhen: { key: 'variant', is: ['quotes'] },
+        },
+        {
+          ...text('name', { en: 'Name', id: 'Nama' }, 80),
+          showWhen: { key: 'variant', is: ['video'] },
+        },
+        {
+          ...text('role', { en: 'Detail', id: 'Keterangan' }, 80),
+          showWhen: { key: 'variant', is: ['quotes', 'video'] },
+        },
+        {
+          ...video('video', { en: 'Video', id: 'Video' }),
+          showWhen: { key: 'variant', is: ['video'] },
+        },
+        {
+          ...image('poster', { en: 'Poster', id: 'Poster' }),
+          showWhen: { key: 'variant', is: ['video'] },
+        },
+        {
+          ...text('source', { en: 'Source', id: 'Sumber' }, 100),
+          showWhen: { key: 'variant', is: ['press'] },
+        },
+        {
+          ...image('logo', { en: 'Logo', id: 'Logo' }),
+          showWhen: { key: 'variant', is: ['press'] },
+        },
+        {
+          ...link('link', { en: 'Link', id: 'Tautan' }),
+          showWhen: { key: 'variant', is: ['press'] },
+        },
       ]),
-      ...columnsField(['2', '3', '4'], '3'),
+      // Only the video look lays its cards out in a grid the seller chooses;
+      // the other two fix their own (quotes run to three, press by item count).
+      ...columnsField(['2', '3', '4'], '3').map((field) => ({
+        ...field,
+        showWhen: { key: 'variant', is: ['video'] },
+      })),
     ],
   },
   {
@@ -590,15 +627,49 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
       },
       { ...alignField('center') },
       list('items', { en: 'Cards', id: 'Kartu' }, { en: 'Card', id: 'Kartu' }, 'title', 12, [
-        { kind: 'icon', key: 'icon', label: { en: 'Icon', id: 'Ikon' }, default: 'truck' },
-        image('image', { en: 'Image', id: 'Gambar' }),
-        image('photo', { en: 'Photo', id: 'Foto' }),
-        text('title', { en: 'Title', id: 'Judul' }, 80),
-        text('name', { en: 'Name', id: 'Nama' }, 80),
-        text('role', { en: 'Role', id: 'Peran' }, 80),
-        area('text', { en: 'Text', id: 'Teks' }, 400, 3),
-        text('linkLabel', { en: 'Link text', id: 'Teks tautan' }, 40),
-        link('link', { en: 'Link', id: 'Tautan' }),
+        // As with the quotes above, each card type reads its own fields off an
+        // item — `Multicolumn` takes image/title/text/link, `Team` takes
+        // photo/name/role/link, `IconFeatures` takes icon/title/text — so each
+        // declares only its own rather than leaving all nine on screen.
+        {
+          kind: 'icon',
+          key: 'icon',
+          label: { en: 'Icon', id: 'Ikon' },
+          default: 'truck',
+          showWhen: { key: 'card', is: ['icon'] },
+        },
+        {
+          ...image('image', { en: 'Image', id: 'Gambar' }),
+          showWhen: { key: 'card', is: ['text'] },
+        },
+        {
+          ...image('photo', { en: 'Photo', id: 'Foto' }),
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...text('title', { en: 'Title', id: 'Judul' }, 80),
+          showWhen: { key: 'card', is: ['text', 'icon'] },
+        },
+        {
+          ...area('text', { en: 'Text', id: 'Teks' }, 400, 3),
+          showWhen: { key: 'card', is: ['text', 'icon'] },
+        },
+        {
+          ...text('name', { en: 'Name', id: 'Nama' }, 80),
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...text('role', { en: 'Role', id: 'Peran' }, 80),
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...text('linkLabel', { en: 'Link text', id: 'Teks tautan' }, 40),
+          showWhen: { key: 'card', is: ['text'] },
+        },
+        {
+          ...link('link', { en: 'Link', id: 'Tautan' }),
+          showWhen: { key: 'card', is: ['text', 'person'] },
+        },
       ]),
     ],
   },
