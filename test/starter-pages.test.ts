@@ -54,4 +54,20 @@ describe('the starter pages', () => {
       expect(heading?.en?.length).toBeGreaterThan(0)
     }
   })
+
+  test('the topic headings and lists survive, in both languages', () => {
+    // The pages are read, not just stored: a sanitiser that dropped level-3
+    // headings or lists would leave a wall of unlabelled paragraphs.
+    for (const page of pages) {
+      const [section] = parsePageContent(serializeContent(page.content)).sections
+      const text = section?.settings.body as Record<string, { content?: Array<{ type: string }> }>
+
+      for (const locale of ['id', 'en']) {
+        const blocks = text[locale]?.content ?? []
+        expect(blocks.filter((block) => block.type === 'heading').length).toBeGreaterThanOrEqual(2)
+        expect(blocks.some((block) => block.type === 'bulletList')).toBe(true)
+        expect(blocks[0]?.type).toBe('paragraph')
+      }
+    }
+  })
 })
