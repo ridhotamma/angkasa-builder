@@ -85,3 +85,29 @@ export function readLocalizedEntry(
   if (typeof value === 'string') return value
   return value?.[locale] ?? ''
 }
+
+/**
+ * The value with one locale's text set — what the translation editor writes on
+ * every keystroke.
+ *
+ * A plain string becomes a map on the first edit, seeded with itself under the
+ * default locale, so the original copy is not lost when a second language is
+ * added. Writing the default locale's own entry back collapses nothing: the map
+ * persists, and a later reader still falls back exactly as before.
+ */
+export function withLocalizedEntry(
+  value: LocalizedText | null | undefined,
+  locale: StorefrontLocale,
+  text: string,
+  defaultLocale: StorefrontLocale = STOREFRONT_LOCALES[0],
+): Partial<Record<StorefrontLocale, string>> {
+  const base = typeof value === 'string' ? { [defaultLocale]: value } : { ...(value ?? {}) }
+  return { ...base, [locale]: text }
+}
+
+/** How much of a set of entries carries a target translation, 0–1. */
+export function translationProgress(entries: readonly { target: string }[]): number {
+  if (entries.length === 0) return 1
+  const done = entries.filter((entry) => entry.target.trim().length > 0).length
+  return done / entries.length
+}
