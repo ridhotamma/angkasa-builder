@@ -2496,6 +2496,10 @@ export const SECTION_SCHEMAS = [
     scopes: EVERYWHERE,
     category: 'store',
     icon: 'bag',
+    // Not offered in the Add-section picker: order tracking is its own screen
+    // (`/track-order`, the `orderTracking` template). Kept in the library so the
+    // template's section still renders and sanitises.
+    hidden: true,
     name: { en: 'Order tracking', id: 'Lacak pesanan' },
     description: {
       en: 'A form that looks an order up by its number and phone, then opens it.',
