@@ -172,7 +172,13 @@ export function Multicolumn({ settings }: SectionProps) {
 export function ScrollingStory({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
-  const steps = readList(settings, 'steps')
+  // Two schemas reach this renderer: the consolidated `story` (style=chapters),
+  // whose list is `items`, and the legacy `scrolling-story` it replaced, whose
+  // list was `steps` — a layout saved before the move still carries that key.
+  // Sanitising keeps only the declared one, so reading whichever is present is
+  // exact; reading `steps` alone left every consolidated story blank.
+  const chapters = readList(settings, 'items')
+  const steps = chapters.length > 0 ? chapters : readList(settings, 'steps')
   const [active, setActive] = useState(0)
   const refs = useRef<Array<HTMLDivElement | null>>([])
   const sectionRef = useRef<HTMLDivElement>(null)

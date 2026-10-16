@@ -759,12 +759,30 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         showWhen: { key: 'style', is: ['chapters'] },
       },
       list('items', { en: 'Steps', id: 'Langkah' }, { en: 'Step', id: 'Langkah' }, 'heading', 16, [
+        // As with the quotes and cards above: a chapter reads image/heading/body
+        // (`ScrollingStory`), a milestone reads image/label/title/text
+        // (`Timeline`), so each style declares only its own.
         image('image', { en: 'Image', id: 'Gambar' }),
-        text('heading', { en: 'Heading', id: 'Judul' }, 100),
-        text('label', { en: 'Year or date', id: 'Tahun atau tanggal' }, 30),
-        text('title', { en: 'Title', id: 'Judul' }, 100),
-        body(1000),
-        area('text', { en: 'Text', id: 'Teks' }, 500, 3),
+        {
+          ...text('heading', { en: 'Heading', id: 'Judul' }, 100),
+          showWhen: { key: 'style', is: ['chapters'] },
+        },
+        {
+          ...body(1000),
+          showWhen: { key: 'style', is: ['chapters'] },
+        },
+        {
+          ...text('label', { en: 'Year or date', id: 'Tahun atau tanggal' }, 30),
+          showWhen: { key: 'style', is: ['timeline'] },
+        },
+        {
+          ...text('title', { en: 'Title', id: 'Judul' }, 100),
+          showWhen: { key: 'style', is: ['timeline'] },
+        },
+        {
+          ...area('text', { en: 'Text', id: 'Teks' }, 500, 3),
+          showWhen: { key: 'style', is: ['timeline'] },
+        },
       ]),
     ],
   },

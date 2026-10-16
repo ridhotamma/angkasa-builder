@@ -75,12 +75,11 @@ describe('the quotes section follows its look', () => {
   })
 })
 
-describe('the cards section follows its type', () => {
-  const itemFields = (card: string) => fieldsUnder('cards', 'items', 'card', card, false)
+describe('the story section follows its style', () => {
+  const itemFields = (style: string) => fieldsUnder('story', 'items', 'style', style, false)
 
-  test('image and text, a person, and an icon each ask for their own', () => {
-    expect(itemFields('text')).toEqual(['image', 'title', 'text', 'linkLabel', 'link'])
-    expect(itemFields('person')).toEqual(['photo', 'name', 'role', 'link'])
-    expect(itemFields('icon')).toEqual(['icon', 'title', 'text'])
+  test('a chapter asks for its heading and body, a milestone for its date and title', () => {
+    expect(itemFields('chapters')).toEqual(['image', 'heading', 'body'])
+    expect(itemFields('timeline')).toEqual(['image', 'label', 'title', 'text'])
   })
 })
