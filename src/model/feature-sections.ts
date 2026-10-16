@@ -242,7 +242,7 @@ export const FEATURE_SECTION_SCHEMAS = [
     },
     fields: [
       heading(''),
-      list('items', { en: 'Photos', id: 'Foto' }, { en: 'Photo', id: 'Foto' }, 'caption', 30, [
+      list('items', { en: 'Photos', id: 'Foto' }, { en: 'Photo', id: 'Foto' }, 'alt', 30, [
         image('image', { en: 'Photo', id: 'Foto' }),
         text('alt', { en: 'Description', id: 'Deskripsi' }, 160),
         link('link', { en: 'Link (optional)', id: 'Tautan (opsional)' }),

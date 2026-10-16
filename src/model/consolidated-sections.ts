@@ -456,9 +456,18 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         showWhen: { key: 'layout', is: ['social'] },
       },
       list('items', { en: 'Photos', id: 'Foto' }, { en: 'Photo', id: 'Foto' }, 'caption', 30, [
+        // Each look reads its own fields off an item: `ImageGallery` and
+        // `SocialWall` take caption and link, `MasonryGallery` takes the alt
+        // text (its tiles have no room for a caption) and a link.
         image('image', { en: 'Photo', id: 'Foto' }),
-        text('caption', { en: 'Caption', id: 'Keterangan' }, 160),
-        text('alt', { en: 'Description', id: 'Deskripsi' }, 160),
+        {
+          ...text('caption', { en: 'Caption', id: 'Keterangan' }, 160),
+          showWhen: { key: 'layout', is: ['grid', 'social'] },
+        },
+        {
+          ...text('alt', { en: 'Description', id: 'Deskripsi' }, 160),
+          showWhen: { key: 'layout', is: ['masonry'] },
+        },
         link('link', { en: 'Link (optional)', id: 'Tautan (opsional)' }),
       ]),
       ...columnsField(['2', '3', '4', '5', '6'], '3', '2'),
@@ -598,7 +607,9 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         'text',
       ),
       heading(''),
-      body(500),
+      // Only the person look draws a body — `Team` renders it under its
+      // heading. `Multicolumn` and `IconFeatures` carry their words per card.
+      { ...body(500), showWhen: { key: 'card', is: ['person'] } },
       ...columnsField(['2', '3', '4', '5', '6'], '3'),
       {
         ...choice(

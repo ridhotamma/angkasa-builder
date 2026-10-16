@@ -12,21 +12,34 @@
 import type { ComponentType } from 'react'
 
 import { readText } from '../model/fields'
+import { ParallaxBanner, VideoHero } from './banner-sections'
 import { CollectionTabs } from './commerce-sections'
-import { Multicolumn, ScrollingStory, Timeline } from './content-sections'
+import { IconFeatures, Multicolumn, ScrollingStory, Timeline } from './content-sections'
 import { FEATURE_SECTION_RENDERERS } from './feature-sections'
 import { RelatedProducts } from './product-page'
 import { BASE_SECTION_RENDERERS, type SectionProps } from './sections'
 
-/** The renderer each old type used; the consolidated types dispatch into this. */
+/**
+ * The renderer each old type used; the consolidated types dispatch into this.
+ *
+ * It has to name **every** legacy type the maps below reach — including the
+ * ones only `SECTION_RENDERERS` otherwise carries, like the two bespoke banner
+ * looks and the icon features. A name missing here is not a compile error (this
+ * is a plain record), and `draw` quietly returns nothing: the whole look
+ * vanishes from the page. Three did (video, parallax, icon cards) until
+ * `consolidated-looks.test.tsx` rendered every look to stop it happening again.
+ */
 const LEGACY: Record<string, ComponentType<SectionProps>> = {
   ...(BASE_SECTION_RENDERERS as Record<string, ComponentType<SectionProps>>),
   ...(FEATURE_SECTION_RENDERERS as Record<string, ComponentType<SectionProps>>),
   'collection-tabs': CollectionTabs,
+  'related-products': RelatedProducts,
+  'video-hero': VideoHero,
+  'parallax-banner': ParallaxBanner,
   multicolumn: Multicolumn,
+  'icon-features': IconFeatures,
   'scrolling-story': ScrollingStory,
   timeline: Timeline,
-  'related-products': RelatedProducts,
 }
 
 function draw(legacy: string | undefined, props: SectionProps) {

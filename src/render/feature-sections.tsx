@@ -167,7 +167,10 @@ export function BackgroundVideoSection({ settings }: SectionProps) {
         field="body"
         inheritColor
       />
-      {!middle && <ButtonRow settings={settings} align={align} onImage />}
+      {/* Always, as `BannerCopy` does for the other banner looks: hiding the
+          buttons under one text position left a seller's button a setting that
+          never drew. */}
+      <ButtonRow settings={settings} align={align} onImage />
     </Stack>
   )
 

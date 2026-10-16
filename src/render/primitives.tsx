@@ -970,6 +970,9 @@ export function EmptyNotice({ children }: { children: ReactNode }) {
   if (mode === 'live') return null
   return (
     <Box
+      // A hook for tests: "this look rendered nothing" is a state worth
+      // asserting on, and it is otherwise invisible in the markup.
+      data-empty-notice=""
       borderWidth="1px"
       borderStyle="dashed"
       borderColor="border"

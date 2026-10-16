@@ -75,6 +75,27 @@ describe('the quotes section follows its look', () => {
   })
 })
 
+describe('the gallery section follows its look', () => {
+  const itemFields = (layout: string) => fieldsUnder('gallery', 'items', 'layout', layout, false)
+
+  test('a caption belongs to the grid and the social wall, a description to masonry', () => {
+    expect(itemFields('grid')).toEqual(['image', 'caption', 'link'])
+    expect(itemFields('social')).toEqual(['image', 'caption', 'link'])
+    expect(itemFields('masonry')).toEqual(['image', 'alt', 'link'])
+  })
+})
+
+describe('the cards body belongs to the person look', () => {
+  // `Team` draws it under the heading; the other two carry their words per card.
+  const shows = (card: string) => fieldsUnder('cards', 'body', 'card', card, true)
+
+  test('offered for people, not for image-and-text or icons', () => {
+    expect(shows('person')).toContain('body')
+    expect(shows('text')).not.toContain('body')
+    expect(shows('icon')).not.toContain('body')
+  })
+})
+
 describe('the story section follows its style', () => {
   const itemFields = (style: string) => fieldsUnder('story', 'items', 'style', style, false)
 

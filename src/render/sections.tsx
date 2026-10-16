@@ -946,6 +946,10 @@ function CollectionShelves({ settings }: SectionProps) {
 
   return (
     <Stack gap="12">
+      {/* The shelves name their own collections; the section's own heading sits
+          above them, as it does for every other product-list look. Without it
+          the Heading field was a control that changed nothing. */}
+      <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
       {shelves.map((shelf) => (
         <Stack as="section" key={shelf.id} gap="4">
           <ShelfHeader title={shelf.name} description={shelf.description} slug={shelf.slug} />
