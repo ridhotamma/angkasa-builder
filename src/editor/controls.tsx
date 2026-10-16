@@ -83,10 +83,14 @@ import {
 import { NO_LINK, type Link, type LinkKind } from '../model/links'
 import {
   isLocalizedText,
+  isLocalizedValue,
   readLocalizedEntry,
+  readLocalizedEntryOf,
   withLocalizedEntry,
+  withLocalizedEntryOf,
   type StorefrontLocale,
 } from '../model/localized'
+import { EMPTY_RICH_DOC, type RichDoc } from '../model/rich-text'
 import { IconPicker } from './icon-picker'
 import {
   DateTimeControl,
@@ -928,6 +932,32 @@ function writeControlText(value: unknown, locale: StorefrontLocale, text: string
   return text
 }
 
+function isDocValue(value: unknown): value is RichDoc {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    (value as { type?: unknown }).type === 'doc'
+  )
+}
+
+/** The rich body for the locale being viewed: its document, or the empty one. */
+function controlDoc(value: unknown, locale: StorefrontLocale): RichDoc {
+  const doc: unknown = readLocalizedEntryOf(value, locale, isDocValue) ?? EMPTY_RICH_DOC
+  return doc as RichDoc
+}
+
+/**
+ * What a rich body stores on edit — the doc-typed twin of `writeControlText`.
+ * A translated body stays a locale map and the edit changes only the locale
+ * being viewed; an untranslated one keeps storing a single document.
+ */
+function writeControlDoc(value: unknown, locale: StorefrontLocale, doc: RichDoc): unknown {
+  if (isDocValue(value)) return doc
+  if (isLocalizedValue(value, isDocValue)) return withLocalizedEntryOf(value, locale, doc, isDocValue)
+  return doc
+}
+
 function FieldControl({
   field,
   value,
@@ -968,8 +998,8 @@ function FieldControl({
       return (
         <Labeled label={label} help={help}>
           <RichTextControl
-            value={readRichText({ value: value as JsonValue }, 'value')}
-            onChange={onChange}
+            value={controlDoc(value, locale)}
+            onChange={(doc) => onChange(writeControlDoc(value, locale, doc))}
           />
         </Labeled>
       )

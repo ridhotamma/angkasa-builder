@@ -12,26 +12,28 @@ import { Button, Card, Field, Heading, Input, Stack, Text } from '@chakra-ui/rea
 
 import { readText } from '../model/fields'
 import { useRenderEnvironment } from './context'
-import type { SectionProps } from './sections'
+import { alignOf, type SectionProps } from './sections'
 
 export function OrderTracking({ settings }: SectionProps) {
   const { slots } = useRenderEnvironment()
+  const align = alignOf(settings)
   const heading = readText(settings, 'heading')
   const body = readText(settings, 'subheading')
 
   return (
-    <Stack as="section" gap="4">
+    <Stack
+      as="section"
+      gap="4"
+      alignItems={align === 'center' ? 'center' : 'flex-start'}
+      textAlign={align}
+    >
       {heading && (
         <Heading as="h2" size="xl">
           {heading}
         </Heading>
       )}
       {body && <Text color="fg.muted">{body}</Text>}
-      {slots?.orderTracking ? (
-        slots.orderTracking(settings)
-      ) : (
-        <OrderTrackingStandIn settings={settings} />
-      )}
+      {slots?.orderTracking ? slots.orderTracking(settings) : <OrderTrackingStandIn settings={settings} />}
     </Stack>
   )
 }

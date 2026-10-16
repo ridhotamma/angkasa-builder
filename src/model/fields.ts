@@ -16,7 +16,12 @@ import { hasCoordinates, isAssetKey, sanitizeStockPhoto } from '@repo/appwrite-c
 import { NO_ICON, resolveIconName, type IconName } from './icons'
 import { sanitizeLink, NO_LINK, type Link } from './links'
 import { EMPTY_RICH_DOC, richDocFromPlainText, sanitizeRichDoc, type RichDoc } from './rich-text'
-import { isLocalizedText, STOREFRONT_LOCALES, type Localized } from './localized'
+import {
+  isLocalizedText,
+  isLocalizedValue,
+  STOREFRONT_LOCALES,
+  type Localized,
+} from './localized'
 
 interface BaseField {
   key: string
@@ -306,6 +311,28 @@ function sanitizeTextField(value: unknown, max: number, fallback: string): JsonV
     return out
   }
   return text(value, max, fallback)
+}
+
+/** Whether a value is a rich-text document (as opposed to a per-locale map of them). */
+function isRichDocValue(value: unknown): value is RichDoc {
+  return isRecord(value) && (value as { type?: unknown }).type === 'doc'
+}
+
+/**
+ * A rich-text value: one document, or one per locale once translated. Each
+ * locale's document is sanitised like a plain one, so a hand-crafted payload
+ * can add a translation but never anything a document may not hold.
+ */
+function sanitizeRichTextField(value: unknown, max: number, fallback: unknown): JsonValue {
+  if (isLocalizedValue(value, isRichDocValue)) {
+    const out: Record<string, JsonValue> = {}
+    for (const locale of STOREFRONT_LOCALES) {
+      const entry = (value as Record<string, unknown>)[locale]
+      if (isRichDocValue(entry)) out[locale] = sanitizeRichDoc(entry, max) as unknown as JsonValue
+    }
+    return out
+  }
+  return sanitizeRichDoc(value ?? fallback, max) as unknown as JsonValue
 }
 
 /* -------------------------------------------------------------------------- */
@@ -683,7 +710,7 @@ function sanitizeField(
     case 'textarea':
       return sanitizeTextField(value, field.max, field.default)
     case 'richtext':
-      return sanitizeRichDoc(value ?? field.default, field.max) as unknown as JsonValue
+      return sanitizeRichTextField(value, field.max, field.default)
     case 'number': {
       if (typeof value !== 'number' || !Number.isFinite(value)) return field.default
       if (value < field.min || value > field.max) return field.default

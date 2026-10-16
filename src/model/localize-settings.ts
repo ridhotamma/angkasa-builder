@@ -15,12 +15,22 @@
  */
 
 import { isRecord, type Field, type FieldValues, type JsonValue } from './fields'
-import { isLocalizedText, readLocalizedText, STOREFRONT_LOCALES } from './localized'
+import {
+  isLocalizedText,
+  readLocalizedEntryOf,
+  readLocalizedText,
+  STOREFRONT_LOCALES,
+} from './localized'
 import { sectionSchema, type SectionType } from './sections'
 
 /** The field kinds that carry the seller's own copy, and can be translated. */
 function isCopyField(field: Field): boolean {
   return field.kind === 'text' || field.kind === 'textarea'
+}
+
+/** Whether a value is a rich-text document, for the doc-typed resolution below. */
+function isDoc(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && value.type === 'doc'
 }
 
 /** One field's value, resolved to a string where it is translatable copy. */
@@ -32,6 +42,17 @@ function resolveField(
 ): JsonValue | undefined {
   if (isCopyField(field)) {
     return isLocalizedText(value) ? readLocalizedText(value, locale, fallback) : value
+  }
+  // A rich body is one document, or one per locale: pick the reader's, falling
+  // back like the text. A plain document is returned unchanged.
+  if (field.kind === 'richtext') {
+    const doc = readLocalizedEntryOf(
+      value as Record<string, unknown> | undefined,
+      locale,
+      isDoc,
+      fallback,
+    )
+    return doc !== undefined && doc !== value ? (doc as JsonValue) : value
   }
   if (field.kind !== 'list' || !Array.isArray(value)) return value
 

@@ -105,6 +105,57 @@ export function withLocalizedEntry(
   return { ...base, [locale]: text }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Values that are not text (a rich document, say)                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The doc-typed twins of the three helpers above: the same contract, for a
+ * value that is a structured object rather than a string. A rich-text field
+ * holds one `RichDoc`, or one per locale once translated.
+ */
+
+/** Whether a value is a per-locale map whose entries pass `isEntry`. */
+export function isLocalizedValue<T>(
+  value: unknown,
+  isEntry: (entry: unknown) => entry is T,
+): value is Partial<Record<StorefrontLocale, T>> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  return STOREFRONT_LOCALES.some((locale) => isEntry((value as Record<string, unknown>)[locale]))
+}
+
+/** The entry for one locale, with the reader → shop → English fallback chain. */
+export function readLocalizedEntryOf<T>(
+  value: T | Partial<Record<StorefrontLocale, T>> | null | undefined,
+  locale: string,
+  isEntry: (entry: unknown) => entry is T,
+  fallback: string = STOREFRONT_LOCALES[0],
+): T | undefined {
+  if (value == null) return undefined
+  if (isEntry(value)) return value
+  for (const key of [locale, fallback, 'en']) {
+    const entry = (value as Record<string, unknown>)[key]
+    if (isEntry(entry)) return entry
+  }
+  return undefined
+}
+
+/** The value with one locale's entry set — the twin of `withLocalizedEntry`. */
+export function withLocalizedEntryOf<T>(
+  value: unknown,
+  locale: StorefrontLocale,
+  entry: T,
+  isEntry: (entry: unknown) => entry is T,
+  defaultLocale: StorefrontLocale = STOREFRONT_LOCALES[0],
+): Partial<Record<StorefrontLocale, T>> {
+  const base = isLocalizedValue(value, isEntry)
+    ? { ...value }
+    : isEntry(value)
+      ? { [defaultLocale]: value }
+      : {}
+  return { ...base, [locale]: entry }
+}
+
 /** How much of a set of entries carries a target translation, 0–1. */
 export function translationProgress(entries: readonly { target: string }[]): number {
   if (entries.length === 0) return 1

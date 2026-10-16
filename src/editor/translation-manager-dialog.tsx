@@ -29,7 +29,7 @@ import {
   Switch,
   Text,
 } from '@chakra-ui/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import type { SectionInstance } from '../model/content'
 import { STOREFRONT_LOCALES, type StorefrontLocale } from '../model/localized'
@@ -52,6 +52,47 @@ function completeness(fields: readonly TranslationField[], source: StorefrontLoc
     others.every((locale) => (field.values[locale] ?? '').trim().length > 0),
   ).length
   return done / fields.length
+}
+
+/**
+ * One language's input for one field.
+ *
+ * Kept local and committed on blur (or Enter), not on every keystroke: writing
+ * per character would reshape the whole section list on each letter, re-rendering
+ * the editor behind the dialog. Typing stays in this box; the write happens once
+ * the seller leaves it.
+ */
+function TranslationInput({
+  value,
+  label,
+  placeholder,
+  onCommit,
+}: {
+  value: string
+  label: string
+  placeholder?: string
+  onCommit: (text: string) => void
+}) {
+  const [text, setText] = useState(value)
+  // Follow the stored value when it changes from elsewhere — the same field
+  // edited in the section form, or a re-render after a commit.
+  useEffect(() => setText(value), [value])
+
+  return (
+    <Input
+      size="sm"
+      value={text}
+      aria-label={label}
+      placeholder={placeholder}
+      onChange={(event) => setText(event.currentTarget.value)}
+      onBlur={() => {
+        if (text !== value) onCommit(text)
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+      }}
+    />
+  )
 }
 
 export function TranslationManagerDialog({
@@ -84,16 +125,22 @@ export function TranslationManagerDialog({
   }
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={({ open: next }) => onOpenChange(next)}
-      size="full"
-      placement="center"
-    >
+    <Dialog.Root open={open} onOpenChange={({ open: next }) => onOpenChange(next)} placement="center">
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
-          <Dialog.Content>
+          <Dialog.Content
+            maxW="5xl"
+            w="full"
+            h="min(90vh, 52rem)"
+            mx="auto"
+            rounded="xl"
+            overflow="hidden"
+            display="flex"
+            flexDirection="column"
+            borderWidth="1px"
+            borderColor="border.subtle"
+          >
             <Dialog.Header>
               <Stack gap="2" flex="1">
                 <Dialog.Title fontSize="md">{t('manageTranslation')}</Dialog.Title>
@@ -113,7 +160,7 @@ export function TranslationManagerDialog({
               </Dialog.CloseTrigger>
             </Dialog.Header>
 
-            <Dialog.Body>
+            <Dialog.Body flex="1" minH="0" overflowY="auto">
               <Stack gap="4" pb="4">
                 <Switch.Root
                   size="sm"
@@ -157,12 +204,11 @@ export function TranslationManagerDialog({
                               {locale.toUpperCase()}
                               {locale === sourceLocale ? ` · ${t('translationDefault')}` : ''}
                             </Text>
-                            <Input
-                              size="sm"
+                            <TranslationInput
                               value={field.values[locale] ?? ''}
-                              aria-label={locale}
+                              label={locale}
                               placeholder={locale === sourceLocale ? '' : t('translationTarget')}
-                              onChange={(event) => write(field, locale, event.currentTarget.value)}
+                              onCommit={(text) => write(field, locale, text)}
                             />
                           </Stack>
                         ))}
@@ -173,7 +219,13 @@ export function TranslationManagerDialog({
               </Stack>
             </Dialog.Body>
 
-            <Dialog.Footer>
+            <Dialog.Footer
+              position="sticky"
+              bottom="0"
+              bg="bg.panel"
+              borderTopWidth="1px"
+              borderColor="border.subtle"
+            >
               <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('translationClose')}
               </Button>
