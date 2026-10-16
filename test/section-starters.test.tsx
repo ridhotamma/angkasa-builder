@@ -11,6 +11,7 @@ import {
   createStarterSection,
   DEFAULT_THEME_SETTINGS,
   isSectionOffered,
+  reseedSectionVariant,
   SECTION_SCHEMAS,
   SECTION_STARTERS,
   SAMPLE_PHOTOS,
@@ -153,5 +154,56 @@ describe('section starters', () => {
       for (const notice of notices) expect(html, type).not.toContain(notice)
       expect(html.length, type).toBeGreaterThan(200)
     }
+  })
+})
+
+describe('reseedSectionVariant', () => {
+  /** A gallery exactly as the picker adds it: sanitised, with list ids. */
+  const gallery = () => createStarterSection('gallery', null, NOW).settings
+  const captionsOf = (settings: Record<string, unknown>) =>
+    (settings.items as Array<{ caption?: string }>).map((item) => item.caption ?? '')
+
+  test('an untouched gallery takes the new look’s own photos', () => {
+    const grid = gallery()
+    const next = reseedSectionVariant('gallery', grid, { ...grid, layout: 'masonry' })
+    expect(next.layout).toBe('masonry')
+    // Masonry is a wall of pictures: the grid's captions are gone.
+    expect(captionsOf(next).every((caption) => caption === '')).toBe(true)
+    expect((next.items as unknown[]).length).toBeGreaterThan((grid.items as unknown[]).length)
+  })
+
+  test('a social wall gets its handle and feed seeded', () => {
+    const grid = gallery()
+    const next = reseedSectionVariant('gallery', grid, { ...grid, layout: 'social' })
+    expect(next.handle).toBe('@yourshop')
+    expect(captionsOf(next).some((caption) => caption !== '')).toBe(true)
+  })
+
+  test('every swapped-in photo keeps a list id, so the editor can key on it', () => {
+    const grid = gallery()
+    const next = reseedSectionVariant('gallery', grid, { ...grid, layout: 'masonry' })
+    for (const item of next.items as Array<{ id?: string }>) expect(item.id).toBeTruthy()
+  })
+
+  test('once the seller edits the photos, a look change leaves them alone', () => {
+    const grid = gallery()
+    const items = (grid.items as Array<Record<string, unknown>>).map((item, index) =>
+      index === 0 ? { ...item, caption: 'Our own photo' } : item,
+    )
+    const edited = { ...grid, items }
+    const next = reseedSectionVariant('gallery', edited, { ...edited, layout: 'masonry' })
+    expect(next.items).toEqual(items)
+  })
+
+  test('changing a field that does not drive the content does nothing', () => {
+    const grid = gallery()
+    const next = reseedSectionVariant('gallery', grid, { ...grid, heading: 'A new heading' })
+    expect(next.items).toEqual(grid.items)
+  })
+
+  test('a section with no variant starters is returned untouched', () => {
+    const settings = createStarterSection('hero', null, NOW).settings
+    const next = { ...settings, heading: 'X' }
+    expect(reseedSectionVariant('hero', settings, next)).toBe(next)
   })
 })

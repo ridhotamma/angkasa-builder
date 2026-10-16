@@ -19,7 +19,8 @@
 
 import { SAMPLE_PHOTOS as P } from './sample-photos'
 import { createSection, type SectionInstance } from './content'
-import type { SectionPreset, SectionType } from './sections'
+import { sanitizeValues, type FieldValues } from './fields'
+import { sectionSchema, type SectionPreset, type SectionType } from './sections'
 
 /** Dummy settings for one section type, resolved at the moment it is added. */
 export type SectionStarter = (now: Date) => Record<string, unknown>
@@ -98,6 +99,62 @@ const cardColumnBlock = (image: string, title: string, body: string) => ({
     blocks: [imageBlock(image, '16/9'), headingBlock(title, 'h3', 'lg'), textBlock(body)],
   },
 })
+
+/* -------------------------------------------------------------------------- */
+/* Variant starters                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Sample data that depends on a *choice*, not on the section type.
+ *
+ * The gallery is the case: its three looks are three different pictures, so a
+ * grid's captioned tiles, a masonry column of tall photos and a social feed
+ * with a handle cannot share one sample. Each look carries the data that suits
+ * it, and the editor swaps them in when the look changes — see
+ * `reseedSectionVariant`.
+ */
+const GALLERY_VARIANTS: Record<string, FieldValues> = {
+  grid: {
+    items: [
+      { image: P.storeRack, caption: 'The rack', link: { kind: 'none' } },
+      { image: P.bags, caption: 'Everyday bags', link: { kind: 'none' } },
+      { image: P.watch, caption: 'Timepieces', link: { kind: 'none' } },
+    ],
+  },
+  masonry: {
+    // No captions: masonry is a wall of pictures, so the words move to the alt.
+    items: [
+      { image: P.fashionModel, alt: 'Studio, morning light' },
+      { image: P.sneakersRed, alt: 'The everyday pair' },
+      { image: P.coffeeBeans, alt: 'Small-batch roast' },
+      { image: P.storeRack, alt: 'Rack of new arrivals' },
+      { image: P.watch, alt: 'A watch on a table' },
+      { image: P.tote, alt: 'Made to carry' },
+    ],
+  },
+  social: {
+    handle: '@yourshop',
+    items: [
+      { image: P.shopFront, caption: 'Behind the counter today ☕' },
+      { image: P.packaging, caption: 'Packing your orders by hand' },
+      { image: P.coffeeBeans, caption: 'This week’s roast' },
+      { image: P.tote, caption: 'Back in stock' },
+      { image: P.sneakersRed, caption: 'New in — come try them on' },
+      { image: P.teamwork, caption: 'Small team, big care' },
+    ],
+  },
+}
+
+/**
+ * The chosen value of a driving choice, and the sample data for each value.
+ * Only sections whose content is not the seller's own (catalogue sections are
+ * absent, like every other starter) appear here.
+ */
+export const SECTION_VARIANT_STARTERS: Partial<
+  Record<SectionType, { field: string; starters: Record<string, FieldValues> }>
+> = {
+  gallery: { field: 'layout', starters: GALLERY_VARIANTS },
+}
 
 /* -------------------------------------------------------------------------- */
 /* The starters                                                               */
@@ -574,13 +631,9 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
   gallery: () => ({
     layout: 'grid',
     heading: 'From the shop',
-    items: [
-      { image: P.storeRack, caption: 'The rack', link: { kind: 'none' } },
-      { image: P.bags, caption: 'Everyday bags', link: { kind: 'none' } },
-      { image: P.watch, caption: 'Timepieces', link: { kind: 'none' } },
-    ],
     columns: '3',
     mobileColumns: '2',
+    ...GALLERY_VARIANTS.grid,
   }),
   quotes: () => ({
     variant: 'quotes',
@@ -650,4 +703,70 @@ export function createStarterSection(
 ): SectionInstance {
   const starter = preset ? undefined : SECTION_STARTERS[type]?.(now)
   return createSection(type, preset?.settings ?? starter ?? {}, preset?.style)
+}
+
+/**
+ * `next`, with the variant starter's data swapped in when the choice that
+ * drives the content changed and the seller had not touched that content.
+ *
+ * The gallery's look is the case this exists for: switching a still-untouched
+ * grid to masonry or a social wall should trade the sample photos for ones that
+ * belong to that look. Once the seller has put in their own — even one photo —
+ * the data is theirs, and changing the look leaves it exactly as it was; only
+ * the look itself moves.
+ *
+ * "Untouched" is judged against the *previous* look's starter, and only for the
+ * keys the starter names, so the extra keys the sanitiser fills in (a list
+ * item's generated `id`, a field's default) do not read as an edit.
+ */
+export function reseedSectionVariant(
+  type: SectionType,
+  previous: FieldValues,
+  next: FieldValues,
+): FieldValues {
+  const variant = SECTION_VARIANT_STARTERS[type]
+  if (!variant) return next
+
+  const before = String(previous[variant.field] ?? '')
+  const after = String(next[variant.field] ?? '')
+  if (before === after) return next
+
+  const previousStarter = variant.starters[before]
+  if (!previousStarter || !matchesStarter(previous, previousStarter)) return next
+
+  const replacement = variant.starters[after]
+  // A variant with no starter of its own (a look added later) leaves the
+  // seller's data alone rather than blanking it. `replacement` names only the
+  // content keys, never the driving choice, so `next`'s own value survives.
+  if (!replacement) return next
+
+  // Through the sanitiser, so the swapped-in list items get the ids and field
+  // defaults `createSection` would have given them — a raw starter item has no
+  // `id`, and the list editor keys on it.
+  const schema = sectionSchema(type)
+  const merged = { ...next, ...replacement }
+  return schema ? sanitizeValues(schema.fields, merged) : merged
+}
+
+/**
+ * Whether `current` still reads as `starter` wrote it.
+ *
+ * A subset match: every key the starter names must be present and equal under
+ * `current`, while keys the starter did not name (a list item's `id`, a
+ * sanitiser default) are ignored. Arrays must match in length, because adding
+ * or removing an item is an edit.
+ */
+function matchesStarter(current: unknown, starter: unknown): boolean {
+  if (Array.isArray(starter)) {
+    if (!Array.isArray(current) || current.length !== starter.length) return false
+    return starter.every((entry, index) => matchesStarter(current[index], entry))
+  }
+  if (starter !== null && typeof starter === 'object') {
+    if (current === null || typeof current !== 'object' || Array.isArray(current)) return false
+    return Object.entries(starter as Record<string, unknown>).every(
+      ([key, value]) =>
+        key !== 'id' && matchesStarter((current as Record<string, unknown>)[key], value),
+    )
+  }
+  return current === starter
 }

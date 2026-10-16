@@ -120,7 +120,7 @@ import {
 } from '../model/element-style'
 import { readBlocks, type FieldValues } from '../model/fields'
 import { isLocalizedText, withLocalizedEntry } from '../model/localized'
-import { createStarterSection } from '../model/section-starters'
+import { createStarterSection, reseedSectionVariant } from '../model/section-starters'
 import {
   FOOTER_FIELDS,
   HEADER_FIELDS,
@@ -1124,7 +1124,14 @@ function Builder({
                   values={selected.settings}
                   services={services}
                   onChange={(values) =>
-                    updateSection(selected.id, (section) => ({ ...section, settings: values }))
+                    updateSection(selected.id, (section) => ({
+                      ...section,
+                      // A changed choice may re-seed the content that goes with
+                      // it — the gallery's look trades its sample photos — but
+                      // only while the seller has not made that content their
+                      // own (see `reseedSectionVariant`).
+                      settings: reseedSectionVariant(section.type, section.settings, values),
+                    }))
                   }
                 />
               )}
