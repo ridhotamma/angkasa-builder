@@ -81,6 +81,12 @@ import {
   type ListField,
 } from '../model/fields'
 import { NO_LINK, type Link, type LinkKind } from '../model/links'
+import {
+  isLocalizedText,
+  readLocalizedEntry,
+  withLocalizedEntry,
+  type StorefrontLocale,
+} from '../model/localized'
 import { IconPicker } from './icon-picker'
 import {
   DateTimeControl,
@@ -902,6 +908,26 @@ export function ColorInput({
 /* Dispatch                                                                   */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The text a text field shows: the current locale's entry of a translated
+ * field, or the plain string. The seller edits the language they are working in.
+ */
+function controlText(value: unknown, locale: StorefrontLocale): string {
+  if (isLocalizedText(value)) return readLocalizedEntry(value, locale)
+  return typeof value === 'string' ? value : ''
+}
+
+/**
+ * What a text field stores on edit. A field that is already translated stays a
+ * locale map — the keystroke changes only the locale being viewed, and the other
+ * language is left untouched — while an untranslated field keeps writing one
+ * plain string, exactly as before translations existed.
+ */
+function writeControlText(value: unknown, locale: StorefrontLocale, text: string): unknown {
+  if (isLocalizedText(value)) return withLocalizedEntry(value, locale, text)
+  return text
+}
+
 function FieldControl({
   field,
   value,
@@ -919,7 +945,7 @@ function FieldControl({
   /** The values the siblings sit in, when they are a list item. */
   parent?: FieldValues
 }) {
-  const { t, l } = useEditorText()
+  const { t, l, locale } = useEditorText()
   const help = field.help ? l(field.help) : undefined
   const label = l(field.label)
 
@@ -929,10 +955,12 @@ function FieldControl({
         <Labeled label={label} help={help}>
           <Input
             size="sm"
-            value={typeof value === 'string' ? value : ''}
+            value={controlText(value, locale)}
             maxLength={field.max}
             placeholder={field.placeholder ? l(field.placeholder) : undefined}
-            onChange={(event) => onChange(event.currentTarget.value)}
+            onChange={(event) =>
+              onChange(writeControlText(value, locale, event.currentTarget.value))
+            }
           />
         </Labeled>
       )
@@ -951,9 +979,11 @@ function FieldControl({
           <Textarea
             size="sm"
             rows={field.rows ?? 4}
-            value={typeof value === 'string' ? value : ''}
+            value={controlText(value, locale)}
             maxLength={field.max}
-            onChange={(event) => onChange(event.currentTarget.value)}
+            onChange={(event) =>
+              onChange(writeControlText(value, locale, event.currentTarget.value))
+            }
           />
         </Labeled>
       )
