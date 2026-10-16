@@ -168,6 +168,9 @@ export function LookPickerDialog({
         if (!next) onClose()
       }}
       size="xl"
+      // Chakra anchors a dialog to the top by default; this one sits in the
+      // middle of the screen, like every other dialog in the editor.
+      placement="center"
       scrollBehavior="inside"
     >
       <Portal>
