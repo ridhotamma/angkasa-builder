@@ -177,7 +177,7 @@ describe('per-section content width', () => {
           shop={{ name: 'Toko', logoUrl: null }}
           menu={[]}
           pages={[]}
-          labels={{ information: 'Info', followUs: 'Follow', links: 'Links' }}
+          labels={{ information: 'Info', followUs: 'Follow', links: 'Links', trackOrder: '' }}
         />
       </RenderProvider>,
     )

@@ -68,6 +68,7 @@ import { resolveScheme, schemeCssVars, SCHEME_KEYS, type SchemeKey } from '../mo
 import { BOLD_BORDER_WIDTH, BOLD_INK, boldShadow } from './bold'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
+import { informationLinks, type InformationLabels } from './footer-links'
 import { schemeCss } from './frame'
 import { SmartLink, useOverlayProps } from './primitives'
 import type { PageEdges } from './renderer'
@@ -1179,19 +1180,6 @@ function ContactLine({
   )
 }
 
-/**
- * Whether the footer menu the seller built already links to the tracking page.
- *
- * Walks the children too, since the link may sit under a column. A menu is the
- * seller's own words, so their link is kept and the built-in one is dropped —
- * the footer lists the page once either way.
- */
-function menuLinksToOrderTracking(items: readonly MenuItem[]): boolean {
-  return items.some(
-    (item) => item.link.kind === 'orderTracking' || menuLinksToOrderTracking(item.children),
-  )
-}
-
 export interface StoreFooterProps {
   footer: FieldValues
   shop: ChromeShop
@@ -1206,11 +1194,10 @@ export interface StoreFooterProps {
   /** Published pages that ask to be in the footer, used while the footer menu is empty. */
   pages: Array<{ title: string; slug: string }>
   /**
-   * `trackOrder` is optional and doubles as the switch for the built-in link to
-   * the order-tracking page: a host that supplies no label gets no link, which
-   * is how the editor's previews and the nav tests stay as they were.
+   * The chrome's own words. `InformationLabels` covers the column and its
+   * built-in links — see `informationLinks`, which decides what goes in it.
    */
-  labels: { information: string; followUs: string; links: string; trackOrder?: string }
+  labels: InformationLabels & { followUs: string; links: string }
   /** The small print under everything — "Powered by Pesanle". */
   bottom?: ReactNode
   /** The page ends in a full-bleed section, which the footer should meet with no gap. */
@@ -1244,17 +1231,10 @@ export function StoreFooter({
   // Top-level links with children are columns; loose top-level links share one.
   const columns = effectiveMenu.filter((item) => item.children.length > 0)
   const loose = effectiveMenu.filter((item) => item.children.length === 0)
-  const showPages = readBoolean(footer, 'showPages') && menu.length === 0 && pages.length > 0
-  // The shop's own order-tracking page: the storefront owns the route, so the
-  // link is drawn here rather than configured as a menu item — a fresh shop's
-  // footer should already lead to it. A link the *seller* added to the footer
-  // menu wins and is the only one drawn, so the footer never lists the page
-  // twice; an unrelated menu item does not hide it, unlike the pages above.
-  const trackOrder = labels.trackOrder?.trim() ?? ''
-  const showOrderTracking =
-    readBoolean(footer, 'showOrderTracking') && !!trackOrder && !menuLinksToOrderTracking(menu)
-  const showInformation = showPages || showOrderTracking
-  const columnCount = columns.length + (loose.length > 0 ? 1 : 0) + (showInformation ? 1 : 0)
+  // The seller's pages and the routes every shop has, under one heading — and
+  // gone entirely when there is nothing to list. See `informationLinks`.
+  const information = informationLinks({ footer, pages, menu, labels })
+  const columnCount = columns.length + (loose.length > 0 ? 1 : 0) + (information.length > 0 ? 1 : 0)
 
   return (
     <Box
@@ -1353,24 +1333,15 @@ export function StoreFooter({
                 </Stack>
               </Stack>
             )}
-            {showInformation && (
+            {information.length > 0 && (
               <Stack as="nav" gap="3" aria-label={labels.information}>
                 <ColumnHeading>{labels.information}</ColumnHeading>
                 <Stack gap="2" fontSize="sm" color="fg.muted">
-                  {pages.map((page) => (
-                    <SmartLink
-                      key={page.slug}
-                      link={{ kind: 'page', slug: page.slug }}
-                      _hover={{ color: 'fg' }}
-                    >
-                      {page.title}
+                  {information.map((entry) => (
+                    <SmartLink key={entry.key} link={entry.link} _hover={{ color: 'fg' }}>
+                      {entry.label}
                     </SmartLink>
                   ))}
-                  {showOrderTracking && (
-                    <SmartLink link={{ kind: 'orderTracking' }} _hover={{ color: 'fg' }}>
-                      {trackOrder}
-                    </SmartLink>
-                  )}
                 </Stack>
               </Stack>
             )}

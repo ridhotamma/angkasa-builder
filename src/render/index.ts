@@ -40,6 +40,12 @@ export {
   type StoreTabBarProps,
 } from './chrome'
 export { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
+export {
+  informationLinks,
+  menuHasLinkKind,
+  type InformationLabels,
+  type InformationLink,
+} from './footer-links'
 export { ArticleCard, ArticleGrid, formatArticleDate } from './article-page'
 export { BlockChildren, BlockStrip } from './blocks-section'
 export {

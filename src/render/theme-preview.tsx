@@ -98,7 +98,7 @@ export function TemplateSnapshotPage({
             categories={data.categories}
             collections={data.collections}
             pages={[]}
-            labels={{ information: '', followUs: '', links: '' }}
+            labels={{ information: '', followUs: '', links: '', trackOrder: '' }}
             flush={edges.flushBottom}
           />
         </ThemeScope>
