@@ -1224,6 +1224,8 @@ function Testimonials({ settings }: SectionProps) {
         <TestimonialMarquee items={items} settings={settings} />
       ) : layout === 'carousel' ? (
         <TestimonialCarousel items={items} autoplay={readBoolean(settings, 'autoplay')} />
+      ) : layout === 'list' ? (
+        <TestimonialList items={items} />
       ) : (
         <SimpleGrid columns={{ base: 1, md: Math.min(3, items.length) }} gap="4">
           {items.map((item) => (
@@ -1323,14 +1325,49 @@ function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; au
   )
 }
 
+/**
+ * The list arrangement: one testimonial per row, full width, separated by
+ * hairlines — the quote on the left, the author on the right. Distinct from the
+ * grid, which packs up to three cards across; the list reads top to bottom, one
+ * voice at a time, and stays one per row at every width.
+ */
+function TestimonialList({ items }: { items: TestimonialItem[] }) {
+  return (
+    <Stack
+      as="ul"
+      gap="0"
+      listStyleType="none"
+      m="0"
+      p="0"
+      borderTopWidth="1px"
+      borderColor="border.subtle"
+    >
+      {items.map((item) => (
+        <Flex
+          as="li"
+          key={item.id}
+          direction={{ base: 'column', md: 'row' }}
+          align={{ base: 'flex-start', md: 'center' }}
+          justify="space-between"
+          gap={{ base: '3', md: '8' }}
+          py="6"
+          borderBottomWidth="1px"
+          borderColor="border.subtle"
+          data-testimonial-row=""
+        >
+          <Text fontSize={{ base: 'lg', md: 'xl' }} lineHeight="tall" flex="1" minW="0">
+            “{readText(item, 'quote')}”
+          </Text>
+          <TestimonialByline item={item} />
+        </Flex>
+      ))}
+    </Stack>
+  )
+}
+
 /** The quote, then who said it — with their photo, or their initials without one. */
 function TestimonialCard({ item }: { item: TestimonialItem }) {
   const { frame, hover, tiltRef } = useCard()
-  const { imageUrl } = useRenderEnvironment()
-  const author = readText(item, 'author')
-  const role = readText(item, 'role')
-  const avatar = readText(item, 'avatar')
-  const src = avatar ? imageUrl(avatar, { width: 96, height: 96 }) : null
 
   return (
     <Card.Root ref={tiltRef} bg="bg.subtle" rounded="l3" w="full" h="full" {...frame} {...hover}>
@@ -1338,41 +1375,57 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
         <Text fontSize="lg" lineHeight="tall">
           “{readText(item, 'quote')}”
         </Text>
-        {(author || src) && (
-          <HStack gap="3">
-            <Avatar.Root size="md" flexShrink="0">
-              <Avatar.Fallback name={author || undefined} />
-              {/* A plain image over the initials rather than `Avatar.Image`,
-                  which stays hidden until its script runs — a cached photo
-                  would otherwise never appear. */}
-              {src && (
-                <ImageWithFallback
-                  src={src}
-                  alt=""
-                  fallback={false}
-                  position="absolute"
-                  inset="0"
-                  boxSize="full"
-                  objectFit="cover"
-                  rounded="inherit"
-                  loading="lazy"
-                />
-              )}
-            </Avatar.Root>
-            <Box minW="0">
-              <Text fontWeight="semibold" truncate>
-                {author}
-              </Text>
-              {role && (
-                <Text fontSize="sm" color="fg.muted" truncate>
-                  {role}
-                </Text>
-              )}
-            </Box>
-          </HStack>
-        )}
+        <TestimonialByline item={item} />
       </Card.Body>
     </Card.Root>
+  )
+}
+
+/**
+ * Who said it — avatar (or initials), name and role. Shared by the card and the
+ * list, and `null` when a testimonial carries neither an author nor a photo, so
+ * neither leaves an empty row behind.
+ */
+function TestimonialByline({ item }: { item: TestimonialItem }) {
+  const { imageUrl } = useRenderEnvironment()
+  const author = readText(item, 'author')
+  const role = readText(item, 'role')
+  const avatar = readText(item, 'avatar')
+  const src = avatar ? imageUrl(avatar, { width: 96, height: 96 }) : null
+  if (!author && !src) return null
+
+  return (
+    <HStack gap="3" flexShrink="0">
+      <Avatar.Root size="md" flexShrink="0">
+        <Avatar.Fallback name={author || undefined} />
+        {/* A plain image over the initials rather than `Avatar.Image`,
+            which stays hidden until its script runs — a cached photo
+            would otherwise never appear. */}
+        {src && (
+          <ImageWithFallback
+            src={src}
+            alt=""
+            fallback={false}
+            position="absolute"
+            inset="0"
+            boxSize="full"
+            objectFit="cover"
+            rounded="inherit"
+            loading="lazy"
+          />
+        )}
+      </Avatar.Root>
+      <Box minW="0">
+        <Text fontWeight="semibold" truncate>
+          {author}
+        </Text>
+        {role && (
+          <Text fontSize="sm" color="fg.muted" truncate>
+            {role}
+          </Text>
+        )}
+      </Box>
+    </HStack>
   )
 }
 
