@@ -133,6 +133,7 @@ export function ThemeSettingsPanel({
   priorityLookKeys = [],
   sections,
   onSectionsChange,
+  defaultLocale,
 }: {
   settings: ThemeSettings
   onChange: (settings: ThemeSettings) => void
@@ -146,6 +147,8 @@ export function ThemeSettingsPanel({
    */
   sections?: readonly SectionInstance[]
   onSectionsChange?: (sections: SectionInstance[]) => void
+  /** The shop's own language: a plain string is seeded here. Defaults to `id`. */
+  defaultLocale?: StorefrontLocale
 }) {
   const { t, l } = useEditorText()
   // The picker opens only when the seller asks for it: a modal that opens
@@ -154,8 +157,8 @@ export function ThemeSettingsPanel({
   const [pickerOpen, setPickerOpen] = useState(false)
   // A count, so each press replays the intro; zero means it is not playing.
   const [splashPreview, setSplashPreview] = useState(0)
-  /** The language whose translation manager is open, or null. */
-  const [translation, setTranslation] = useState<StorefrontLocale | null>(null)
+  /** Whether the translation manager is open. */
+  const [translationOpen, setTranslationOpen] = useState(false)
   const [popupPreview, setPopupPreview] = useState(0)
   const issues = contrastIssues(settings)
   const schemeIssues = schemeContrastIssues(settings)
@@ -614,17 +617,14 @@ export function ThemeSettingsPanel({
             title={t('localization')}
             helper={t('localizationHelp')}
           >
-            {STOREFRONT_LOCALES.map((locale) => (
-              <Button
-                key={locale}
-                size="xs"
-                variant="outline"
-                alignSelf="start"
-                onClick={() => setTranslation(locale)}
-              >
-                {t('manageTranslation')} — {locale.toUpperCase()}
-              </Button>
-            ))}
+            <Button
+              size="xs"
+              variant="outline"
+              alignSelf="start"
+              onClick={() => setTranslationOpen(true)}
+            >
+              {t('manageTranslation')}
+            </Button>
           </ThemeSection>
         )}
       </Accordion.Root>
@@ -652,13 +652,13 @@ export function ThemeSettingsPanel({
         </Portal>
       )}
 
-      {translation && sections && onSectionsChange && (
+      {sections && onSectionsChange && (
         <TranslationManagerDialog
-          locale={translation}
-          open
-          onOpenChange={(next) => !next && setTranslation(null)}
+          open={translationOpen}
+          onOpenChange={setTranslationOpen}
           sections={sections}
           onSectionsChange={onSectionsChange}
+          sourceLocale={defaultLocale}
         />
       )}
     </Stack>

@@ -53,34 +53,41 @@ function isCopyField(kind: string): boolean {
   return kind === 'text' || kind === 'textarea'
 }
 
-function asText(value: JsonValue | undefined): LocalizedText | undefined {
-  return value as unknown as LocalizedText | undefined
+function asText(value: unknown): LocalizedText | undefined {
+  return value as LocalizedText | undefined
 }
 
 /**
- * Every translatable string in a layout, in document order, for one target
- * locale. `fallback` is the locale the source text is read from.
+ * One translatable field, with the current text in every storefront locale.
+ * This is the whole set the manager shows — the reference language and the
+ * others side by side — so nothing has to decide up front which locale is
+ * "source": the value is simply read per locale.
  */
-export function collectTranslationEntries(
-  sections: readonly SectionInstance[],
-  locale: StorefrontLocale,
-  fallback: StorefrontLocale = STOREFRONT_LOCALES[0],
-): TranslationEntry[] {
-  const entries: TranslationEntry[] = []
+export interface TranslationField extends TranslationPath {
+  section: Localized
+  field: Localized
+  values: Partial<Record<StorefrontLocale, string>>
+}
 
+type Visit = (entry: {
+  path: TranslationPath
+  section: Localized
+  field: Localized
+  value: unknown
+}) => void
+
+/** Walk a layout's translatable fields — the one traversal both collectors use. */
+function walkTranslationFields(sections: readonly SectionInstance[], visit: Visit): void {
   for (const section of sections) {
     const schema = sectionSchema(section.type)
     if (!schema) continue
     for (const field of schema.fields) {
       if (isCopyField(field.kind)) {
-        const value = section.settings[field.key]
-        entries.push({
-          sectionId: section.id,
-          key: field.key,
+        visit({
+          path: { sectionId: section.id, key: field.key },
           section: schema.name,
           field: field.label,
-          source: readLocalizedText(asText(value), fallback, fallback),
-          target: readLocalizedEntry(asText(value), locale),
+          value: section.settings[field.key],
         })
       } else if (field.kind === 'list') {
         const items = section.settings[field.key]
@@ -89,22 +96,57 @@ export function collectTranslationEntries(
           if (!isRecord(item) || typeof item.id !== 'string') continue
           for (const sub of field.fields) {
             if (!isCopyField(sub.kind)) continue
-            const value = item[sub.key] as JsonValue | undefined
-            entries.push({
-              sectionId: section.id,
-              listKey: field.key,
-              itemId: item.id,
-              key: sub.key,
+            visit({
+              path: {
+                sectionId: section.id,
+                listKey: field.key,
+                itemId: item.id,
+                key: sub.key,
+              },
               section: schema.name,
               field: sub.label,
-              source: readLocalizedText(asText(value), fallback, fallback),
-              target: readLocalizedEntry(asText(value), locale),
+              value: item[sub.key] as JsonValue | undefined,
             })
           }
         }
       }
     }
   }
+}
+
+/** Every translatable field with its text read in each locale. */
+export function collectTranslationFields(sections: readonly SectionInstance[]): TranslationField[] {
+  const fields: TranslationField[] = []
+  walkTranslationFields(sections, ({ path, section, field, value }) => {
+    const values: Partial<Record<StorefrontLocale, string>> = {}
+    for (const locale of STOREFRONT_LOCALES) {
+      const text = readLocalizedEntry(asText(value), locale)
+      if (text) values[locale] = text
+    }
+    fields.push({ ...path, section, field, values })
+  })
+  return fields
+}
+
+/**
+ * Every translatable string, in document order, for one target locale.
+ * `fallback` is the locale the source text is read from.
+ */
+export function collectTranslationEntries(
+  sections: readonly SectionInstance[],
+  locale: StorefrontLocale,
+  fallback: StorefrontLocale = STOREFRONT_LOCALES[0],
+): TranslationEntry[] {
+  const entries: TranslationEntry[] = []
+  walkTranslationFields(sections, ({ path, section, field, value }) => {
+    entries.push({
+      ...path,
+      section,
+      field,
+      source: readLocalizedText(asText(value), fallback, fallback),
+      target: readLocalizedEntry(asText(value), locale),
+    })
+  })
   return entries
 }
 
