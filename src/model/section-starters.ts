@@ -538,6 +538,9 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
     whatsapp: '0812-3456-7890',
     email: 'hello@example.com',
   }),
+  'order-tracking': () => ({
+    subheading: 'Enter your order number and the phone you used, and we will open it.',
+  }),
 
   /* Promotion -------------------------------------------------------------- */
 

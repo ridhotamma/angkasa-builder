@@ -13,7 +13,7 @@ import { createContext, useContext, type ReactNode } from 'react'
 
 import { CATEGORY_PREVIEW_PRODUCTS } from '../model/content'
 import type { ElementKind } from '../model/element-style'
-import type { TableValue } from '../model/fields'
+import type { FieldValues, TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
 
@@ -258,6 +258,12 @@ export interface RenderEnvironment {
      * gets a stand-in body.
      */
     articleBody?: ReactNode
+    /**
+     * The order-tracking form, drawn where an `order-tracking` section sits.
+     * Only the host can look an order up and send the shopper to it; the editor
+     * gets a stand-in form. Receives the section's settings for its labels.
+     */
+    orderTracking?: (settings: FieldValues) => ReactNode
   }
   /**
    * The signed-in shopper's saved products, when the host has a wishlist.

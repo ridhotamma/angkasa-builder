@@ -2484,6 +2484,51 @@ export const SECTION_SCHEMAS = [
     defaultStyle: { colorScheme: 'subtle' },
   },
 
+  {
+    type: 'order-tracking',
+    scopes: EVERYWHERE,
+    category: 'store',
+    icon: 'bag',
+    name: { en: 'Order tracking', id: 'Lacak pesanan' },
+    description: {
+      en: 'A form that looks an order up by its number and phone, then opens it.',
+      id: 'Formulir untuk mencari pesanan lewat nomor dan nomor telepon, lalu membukanya.',
+    },
+    fields: [
+      heading('Track your order'),
+      subheading('Enter your order number and the phone you used, and we will take you to it.'),
+      {
+        kind: 'text',
+        key: 'orderNumberLabel',
+        label: { en: 'Order number label', id: 'Label nomor pesanan' },
+        max: 40,
+        default: 'Order number',
+      },
+      {
+        kind: 'text',
+        key: 'phoneLabel',
+        label: { en: 'Phone label', id: 'Label nomor telepon' },
+        max: 40,
+        default: 'WhatsApp / phone number',
+      },
+      {
+        kind: 'text',
+        key: 'submitLabel',
+        label: { en: 'Button label', id: 'Teks tombol' },
+        max: 40,
+        default: 'Track order',
+      },
+      {
+        kind: 'text',
+        key: 'notFoundMessage',
+        label: { en: 'Not-found message', id: 'Pesan tidak ditemukan' },
+        max: 160,
+        default: 'We could not find that order. Check the number and the phone number.',
+      },
+      { ...align, default: 'left' },
+    ],
+  },
+
   /* ---------------------------------------------------------------------- */
   /* Product page                                                           */
   /* ---------------------------------------------------------------------- */

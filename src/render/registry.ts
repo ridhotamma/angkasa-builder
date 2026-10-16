@@ -44,6 +44,7 @@ import {
 } from './article-page'
 import { CatalogHeader, CatalogProducts } from './catalog-page'
 import { PinnedScroll, ScrollRail, StackedCards } from './motion-sections'
+import { OrderTracking } from './order-tracking'
 import { ProductInfo, ProductReviews, RelatedProducts } from './product-page'
 import { FEATURE_SECTION_RENDERERS } from './feature-sections'
 import { BASE_SECTION_RENDERERS, type SectionProps } from './sections'
@@ -82,6 +83,7 @@ export const SECTION_RENDERERS = {
   'icon-features': IconFeatures,
   'store-locations': StoreLocations,
   'contact-cta': ContactCta,
+  'order-tracking': OrderTracking,
   'product-info': ProductInfo,
   'product-reviews': ProductReviews,
   'related-products': RelatedProducts,
