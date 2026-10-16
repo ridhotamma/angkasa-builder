@@ -373,6 +373,7 @@ const TEMPLATE_LABELS = {
   product: 'templateProduct',
   article: 'templateArticle',
   catalog: 'templateCatalog',
+  orderTracking: 'templateOrderTracking',
 } as const satisfies Record<TemplateKey, string>
 
 /**

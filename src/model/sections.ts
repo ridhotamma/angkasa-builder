@@ -31,7 +31,7 @@ export { ICON_NAMES, type IconName } from './icons'
  * catalogue and every listing page that shares it — the category and
  * collection detail pages.
  */
-export type SectionScope = 'home' | 'page' | 'product' | 'article' | 'catalog'
+export type SectionScope = 'home' | 'page' | 'product' | 'article' | 'catalog' | 'orderTracking'
 
 /** How the "Add section" picker groups sections. */
 export const SECTION_CATEGORIES = [
@@ -120,7 +120,14 @@ export interface SectionSchema {
 // newsletter under every article, a banner above the product grid — so both
 // "everywhere" sets include them.
 const EVERYWHERE_BUT_PRODUCT: readonly SectionScope[] = ['home', 'page', 'article', 'catalog']
-const EVERYWHERE: readonly SectionScope[] = ['home', 'page', 'product', 'article', 'catalog']
+const EVERYWHERE: readonly SectionScope[] = [
+  'home',
+  'page',
+  'product',
+  'article',
+  'catalog',
+  'orderTracking',
+]
 const PRODUCT_ONLY: readonly SectionScope[] = ['product']
 const ARTICLE_ONLY: readonly SectionScope[] = ['article']
 const CATALOG_ONLY: readonly SectionScope[] = ['catalog']

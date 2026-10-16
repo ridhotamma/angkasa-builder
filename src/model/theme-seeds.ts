@@ -25,6 +25,7 @@ import {
   createSection,
   defaultArticleTemplate,
   defaultCatalogTemplate,
+  defaultOrderTrackingTemplate,
   defaultProductTemplate,
   sanitizeThemeContent,
   type SectionInstance,
@@ -451,6 +452,7 @@ function makeSeed(
           product: defaultProductTemplate(),
           article: defaultArticleTemplate(),
           catalog: defaultCatalogTemplate(),
+          orderTracking: defaultOrderTrackingTemplate(),
         },
         recommendedLooks: [...recommendedLooks],
       })

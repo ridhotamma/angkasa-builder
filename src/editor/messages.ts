@@ -277,6 +277,7 @@ const MESSAGES = {
   templateProduct: { en: 'Product page', id: 'Halaman produk' },
   templateArticle: { en: 'Article page', id: 'Halaman artikel' },
   templateCatalog: { en: 'Catalogue page', id: 'Halaman katalog' },
+  templateOrderTracking: { en: 'Track order page', id: 'Halaman lacak pesanan' },
   editingTemplate: { en: 'Editing', id: 'Mengedit' },
   inlineHint: {
     en: 'Click a section to edit it; click a heading to type straight into it.',

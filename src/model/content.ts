@@ -128,7 +128,7 @@ export interface SectionInstance {
   overrides?: SectionOverrides
 }
 
-export const TEMPLATE_KEYS = ['home', 'product', 'article', 'catalog'] as const
+export const TEMPLATE_KEYS = ['home', 'product', 'article', 'catalog', 'orderTracking'] as const
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number]
 
 export const TEMPLATE_SCOPES: Record<TemplateKey, SectionScope> = {
@@ -139,6 +139,9 @@ export const TEMPLATE_SCOPES: Record<TemplateKey, SectionScope> = {
   // and the category (`/c/<slug>`) and collection (`/k/<slug>`) pages that
   // share its screen. What differs between them is data, not structure.
   catalog: 'catalog',
+  // The shop's order-tracking page (`/track-order`): a screen of its own, like
+  // the product and article pages, so a theme can lay it out deliberately.
+  orderTracking: 'orderTracking',
 }
 
 export interface ThemeContent {
@@ -795,6 +798,24 @@ export function sanitizeCatalogTemplate(value: unknown): SectionInstance[] {
   return sections.filter((section) => required.has(section.type) || keep.has(section.id))
 }
 
+/** The order-tracking page every theme starts with — and the one a theme without its own gets. */
+export function defaultOrderTrackingTemplate(): SectionInstance[] {
+  return [createSection('order-tracking')]
+}
+
+/**
+ * The order-tracking page template, cleaned. Its lookup form is required, like
+ * the catalogue's product grid: a theme saved before the template existed gets
+ * the default, and one missing the section by hand gets it back at the top.
+ */
+export function sanitizeOrderTrackingTemplate(value: unknown): SectionInstance[] {
+  if (!Array.isArray(value) || value.length === 0) return defaultOrderTrackingTemplate()
+  const sections = sanitizeSections(value, 'orderTracking')
+  return sections.some((section) => section.type === 'order-tracking')
+    ? sections
+    : [createSection('order-tracking'), ...sections]
+}
+
 export function sanitizeThemeContent(value: unknown): ThemeContent {
   const source = isRecord(value) ? value : {}
   const templates = isRecord(source.templates) ? source.templates : {}
@@ -807,6 +828,7 @@ export function sanitizeThemeContent(value: unknown): ThemeContent {
       product: sanitizeProductTemplate(templates.product),
       article: sanitizeArticleTemplate(templates.article),
       catalog: sanitizeCatalogTemplate(templates.catalog),
+      orderTracking: sanitizeOrderTrackingTemplate(templates.orderTracking),
     },
     recommendedLooks: sanitizeRecommendedLooks(source.recommendedLooks),
   }
@@ -867,7 +889,7 @@ export const EMPTY_THEME_CONTENT: ThemeContent = {
   version: CONTENT_VERSION,
   settings: DEFAULT_THEME_SETTINGS,
   layout: sanitizeLayout(null),
-  templates: { home: [], product: [], article: [], catalog: [] },
+  templates: { home: [], product: [], article: [], catalog: [], orderTracking: [] },
   recommendedLooks: [],
 }
 
@@ -1014,6 +1036,7 @@ export function remapThemeImages(
       product: remapSections(content.templates.product, images, videoMap),
       article: remapSections(content.templates.article, images, videoMap),
       catalog: remapSections(content.templates.catalog, images, videoMap),
+      orderTracking: remapSections(content.templates.orderTracking, images, videoMap),
     },
   }
 }
