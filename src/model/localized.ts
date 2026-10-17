@@ -74,6 +74,17 @@ export function readLocalizedText(
 }
 
 /**
+ * Whether a value carries any text at all: a plain string with content, or at
+ * least one locale's entry. What a form asks to call a label "given" once
+ * languages are in play, where the value may be either shape.
+ */
+export function hasLocalizedText(value: LocalizedText | null | undefined): boolean {
+  if (typeof value === 'string') return value.trim().length > 0
+  if (!value) return false
+  return STOREFRONT_LOCALES.some((locale) => (value[locale] ?? '').trim().length > 0)
+}
+
+/**
  * One locale's stored entry, with no fallback — what the translation editor
  * shows under that locale's tab. A plain string reads as the value for every
  * locale, since it is the only copy there is.

@@ -39,6 +39,7 @@ import { Tooltip } from '@repo/theme'
 
 import { newId } from '../model/fields'
 import { NO_LINK, type Link } from '../model/links'
+import { hasLocalizedText, readLocalizedText, withLocalizedEntry } from '../model/localized'
 import {
   MAX_MENU_DEPTH,
   MAX_MENU_ITEMS_PER_LEVEL,
@@ -102,7 +103,7 @@ interface ItemsProps {
 }
 
 function Items({ items, onChange, path, services, open, setOpen, labelError }: ItemsProps) {
-  const { t } = useEditorText()
+  const { t, locale } = useEditorText()
   const summary = useLinkSummary()
   const depth = path.length + 1
 
@@ -178,9 +179,9 @@ function Items({ items, onChange, path, services, open, setOpen, labelError }: I
                           fontWeight="medium"
                           truncate
                           maxW="full"
-                          color={item.label ? 'fg' : 'fg.muted'}
+                          color={hasLocalizedText(item.label) ? 'fg' : 'fg.muted'}
                         >
-                          {item.label || t('menuUntitled')}
+                          {readLocalizedText(item.label, locale) || t('menuUntitled')}
                         </Text>
                         <Text
                           fontSize="xs"
@@ -241,13 +242,22 @@ function Items({ items, onChange, path, services, open, setOpen, labelError }: I
                       <Labeled label={t('menuLabel')} error={error}>
                         <Input
                           size="sm"
-                          value={item.label}
+                          value={readLocalizedText(item.label, locale)}
                           maxLength={MAX_MENU_LABEL}
                           placeholder={t('menuLabelPlaceholder')}
                           // A fresh link opens straight onto its label.
-                          autoFocus={!item.label}
+                          autoFocus={!hasLocalizedText(item.label)}
                           onChange={(event) =>
-                            update(item.id, { label: event.currentTarget.value })
+                            // The field edits the current language's entry; the
+                            // shop's own stays until overwritten, so a translation
+                            // can be added without losing the original.
+                            update(item.id, {
+                              label: withLocalizedEntry(
+                                item.label,
+                                locale,
+                                event.currentTarget.value,
+                              ),
+                            })
                           }
                         />
                       </Labeled>

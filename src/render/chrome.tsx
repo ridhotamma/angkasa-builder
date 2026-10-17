@@ -52,9 +52,11 @@ import {
   LuPhone,
 } from 'react-icons/lu'
 
+import { useLocale } from '@repo/i18n'
 import { ImageWithFallback, Tooltip } from '@repo/theme'
 
 import { readBoolean, readLink, readList, readText, type FieldValues } from '../model/fields'
+import { readLocalizedText } from '../model/localized'
 import {
   buildFooterFallbackMenu,
   buildMobileFallbackMenu,
@@ -125,6 +127,12 @@ function catalogLabels(text: ReturnType<typeof useRenderText>): CatalogNavLabels
 function resolveMenu(menu: MenuItem[], fallback: () => MenuItem[]): MenuItem[] {
   if (menu.length > 0) return menu
   return fallback()
+}
+
+/** A menu entry's label in the shopper's language. */
+function useMenuLabel(): (item: MenuItem) => string {
+  const { locale } = useLocale()
+  return (item: MenuItem) => readLocalizedText(item.label, locale)
 }
 
 /**
@@ -199,6 +207,7 @@ function NavLink({
   item,
   ...props
 }: { item: MenuItem } & Omit<LinkProps, 'children' | 'href' | 'onClick'>) {
+  const label = useMenuLabel()
   return (
     <SmartLink
       link={item.link}
@@ -208,7 +217,7 @@ function NavLink({
       _hover={{ color: 'brand.fg' }}
       {...props}
     >
-      {item.label}
+      {label(item)}
     </SmartLink>
   )
 }
@@ -220,6 +229,7 @@ function NavLink({
  * navigation to behave.
  */
 function DesktopMenuItem({ item }: { item: MenuItem }) {
+  const label = useMenuLabel()
   if (item.children.length === 0) return <NavLink item={item} py="2" />
 
   const mega = isMegaMenu(item)
@@ -241,7 +251,7 @@ function DesktopMenuItem({ item }: { item: MenuItem }) {
           _hover={{ color: 'brand.fg' }}
         >
           <SmartLink link={item.link} color="inherit">
-            {item.label}
+            {label(item)}
           </SmartLink>
           <Icon as={LuChevronDown} boxSize="3.5" />
         </HStack>
@@ -341,6 +351,7 @@ function MobileMenu({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const overlay = useOverlayProps()
+  const label = useMenuLabel()
   if (items.length === 0 && !bottom) return null
 
   const entry = (item: MenuItem, depth: number): ReactNode =>
@@ -351,7 +362,7 @@ function MobileMenu({
     ) : (
       <Accordion.Item key={item.id} value={item.id} borderBottomWidth="0">
         <Accordion.ItemTrigger py="2.5" pl={depth * 4} fontWeight="medium">
-          <Box flex="1">{item.label}</Box>
+          <Box flex="1">{label(item)}</Box>
           <Accordion.ItemIndicator />
         </Accordion.ItemTrigger>
         <Accordion.ItemContent>
@@ -1221,6 +1232,7 @@ export function StoreFooter({
   const socials = readBoolean(footer, 'showSocials') ? (shop.socialLinks ?? []) : []
   const showContact = readBoolean(footer, 'showContact')
   const text = useRenderText()
+  const menuLabel = useMenuLabel()
 
   // A configured footer menu always wins; otherwise every category and
   // collection gets its own column.
@@ -1304,8 +1316,8 @@ export function StoreFooter({
             </Stack>
 
             {columns.map((column) => (
-              <Stack key={column.id} as="nav" gap="3" aria-label={column.label}>
-                <ColumnHeading>{column.label}</ColumnHeading>
+              <Stack key={column.id} as="nav" gap="3" aria-label={menuLabel(column)}>
+                <ColumnHeading>{menuLabel(column)}</ColumnHeading>
                 <Stack gap="2" fontSize="sm" color="fg.muted">
                   {column.children.map((child) => (
                     <NavLink

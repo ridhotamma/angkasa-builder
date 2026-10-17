@@ -15,6 +15,7 @@ import {
   parsePageContent,
   sanitizePageContent,
   serializeContent,
+  starterPageTitle,
   starterPages,
 } from '../src/index'
 
@@ -69,5 +70,19 @@ describe('the starter pages', () => {
         expect(blocks[0]?.type).toBe('paragraph')
       }
     }
+  })
+
+  test('their titles are in both languages, keyed by slug', () => {
+    // The storefront draws a page title per locale; `pages.title` is a single
+    // column, so the platform supplies the translation by slug.
+    expect(starterPageTitle('syarat-ketentuan')).toEqual({
+      id: 'Syarat & Ketentuan',
+      en: 'Terms & Conditions',
+    })
+    expect(starterPageTitle('kebijakan-privasi')).toEqual({
+      id: 'Kebijakan Privasi',
+      en: 'Privacy Policy',
+    })
+    expect(starterPageTitle('about')).toBeUndefined()
   })
 })
