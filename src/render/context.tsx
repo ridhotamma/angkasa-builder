@@ -9,19 +9,13 @@
  * knowing which app they are in.
  */
 
-import { createContext, useContext, type ComponentType, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 
 import { CATEGORY_PREVIEW_PRODUCTS } from '../model/content'
 import type { ElementKind } from '../model/element-style'
 import type { FieldValues, TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
-import type {
-  TemplateCartLine,
-  TemplateCustomerReward,
-  TemplateCustomerRewardClaim,
-  TemplateWishlistProduct,
-} from '../template/drops'
 import type { SectionProps } from './sections'
 
 export interface StorefrontProductCard {
@@ -285,89 +279,11 @@ export interface RenderEnvironment {
      */
     articleBody?: ReactNode
     /**
-     * A seller's custom page content — the sections they built — drawn where
-     * a compiled `templates/page.tpl` puts its `pageBody` slot.
-     */
-    pageBody?: ReactNode
-    /**
-     * The cart: a trigger and a drawer. The host owns both (the cart lives in
-     * the host's state, and opening a sheet needs JavaScript a theme may not
-     * ship); a theme decides where they sit, how they look around them, and
-     * whether to use them at all — a theme that prefers a link to `/cart`
-     * simply writes one.
-     */
-    cartTrigger?: ReactNode
-    cartDrawer?: ReactNode
-    /**
      * The order-tracking form, drawn where an `order-tracking` section sits.
      * Only the host can look an order up and send the shopper to it; the editor
      * gets a stand-in form. Receives the section's settings for its labels.
      */
     orderTracking?: (settings: FieldValues) => ReactNode
-    /**
-     * One cart line's quantity controls, drawn where a compiled
-     * `templates/cart.tpl` puts its per-line `cartLineControls` slot. The cart
-     * lives in the host's state, so only the host can change a quantity or
-     * remove a line; receives that line from the `cart` drop.
-     */
-    cartLineControls?: (args: { line: TemplateCartLine }) => ReactNode
-    /**
-     * The lines that can no longer be bought, drawn where a compiled
-     * `templates/cart.tpl` puts its `cartUnavailable` slot — the host owns the
-     * removal and the wording. Renders nothing when there are none.
-     */
-    cartUnavailable?: ReactNode
-    /**
-     * The checkout stack below the cart's lines: customer details, delivery
-     * and payment pickers, the summary and the order button. One island the
-     * host owns end to end — a theme decides where it sits, not what an order
-     * is. Renders nothing for an empty cart.
-     */
-    cartCheckout?: ReactNode
-    /**
-     * The account profile form, drawn where `templates/account.tpl` puts its
-     * `accountProfile` slot: name, phone, the read-only email and the save.
-     * The profile is the host's — the session, the write and the validation —
-     * so only it can draw the fields that change it.
-     */
-    accountProfile?: ReactNode
-    /**
-     * The change-password card, drawn where `templates/account.tpl` puts its
-     * `accountPassword` slot. The host holds the Appwrite session rules the
-     * card has to satisfy, including the re-mint after a password write.
-     */
-    accountPassword?: ReactNode
-    /**
-     * The sign-out button, drawn where `templates/account.tpl` puts its
-     * `accountSignOut` slot. Only the host can end the session.
-     */
-    accountSignOut?: ReactNode
-    /**
-     * The whole address book, drawn where
-     * `templates/account-addresses.tpl` puts its `accountAddresses` slot: the
-     * list, the add/edit dialog, the delete confirmation and the promotion to
-     * main. The CRUD is the host's — the same panel checks out a guest order.
-     */
-    accountAddresses?: ReactNode
-    /**
-     * One reward's claim button, drawn where
-     * `templates/account-rewards.tpl` puts its per-reward `rewardClaim` slot.
-     * Receives that reward from the `customer.rewards` drop.
-     */
-    rewardClaim?: (args: { reward: TemplateCustomerReward }) => ReactNode
-    /**
-     * One claimed code's copy button, drawn where
-     * `templates/account-rewards.tpl` puts its per-claim `rewardCopy` slot.
-     * Receives that claim from the drop.
-     */
-    rewardCopy?: (args: { claim: TemplateCustomerRewardClaim }) => ReactNode
-    /**
-     * One saved product's wishlist heart, drawn where
-     * `templates/account-wishlist.tpl` puts its per-product `wishlistToggle`
-     * slot. Receives that product from the drop; only the host's wishlist
-     * knows whether the heart is filled.
-     */
-    wishlistToggle?: (args: { product: TemplateWishlistProduct }) => ReactNode
   }
   /**
    * The signed-in shopper's saved products, when the host has a wishlist.
@@ -390,16 +306,6 @@ export interface RenderEnvironment {
    * editor's own window would lay the phone preview out as a desktop.
    */
   getWindow?: () => Window
-  /**
-   * Compiled template sections, by type — Tier 1 of
-   * `docs/TEMPLATE_ENGINE.md`. The host builds this from an activated theme
-   * (`themeSectionResolver`), so a section the shipped registry does not know
-   * still renders inside the normal frame.
-   *
-   * Per environment, deliberately: a module-level registry would let one
-   * shop's compiled theme leak into another's render in the same process.
-   */
-  sections?: (type: string) => ComponentType<SectionProps> | null
   /** Editor only: text typed and elements clicked straight in the preview. */
   editing?: {
     onEditText: (sectionId: string, key: string, value: string) => void

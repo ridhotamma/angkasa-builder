@@ -259,8 +259,8 @@ const SectionItem = memo(function SectionItem({
   toolbar: ReactNode
   onSelect: (id: string) => void
 }) {
-  const { now, sections } = useRenderEnvironment()
-  const Section = SECTION_RENDERERS[section.type] ?? sections?.(section.type)
+  const { now } = useRenderEnvironment()
+  const Section = SECTION_RENDERERS[section.type]
   const { locale } = useLocale()
   // The seller's copy, resolved to the reader's locale. Identity is preserved
   // when nothing is translated, so a single-language shop re-renders as before.
