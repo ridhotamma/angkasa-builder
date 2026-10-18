@@ -234,7 +234,7 @@ class UnitCodegen {
       return name
     }
     const children = this.emitValueList(node.children, true)
-    const props = node.attributes.length ? this.emitProps(node.attributes) : 'null'
+    const props = node.attributes.length ? this.emitProps(node.attributes, node.tag) : 'null'
     const childArgs =
       'exprs' in children
         ? children.exprs.map((expr) => `, ${expr}`).join('')
@@ -245,7 +245,7 @@ class UnitCodegen {
   /** Builds a static element expression with its children inlined. */
   private buildElement(node: ElementNode): string {
     const children = this.emitValueList(node.children, false)
-    const props = node.attributes.length ? this.emitProps(node.attributes) : 'null'
+    const props = node.attributes.length ? this.emitProps(node.attributes, node.tag) : 'null'
     const childArgs =
       'exprs' in children
         ? children.exprs.map((expr) => `, ${expr}`).join('')
@@ -253,10 +253,16 @@ class UnitCodegen {
     return `__h(${JSON.stringify(node.tag)}, ${props}${childArgs})`
   }
 
-  private emitProps(attributes: readonly AttributeNode[]): string {
+  private emitProps(attributes: readonly AttributeNode[], tag: string): string {
+    // A template cannot hold React state, so every form control it draws is
+    // uncontrolled: `value` is the field's *initial* value (`defaultValue`),
+    // never a controlled prop React would warn about.
+    const uncontrolled = tag === 'input' || tag === 'textarea' || tag === 'select'
     const entries: string[] = []
     for (const attribute of attributes) {
-      const name = reactPropName(attribute.name)
+      let name = reactPropName(attribute.name)
+      if (uncontrolled && name === 'value') name = 'defaultValue'
+      if (uncontrolled && name === 'checked') name = 'defaultChecked'
       if (attribute.value === true) {
         entries.push(`${JSON.stringify(name)}: true`)
         continue

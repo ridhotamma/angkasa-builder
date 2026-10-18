@@ -206,6 +206,25 @@ export interface StorefrontRenderData {
   product?: StorefrontProductDetail
   /** Only on an article page — or, in the editor, the article being written. */
   article?: StorefrontArticleDetail
+  /**
+   * Only on a blog's index page: the blog being listed, with the page, tag
+   * and tag list the index draws its filter and pager from.
+   */
+  blog?: {
+    handle: string
+    title: string
+    description: string | null
+    page: number
+    pages: number
+    tag: string | null
+    tags: string[]
+  }
+  /** Only on a blog's index page: the articles it lists, as cards. */
+  articles?: StorefrontArticleCard[]
+  /** Only on a seller's custom page: the title the page was published with. */
+  page?: { title: string }
+  /** Only on a search page: the query the shopper typed. */
+  search?: { query: string }
   /** Only on a catalogue, category or collection page. */
   listing?: StorefrontListingData
   vouchers?: StorefrontVoucherData[]
@@ -259,6 +278,11 @@ export interface RenderEnvironment {
      * gets a stand-in body.
      */
     articleBody?: ReactNode
+    /**
+     * A seller's custom page content — the sections they built — drawn where
+     * a compiled `templates/page.tpl` puts its `pageBody` slot.
+     */
+    pageBody?: ReactNode
     /**
      * The order-tracking form, drawn where an `order-tracking` section sits.
      * Only the host can look an order up and send the shopper to it; the editor

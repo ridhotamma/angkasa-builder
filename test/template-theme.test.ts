@@ -14,6 +14,7 @@ import {
   type TemplateScope,
 } from '../src/template'
 import { sanitizeValues } from '../src'
+import { sampleStorefrontData } from '../src/render'
 import { renderTheme, testEnvironment } from './template-harness'
 
 const HERO = `<section class="hero"><p class="note">Free shipping</p><h1>{{ section.settings.heading }}</h1></section>{% schema %}{"name":"Hero","settings":[{"key":"heading","kind":"text","max":80,"default":"Hello"}]}{% endschema %}`
@@ -34,6 +35,53 @@ describe('theme compiler', () => {
   test('renders a route without a layout as-is', () => {
     const { html } = renderTheme({ 'templates/index.tpl': `<p>plain</p>` })
     expect(html).toBe('<p>plain</p>')
+  })
+
+  test('exposes the layout separately, for a shell that owns every page', () => {
+    const env = testEnvironment()
+    const runtime = createTemplateRuntime(createElement as unknown as TemplateH, env, Fragment)
+    const theme = activateTheme(
+      compileTheme({
+        'layout/theme.tpl': `<div id="shell">{{ content_for_layout }}</div>`,
+        'templates/index.tpl': `<h1>Home</h1>`,
+      }),
+      runtime,
+    )
+    const scope = buildTemplateScope({ data: env.data, env })
+
+    const body = theme.renderTemplate('home', scope)
+    expect(renderToStaticMarkup(body as ReactNode)).toBe('<h1>Home</h1>')
+
+    const wrapped = theme.renderLayout(scope, () => body)
+    expect(renderToStaticMarkup(wrapped as ReactNode)).toBe('<div id="shell"><h1>Home</h1></div>')
+
+    // A theme without a layout hands the body back unchanged.
+    const bare = activateTheme(compileTheme({ 'templates/index.tpl': `<p>x</p>` }), runtime)
+    expect(renderToStaticMarkup(bare.renderLayout(scope, () => body) as ReactNode)).toBe(
+      '<h1>Home</h1>',
+    )
+    expect(bare.renderTemplate('product', scope)).toBeNull()
+  })
+
+  test('a custom page template wraps the seller’s own content in a slot', () => {
+    const base = sampleStorefrontData('Page shop')
+    const { html } = renderTheme(
+      {
+        'layout/theme.tpl': `<main>{{ content_for_layout }}</main>`,
+        'templates/index.tpl': `<p>home</p>`,
+        'templates/page.tpl': `<h1>{{ page.title }}</h1><div class="body">{% slot 'pageBody' %}</div>`,
+      },
+      {
+        route: 'page',
+        env: {
+          data: { ...base, page: { title: 'Tentang kami' } },
+          slots: { pageBody: createElement('p', null, 'Seller content') },
+        },
+      },
+    )
+    expect(html).toContain('<main>')
+    expect(html).toContain('<h1>Tentang kami</h1>')
+    expect(html).toContain('<div class="body"><p>Seller content</p></div>')
   })
 
   test('a missing route template is a warning, and rendering it returns null', () => {

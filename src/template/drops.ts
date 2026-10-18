@@ -15,7 +15,6 @@
  * See docs/TEMPLATE_ENGINE.md.
  */
 
-import type { TemplateKey } from '../model/content'
 import type { FieldValues } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
@@ -33,8 +32,15 @@ import type {
   StorefrontVoucherData,
 } from '../render/context'
 
-/** A route a theme template can draw. The page builder's own template keys. */
-export type TemplateRoute = TemplateKey
+/**
+ * Every route a compiled theme can draw.
+ *
+ * Deliberately not the page builder's own template keys: a theme draws pages
+ * the structured model has no template for — a blog index, search results, a
+ * seller's custom page — and the host names the route when it renders.
+ */
+export type TemplateRoute =
+  'home' | 'product' | 'article' | 'catalog' | 'orderTracking' | 'page' | 'search' | 'blog'
 
 /* -------------------------------------------------------------------------- */
 /* The type schema                                                            */
@@ -158,6 +164,21 @@ const VOUCHER_SCHEMA = dropRecord({
   expires_at: dropAny,
 })
 
+/**
+ * A blog, as the article page and the index draw it. The index's own fields
+ * (`page`, `pages`, `tag`, `tags`) are empty on an article page.
+ */
+const BLOG_SCHEMA = dropRecord({
+  handle: dropString,
+  title: dropString,
+  description: dropAny,
+  url: dropString,
+  page: dropNumber,
+  pages: dropNumber,
+  tag: dropAny,
+  tags: dropList(dropString),
+})
+
 const BRANCH_SCHEMA = dropRecord({
   id: dropString,
   name: dropString,
@@ -193,6 +214,9 @@ const ROUTES_SCHEMA = dropRecord({
   order_tracking: dropString,
 })
 
+/** The query a search page was opened with. */
+const SEARCH_SCHEMA = dropRecord({ query: dropString })
+
 /**
  * Every root name a template may read, with its shape. `section` is the one
  * field the compiler narrows further: a compiled section's own `{% schema %}`
@@ -211,13 +235,15 @@ export const STOREFRONT_DROP_SCHEMA: DropType = dropRecord({
     url: dropString,
   }),
   page: dropRecord({ kind: dropString, title: dropString }),
+  search: SEARCH_SCHEMA,
   section: dropRecord({ id: dropString, settings: dropAny, style: dropAny }),
   settings: dropAny,
   product: PRODUCT_DETAIL_SCHEMA,
   collection: COLLECTION_SCHEMA,
   category: CATEGORY_SCHEMA,
-  blog: dropRecord({ handle: dropString, title: dropString }),
+  blog: BLOG_SCHEMA,
   article: ARTICLE_DETAIL_SCHEMA,
+  articles: dropList(ARTICLE_CARD_SCHEMA),
   listing: LISTING_SCHEMA,
   collections: dropList(COLLECTION_SCHEMA),
   categories: dropList(CATEGORY_SCHEMA),
@@ -275,6 +301,7 @@ export function buildTemplateScope(input: TemplateScopeInput): TemplateScope {
   const href = env.href ?? storefrontHref
   const link = (value: Link): string => href(value) ?? ''
 
+  const blog = data.blog ?? data.article?.blog ?? null
   const collection =
     data.listing?.current?.kind === 'collection'
       ? data.collections.find((shelf) => shelf.slug === data.listing!.current!.slug)
@@ -297,6 +324,7 @@ export function buildTemplateScope(input: TemplateScopeInput): TemplateScope {
       url: ROUTE_DROPS.home,
     },
     page: { kind: route, title: pageTitle(data, route) },
+    search: { query: data.search?.query ?? '' },
     section: section
       ? { id: section.id, settings: section.settings, style: section.style ?? {} }
       : null,
@@ -304,8 +332,9 @@ export function buildTemplateScope(input: TemplateScopeInput): TemplateScope {
     product: data.product ? productDrop(data.product, link) : null,
     collection: collection ? collectionDrop(collection, link) : null,
     category: category ? categoryDrop(category, link) : null,
-    blog: data.article?.blog ?? null,
+    blog: blog ? { ...blog, url: link({ kind: 'blog', blogHandle: blog.handle }) } : null,
     article: data.article ? articleDrop(data.article, link) : null,
+    articles: (data.articles ?? []).map((article) => articleCardDrop(article, link)),
     listing: data.listing ? listingDrop(data.listing, link) : null,
     collections: data.collections.map((shelf) => collectionDrop(shelf, link)),
     categories: data.categories.map((entry) => categoryDrop(entry, link)),
@@ -327,6 +356,12 @@ function pageTitle(data: StorefrontRenderData, route: TemplateRoute): string {
       return data.article?.title ?? data.shop.name
     case 'catalog':
       return data.listing?.title ?? 'Products'
+    case 'search':
+      return data.listing?.title ?? 'Search'
+    case 'blog':
+      return data.blog?.title ?? data.shop.name
+    case 'page':
+      return data.page?.title ?? data.shop.name
     case 'orderTracking':
       return 'Order tracking'
     case 'home':

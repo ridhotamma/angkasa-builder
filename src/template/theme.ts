@@ -33,6 +33,9 @@ export const ROUTE_FILES: Record<TemplateRoute, readonly string[]> = {
   article: ['templates/article.tpl'],
   catalog: ['templates/catalog.tpl', 'templates/collection.tpl'],
   orderTracking: ['templates/order-tracking.tpl', 'templates/order_tracking.tpl'],
+  page: ['templates/page.tpl'],
+  search: ['templates/search.tpl'],
+  blog: ['templates/blog.tpl'],
 }
 
 export const TEMPLATE_ROUTES = Object.keys(ROUTE_FILES) as TemplateRoute[]
@@ -228,8 +231,10 @@ export function compileTheme(
   lines.push(...hoists.lines)
 
   const routeEntries: string[] = []
+  const bodyEntries: string[] = []
   for (const [route, unit] of parsed.routes) {
     const body = functionNames.routeBodies.get(route)!
+    bodyEntries.push(`${routeKey(route)}: ${body}`)
     if (parsed.layout) {
       const wrapper = functionNames.routes.get(route)!
       lines.push(
@@ -245,7 +250,7 @@ export function compileTheme(
     (section) => `${JSON.stringify(section.name)}: ${functionNames.sections.get(section.name)!}`,
   )
   lines.push(
-    `return { routes: { ${routeEntries.join(', ')} }, sections: { ${sectionEntries.join(', ')} }, layout: ${parsed.layout ? functionNames.layout : 'null'} };`,
+    `return { routes: { ${routeEntries.join(', ')} }, bodies: { ${bodyEntries.join(', ')} }, sections: { ${sectionEntries.join(', ')} }, layout: ${parsed.layout ? functionNames.layout : 'null'} };`,
   )
 
   const source = lines.join('\n')
@@ -313,8 +318,23 @@ export interface ActivatedTheme {
   version: string
   manifest: ThemeManifest
   diagnostics: Diagnostic[]
-  /** Draws a route, or `null` when the theme does not provide that template. */
+  /**
+   * The route body inside the theme's layout — a whole page, for a server
+   * render or a snapshot.
+   */
   renderRoute(route: TemplateRoute, scope: TemplateScope): unknown
+  /**
+   * The route body alone, with no layout. The storefront's shell owns the
+   * layout for every page (`renderLayout`), so a route only contributes its
+   * content; `null` when the theme provides no template for it.
+   */
+  renderTemplate(route: TemplateRoute, scope: TemplateScope): unknown
+  /**
+   * The theme's `layout/theme.tpl`, drawn around `body` — the one shell every
+   * page in the shop wears, route template or not. Without a layout file the
+   * body is returned unchanged.
+   */
+  renderLayout(scope: TemplateScope, body: () => unknown): unknown
   /** Draws a compiled section, or `null` when the theme does not provide it. */
   renderSection(type: string, scope: TemplateScope): unknown
 }
@@ -349,6 +369,8 @@ export function activateThemeFactory(
     manifest: theme.manifest,
     diagnostics: theme.diagnostics ?? [],
     renderRoute: (route, scope) => module.routes[route]?.(scope) ?? null,
+    renderTemplate: (route, scope) => module.bodies[route]?.(scope) ?? null,
+    renderLayout: (scope, body) => module.layout?.(scope, () => body()) ?? body(),
     renderSection: (type, scope) => module.sections[type]?.(scope) ?? null,
   }
 }

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { createElement } from 'react'
 
 import {
+  activateTheme,
   activateThemeFactory,
   compileTheme,
   createTemplateRuntime,
@@ -206,12 +207,40 @@ describe('expressions and filters', () => {
     ).toBe('/products?page=3')
   })
 
+  test('form controls are emitted uncontrolled, as a template holds no state', () => {
+    const calls: Array<[unknown, Record<string, unknown> | null]> = []
+    const h = (type: unknown, props: Record<string, unknown> | null) => {
+      calls.push([type, props])
+      return null
+    }
+    const env = testEnvironment()
+    const theme = compileTheme({
+      'templates/index.tpl': `<input type="search" name="q" value="{{ search.query }}"><textarea value="notes"></textarea><option value="a">A</option>`,
+    })
+    const activated = activateTheme(
+      theme,
+      createTemplateRuntime(h as never, env, TEMPLATE_FRAGMENT),
+    )
+    activated.renderRoute('home', buildTemplateScope({ data: env.data, env }))
+
+    expect(calls.find(([type]) => type === 'input')?.[1]).toMatchObject({
+      type: 'search',
+      defaultValue: '',
+    })
+    expect(calls.find(([type]) => type === 'textarea')?.[1]).toMatchObject({
+      defaultValue: 'notes',
+    })
+    // An option's value is not a form control state: it stays `value`.
+    expect(calls.find(([type]) => type === 'option')?.[1]).toMatchObject({ value: 'a' })
+  })
+
   test('activates a theme from a shipped factory, with no source evaluation', () => {
     const theme = compileTheme({ 'templates/index.tpl': `<p>x</p>` })
     const factory: ThemeModuleFactory = () => ({
       routes: { home: () => 'home!' },
+      bodies: { home: () => 'body!' },
       sections: {},
-      layout: null,
+      layout: (scope, body) => `[${String(body?.(scope))}]`,
     })
     const activated = activateThemeFactory(
       theme,
@@ -219,6 +248,8 @@ describe('expressions and filters', () => {
       createTemplateRuntime((() => null) as never, testEnvironment(), TEMPLATE_FRAGMENT),
     )
     expect(activated.renderRoute('home', {})).toBe('home!')
+    expect(activated.renderTemplate('home', {})).toBe('body!')
+    expect(activated.renderLayout({}, () => 'body!')).toBe('[body!]')
     expect(activated.renderSection('nope', {})).toBeNull()
     expect(activated.version).toBe(theme.version)
   })
