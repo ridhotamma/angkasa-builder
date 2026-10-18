@@ -27,12 +27,14 @@ export type TemplateH = (
 /** A render function the compiled module exposes. */
 export type TemplateRender = (scope: TemplateScope, body?: TemplateRender) => unknown
 
-/** What a compiled module returns: its routes, its sections and its layout. */
+/** What a compiled module returns: its routes, its pages, its sections and its layout. */
 export interface ThemeModule {
   /** Route bodies composed with the layout: a whole page. */
   routes: Record<string, TemplateRender>
   /** The route bodies alone, for a shell that owns the layout. */
   bodies: Record<string, TemplateRender>
+  /** Theme-authored pages (`templates/pages/<slug>.tpl`), by slug. */
+  pages: Record<string, TemplateRender>
   sections: Record<string, TemplateRender>
   layout: TemplateRender | null
 }
@@ -53,6 +55,8 @@ export const TEMPLATE_SLOTS = [
   'articleBody',
   'pageBody',
   'orderTracking',
+  'cartTrigger',
+  'cartDrawer',
 ] as const
 
 export type TemplateSlotName = (typeof TEMPLATE_SLOTS)[number]

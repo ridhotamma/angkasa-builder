@@ -284,6 +284,15 @@ export interface RenderEnvironment {
      */
     pageBody?: ReactNode
     /**
+     * The cart: a trigger and a drawer. The host owns both (the cart lives in
+     * the host's state, and opening a sheet needs JavaScript a theme may not
+     * ship); a theme decides where they sit, how they look around them, and
+     * whether to use them at all — a theme that prefers a link to `/cart`
+     * simply writes one.
+     */
+    cartTrigger?: ReactNode
+    cartDrawer?: ReactNode
+    /**
      * The order-tracking form, drawn where an `order-tracking` section sits.
      * Only the host can look an order up and send the shopper to it; the editor
      * gets a stand-in form. Receives the section's settings for its labels.

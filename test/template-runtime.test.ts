@@ -239,6 +239,7 @@ describe('expressions and filters', () => {
     const factory: ThemeModuleFactory = () => ({
       routes: { home: () => 'home!' },
       bodies: { home: () => 'body!' },
+      pages: { about: () => 'about!' },
       sections: {},
       layout: (scope, body) => `[${String(body?.(scope))}]`,
     })
@@ -249,6 +250,8 @@ describe('expressions and filters', () => {
     )
     expect(activated.renderRoute('home', {})).toBe('home!')
     expect(activated.renderTemplate('home', {})).toBe('body!')
+    expect(activated.renderPage('about', {})).toBe('about!')
+    expect(activated.renderPage('nope', {})).toBeNull()
     expect(activated.renderLayout({}, () => 'body!')).toBe('[body!]')
     expect(activated.renderSection('nope', {})).toBeNull()
     expect(activated.version).toBe(theme.version)

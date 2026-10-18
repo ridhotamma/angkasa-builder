@@ -63,6 +63,29 @@ describe('theme compiler', () => {
     expect(bare.renderTemplate('product', scope)).toBeNull()
   })
 
+  test('theme-authored pages draw their own slugs', () => {
+    const env = testEnvironment()
+    const runtime = createTemplateRuntime(createElement as unknown as TemplateH, env, Fragment)
+    const files = {
+      'templates/index.tpl': `<p>home</p>`,
+      'templates/pages/about.tpl': `<h1>{{ page.title }}</h1><p>Our story</p>`,
+    }
+    const theme = compileTheme(files)
+    expect(theme.manifest.pages.about).toBeDefined()
+    expect(theme.manifest.pages.about?.uses).toContain('page')
+
+    const activated = activateTheme(theme, runtime)
+    const scope = buildTemplateScope({
+      data: { ...env.data, page: { title: 'About us' } },
+      env,
+      route: 'page',
+    })
+    expect(renderToStaticMarkup(activated.renderPage('about', scope) as ReactNode)).toBe(
+      '<h1>About us</h1><p>Our story</p>',
+    )
+    expect(activated.renderPage('nope', scope)).toBeNull()
+  })
+
   test('a custom page template wraps the seller’s own content in a slot', () => {
     const base = sampleStorefrontData('Page shop')
     const { html } = renderTheme(

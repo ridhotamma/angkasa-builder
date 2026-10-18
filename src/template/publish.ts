@@ -124,6 +124,9 @@ export function parseTemplateThemeBuild(value: unknown): TemplateThemeBuild | nu
   if (!isRecord(manifest)) return null
   if (!isRecord(manifest.routes) || !isRecord(manifest.sections)) return null
   if (typeof manifest.version !== 'string' || manifest.version !== parsed.version) return null
+  // A build written before theme pages existed has no `pages`; normalise it so
+  // every reader sees the same shape.
+  if (!isRecord(manifest.pages)) manifest.pages = {}
 
   const diagnostics: Diagnostic[] = []
   if (Array.isArray(parsed.diagnostics)) {

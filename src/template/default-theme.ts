@@ -33,7 +33,7 @@ const LAYOUT = `<div class="tpl-default">
     </nav>
     <div class="d-actions">
       <a href="{{ routes.search }}">Search</a>
-      <a href="{{ routes.cart }}">Cart</a>
+      {% slot 'cartTrigger' %}
     </div>
   </header>
 
@@ -45,6 +45,8 @@ const LAYOUT = `<div class="tpl-default">
       {% if shop.address %}{{ shop.address }}{% elsif shop.email %}{{ shop.email }}{% endif %}
     </p>
   </footer>
+
+  {% slot 'cartDrawer' %}
 </div>
 `
 

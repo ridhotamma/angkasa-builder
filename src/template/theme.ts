@@ -43,6 +43,8 @@ export const TEMPLATE_ROUTES = Object.keys(ROUTE_FILES) as TemplateRoute[]
 export const LAYOUT_FILE = 'layout/theme.tpl'
 export const SECTIONS_PREFIX = 'sections/'
 export const SNIPPETS_PREFIX = 'snippets/'
+/** Theme-authored pages: `templates/pages/<slug>.tpl` draws `/<slug>`. */
+export const PAGES_PREFIX = 'templates/pages/'
 export const ASSETS_PREFIX = 'assets/'
 
 /** Bounds on an untrusted theme, so a publish cannot run away with a server. */
@@ -77,6 +79,11 @@ export interface SectionManifest extends UnitManifest {
 export interface ThemeManifest {
   version: string
   routes: Partial<Record<TemplateRoute, UnitManifest>>
+  /**
+   * Theme-authored pages: `templates/pages/<slug>.tpl` draws `/<slug>`, the
+   * same way a seller's custom page is drawn. The slug is the file name.
+   */
+  pages: Record<string, UnitManifest>
   sections: Record<string, SectionManifest>
   snippets: string[]
   layout: boolean
@@ -206,6 +213,27 @@ export function compileTheme(
     lines.push('}')
   }
 
+  /* Theme-authored pages: `templates/pages/<slug>.tpl` draws `/<slug>`. */
+  const pageUses = new Map<string, string[]>()
+  const pageRenders = new Map<string, string[]>()
+  for (const [slug, unit] of parsed.pages) {
+    const result = checkTemplate(unit.ast.nodes, {
+      file: unit.path,
+      resolveSnippet: (name) => snippetInfo.get(name) ?? null,
+    })
+    diagnostics.push(...result.diagnostics)
+    pageUses.set(slug, result.uses)
+    pageRenders.set(slug, result.renders)
+    const generated = generateUnit(
+      unit.ast.nodes,
+      { snippetFunctions: functionNames.snippets },
+      hoists,
+    )
+    lines.push(`function ${functionNames.pages.get(slug)!}(__scope) {`)
+    lines.push(generated.body)
+    lines.push('}')
+  }
+
   /* The layout shell, with `content_for_layout` as its body slot. */
   let layoutUses: string[] = []
   let layoutRenders: string[] = []
@@ -249,8 +277,11 @@ export function compileTheme(
   const sectionEntries = [...parsed.sections.values()].map(
     (section) => `${JSON.stringify(section.name)}: ${functionNames.sections.get(section.name)!}`,
   )
+  const pageEntries = [...parsed.pages.values()].map(
+    (page) => `${JSON.stringify(page.name)}: ${functionNames.pages.get(page.name)!}`,
+  )
   lines.push(
-    `return { routes: { ${routeEntries.join(', ')} }, bodies: { ${bodyEntries.join(', ')} }, sections: { ${sectionEntries.join(', ')} }, layout: ${parsed.layout ? functionNames.layout : 'null'} };`,
+    `return { routes: { ${routeEntries.join(', ')} }, bodies: { ${bodyEntries.join(', ')} }, pages: { ${pageEntries.join(', ')} }, sections: { ${sectionEntries.join(', ')} }, layout: ${parsed.layout ? functionNames.layout : 'null'} };`,
   )
 
   const source = lines.join('\n')
@@ -293,12 +324,23 @@ export function compileTheme(
     sectionManifests[name]!.uses = resolved
     for (const drop of resolved) uses.add(drop)
   }
+  // A theme page is drawn inside the layout too, so the layout's drops belong
+  // to its prefetch list exactly as they do for a route.
+  for (const [slug, own] of pageUses) {
+    const resolved = resolveUses(
+      [...own, ...layoutUses],
+      [...(pageRenders.get(slug) ?? []), ...layoutRenders],
+    )
+    pageUses.set(slug, resolved)
+    for (const drop of resolved) uses.add(drop)
+  }
 
   const manifest: ThemeManifest = {
     version,
     routes: Object.fromEntries(
       [...routeUses].map(([route, unitUses]) => [route, { uses: unitUses }]),
     ) as ThemeManifest['routes'],
+    pages: Object.fromEntries([...pageUses].map(([slug, unitUses]) => [slug, { uses: unitUses }])),
     sections: sectionManifests,
     snippets: [...parsed.snippets.keys()],
     layout: Boolean(parsed.layout),
@@ -335,6 +377,8 @@ export interface ActivatedTheme {
    * body is returned unchanged.
    */
   renderLayout(scope: TemplateScope, body: () => unknown): unknown
+  /** Draws a theme-authored page by slug, or `null` when it has none. */
+  renderPage(slug: string, scope: TemplateScope): unknown
   /** Draws a compiled section, or `null` when the theme does not provide it. */
   renderSection(type: string, scope: TemplateScope): unknown
 }
@@ -370,6 +414,7 @@ export function activateThemeFactory(
     diagnostics: theme.diagnostics ?? [],
     renderRoute: (route, scope) => module.routes[route]?.(scope) ?? null,
     renderTemplate: (route, scope) => module.bodies[route]?.(scope) ?? null,
+    renderPage: (slug, scope) => module.pages[slug]?.(scope) ?? null,
     renderLayout: (scope, body) => module.layout?.(scope, () => body()) ?? body(),
     renderSection: (type, scope) => module.sections[type]?.(scope) ?? null,
   }
@@ -407,6 +452,7 @@ interface ParsedUnit {
 interface ParsedTheme {
   layout: ParsedUnit | null
   routes: Map<TemplateRoute, ParsedUnit>
+  pages: Map<string, ParsedUnit>
   sections: Map<string, ParsedUnit>
   snippets: Map<string, ParsedUnit>
 }
@@ -457,6 +503,7 @@ function parseUnits(files: Record<string, string>, diagnostics: Diagnostic[]): P
   const theme: ParsedTheme = {
     layout: null,
     routes: new Map(),
+    pages: new Map(),
     sections: new Map(),
     snippets: new Map(),
   }
@@ -479,6 +526,21 @@ function parseUnits(files: Record<string, string>, diagnostics: Diagnostic[]): P
         continue
       }
       theme.sections.set(name, unit(path, name, contents, diagnostics))
+      continue
+    }
+    if (path.startsWith(PAGES_PREFIX) && path.endsWith('.tpl')) {
+      const name = path.slice(PAGES_PREFIX.length, -'.tpl'.length)
+      if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) {
+        diagnostics.push(
+          error(
+            'invalid-section-file',
+            `Page files are named lower-kebab-case; "${name}" is not.`,
+            path,
+          ),
+        )
+        continue
+      }
+      theme.pages.set(name, unit(path, name, contents, diagnostics))
       continue
     }
     if (path.startsWith(SNIPPETS_PREFIX) && path.endsWith('.tpl')) {
@@ -561,6 +623,7 @@ function collectSnippetInfo(
 
   const units = [
     ...parsed.routes.values(),
+    ...parsed.pages.values(),
     ...parsed.sections.values(),
     ...parsed.snippets.values(),
     ...(parsed.layout ? [parsed.layout] : []),
@@ -578,6 +641,7 @@ function collectSnippetInfo(
 interface FunctionNames {
   snippets: Map<string, string>
   sections: Map<string, string>
+  pages: Map<string, string>
   routeBodies: Map<TemplateRoute, string>
   routes: Map<TemplateRoute, string>
   layout: string
@@ -600,11 +664,13 @@ function createFunctionNames(parsed: ParsedTheme): FunctionNames {
   for (const name of parsed.snippets.keys()) snippets.set(name, unique(`__snip_${name}`))
   const sections = new Map<string, string>()
   for (const name of parsed.sections.keys()) sections.set(name, unique(`__sec_${name}`))
+  const pages = new Map<string, string>()
+  for (const name of parsed.pages.keys()) pages.set(name, unique(`__page_${name}`))
   const routeBodies = new Map<TemplateRoute, string>()
   for (const route of parsed.routes.keys()) routeBodies.set(route, unique(`__body_${route}`))
   const routes = new Map<TemplateRoute, string>()
   for (const route of parsed.routes.keys()) routes.set(route, unique(`__route_${route}`))
-  return { snippets, sections, routeBodies, routes, layout: unique('__layout') }
+  return { snippets, sections, pages, routeBodies, routes, layout: unique('__layout') }
 }
 
 function routeKey(route: string): string {
@@ -615,6 +681,7 @@ function emptyManifest(): ThemeManifest {
   return {
     version: '',
     routes: {},
+    pages: {},
     sections: {},
     snippets: [],
     layout: false,
