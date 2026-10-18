@@ -50,6 +50,7 @@ export const DIAGNOSTIC_CODES = [
   'content-for-layout-outside-layout',
   // Theme resolution
   'unknown-snippet',
+  'unknown-slot',
   'missing-route-template',
   'invalid-section-file',
   'invalid-schema',

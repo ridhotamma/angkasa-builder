@@ -22,7 +22,7 @@ import type { Diagnostic } from './diagnostics'
 import { error, formatDiagnostic, hasErrors, warning } from './diagnostics'
 import type { TemplateRoute, TemplateScope } from './drops'
 import { parseTemplate } from './parse'
-import type { TemplateRuntime, ThemeModule } from './runtime'
+import type { TemplateRuntime, ThemeModule, ThemeModuleFactory } from './runtime'
 import { evaluateThemeModule } from './runtime'
 import { compileSectionSchema } from './schema'
 
@@ -90,6 +90,17 @@ export interface CompiledTheme {
   source: string
   manifest: ThemeManifest
   diagnostics: Diagnostic[]
+}
+
+/**
+ * What a compiled theme is addressed by, without the source: a theme shipped
+ * as a pre-compiled module carries its version, manifest and diagnostics
+ * beside the factory. `CompiledTheme` extends it.
+ */
+export interface ThemeArtifact {
+  version: string
+  manifest: ThemeManifest
+  diagnostics?: Diagnostic[]
 }
 
 /**
@@ -315,22 +326,41 @@ export interface ActivatedTheme {
  * fetched into a shopper's browser (see docs/TEMPLATE_ENGINE.md, "Security").
  */
 export function activateTheme(theme: CompiledTheme, runtime: TemplateRuntime): ActivatedTheme {
-  if (hasErrors(theme.diagnostics)) {
-    throw new Error(
-      `Cannot activate a theme with compile errors:\n${theme.diagnostics
-        .filter((diagnostic) => diagnostic.severity === 'error')
-        .map(formatDiagnostic)
-        .join('\n')}`,
-    )
-  }
-  const module: ThemeModule = evaluateThemeModule(theme.source, runtime)
+  assertNoErrors(theme)
+  return activateThemeFactory(theme, (rt) => evaluateThemeModule(theme.source, rt), runtime)
+}
+
+/**
+ * Activates a theme whose module was compiled ahead of time and shipped as
+ * ordinary code — a generated ES module exporting the factory, imported like
+ * any other module. No `new Function`, so it is safe in a browser bundle and
+ * under a strict CSP; the artifact is platform code, reviewed and deployed,
+ * not a merchant upload fetched at runtime.
+ */
+export function activateThemeFactory(
+  theme: ThemeArtifact,
+  factory: ThemeModuleFactory,
+  runtime: TemplateRuntime,
+): ActivatedTheme {
+  assertNoErrors(theme)
+  const module: ThemeModule = factory(runtime)
   return {
     version: theme.version,
     manifest: theme.manifest,
-    diagnostics: theme.diagnostics,
+    diagnostics: theme.diagnostics ?? [],
     renderRoute: (route, scope) => module.routes[route]?.(scope) ?? null,
     renderSection: (type, scope) => module.sections[type]?.(scope) ?? null,
   }
+}
+
+function assertNoErrors(theme: ThemeArtifact): void {
+  if (!hasErrors(theme.diagnostics ?? [])) return
+  throw new Error(
+    `Cannot activate a theme with compile errors:\n${(theme.diagnostics ?? [])
+      .filter((diagnostic) => diagnostic.severity === 'error')
+      .map(formatDiagnostic)
+      .join('\n')}`,
+  )
 }
 
 /** Compile and activate in one call, for a host that has the runtime ready. */

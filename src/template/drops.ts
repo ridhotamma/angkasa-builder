@@ -175,8 +175,12 @@ const LISTING_SCHEMA = dropRecord({
   page: dropNumber,
   pages: dropNumber,
   products: dropList(PRODUCT_CARD_SCHEMA),
-  categories: dropList(dropRecord({ id: dropString, name: dropString, slug: dropString })),
-  collections: dropList(dropRecord({ id: dropString, name: dropString, slug: dropString })),
+  categories: dropList(
+    dropRecord({ id: dropString, name: dropString, slug: dropString, url: dropString }),
+  ),
+  collections: dropList(
+    dropRecord({ id: dropString, name: dropString, slug: dropString, url: dropString }),
+  ),
   current: dropAny,
 })
 
@@ -433,8 +437,14 @@ function listingDrop(listing: StorefrontListingData, link: (link: Link) => strin
     page: listing.page,
     pages: listing.pages,
     products: listing.products.map((card) => productCardDrop(card, link)),
-    categories: listing.categories,
-    collections: listing.collections ?? [],
+    categories: listing.categories.map((category) => ({
+      ...category,
+      url: link({ kind: 'category', slug: category.slug }),
+    })),
+    collections: (listing.collections ?? []).map((collection) => ({
+      ...collection,
+      url: link({ kind: 'collection', slug: collection.slug }),
+    })),
     current: listing.current,
   }
 }

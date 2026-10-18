@@ -180,7 +180,19 @@ export interface RenderNode extends Located {
   args: RenderArgument[]
 }
 
-export type TemplateNode = TextNode | OutputNode | ElementNode | IfNode | ForNode | RenderNode
+/**
+ * `{% slot 'productPurchase' %}` — a piece of the page only the host can
+ * draw: the buy box (it needs the cart), reviews (they need the session), an
+ * article's body. The theme calls the host's slot; it never implements it.
+ */
+export interface SlotNode extends Located {
+  kind: 'slot'
+  name: string
+  args: RenderArgument[]
+}
+
+export type TemplateNode =
+  TextNode | OutputNode | ElementNode | IfNode | ForNode | RenderNode | SlotNode
 
 /** A parsed file: its tree plus the raw `{% schema %}` JSON, when it has one. */
 export interface ParsedTemplate {
@@ -228,6 +240,9 @@ export function expressionsOf(node: TemplateNode): Expression[] {
         if (child.elseChildren) visitNodes(child.elseChildren)
         return
       case 'render':
+        for (const argument of child.args) visitExpression(argument.value)
+        return
+      case 'slot':
         for (const argument of child.args) visitExpression(argument.value)
         return
     }

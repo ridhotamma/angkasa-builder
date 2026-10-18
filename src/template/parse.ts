@@ -22,6 +22,7 @@ import type {
   IfNode,
   ParsedTemplate,
   RenderArgument,
+  SlotNode,
   TemplateNode,
 } from './ast'
 import type { Diagnostic, SourceLocation, SourcePosition } from './diagnostics'
@@ -258,6 +259,9 @@ class TemplateParser {
       case 'include':
         nodes.push(this.parseRender(rest, contentPosition, start))
         return null
+      case 'slot':
+        nodes.push(this.parseSlot(rest, contentPosition, start))
+        return null
       case 'schema':
         this.parseSchema(start)
         return null
@@ -267,7 +271,7 @@ class TemplateParser {
       default:
         this.report(
           'unknown-tag',
-          `Unknown directive "{% ${name} %}". Allowed: if, unless, for, render, include, schema, comment.`,
+          `Unknown directive "{% ${name} %}". Allowed: if, unless, for, render, include, slot, schema, comment.`,
           this.location(start, this.index),
         )
         return null
@@ -400,30 +404,58 @@ class TemplateParser {
       }
     }
     const snippet = match[2]!
-    const argsSource = match[3]!.trim().replace(/^,\s*/, '')
-    const args: RenderArgument[] = []
-    if (argsSource) {
-      for (const part of splitTopLevel(argsSource, ',')) {
-        const argument = /^([a-zA-Z_]\w*)\s*:\s*([\s\S]+)$/.exec(part)
-        if (!argument) {
-          this.report(
-            'invalid-expression',
-            `Render arguments read "name: value"; got "${part}".`,
-            this.location(start, this.index),
-          )
-          continue
-        }
-        const valueOffset = argsSource.indexOf(argument[2]!)
-        args.push({
-          name: argument[1]!,
-          value: this.expressionOf(
-            argument[2]!,
-            offsetPosition(contentPosition, argsSource, valueOffset),
-          ),
-        })
-      }
-    }
+    const args = this.parseNamedArguments(match[3]!, contentPosition, start)
     return { kind: 'render', snippet, args, loc: this.location(start, this.index) }
+  }
+
+  /** `{% slot 'productPurchase' %}`, or `{% slot 'orderTracking', settings: section.settings %}`. */
+  private parseSlot(rest: string, contentPosition: SourcePosition, start: number): SlotNode {
+    const match = /^(['"])([^'"]+)\1([\s\S]*)$/.exec(rest)
+    if (!match) {
+      this.report(
+        'invalid-expression',
+        'A slot reads {% slot "productPurchase" %}.',
+        this.location(start, this.index),
+      )
+      return { kind: 'slot', name: '', args: [], loc: this.location(start, this.index) }
+    }
+    return {
+      kind: 'slot',
+      name: match[2]!,
+      args: this.parseNamedArguments(match[3]!, contentPosition, start),
+      loc: this.location(start, this.index),
+    }
+  }
+
+  /** The `name: value` pairs a render or slot may carry, after the leading comma. */
+  private parseNamedArguments(
+    rawArgs: string,
+    contentPosition: SourcePosition,
+    start: number,
+  ): RenderArgument[] {
+    const argsSource = rawArgs.trim().replace(/^,\s*/, '')
+    const args: RenderArgument[] = []
+    if (!argsSource) return args
+    for (const part of splitTopLevel(argsSource, ',')) {
+      const argument = /^([a-zA-Z_]\w*)\s*:\s*([\s\S]+)$/.exec(part)
+      if (!argument) {
+        this.report(
+          'invalid-expression',
+          `Arguments read "name: value"; got "${part}".`,
+          this.location(start, this.index),
+        )
+        continue
+      }
+      const valueOffset = argsSource.indexOf(argument[2]!)
+      args.push({
+        name: argument[1]!,
+        value: this.expressionOf(
+          argument[2]!,
+          offsetPosition(contentPosition, argsSource, valueOffset),
+        ),
+      })
+    }
+    return args
   }
 
   private parseSchema(start: number): void {

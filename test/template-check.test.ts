@@ -86,6 +86,12 @@ describe('template checker', () => {
     )
   })
 
+  test('refuses an unknown host slot and accepts the known ones', () => {
+    expect(messages(check(`{% slot 'cart' %}`))[0]).toContain('unknown-slot')
+    expect(check(`{% slot 'productPurchase' %}{% slot 'productReviews' %}`)).toEqual([])
+    expect(check(`{% slot 'orderTracking', settings: section.settings %}`)).toEqual([])
+  })
+
   test('a snippet sees its arguments, typed by the drop of the same name', () => {
     const theme = compileTheme({
       'templates/index.tpl': `{% render 'price', product: latest[0] %}`,

@@ -44,6 +44,7 @@ export {
   type RangeExpression,
   type RenderArgument,
   type RenderNode,
+  type SlotNode,
   type TemplateNode,
   type TextNode,
   type UnaryExpression,
@@ -131,10 +132,13 @@ export {
   evaluateThemeModule,
   MAX_LOOP_ITEMS,
   TEMPLATE_FRAGMENT,
+  TEMPLATE_SLOTS,
   type TemplateH,
   type TemplateRender,
   type TemplateRuntime,
+  type TemplateSlotName,
   type ThemeModule,
+  type ThemeModuleFactory,
 } from './runtime'
 
 export {
@@ -148,6 +152,7 @@ export {
 
 export {
   activateTheme,
+  activateThemeFactory,
   ASSETS_PREFIX,
   compileTheme,
   contentHash,
@@ -161,6 +166,7 @@ export {
   type ActivatedTheme,
   type CompiledTheme,
   type SectionManifest,
+  type ThemeArtifact,
   type ThemeFiles,
   type ThemeLimits,
   type ThemeManifest,

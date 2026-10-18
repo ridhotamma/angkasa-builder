@@ -1,6 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 
-import { createTemplateRuntime, TEMPLATE_FRAGMENT } from '../src/template'
+import { createElement } from 'react'
+
+import {
+  activateThemeFactory,
+  compileTheme,
+  createTemplateRuntime,
+  TEMPLATE_FRAGMENT,
+  type ThemeModuleFactory,
+} from '../src/template'
 import { buildTemplateScope, dropNames } from '../src/template'
 import { renderTemplate, testEnvironment } from './template-harness'
 
@@ -164,5 +172,54 @@ describe('expressions and filters', () => {
     const env = testEnvironment()
     const scope = buildTemplateScope({ data: env.data, env })
     expect(Object.keys(scope).sort()).toEqual(dropNames().sort())
+  })
+
+  test('a slot draws the host-owned piece, function slots receive their settings', () => {
+    expect(
+      renderTemplate(`<div>{% slot 'productPurchase' %}</div>`, {
+        env: { slots: { productPurchase: createElement('button', null, 'Add to cart') } },
+      }),
+    ).toBe('<div><button>Add to cart</button></div>')
+
+    expect(
+      renderTemplate(`{% slot 'orderTracking', settings: section.settings %}`, {
+        env: {
+          slots: {
+            orderTracking: (settings) =>
+              createElement('p', null, `Track ${(settings as { label: string }).label}`),
+          },
+        },
+        scope: { section: { id: 's1', settings: { label: 'Order' } } },
+      }),
+    ).toBe('<p>Track Order</p>')
+
+    // A host that passed no slot draws nothing rather than failing.
+    expect(renderTemplate(`<div>{% slot 'productReviews' %}</div>`)).toBe('<div></div>')
+  })
+
+  test('page_url asks the host for a listing page and falls back to a query string', () => {
+    expect(renderTemplate(`{{ 2 | page_url }}`)).toBe('?page=2')
+    expect(
+      renderTemplate(`{{ 3 | page_url }}`, {
+        env: { pageHref: (page) => `/products?page=${page}` },
+      }),
+    ).toBe('/products?page=3')
+  })
+
+  test('activates a theme from a shipped factory, with no source evaluation', () => {
+    const theme = compileTheme({ 'templates/index.tpl': `<p>x</p>` })
+    const factory: ThemeModuleFactory = () => ({
+      routes: { home: () => 'home!' },
+      sections: {},
+      layout: null,
+    })
+    const activated = activateThemeFactory(
+      theme,
+      factory,
+      createTemplateRuntime((() => null) as never, testEnvironment(), TEMPLATE_FRAGMENT),
+    )
+    expect(activated.renderRoute('home', {})).toBe('home!')
+    expect(activated.renderSection('nope', {})).toBeNull()
+    expect(activated.version).toBe(theme.version)
   })
 })

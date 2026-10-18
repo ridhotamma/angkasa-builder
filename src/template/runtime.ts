@@ -34,6 +34,25 @@ export interface ThemeModule {
   layout: TemplateRender | null
 }
 
+/** A compiled module as an ES module factory: source-free activation for hosts. */
+export type ThemeModuleFactory = (runtime: TemplateRuntime) => ThemeModule
+
+/**
+ * The host-owned pieces a theme may call with `{% slot %}`. Each is drawn by
+ * the storefront, never by the theme: the buy box needs the cart, reviews
+ * need the session, an article's body is the seller's own sections, and the
+ * order-tracking form can look an order up. See docs/TEMPLATE_ENGINE.md,
+ * "Interactivity: islands, not hydration".
+ */
+export const TEMPLATE_SLOTS = [
+  'productPurchase',
+  'productReviews',
+  'articleBody',
+  'orderTracking',
+] as const
+
+export type TemplateSlotName = (typeof TEMPLATE_SLOTS)[number]
+
 export interface TemplateRuntime {
   h: TemplateH
   /** React's `Fragment`, so multi-root units render without a wrapper element. */
@@ -56,6 +75,8 @@ export interface TemplateRuntime {
   forloop: (index: number, length: number) => Record<string, unknown>
   isBlank: (value: unknown) => boolean
   isEmpty: (value: unknown) => boolean
+  /** A host slot by name, or `null` when the host passed none. */
+  slot: (name: string, args: Record<string, unknown>) => unknown
 }
 
 /** The most items one `{% for %}` may walk, however long the list is. */
@@ -154,6 +175,17 @@ export function createTemplateRuntime(
     }),
     isBlank,
     isEmpty,
+    slot: (name, args) => {
+      const slots = env.slots as Record<string, unknown> | undefined
+      const value = slots?.[name]
+      if (value === undefined || value === null) return null
+      // A slot may be a node or a function of its settings: the order-tracking
+      // form takes the labels a section would have given it.
+      if (typeof value === 'function') {
+        return (value as (settings: unknown) => unknown)(args.settings ?? args)
+      }
+      return value
+    },
   }
 }
 

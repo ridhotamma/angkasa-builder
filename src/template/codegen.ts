@@ -131,6 +131,12 @@ class UnitCodegen {
           .join(', ')
         return `${fn}(__scope, { ${args} })`
       }
+      case 'slot': {
+        const args = node.args
+          .map((argument) => `${argument.name}: ${this.emitExpression(argument.value)}`)
+          .join(', ')
+        return `__rt.slot(${JSON.stringify(node.name)}, { ${args} })`
+      }
       default:
         // Statements are compiled by `emitInto`; `emitValue` never sees one.
         return 'null'

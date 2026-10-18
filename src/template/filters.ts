@@ -456,6 +456,18 @@ defineFilter({
 })
 
 defineFilter({
+  name: 'page_url',
+  description: 'The URL of another page of the listing being shown (the catalogue pager).',
+  minArgs: 0,
+  maxArgs: 0,
+  returns: dropString,
+  apply: (value, _args, context) => {
+    const page = Math.max(1, Math.trunc(numeric(value)))
+    return context.env.pageHref?.(page) ?? `?page=${page}`
+  },
+})
+
+defineFilter({
   name: 'video_url',
   description: "An uploaded video's file id as a streamable URL.",
   minArgs: 0,

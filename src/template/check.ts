@@ -26,6 +26,7 @@ import {
 import type { Diagnostic } from './diagnostics'
 import { error, suggestion } from './diagnostics'
 import { filterNames, registeredFilter } from './filters'
+import { TEMPLATE_SLOTS } from './runtime'
 
 export interface SnippetInfo {
   /** Every argument name the snippet is ever rendered with. */
@@ -166,6 +167,20 @@ class Checker {
             error(
               'unknown-snippet',
               `No snippet named "${node.snippet}" in the theme.`,
+              this.options.file,
+              node.loc,
+            ),
+          )
+        }
+        for (const argument of node.args) this.checkExpression(argument.value)
+        return
+      }
+      case 'slot': {
+        if (!(TEMPLATE_SLOTS as readonly string[]).includes(node.name)) {
+          this.diagnostics.push(
+            error(
+              'unknown-slot',
+              `No host slot named "${node.name}".${suggestion(node.name, TEMPLATE_SLOTS)}`,
               this.options.file,
               node.loc,
             ),
