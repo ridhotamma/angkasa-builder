@@ -151,6 +151,11 @@ export {
   type SchemaFieldKind,
 } from './schema'
 
+// The section model a `{% schema %}` compiles into: the categories its
+// `category` may name, and the type. Re-exported here so an editor (or a
+// catalogue) reads the same list the compiler validates against.
+export { SECTION_CATEGORIES, type SectionCategory } from '../model/sections'
+
 export {
   buildErrors,
   buildTemplateTheme,
