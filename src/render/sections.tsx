@@ -321,13 +321,26 @@ function Hero({ settings }: SectionProps) {
  * and arrow clicks, then jumped from one slide per page to `perPage` when
  * `useBreakpointValue` finally saw the real viewport.
  */
+/**
+ * The band's own shape, as box props: an aspect ratio derived from its width
+ * — so every per-view choice keeps the same height — or, for "Fit the
+ * screen", the viewport height the banners use (header and phone tab bar
+ * taken off), which is what makes the slider sit in one screen instead of
+ * growing with the column.
+ */
+function bannerBand(settings: FieldValues): BoxProps {
+  const shape = readText(settings, 'ratio')
+  if (shape === 'screen') return { minH: HERO_HEIGHT.screen }
+  return { aspectRatio: ratioValue(shape) }
+}
+
 function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
   const { imageUrl } = useRenderEnvironment()
   const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
   const desktop = Number(readText(settings, 'perPage')) || 2
   const perPage = Math.min(useResponsive({ base: 1, md: desktop }), slides.length)
-  const ratio = ratioValue(readText(settings, 'ratio'))
+  const band = bannerBand(settings)
   const ready = useImagesSettled(
     slides.length > 1 ? slides.map((slide) => bannerImageUrl(imageUrl, slide)) : [],
   )
@@ -335,7 +348,7 @@ function BannerSlider({ settings }: SectionProps) {
   if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
   if (slides.length === 1) {
     return (
-      <Box as="section" aspectRatio={ratio}>
+      <Box as="section" {...band}>
         <BannerSlide slide={slides[0]!} eager />
       </Box>
     )
@@ -346,7 +359,7 @@ function BannerSlider({ settings }: SectionProps) {
     // the height is the band's own, so nothing below moves on the swap.
     const columns = Math.min(Math.ceil(desktop), slides.length)
     return (
-      <AspectRatio as="section" ratio={ratio} aria-busy>
+      <Box as="section" aria-busy {...band}>
         <Grid
           templateColumns={{ base: '1fr', md: `repeat(${columns}, minmax(0, 1fr))` }}
           gap="12px"
@@ -359,7 +372,7 @@ function BannerSlider({ settings }: SectionProps) {
             <Skeleton key={index} rounded="l3" h="full" hideBelow={index > 0 ? 'md' : undefined} />
           ))}
         </Grid>
-      </AspectRatio>
+      </Box>
     )
   }
 
@@ -379,7 +392,7 @@ function BannerSlider({ settings }: SectionProps) {
       {/* Positioned around the slides only, so the arrows centre on the
           images rather than on images plus dots. The band's own shape holds
           the height for every per-view choice. */}
-      <Box position="relative" aspectRatio={ratio}>
+      <Box position="relative" {...band}>
         <Carousel.ItemGroup h="full">
           {slides.map((slide, index) => (
             <Carousel.Item key={slide.id} index={index} h="full">

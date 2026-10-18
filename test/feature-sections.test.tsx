@@ -388,12 +388,43 @@ describe('section chrome', () => {
         />,
       )
     for (const perPage of ['1', '1.5', '2', '2.5', '3']) {
-      // One band, shaped once: Chakra's aspect box pads 50% for the 2:1 shape,
-      // and the per-view choice only changes the columns inside it — never
-      // the height the page around it sees.
-      const bands = slider(perPage).match(/padding-bottom:50%/g) ?? []
+      // One band, shaped once: the 2:1 rule is on it alone, and the per-view
+      // choice only changes the columns inside — never the height the page
+      // around it sees.
+      const bands = slider(perPage).match(/aspect-ratio:2;/g) ?? []
       expect(bands.length, `perPage ${perPage}`).toBe(1)
     }
+  })
+
+  test('the band can wear a wider shape, or fit the screen', () => {
+    const shape = sectionSchema('banner-slider')!.fields.find((field) => field.key === 'ratio')
+    expect(shape?.kind === 'select' && shape.options.map((option) => option.value)).toEqual([
+      '16/9',
+      '2/1',
+      '21/9',
+      '3/1',
+      'screen',
+      '1/1',
+    ])
+
+    const band = (ratio: string) =>
+      render(
+        <SectionsRenderer
+          sections={[
+            createSection('banner-slider', {
+              ratio,
+              slides: [{ image: 's1' }, { image: 's2' }],
+            }),
+          ]}
+          env={env()}
+        />,
+      )
+    // Ultra wide: the same width, a shorter band.
+    expect(band('21/9')).toMatch(/aspect-ratio:2\.33/)
+    // Fit the screen: the viewport decides the height — no ratio at all.
+    const screen = band('screen')
+    expect(screen).toContain('100svh')
+    expect(screen).not.toMatch(/aspect-ratio:\d/)
   })
 
   test('a single-slide slider is the same band', () => {

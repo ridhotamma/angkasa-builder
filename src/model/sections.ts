@@ -796,6 +796,9 @@ export const SECTION_SCHEMAS = [
         options: [
           { value: '16/9', label: { en: 'Standard (16:9)', id: 'Standar (16:9)' } },
           { value: '2/1', label: { en: 'Wide (2:1)', id: 'Lebar (2:1)' } },
+          { value: '21/9', label: { en: 'Ultra wide (21:9)', id: 'Ultra lebar (21:9)' } },
+          { value: '3/1', label: { en: 'Panoramic (3:1)', id: 'Panorama (3:1)' } },
+          { value: 'screen', label: { en: 'Fit the screen', id: 'Sesuai layar' } },
           { value: '1/1', label: { en: 'Square (1:1)', id: 'Persegi (1:1)' } },
         ],
         default: '16/9',
