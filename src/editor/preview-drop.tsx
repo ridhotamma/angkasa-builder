@@ -8,11 +8,11 @@
  * lands: between sections, or inside a block list at a precise index.
  *
  * The indicator is the **container**, not a bare line. A section drop opens a
- * gap the width of the section column: every section from the insertion point
- * down slides to hold it, and the gap is drawn where they moved from — dashed
- * band, the insertion line on its leading edge — so the drop reads as "this
- * space is where it goes". A block drop outlines the list it lands in and
- * keeps the line at the index.
+ * gap the width of the section column — half the space taken from the section
+ * above, half from the one below, so the drop lands with equal room either
+ * side — and the gap is drawn where they moved from: a dashed band, tinted,
+ * with no other mark, because the space itself says where the section goes. A
+ * block drop outlines the list it lands in and keeps the line at the index.
  *
  * The slide is written on the iframe's own elements and taken back when the
  * drag leaves or drops, so nothing lingers to fight the entrance animations.
@@ -83,10 +83,27 @@ interface Hit {
   target: DropTarget
   /** The container the item lands in: the gap band, or the block list. */
   box: DropRect
-  /** The exact insertion line. */
-  line: DropRect
+  /** The exact insertion line — block drops only; a gap is its own line. */
+  line: DropRect | null
   /** A section gap wears the band's tint; a list is only outlined. */
   gap: boolean
+}
+
+/**
+ * How far the sections on each side of the insertion point move, in the
+ * iframe's own pixels.
+ *
+ * The gap opens **equally above and below** — half each way — so the space
+ * the drop creates is the same on both sides of the line it lands on. The
+ * page ends have no neighbour to give way, so there the whole gap falls on
+ * the one side that exists.
+ */
+export function gapMotion(at: number, count: number): { up: number; down: number } {
+  if (count === 0) return { up: 0, down: DROP_GAP_PX }
+  if (at <= 0) return { up: 0, down: DROP_GAP_PX }
+  if (at >= count) return { up: DROP_GAP_PX, down: 0 }
+  const half = DROP_GAP_PX / 2
+  return { up: half, down: half }
 }
 
 function closestSection(doc: Document, id: string): HTMLElement | null {
@@ -140,18 +157,16 @@ function sectionAt(
   const column = bounds[at] ?? bounds[bounds.length - 1]
   const boundary =
     at === 0 ? (bounds[0]?.top ?? point.y) : bounds[Math.min(at, bounds.length) - 1]!.bottom
+  // The band fills exactly the space the sections gave up, so it sits flush
+  // against both neighbours with the same room above and below its line.
+  const { up, down } = gapMotion(at, bounds.length)
   const box: DropRect = {
     left: column?.left ?? 16,
-    top: boundary,
+    top: boundary - up,
     width: column?.width ?? Math.max(0, doc.documentElement.clientWidth - 32),
-    height: DROP_GAP_PX,
+    height: up + down,
   }
-  return {
-    target: { kind: 'sections', index: at },
-    box,
-    line: { ...box, height: 2 },
-    gap: true,
-  }
+  return { target: { kind: 'sections', index: at }, box, line: null, gap: true }
 }
 
 /** Where a point inside the frame falls inside one blocks container. */
@@ -244,7 +259,11 @@ export function DropOverlay({
   const gapAtRef = useRef<number | null>(null)
   /** Every section this drag has styled, so the gap can be taken back exactly. */
   const touchedRef = useRef<Set<string>>(new Set())
-  const [marker, setMarker] = useState<{ box: DropRect; line: DropRect; gap: boolean } | null>(null)
+  const [marker, setMarker] = useState<{
+    box: DropRect
+    line: DropRect | null
+    gap: boolean
+  } | null>(null)
 
   const sectionIds = useMemo(() => sections.map((section) => section.id), [sections])
 
@@ -275,16 +294,22 @@ export function DropOverlay({
 
   if (!active) return null
 
-  /** Open the gap at `at`, sliding the sections below it down to hold it. */
+  /** Open the gap at `at`, sliding the sections on both sides apart. */
   const openGap = (target: Document, bounds: readonly SectionBounds[], at: number) => {
     if (gapAtRef.current === at) return
     gapAtRef.current = at
+    const { up, down } = gapMotion(at, bounds.length)
     for (let index = 0; index < bounds.length; index++) {
       const element = closestSection(target, bounds[index]!.id)
       if (!element) continue
       touchedRef.current.add(bounds[index]!.id)
+      // Above the line moves up, below moves down — half the gap each, so the
+      // space the drop opens is the same on both sides. A zero move is written
+      // as "no transform", so a section returning to its place animates back
+      // rather than jumping.
+      const amount = index < at ? -up : down
       element.style.transition = GAP_MOTION
-      element.style.transform = index >= at ? `translateY(${DROP_GAP_PX}px)` : ''
+      element.style.transform = amount === 0 ? '' : `translateY(${amount}px)`
     }
   }
 
@@ -307,14 +332,18 @@ export function DropOverlay({
         return {
           ...found,
           box: scaleRect(found.box, mapping),
-          line: scaleRect(found.line, mapping),
+          line: found.line ? scaleRect(found.line, mapping) : null,
         }
       }
     }
 
     const bounds = boundsRef.current ?? (boundsRef.current = sectionBounds(doc, sectionIds))
     const found = sectionAt(doc, bounds, { x, y })
-    return { ...found, box: scaleRect(found.box, mapping), line: scaleRect(found.line, mapping) }
+    return {
+      ...found,
+      box: scaleRect(found.box, mapping),
+      line: found.line ? scaleRect(found.line, mapping) : null,
+    }
   }
 
   const offset = ref.current?.getBoundingClientRect() ?? { left: 0, top: 0 }
@@ -363,7 +392,8 @@ export function DropOverlay({
       {marker && (
         <>
           {/* The container: a dashed slot for a section gap, an outline for
-              the list a block lands in. */}
+              the list a block lands in. It is the only mark a section drop
+              needs — the space itself says where the section goes. */}
           <Box
             position="absolute"
             pointerEvents="none"
@@ -375,15 +405,18 @@ export function DropOverlay({
             opacity={marker.gap ? 0.7 : 1}
             style={at(marker.box)}
           />
-          {/* The line: exactly where the item sits, inside that container. */}
-          <Box
-            position="absolute"
-            pointerEvents="none"
-            bg="brand.solid"
-            rounded="full"
-            shadow="sm"
-            style={at(marker.line)}
-          />
+          {/* A block lands at an index inside a list that keeps its own
+              spacing: there the line is still the precise mark. */}
+          {marker.line && (
+            <Box
+              position="absolute"
+              pointerEvents="none"
+              bg="brand.solid"
+              rounded="full"
+              shadow="sm"
+              style={at(marker.line)}
+            />
+          )}
         </>
       )}
     </Box>

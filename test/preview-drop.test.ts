@@ -10,6 +10,7 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   DROP_GAP_PX,
+  gapMotion,
   insertionIndex,
   scaleRect,
   type SectionBounds,
@@ -51,6 +52,17 @@ describe('the drop gap', () => {
 
   test('the gap is a real height, shared by the band and the slide', () => {
     expect(DROP_GAP_PX).toBeGreaterThan(0)
+  })
+
+  test('the space opens equally either side, and fully at the ends', () => {
+    // Between two sections: half up, half down — equal room above and below.
+    expect(gapMotion(1, 3)).toEqual({ up: DROP_GAP_PX / 2, down: DROP_GAP_PX / 2 })
+    expect(gapMotion(2, 3)).toEqual({ up: DROP_GAP_PX / 2, down: DROP_GAP_PX / 2 })
+    // At the page start there is nothing above to give way; at the end,
+    // nothing below — the whole gap falls on the side that exists.
+    expect(gapMotion(0, 3)).toEqual({ up: 0, down: DROP_GAP_PX })
+    expect(gapMotion(3, 3)).toEqual({ up: DROP_GAP_PX, down: 0 })
+    expect(gapMotion(0, 0)).toEqual({ up: 0, down: DROP_GAP_PX })
   })
 
   test('an iframe rect lands exactly where the frame displays it', () => {
