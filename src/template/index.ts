@@ -133,6 +133,7 @@ export {
   MAX_LOOP_ITEMS,
   TEMPLATE_FRAGMENT,
   TEMPLATE_SLOTS,
+  themeModuleFactory,
   type TemplateH,
   type TemplateRender,
   type TemplateRuntime,
@@ -149,6 +150,19 @@ export {
   type CompileSectionSchemaOptions,
   type SchemaFieldKind,
 } from './schema'
+
+export {
+  buildErrors,
+  buildTemplateTheme,
+  buildTemplateThemeJson,
+  describeBuildError,
+  isTemplateThemeJson,
+  MAX_TEMPLATE_BUILD_BYTES,
+  MAX_TEMPLATE_BUILD_FILES,
+  parseTemplateThemeBuild,
+  TEMPLATE_BUILD_KIND,
+  type TemplateThemeBuild,
+} from './publish'
 
 export {
   activateTheme,
