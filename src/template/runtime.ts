@@ -57,6 +57,9 @@ export const TEMPLATE_SLOTS = [
   'orderTracking',
   'cartTrigger',
   'cartDrawer',
+  'cartLineControls',
+  'cartUnavailable',
+  'cartCheckout',
 ] as const
 
 export type TemplateSlotName = (typeof TEMPLATE_SLOTS)[number]

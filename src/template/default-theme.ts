@@ -312,6 +312,45 @@ const ORDER_TRACKING = `<div class="tpl-default">
 </div>
 `
 
+const CART = `<div class="tpl-default">
+  <section class="d-cart">
+    <header class="d-cart-head">
+      <h1>Your cart</h1>
+      <p class="d-cart-count">
+        {% if cart.empty %}Nothing here yet.{% else %}{{ cart.item_count }} item{% if cart.item_count != 1 %}s{% endif %}{% endif %}
+      </p>
+    </header>
+
+    {% if cart.empty %}
+      <p class="d-empty">Your cart is empty — the catalogue is one click away.</p>
+      <div class="d-cart-empty-actions">
+        <a class="d-button" href="{{ routes.products }}">Start shopping</a>
+      </div>
+    {% else %}
+      <div class="d-cart-lines">
+        {% for line in cart.items %}
+          <div class="d-cart-line">
+            <a class="d-cart-media" href="{% if line.url %}{{ line.url }}{% else %}{{ routes.products }}{% endif %}">
+              {% if line.image_url %}<img src="{{ line.image_url }}" alt="{{ line.name }}" loading="lazy" />{% endif %}
+            </a>
+            <div class="d-cart-info">
+              <a class="d-cart-name" href="{% if line.url %}{{ line.url }}{% else %}{{ routes.products }}{% endif %}">{{ line.name }}</a>
+              {% if line.variant_name %}<span class="d-cart-variant">{{ line.variant_name }}</span>{% endif %}
+              <span class="d-cart-price">{{ line.price | money }}</span>
+            </div>
+            <div class="d-cart-controls">{% slot 'cartLineControls', line: line %}</div>
+            <span class="d-cart-line-total">{{ line.line_total | money }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% slot 'cartUnavailable' %}
+    {% slot 'cartCheckout' %}
+  </section>
+</div>
+`
+
 const CARD = `<a class="d-card" href="{{ product.url }}">
   <span class="d-card-media">
     {% if product.image_url %}
@@ -769,6 +808,101 @@ const CSS = `/* The platform's default theme. Scoped under .tpl-default so it ne
   line-height: 1.7;
   margin: 0.8rem 0 1.5rem;
 }
+
+.d-cart {
+  margin: 0 auto;
+  max-width: 72rem;
+  padding-top: clamp(2rem, 5vw, 3.5rem);
+}
+
+.d-cart-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+}
+
+.d-cart-head h1 {
+  font-family: var(--chakra-fonts-heading);
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.d-cart-count {
+  color: var(--chakra-colors-fg-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.d-cart-empty-actions {
+  padding-top: 0.5rem;
+  text-align: center;
+}
+
+.d-cart-lines {
+  background: var(--chakra-colors-bg-panel);
+  border: 1px solid var(--chakra-colors-border);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.d-cart-line {
+  align-items: center;
+  border-bottom: 1px solid var(--chakra-colors-border);
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.d-cart-line:last-child {
+  border-bottom: 0;
+}
+
+.d-cart-media {
+  background: var(--chakra-colors-bg-muted);
+  border-radius: 0.6rem;
+  flex: none;
+  height: 4rem;
+  overflow: hidden;
+  width: 4rem;
+}
+
+.d-cart-media img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.d-cart-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.d-cart-name {
+  font-weight: 600;
+}
+
+.d-cart-variant,
+.d-cart-price {
+  color: var(--chakra-colors-fg-muted);
+  font-size: 0.85rem;
+}
+
+.d-cart-controls {
+  flex: none;
+}
+
+.d-cart-line-total {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 4.5rem;
+  text-align: right;
+}
 `
 
 /** Every file of the platform's default theme, by theme-relative path. */
@@ -783,6 +917,7 @@ export function defaultThemeFiles(): ThemeFiles {
     'templates/article.tpl': ARTICLE,
     'templates/blog.tpl': BLOG,
     'templates/order-tracking.tpl': ORDER_TRACKING,
+    'templates/cart.tpl': CART,
     'snippets/product-card.tpl': CARD,
     'assets/theme.css': CSS,
   }

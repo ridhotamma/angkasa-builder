@@ -16,6 +16,7 @@ import type { ElementKind } from '../model/element-style'
 import type { FieldValues, TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
+import type { TemplateCartLine } from '../template/drops'
 import type { SectionProps } from './sections'
 
 export interface StorefrontProductCard {
@@ -298,6 +299,26 @@ export interface RenderEnvironment {
      * gets a stand-in form. Receives the section's settings for its labels.
      */
     orderTracking?: (settings: FieldValues) => ReactNode
+    /**
+     * One cart line's quantity controls, drawn where a compiled
+     * `templates/cart.tpl` puts its per-line `cartLineControls` slot. The cart
+     * lives in the host's state, so only the host can change a quantity or
+     * remove a line; receives that line from the `cart` drop.
+     */
+    cartLineControls?: (args: { line: TemplateCartLine }) => ReactNode
+    /**
+     * The lines that can no longer be bought, drawn where a compiled
+     * `templates/cart.tpl` puts its `cartUnavailable` slot — the host owns the
+     * removal and the wording. Renders nothing when there are none.
+     */
+    cartUnavailable?: ReactNode
+    /**
+     * The checkout stack below the cart's lines: customer details, delivery
+     * and payment pickers, the summary and the order button. One island the
+     * host owns end to end — a theme decides where it sits, not what an order
+     * is. Renders nothing for an empty cart.
+     */
+    cartCheckout?: ReactNode
   }
   /**
    * The signed-in shopper's saved products, when the host has a wishlist.

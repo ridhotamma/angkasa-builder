@@ -40,7 +40,7 @@ import type {
  * seller's custom page — and the host names the route when it renders.
  */
 export type TemplateRoute =
-  'home' | 'product' | 'article' | 'catalog' | 'orderTracking' | 'page' | 'search' | 'blog'
+  'home' | 'product' | 'article' | 'catalog' | 'orderTracking' | 'page' | 'search' | 'blog' | 'cart'
 
 /* -------------------------------------------------------------------------- */
 /* The type schema                                                            */
@@ -267,6 +267,62 @@ export function dropNames(schema: DropType = STOREFRONT_DROP_SCHEMA): string[] {
 
 export type TemplateScope = Record<string, unknown>
 
+/**
+ * The cart a theme draws, passed by the host as `extras.cart`.
+ *
+ * The cart lives in the host's own state — a guest's localStorage, a
+ * shopper's account row — never in the scope's `data`, which is why it
+ * travels as an extra. Only the *presentation* is here: the interactive
+ * leaves (a line's quantity controls, and the whole checkout stack below the
+ * lines) arrive as host slots, because they need the host's cart API and a
+ * browser a theme may not ship.
+ */
+export interface TemplateCartDrop {
+  /** False until the host has read the cart — a theme may hold a skeleton open. */
+  ready: boolean
+  empty: boolean
+  item_count: number
+  subtotal: number
+  currency: string
+  items: TemplateCartLine[]
+  /** Lines that can no longer be bought, shown so they can be removed. */
+  unavailable: TemplateCartUnavailableLine[]
+}
+
+/** One cart line, as `templates/cart.tpl` reads it. */
+export interface TemplateCartLine {
+  product_id: string
+  variant_id: string | null
+  name: string
+  variant_name: string | null
+  slug: string | null
+  /** The product page, when the line has a slug. */
+  url: string | null
+  image_url: string | null
+  /** The live price checkout will charge, in minor units. */
+  price: number
+  /** `price × quantity`, in minor units. */
+  line_total: number
+  quantity: number
+  max_stock: number
+  /** The price when it was added, when that differs from `price`. */
+  previous_price: number | null
+  /** Set when stock no longer covers what was asked for. */
+  requested_quantity: number
+}
+
+/** A line that cannot be bought right now, as the cart template reads it. */
+export interface TemplateCartUnavailableLine {
+  product_id: string
+  variant_id: string | null
+  name: string
+  variant_name: string | null
+  slug: string | null
+  image_url: string | null
+  /** A stable code for why (`sold_out`, `removed`, …); the host phrases it. */
+  issue: string
+}
+
 export interface TemplateScopeInput {
   data: StorefrontRenderData
   env: RenderEnvironment
@@ -364,6 +420,8 @@ function pageTitle(data: StorefrontRenderData, route: TemplateRoute): string {
       return data.page?.title ?? data.shop.name
     case 'orderTracking':
       return 'Order tracking'
+    case 'cart':
+      return 'Cart'
     case 'home':
       return data.shop.name
   }

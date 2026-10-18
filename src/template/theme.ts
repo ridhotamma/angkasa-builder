@@ -36,6 +36,7 @@ export const ROUTE_FILES: Record<TemplateRoute, readonly string[]> = {
   page: ['templates/page.tpl'],
   search: ['templates/search.tpl'],
   blog: ['templates/blog.tpl'],
+  cart: ['templates/cart.tpl'],
 }
 
 export const TEMPLATE_ROUTES = Object.keys(ROUTE_FILES) as TemplateRoute[]
