@@ -32,6 +32,7 @@ import type {
   VideoField,
 } from './fields'
 import type { Localized } from './localized'
+import { photoFitField, photoPositionField } from './section-style'
 import type { SectionScope, SectionSchema } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -329,6 +330,14 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         ...image('poster', { en: 'Cover image', id: 'Gambar sampul' }),
         showWhen: { key: 'media', is: ['video', 'background'] },
       },
+      {
+        ...photoFitField,
+        showWhen: { key: 'media', is: ['image', 'video', 'background', 'parallax'] },
+      },
+      {
+        ...photoPositionField,
+        showWhen: { key: 'media', is: ['image', 'video', 'background', 'parallax'] },
+      },
       heading(''),
       subheading(''),
       buttonLabel('Shop now'),
@@ -459,6 +468,8 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         // `SocialWall` take caption and link, `MasonryGallery` takes the alt
         // text (its tiles have no room for a caption) and a link.
         image('image', { en: 'Photo', id: 'Foto' }),
+        photoFitField,
+        photoPositionField,
         {
           ...text('caption', { en: 'Caption', id: 'Keterangan' }, 160),
           showWhen: { key: 'layout', is: ['grid', 'social'] },
@@ -547,6 +558,14 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
           showWhen: { key: 'variant', is: ['quotes'] },
         },
         {
+          ...photoFitField,
+          showWhen: { key: 'variant', is: ['quotes'] },
+        },
+        {
+          ...photoPositionField,
+          showWhen: { key: 'variant', is: ['quotes'] },
+        },
+        {
           ...text('name', { en: 'Name', id: 'Nama' }, 80),
           showWhen: { key: 'variant', is: ['video'] },
         },
@@ -560,6 +579,14 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         },
         {
           ...image('poster', { en: 'Poster', id: 'Poster' }),
+          showWhen: { key: 'variant', is: ['video'] },
+        },
+        {
+          ...photoFitField,
+          showWhen: { key: 'variant', is: ['video'] },
+        },
+        {
+          ...photoPositionField,
           showWhen: { key: 'variant', is: ['video'] },
         },
       ]),
@@ -643,6 +670,14 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
           showWhen: { key: 'card', is: ['person'] },
         },
         {
+          ...photoFitField,
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...photoPositionField,
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
           ...text('title', { en: 'Title', id: 'Judul' }, 80),
           showWhen: { key: 'card', is: ['text', 'icon'] },
         },
@@ -690,6 +725,8 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         'contained',
       ),
       image('image', { en: 'Photo', id: 'Foto' }),
+      photoFitField,
+      photoPositionField,
       positionField('imagePosition', { en: 'Photo side', id: 'Sisi foto' }),
       { ...overlayField, showWhen: { key: 'layout', is: ['full'] } },
       {
@@ -759,6 +796,8 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         // (`ScrollingStory`), a milestone reads image/label/title/text
         // (`Timeline`), so each style declares only its own.
         image('image', { en: 'Image', id: 'Gambar' }),
+        photoFitField,
+        photoPositionField,
         {
           ...text('heading', { en: 'Heading', id: 'Judul' }, 100),
           showWhen: { key: 'style', is: ['chapters'] },

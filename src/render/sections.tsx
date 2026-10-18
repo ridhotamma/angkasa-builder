@@ -179,7 +179,10 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
   const heading = readText(settings, 'heading')
   const subheading = readText(settings, 'subheading')
   const align = alignOf(settings)
-  const middle = readText(settings, 'contentPosition') === 'middle'
+  // Top, middle or bottom — the three the schemas offer. Anything else keeps
+  // the historic bottom.
+  const position = readText(settings, 'contentPosition')
+  const place = position === 'top' ? 'start' : position === 'middle' ? 'center' : 'end'
   const height = heroHeight(settings)
   // The hero's words rise on the storefront; the preview keeps editable text.
   const animatedHeading = headline === 'rise' && mode === 'live'
@@ -226,9 +229,10 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
 
   return (
     <Flex
+      data-banner-copy=""
       position="relative"
       minH={height}
-      align={middle ? 'center' : 'end'}
+      align={place}
       justify={align === 'center' ? 'center' : 'start'}
       px={pageColumn ? '0' : { base: '6', md: '12' }}
       py={{ base: '6', md: '12' }}
@@ -302,6 +306,11 @@ function Hero({ settings }: SectionProps) {
  * dragged with the mouse on a desktop, a whole page of `perPage` slides at a
  * time. A single slide is simply a still banner — there is nothing to slide to.
  *
+ * The band is the **Banner shape** the seller picked — its height never
+ * follows the number of visible slides, so switching 1 → 2 → 3 (or the half
+ * values, which leave a half slide peeking at each edge) changes the crop,
+ * not the page. The images fill the band and crop.
+ *
  * Keep this on the same default `Carousel` setup as the testimonial slider.
  * Centring the active slide needs padding at both ends, which a finite row
  * shows as blank space, and Zag's snapping did not hold a centred position.
@@ -326,30 +335,31 @@ function BannerSlider({ settings }: SectionProps) {
   if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
   if (slides.length === 1) {
     return (
-      <Box as="section">
-        <BannerSlide slide={slides[0]!} ratio={ratio} eager />
+      <Box as="section" aspectRatio={ratio}>
+        <BannerSlide slide={slides[0]!} eager />
       </Box>
     )
   }
 
   if (!ready) {
-    const columns = Math.min(desktop, slides.length)
+    // Two boxes behind a half value draw the band's share, not its height —
+    // the height is the band's own, so nothing below moves on the swap.
+    const columns = Math.min(Math.ceil(desktop), slides.length)
     return (
-      <Grid
-        as="section"
-        aria-busy
-        templateColumns={{ base: '1fr', md: `repeat(${columns}, minmax(0, 1fr))` }}
-        gap="12px"
-        // Room for the dots the real slider will have, so nothing below moves
-        // when it swaps in: gap `3` plus a `2.5` indicator.
-        pb={{ base: '22px', md: slides.length > desktop ? '22px' : '0' }}
-      >
-        {Array.from({ length: columns }, (_, index) => (
-          <AspectRatio key={index} ratio={ratio} hideBelow={index > 0 ? 'md' : undefined}>
-            <Skeleton rounded="l3" />
-          </AspectRatio>
-        ))}
-      </Grid>
+      <AspectRatio as="section" ratio={ratio} aria-busy>
+        <Grid
+          templateColumns={{ base: '1fr', md: `repeat(${columns}, minmax(0, 1fr))` }}
+          gap="12px"
+          h="full"
+          // Room for the dots the real slider will have, so nothing below
+          // moves when it swaps in: gap `3` plus a `2.5` indicator.
+          pb={{ base: '22px', md: slides.length > desktop ? '22px' : '0' }}
+        >
+          {Array.from({ length: columns }, (_, index) => (
+            <Skeleton key={index} rounded="l3" h="full" hideBelow={index > 0 ? 'md' : undefined} />
+          ))}
+        </Grid>
+      </AspectRatio>
     )
   }
 
@@ -367,12 +377,13 @@ function BannerSlider({ settings }: SectionProps) {
       gap="3"
     >
       {/* Positioned around the slides only, so the arrows centre on the
-          images rather than on images plus dots. */}
-      <Box position="relative">
-        <Carousel.ItemGroup>
+          images rather than on images plus dots. The band's own shape holds
+          the height for every per-view choice. */}
+      <Box position="relative" aspectRatio={ratio}>
+        <Carousel.ItemGroup h="full">
           {slides.map((slide, index) => (
-            <Carousel.Item key={slide.id} index={index}>
-              <BannerSlide slide={slide} ratio={ratio} eager={index === 0} />
+            <Carousel.Item key={slide.id} index={index} h="full">
+              <BannerSlide slide={slide} eager={index === 0} />
             </Carousel.Item>
           ))}
         </Carousel.ItemGroup>
@@ -397,30 +408,29 @@ function BannerSlider({ settings }: SectionProps) {
   )
 }
 
-function BannerSlide({
-  slide,
-  ratio,
-  eager,
-}: {
-  slide: FieldValues
-  ratio: number
-  eager: boolean
-}) {
+/**
+ * One slide: the photo fills the band's whole box, cropped by the slide's own
+ * size and position. Shared by the slider and the single-slide case.
+ */
+function BannerSlide({ slide, eager }: { slide: FieldValues; eager: boolean }) {
   const { imageUrl } = useRenderEnvironment()
 
   return (
-    <SmartLink link={readLink(slide, 'link')} display="block" draggable={false}>
-      <AspectRatio ratio={ratio} rounded="l3" overflow="hidden" bg="bg.subtle">
-        <ImageWithFallback
-          src={bannerImageUrl(imageUrl, slide) ?? undefined}
-          alt={readText(slide, 'alt')}
-          objectFit={readToken(slide, 'fit', PHOTO_FIT_VALUES, 'cover')}
-          objectPosition={readToken(slide, 'position', PHOTO_POSITION_VALUES, 'center')}
-          loading={eager ? 'eager' : 'lazy'}
-          // A native image drag would steal the gesture from the slider.
-          draggable={false}
-        />
-      </AspectRatio>
+    <SmartLink link={readLink(slide, 'link')} display="block" h="full" draggable={false}>
+      <ImageWithFallback
+        src={bannerImageUrl(imageUrl, slide) ?? undefined}
+        alt={readText(slide, 'alt')}
+        w="full"
+        h="full"
+        objectFit={readToken(slide, 'fit', PHOTO_FIT_VALUES, 'cover')}
+        objectPosition={readToken(slide, 'position', PHOTO_POSITION_VALUES, 'center')}
+        rounded="l3"
+        overflow="hidden"
+        bg="bg.subtle"
+        loading={eager ? 'eager' : 'lazy'}
+        // A native image drag would steal the gesture from the slider.
+        draggable={false}
+      />
     </SmartLink>
   )
 }
@@ -1072,7 +1082,13 @@ function ImageWithText({ settings }: SectionProps) {
         bg="bg.subtle"
         order={{ base: 0, md: imageRight ? 1 : 0 }}
       >
-        <ImageWithFallback src={src ?? undefined} alt="" objectFit="cover" loading="lazy" />
+        <ImageWithFallback
+          src={src ?? undefined}
+          alt=""
+          objectFit={readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')}
+          objectPosition={readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center')}
+          loading="lazy"
+        />
       </AspectRatio>
       {/* `start` rather than the default stretch, so the button keeps its own
           width with or without a link. */}
@@ -1132,7 +1148,8 @@ function ImageGallery({ settings }: SectionProps) {
                     <ImageWithFallback
                       src={(fileId && imageUrl(fileId, { width: 600, height: 600 })) || undefined}
                       alt={caption}
-                      objectFit="cover"
+                      objectFit={readToken(item, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                      objectPosition={readToken(item, 'position', PHOTO_POSITION_VALUES, 'center')}
                       loading="lazy"
                       transition="transform 600ms ease"
                     />
@@ -1417,7 +1434,8 @@ function TestimonialByline({ item }: { item: TestimonialItem }) {
             position="absolute"
             inset="0"
             boxSize="full"
-            objectFit="cover"
+            objectFit={readToken(item, 'fit', PHOTO_FIT_VALUES, 'cover')}
+            objectPosition={readToken(item, 'position', PHOTO_POSITION_VALUES, 'center')}
             rounded="inherit"
             loading="lazy"
           />

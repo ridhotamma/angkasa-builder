@@ -674,7 +674,8 @@ function MediaCardBlock({ block }: { block: BlockValue }) {
           inset={0}
           w="full"
           h="full"
-          objectFit="cover"
+          objectFit={readToken(block.settings, 'fit', PHOTO_FIT_VALUES, 'cover')}
+          objectPosition={readToken(block.settings, 'position', PHOTO_POSITION_VALUES, 'center')}
         />
       )}
       {overlay !== 'none' && <Box position="absolute" inset={0} {...overlayProps(overlay)} />}

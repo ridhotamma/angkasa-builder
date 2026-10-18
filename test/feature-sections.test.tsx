@@ -18,6 +18,7 @@ import {
 } from '../src/index'
 import { surfacePaint } from '../src/render/dividers'
 import { spinStep } from '../src/render/feature-sections'
+import { sectionBackground } from '../src/render/section-background'
 import {
   embedUrl,
   pageEdges,
@@ -364,6 +365,203 @@ describe('section chrome', () => {
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(html).toContain('object-fit:contain')
     expect(html).toContain('object-position:bottom')
+  })
+
+  test('the slider offers half steps, so a slide can peek at each edge', () => {
+    const perPage = sectionSchema('banner-slider')!.fields.find((field) => field.key === 'perPage')
+    const values = perPage?.kind === 'select' ? perPage.options.map((option) => option.value) : []
+    expect(values).toEqual(['1', '1.5', '2', '2.5', '3'])
+  })
+
+  test('the slider band holds one height however many slides show', () => {
+    const slider = (perPage: string) =>
+      render(
+        <SectionsRenderer
+          sections={[
+            createSection('banner-slider', {
+              perPage,
+              ratio: '2/1',
+              slides: [{ image: 's1' }, { image: 's2' }, { image: 's3' }],
+            }),
+          ]}
+          env={env()}
+        />,
+      )
+    for (const perPage of ['1', '1.5', '2', '2.5', '3']) {
+      // One band, shaped once: Chakra's aspect box pads 50% for the 2:1 shape,
+      // and the per-view choice only changes the columns inside it — never
+      // the height the page around it sees.
+      const bands = slider(perPage).match(/padding-bottom:50%/g) ?? []
+      expect(bands.length, `perPage ${perPage}`).toBe(1)
+    }
+  })
+
+  test('a single-slide slider is the same band', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('banner-slider', {
+            ratio: '2/1',
+            slides: [{ image: 's1', alt: 'One' }],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    expect((html.match(/aspect-ratio:/g) ?? []).length).toBe(1)
+    expect(html).toContain('object-fit:cover')
+  })
+
+  test('the consolidated banner offers and applies image size and position', () => {
+    const keys = sectionSchema('banner')!.fields.map((field) => field.key)
+    expect(keys).toContain('fit')
+    expect(keys).toContain('position')
+
+    const section = createSection('banner', {
+      media: 'image',
+      image: 'photo',
+      fit: 'contain',
+      position: 'top',
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('object-position:top')
+  })
+
+  test('the consolidated statement crops its photo, contained layout included', () => {
+    const section = createSection('statement', {
+      layout: 'contained',
+      image: 'photo',
+      fit: 'contain',
+      position: 'bottom',
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('object-position:bottom')
+  })
+
+  test('a consolidated banner hands its crop to the divider mirror', () => {
+    const section = createSection('banner', {
+      media: 'image',
+      image: 'photo',
+      fit: 'contain',
+      position: 'top',
+    })
+    expect(sectionBackground(section)).toMatchObject({ fit: 'contain', position: 'top' })
+  })
+
+  test('Text position puts the banner copy where it says', () => {
+    const at = (contentPosition: string) => {
+      const section = createSection('banner', {
+        heading: 'Hi',
+        image: 'photo',
+        contentPosition,
+      })
+      return render(<SectionsRenderer sections={[section]} env={env()} />)
+    }
+    const ruleOf = (html: string) => {
+      const tag = /<div[^>]*data-banner-copy[^>]*>/.exec(html)?.[0] ?? ''
+      const cls = /class="([^"]+)"/.exec(tag)?.[1]?.split(' ')[0]
+      return cls
+        ? (new RegExp(`\\.${cls.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\{[^}]*\\}`).exec(
+            html,
+          )?.[0] ?? '')
+        : ''
+    }
+    // The copy's own row is where the choice lands: top, middle, bottom.
+    // Chakra writes the logical values (`start`/`end`), not `flex-start`.
+    expect(ruleOf(at('top'))).toContain('align-items:start')
+    expect(ruleOf(at('middle'))).toContain('align-items:center')
+    expect(ruleOf(at('bottom'))).toContain('align-items:end')
+  })
+
+  test('every photo carries its own size and position: gallery, people, quotes, media cards', () => {
+    const cropped = (html: string, label: string) => {
+      expect(html, label).toContain('object-fit:contain')
+      expect(html, label).toContain('object-position:top')
+    }
+
+    for (const layout of ['grid', 'masonry', 'social']) {
+      cropped(
+        render(
+          <SectionsRenderer
+            sections={[
+              createSection('gallery', {
+                layout,
+                items: [{ image: 'p1', caption: 'C', alt: 'A', fit: 'contain', position: 'top' }],
+              }),
+            ]}
+            env={env()}
+          />,
+        ),
+        `gallery ${layout}`,
+      )
+    }
+
+    cropped(
+      render(
+        <SectionsRenderer
+          sections={[
+            createSection('cards', {
+              card: 'person',
+              items: [{ photo: 'p1', name: 'A', fit: 'contain', position: 'top' }],
+            }),
+          ]}
+          env={env()}
+        />,
+      ),
+      'people',
+    )
+
+    cropped(
+      render(
+        <SectionsRenderer
+          sections={[
+            createSection('quotes', {
+              variant: 'quotes',
+              items: [{ quote: 'Q', author: 'A', avatar: 'p1', fit: 'contain', position: 'top' }],
+            }),
+          ]}
+          env={env()}
+        />,
+      ),
+      'quotes',
+    )
+
+    cropped(
+      render(
+        <SectionsRenderer
+          sections={[
+            createSection('story', {
+              style: 'chapters',
+              items: [{ image: 'p1', heading: 'H', body: '', fit: 'contain', position: 'top' }],
+            }),
+          ]}
+          env={env()}
+        />,
+      ),
+      'story',
+    )
+
+    cropped(
+      render(
+        <SectionsRenderer
+          sections={[
+            createSection('blocks', {
+              blocks: [
+                {
+                  id: 'mc',
+                  type: 'media-card',
+                  settings: { image: 'p1', fit: 'contain', position: 'top' },
+                },
+              ],
+            }),
+          ]}
+          env={env()}
+        />,
+      ),
+      'media card',
+    )
   })
 
   test('a testimonial photo is a plain visible image, never a hidden avatar', () => {

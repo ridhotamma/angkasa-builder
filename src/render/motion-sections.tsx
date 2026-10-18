@@ -23,6 +23,8 @@ import {
   type FieldValues,
 } from '../model/fields'
 import { isRichDocEmpty } from '../model/rich-text'
+import { readToken } from '../model/element-style'
+import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import { resolveScheme, schemeCssVars } from '../model/settings'
 import { BlockChildren, BlockStrip, useDropTarget } from './blocks-section'
 import { STICKY_BELOW_HEADER } from './chrome'
@@ -236,7 +238,13 @@ export function StackedCards({ settings }: SectionProps) {
                           <ImageWithFallback
                             src={src}
                             alt={title}
-                            objectFit="cover"
+                            objectFit={readToken(item, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                            objectPosition={readToken(
+                              item,
+                              'position',
+                              PHOTO_POSITION_VALUES,
+                              'center',
+                            )}
                             loading="lazy"
                           />
                         </AspectRatio>
@@ -322,7 +330,13 @@ function PinnedPanel({ panel }: { panel: FieldValues }) {
             bg="bg.subtle"
             flexShrink="0"
           >
-            <ImageWithFallback src={src} alt="" objectFit="cover" loading="lazy" />
+            <ImageWithFallback
+              src={src}
+              alt=""
+              objectFit={readToken(panel, 'fit', PHOTO_FIT_VALUES, 'cover')}
+              objectPosition={readToken(panel, 'position', PHOTO_POSITION_VALUES, 'center')}
+              loading="lazy"
+            />
           </AspectRatio>
         )}
       </Flex>
@@ -632,7 +646,13 @@ export function ScrollRail({ settings }: SectionProps) {
                             <ImageWithFallback
                               src={src}
                               alt={title}
-                              objectFit="cover"
+                              objectFit={readToken(item, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                              objectPosition={readToken(
+                                item,
+                                'position',
+                                PHOTO_POSITION_VALUES,
+                                'center',
+                              )}
                               loading="lazy"
                             />
                           </AspectRatio>

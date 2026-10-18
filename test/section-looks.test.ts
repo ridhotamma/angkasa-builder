@@ -43,11 +43,19 @@ describe('the quotes section follows its look', () => {
   const itemFields = (look: string) => fieldsUnder('quotes', 'items', 'variant', look, false)
 
   test('a plain quote asks for the customer and their words', () => {
-    expect(itemFields('quotes')).toEqual(['quote', 'author', 'avatar', 'role'])
+    expect(itemFields('quotes')).toEqual(['quote', 'author', 'avatar', 'fit', 'position', 'role'])
   })
 
   test('a video quote asks for the video, not the customer photo', () => {
-    expect(itemFields('video')).toEqual(['quote', 'name', 'role', 'video', 'poster'])
+    expect(itemFields('video')).toEqual([
+      'quote',
+      'name',
+      'role',
+      'video',
+      'poster',
+      'fit',
+      'position',
+    ])
   })
 
   test('no look is offered a field it does not read', () => {
@@ -72,9 +80,9 @@ describe('the gallery section follows its look', () => {
   const itemFields = (layout: string) => fieldsUnder('gallery', 'items', 'layout', layout, false)
 
   test('a caption belongs to the grid and the social wall, a description to masonry', () => {
-    expect(itemFields('grid')).toEqual(['image', 'caption', 'link'])
-    expect(itemFields('social')).toEqual(['image', 'caption', 'link'])
-    expect(itemFields('masonry')).toEqual(['image', 'alt', 'link'])
+    expect(itemFields('grid')).toEqual(['image', 'fit', 'position', 'caption', 'link'])
+    expect(itemFields('social')).toEqual(['image', 'fit', 'position', 'caption', 'link'])
+    expect(itemFields('masonry')).toEqual(['image', 'fit', 'position', 'alt', 'link'])
   })
 })
 
@@ -93,7 +101,7 @@ describe('the story section follows its style', () => {
   const itemFields = (style: string) => fieldsUnder('story', 'items', 'style', style, false)
 
   test('a chapter asks for its heading and body, a milestone for its date and title', () => {
-    expect(itemFields('chapters')).toEqual(['image', 'heading', 'body'])
-    expect(itemFields('timeline')).toEqual(['image', 'label', 'title', 'text'])
+    expect(itemFields('chapters')).toEqual(['image', 'fit', 'position', 'heading', 'body'])
+    expect(itemFields('timeline')).toEqual(['image', 'fit', 'position', 'label', 'title', 'text'])
   })
 })

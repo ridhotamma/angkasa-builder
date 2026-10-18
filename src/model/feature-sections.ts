@@ -247,6 +247,8 @@ export const FEATURE_SECTION_SCHEMAS = [
       heading(''),
       list('items', { en: 'Photos', id: 'Foto' }, { en: 'Photo', id: 'Foto' }, 'alt', 30, [
         image('image', { en: 'Photo', id: 'Foto' }),
+        photoFitField,
+        photoPositionField,
         text('alt', { en: 'Description', id: 'Deskripsi' }, 160),
         link('link', { en: 'Link (optional)', id: 'Tautan (opsional)' }),
       ]),
@@ -295,6 +297,8 @@ export const FEATURE_SECTION_SCHEMAS = [
       body(500),
       list('items', { en: 'People', id: 'Orang' }, { en: 'Person', id: 'Orang' }, 'name', 12, [
         image('photo', { en: 'Photo', id: 'Foto' }),
+        photoFitField,
+        photoPositionField,
         text('name', { en: 'Name', id: 'Nama' }, 80),
         text('role', { en: 'Role', id: 'Peran' }, 80),
         link('link', { en: 'Link (optional)', id: 'Tautan (opsional)' }),
@@ -390,6 +394,8 @@ export const FEATURE_SECTION_SCHEMAS = [
       text('handle', { en: 'Handle', id: 'Nama akun' }, 60, '@yourshop'),
       list('items', { en: 'Photos', id: 'Foto' }, { en: 'Photo', id: 'Foto' }, 'caption', 24, [
         image('image', { en: 'Photo', id: 'Foto' }),
+        photoFitField,
+        photoPositionField,
         text('caption', { en: 'Caption', id: 'Keterangan' }, 160),
         link('link', { en: 'Link', id: 'Tautan' }),
       ]),

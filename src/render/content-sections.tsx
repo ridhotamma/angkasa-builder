@@ -37,7 +37,8 @@ import {
   readText,
   type FieldValues,
 } from '../model/fields'
-import { textElementKey } from '../model/element-style'
+import { readToken, textElementKey } from '../model/element-style'
+import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import { NO_LINK, type Link } from '../model/links'
 import { STICKY_BELOW_HEADER } from './chrome'
 import { useRenderEnvironment, type StorefrontRenderData } from './context'
@@ -280,7 +281,8 @@ export function ScrollingStory({ settings }: SectionProps) {
                     inset="0"
                     w="full"
                     h="full"
-                    objectFit="cover"
+                    objectFit={readToken(step, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                    objectPosition={readToken(step, 'position', PHOTO_POSITION_VALUES, 'center')}
                     opacity={index === active ? 1 : 0}
                     transform={index === active ? 'scale(1)' : 'scale(1.04)'}
                     loading={index === 0 ? 'eager' : 'lazy'}
@@ -322,7 +324,8 @@ export function ScrollingStory({ settings }: SectionProps) {
                 <ImageWithFallback
                   src={src(step) ?? undefined}
                   alt=""
-                  objectFit="cover"
+                  objectFit={readToken(step, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                  objectPosition={readToken(step, 'position', PHOTO_POSITION_VALUES, 'center')}
                   loading="lazy"
                 />
               </AspectRatio>

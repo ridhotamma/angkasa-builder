@@ -357,8 +357,9 @@ const contentPosition: ItemField = {
   key: 'contentPosition',
   label: { en: 'Text position', id: 'Posisi teks' },
   options: [
-    { value: 'bottom', label: { en: 'Bottom', id: 'Bawah' } },
+    { value: 'top', label: { en: 'Top', id: 'Atas' } },
     { value: 'middle', label: { en: 'Middle', id: 'Tengah' } },
+    { value: 'bottom', label: { en: 'Bottom', id: 'Bawah' } },
   ],
   default: 'bottom',
 }
@@ -772,12 +773,14 @@ export const SECTION_SCHEMAS = [
         key: 'perPage',
         label: { en: 'Slides visible on desktop', id: 'Slide terlihat di desktop' },
         help: {
-          en: 'Phones always show one slide at a time.',
-          id: 'Di ponsel selalu tampil satu slide.',
+          en: 'A half value leaves half a slide peeking at each edge.',
+          id: 'Nilai setengah menyisakan separuh slide di tiap tepi.',
         },
         options: [
           { value: '1', label: { en: '1', id: '1' } },
+          { value: '1.5', label: { en: '1.5', id: '1.5' } },
           { value: '2', label: { en: '2', id: '2' } },
+          { value: '2.5', label: { en: '2.5', id: '2.5' } },
           { value: '3', label: { en: '3', id: '3' } },
         ],
         default: '2',
@@ -785,7 +788,11 @@ export const SECTION_SCHEMAS = [
       {
         kind: 'select',
         key: 'ratio',
-        label: { en: 'Slide shape', id: 'Bentuk slide' },
+        label: { en: 'Banner shape', id: 'Bentuk banner' },
+        help: {
+          en: 'The band’s height — it stays put however many slides show.',
+          id: 'Tinggi banner — tetap sama berapa pun slide yang tampil.',
+        },
         options: [
           { value: '16/9', label: { en: 'Standard (16:9)', id: 'Standar (16:9)' } },
           { value: '2/1', label: { en: 'Wide (2:1)', id: 'Lebar (2:1)' } },
@@ -1077,6 +1084,8 @@ export const SECTION_SCHEMAS = [
         max: 24,
         fields: [
           { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+          photoFitField,
+          photoPositionField,
           {
             kind: 'text',
             key: 'caption',
@@ -1249,6 +1258,8 @@ export const SECTION_SCHEMAS = [
               id: 'Opsional. Tanpa foto, inisial nama yang ditampilkan.',
             },
           },
+          photoFitField,
+          photoPositionField,
           {
             kind: 'text',
             key: 'role',
@@ -1606,6 +1617,8 @@ export const SECTION_SCHEMAS = [
         showWhen: { key: 'content', is: ['cards'] },
         fields: [
           { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+          photoFitField,
+          photoPositionField,
           {
             kind: 'text',
             key: 'title',
@@ -1903,6 +1916,8 @@ export const SECTION_SCHEMAS = [
           heading(''),
           body(),
           { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+          photoFitField,
+          photoPositionField,
           buttonLabel,
           buttonLink,
           {
@@ -1966,6 +1981,8 @@ export const SECTION_SCHEMAS = [
         showWhen: { key: 'content', is: ['cards'] },
         fields: [
           { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+          photoFitField,
+          photoPositionField,
           {
             kind: 'text',
             key: 'title',

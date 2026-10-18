@@ -52,6 +52,22 @@ export function sectionBackground(section: SectionInstance): SectionBackground |
       // The renderer's own wash under a photo-less hero; the divider must match.
       return { bg: 'brand.subtle' }
     }
+    // The consolidated families dispatch to the renderers above; their
+    // settings say which photo they paint, so the mirror reads the same keys.
+    case 'banner': {
+      const media = readText(settings, 'media')
+      if (media === 'video' || media === 'background') {
+        const imageId = readText(settings, 'poster')
+        const video = readVideo(settings, 'video')
+        return imageId || video ? { media: { imageId, video }, ...photoCrop(settings) } : null
+      }
+      const imageId = readText(settings, 'image')
+      return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null
+    }
+    case 'statement': {
+      const imageId = readText(settings, 'image')
+      return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null
+    }
     case 'parallax-banner': {
       const imageId = readText(settings, 'image')
       return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null

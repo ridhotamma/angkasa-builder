@@ -270,7 +270,8 @@ export function MasonryGallery({ settings }: SectionProps) {
                   src={src}
                   alt={readText(item, 'alt')}
                   w="full"
-                  objectFit="cover"
+                  objectFit={readToken(item, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                  objectPosition={readToken(item, 'position', PHOTO_POSITION_VALUES, 'center')}
                   loading="lazy"
                   transition="transform 600ms ease"
                 />
@@ -393,7 +394,18 @@ export function VideoTestimonials({ settings }: SectionProps) {
                 <Box position="relative" bg="bg.subtle">
                   <AspectRatio ratio={16 / 9}>
                     {poster ? (
-                      <ImageWithFallback src={poster} alt="" objectFit="cover" loading="lazy" />
+                      <ImageWithFallback
+                        src={poster}
+                        alt=""
+                        objectFit={readToken(item, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                        objectPosition={readToken(
+                          item,
+                          'position',
+                          PHOTO_POSITION_VALUES,
+                          'center',
+                        )}
+                        loading="lazy"
+                      />
                     ) : (
                       <Box />
                     )}
@@ -507,7 +519,13 @@ export function Team({ settings }: SectionProps) {
                   overflow="hidden"
                   bg="bg.subtle"
                 >
-                  <ImageWithFallback src={src} alt="" objectFit="cover" loading="lazy" />
+                  <ImageWithFallback
+                    src={src}
+                    alt=""
+                    objectFit={readToken(item, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                    objectPosition={readToken(item, 'position', PHOTO_POSITION_VALUES, 'center')}
+                    loading="lazy"
+                  />
                 </AspectRatio>
               )}
               <Stack gap="0.5" textAlign={align} w="full">
@@ -757,7 +775,8 @@ export function SocialWall({ settings }: SectionProps) {
                 <ImageWithFallback
                   src={src}
                   alt=""
-                  objectFit="cover"
+                  objectFit={readToken(item, 'fit', PHOTO_FIT_VALUES, 'cover')}
+                  objectPosition={readToken(item, 'position', PHOTO_POSITION_VALUES, 'center')}
                   loading="lazy"
                   transition="transform 600ms ease"
                 />

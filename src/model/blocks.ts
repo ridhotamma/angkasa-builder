@@ -28,7 +28,7 @@ import {
   textSizeField,
 } from './element-style'
 import type { Localized } from './localized'
-import { PHOTO_FITS, PHOTO_POSITIONS } from './section-style'
+import { PHOTO_FITS, PHOTO_POSITIONS, photoFitField, photoPositionField } from './section-style'
 import type { SectionPreset, SectionSchema } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -692,6 +692,8 @@ const mediaCard: BlockSchema = {
   },
   fields: [
     { kind: 'image', key: 'image', label: { en: 'Background image', id: 'Gambar latar' } },
+    photoFitField,
+    photoPositionField,
     {
       kind: 'text',
       key: 'alt',
