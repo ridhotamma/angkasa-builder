@@ -55,12 +55,13 @@ function usePageHref(): (page: number) => string {
 const STICKY_UNDER_HEADER = `var(${HEADER_OFFSET_VAR}, 76px)`
 
 /** The classes a category filter row can wear. */
-const FILTER_STYLES = ['chips', 'underline', 'select'] as const
+const FILTER_STYLES = ['underline', 'select'] as const
 type FilterStyle = (typeof FILTER_STYLES)[number]
 
 function filterStyleOf(settings: SectionProps['settings']): FilterStyle {
   const value = readText(settings, 'filterStyle')
-  return (FILTER_STYLES as readonly string[]).includes(value) ? (value as FilterStyle) : 'chips'
+  // A row saved while the boxed "chips" look existed reads as underline tabs.
+  return (FILTER_STYLES as readonly string[]).includes(value) ? (value as FilterStyle) : 'underline'
 }
 
 /** The category a listing page is showing, or `null` for the whole catalogue. */
@@ -193,7 +194,6 @@ function CatalogFilter({
   const style = filterStyleOf(settings)
   const sticky = readText(settings, 'filterSticky') || 'none'
   const pinned = sticky === 'always' || sticky === 'mobile'
-  const underline = style === 'underline'
   const byCollections = mode === 'collections'
   const [query, setQuery] = useState('')
 
@@ -240,16 +240,16 @@ function CatalogFilter({
       key={label}
       asChild
       size="sm"
-      rounded={underline ? 'none' : 'full'}
+      rounded="none"
       flexShrink="0"
-      variant={underline ? 'ghost' : isActive ? 'solid' : 'outline'}
+      variant="ghost"
       colorPalette={isActive ? 'brand' : 'gray'}
       // Underline tabs sit flush: no gap between them, the padding gives each
-      // its room. Pill chips keep the gap that reads as separate controls.
-      px={underline ? '3' : undefined}
-      borderBottomWidth={underline ? '2px' : undefined}
-      borderColor={underline ? (isActive ? 'brand.solid' : 'transparent') : undefined}
-      _hover={{ textDecoration: 'none', ...(underline ? { color: 'fg' } : {}) }}
+      // its room.
+      px="3"
+      borderBottomWidth="2px"
+      borderColor={isActive ? 'brand.solid' : 'transparent'}
+      _hover={{ textDecoration: 'none', color: 'fg' }}
     >
       <chakra.a
         href={href(link) ?? undefined}
@@ -265,10 +265,10 @@ function CatalogFilter({
     <HStack
       as="nav"
       aria-label={label}
-      gap={underline ? '0' : '2'}
+      gap="0"
       overflowX="auto"
       pb="1"
-      flexWrap={{ base: 'nowrap', md: underline ? 'nowrap' : 'wrap' }}
+      flexWrap="nowrap"
       css={{ scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}
     >
       {chip(allLabel, linkFor(null), listing.current === null)}

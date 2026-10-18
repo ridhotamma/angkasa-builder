@@ -2909,11 +2909,10 @@ export const SECTION_SCHEMAS = [
         key: 'filterStyle',
         label: { en: 'Filter style', id: 'Gaya filter' },
         options: [
-          { value: 'chips', label: { en: 'Pill chips', id: 'Chip pil' } },
           { value: 'underline', label: { en: 'Underline tabs', id: 'Tab garis bawah' } },
           { value: 'select', label: { en: 'Dropdown', id: 'Menu turun' } },
         ],
-        default: 'chips',
+        default: 'underline',
         showWhen: { key: 'showFilters', is: ['true'] },
       },
       {
