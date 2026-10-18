@@ -3,14 +3,25 @@
  *
  * While something is dragged from the add palette, a transparent box covers
  * the preview. The browser's drag events land on this box, and the drop is
- * hit-tested against the **iframe's own DOM** with `elementFromPoint` — the
- * one way to drag from the editor's document into the frame. What is found
- * decides where the item lands: between sections, or inside a block list at a
- * precise index, with a line drawn where it will go.
+ * hit-tested against the **iframe's own DOM** — the one way to drag from the
+ * editor's document into the frame. What is found decides where the item
+ * lands: between sections, or inside a block list at a precise index.
+ *
+ * The indicator is the **container**, not a bare line. A section drop opens a
+ * gap the width of the section column: every section from the insertion point
+ * down slides to hold it, and the gap is drawn where they moved from — dashed
+ * band, the insertion line on its leading edge — so the drop reads as "this
+ * space is where it goes". A block drop outlines the list it lands in and
+ * keeps the line at the index.
+ *
+ * The slide is written on the iframe's own elements and taken back when the
+ * drag leaves or drops, so nothing lingers to fight the entrance animations.
+ * The gap moves those elements, so the hit test reads a geometry cached at
+ * the start of the drag: live rects would chase the very sections they moved.
  */
 
 import { Box } from '@chakra-ui/react'
-import { useMemo, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 
 import type { SectionInstance } from '../model/content'
 
@@ -24,17 +35,58 @@ export type DropTarget =
       index: number
     }
 
-interface Marker {
+/** A box in iframe coordinates, scaled into the editor's when drawn. */
+interface DropRect {
   left: number
   top: number
   width: number
   height: number
 }
 
+/** Where the frame sits on screen and how much it is scaled down. */
+export interface FrameMapping {
+  left: number
+  top: number
+  scale: number
+}
+
+/**
+ * An iframe rect as the editor sees it: scaled through the frame, then moved
+ * by the frame's own box. Skipping this is what drew the band in raw iframe
+ * pixels — a fixed offset away from the sections it was meant to sit on.
+ */
+export function scaleRect(value: DropRect, frame: FrameMapping): DropRect {
+  return {
+    left: frame.left + value.left * frame.scale,
+    top: frame.top + value.top * frame.scale,
+    width: Math.max(value.width * frame.scale, 2),
+    height: Math.max(value.height * frame.scale, 2),
+  }
+}
+
+/** How tall the gap a dropped section opens is, in the iframe's own pixels. */
+export const DROP_GAP_PX = 96
+
+const GAP_MOTION = 'transform 180ms ease'
+/** Long enough for the slide back to finish before the transition is dropped. */
+const GAP_RESTORE_MS = 220
+
+export interface SectionBounds {
+  id: string
+  left: number
+  top: number
+  bottom: number
+  width: number
+}
+
 interface Hit {
   target: DropTarget
-  /** In viewport coordinates, already scaled out of the iframe. */
-  marker: Marker
+  /** The container the item lands in: the gap band, or the block list. */
+  box: DropRect
+  /** The exact insertion line. */
+  line: DropRect
+  /** A section gap wears the band's tint; a list is only outlined. */
+  gap: boolean
 }
 
 function closestSection(doc: Document, id: string): HTMLElement | null {
@@ -42,44 +94,63 @@ function closestSection(doc: Document, id: string): HTMLElement | null {
   return doc.querySelector<HTMLElement>(`[data-section-id="${id}"]`)
 }
 
+/**
+ * The sections' geometry, read once per drag.
+ *
+ * The gap transform moves the sections themselves, and
+ * `getBoundingClientRect` includes transforms — a live read after the first
+ * push would measure the gap, not the layout, and the marker would flicker
+ * between two answers forever.
+ */
+export function sectionBounds(doc: Document, ids: readonly string[]): SectionBounds[] {
+  const out: SectionBounds[] = []
+  for (const id of ids) {
+    const element = closestSection(doc, id)
+    if (!element) continue
+    const rect = element.getBoundingClientRect()
+    out.push({ id, left: rect.left, top: rect.top, bottom: rect.bottom, width: rect.width })
+  }
+  return out
+}
+
+/**
+ * Where a point falls among the sections, in the cached layout: above a
+ * section's middle inserts before it, below inserts after — so the gap opens
+ * exactly where the pointer crossed the halfway line.
+ */
+export function insertionIndex(bounds: readonly SectionBounds[], y: number): number {
+  for (let at = 0; at < bounds.length; at++) {
+    const bound = bounds[at]!
+    if (y < bound.top + (bound.bottom - bound.top) / 2) return at
+    if (y < bound.bottom) return at + 1
+  }
+  return bounds.length
+}
+
 /** Where a point inside the frame falls among the sections it holds. */
 function sectionAt(
   doc: Document,
+  bounds: readonly SectionBounds[],
   point: { x: number; y: number },
-  sectionIds: readonly string[],
-): Hit | null {
-  const element = doc.elementFromPoint(point.x, point.y)
-  const hit = element?.closest?.('[data-section-id]') as HTMLElement | null
-
-  const first = sectionIds[0] ? closestSection(doc, sectionIds[0]) : null
-  if (!hit) {
-    // Above the first section (the header, or the page's top padding): start.
-    const top = first?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY
-    return point.y < top
-      ? {
-          target: { kind: 'sections', index: 0 },
-          marker: { left: 0, top: point.y, width: 0, height: 2 },
-        }
-      : null
+): Hit {
+  const at = insertionIndex(bounds, point.y)
+  // The band is the width of the section it opens for — the one below, or the
+  // last one when the drop is at the end — so it lines up with the column the
+  // sections actually use, never a neighbour's.
+  const column = bounds[at] ?? bounds[bounds.length - 1]
+  const boundary =
+    at === 0 ? (bounds[0]?.top ?? point.y) : bounds[Math.min(at, bounds.length) - 1]!.bottom
+  const box: DropRect = {
+    left: column?.left ?? 16,
+    top: boundary,
+    width: column?.width ?? Math.max(0, doc.documentElement.clientWidth - 32),
+    height: DROP_GAP_PX,
   }
-
-  const id = hit.dataset.sectionId ?? ''
-  const index = sectionIds.indexOf(id)
-  const rect = hit.getBoundingClientRect()
-  const after = point.y > rect.top + rect.height / 2
-  // The header and footer are not in the list: dropping on one adds at the
-  // nearest end.
-  const at =
-    index < 0
-      ? point.y < rect.top + rect.height / 2
-        ? 0
-        : sectionIds.length
-      : after
-        ? index + 1
-        : index
   return {
     target: { kind: 'sections', index: at },
-    marker: { left: rect.left, top: after ? rect.bottom : rect.top, width: rect.width, height: 2 },
+    box,
+    line: { ...box, height: 2 },
+    gap: true,
   }
 }
 
@@ -122,7 +193,7 @@ function blockAt(
 
   const box = container.getBoundingClientRect()
   const before = children[index]?.getBoundingClientRect()
-  const marker: Marker =
+  const line: DropRect =
     axis === 'x'
       ? {
           left: before ? before.left : box.right - 4,
@@ -145,7 +216,9 @@ function blockAt(
       fieldKey: container.dataset.fieldKey || 'blocks',
       index,
     },
-    marker,
+    box: { left: box.left, top: box.top, width: box.width, height: box.height },
+    line,
+    gap: false,
   }
 }
 
@@ -165,11 +238,57 @@ export function DropOverlay({
   onDrop: (target: DropTarget) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [marker, setMarker] = useState<Marker | null>(null)
+  const docRef = useRef<Document | null>(null)
+  docRef.current = doc
+  const boundsRef = useRef<SectionBounds[] | null>(null)
+  const gapAtRef = useRef<number | null>(null)
+  /** Every section this drag has styled, so the gap can be taken back exactly. */
+  const touchedRef = useRef<Set<string>>(new Set())
+  const [marker, setMarker] = useState<{ box: DropRect; line: DropRect; gap: boolean } | null>(null)
+
   const sectionIds = useMemo(() => sections.map((section) => section.id), [sections])
+
+  /** Let the sections slide back and stop transitioning. */
+  const closeGap = useCallback(() => {
+    const target = docRef.current
+    gapAtRef.current = null
+    boundsRef.current = null
+    const touched = touchedRef.current
+    touchedRef.current = new Set()
+    if (!target) return
+    for (const id of touched) {
+      const element = closestSection(target, id)
+      if (!element || !element.style.transform) continue
+      element.style.transform = ''
+      globalThis.setTimeout(() => {
+        element.style.transition = ''
+      }, GAP_RESTORE_MS)
+    }
+  }, [])
+
+  // The drag can end outside the overlay (a drop on the palette, Escape): the
+  // gap must close even then.
+  useEffect(() => {
+    if (!active) return
+    return () => closeGap()
+  }, [active, closeGap])
 
   if (!active) return null
 
+  /** Open the gap at `at`, sliding the sections below it down to hold it. */
+  const openGap = (target: Document, bounds: readonly SectionBounds[], at: number) => {
+    if (gapAtRef.current === at) return
+    gapAtRef.current = at
+    for (let index = 0; index < bounds.length; index++) {
+      const element = closestSection(target, bounds[index]!.id)
+      if (!element) continue
+      touchedRef.current.add(bounds[index]!.id)
+      element.style.transition = GAP_MOTION
+      element.style.transform = index >= at ? `translateY(${DROP_GAP_PX}px)` : ''
+    }
+  }
+
+  /** The hit, in editor coordinates: iframe rects scaled through the frame. */
   const hit = (event: DragEvent): Hit | null => {
     const frame = (doc?.defaultView?.frameElement ?? null) as HTMLIFrameElement | null
     if (!doc || !frame) return null
@@ -178,27 +297,33 @@ export function DropOverlay({
     const x = (event.clientX - rect.left) / scale
     const y = (event.clientY - rect.top) / scale
     if (x < 0 || y < 0 || x > frame.clientWidth || y > frame.clientHeight) return null
+    const mapping: FrameMapping = { left: rect.left, top: rect.top, scale }
 
-    const element = doc.elementFromPoint(x, y)
-    const container = blocks
-      ? (element?.closest?.('[data-block-list]') as HTMLElement | null)
-      : null
-    const found =
-      (container ? blockAt(container, { x, y }, sectionIds) : null) ??
-      sectionAt(doc, { x, y }, sectionIds)
-    if (!found) return null
-    return {
-      target: found.target,
-      marker: {
-        left: rect.left + found.marker.left * scale,
-        top: rect.top + found.marker.top * scale,
-        width: Math.max(found.marker.width * scale, 2),
-        height: Math.max(found.marker.height * scale, 2),
-      },
+    if (blocks) {
+      const element = doc.elementFromPoint(x, y)
+      const container = element?.closest?.('[data-block-list]') as HTMLElement | null
+      const found = container ? blockAt(container, { x, y }, sectionIds) : null
+      if (found) {
+        return {
+          ...found,
+          box: scaleRect(found.box, mapping),
+          line: scaleRect(found.line, mapping),
+        }
+      }
     }
+
+    const bounds = boundsRef.current ?? (boundsRef.current = sectionBounds(doc, sectionIds))
+    const found = sectionAt(doc, bounds, { x, y })
+    return { ...found, box: scaleRect(found.box, mapping), line: scaleRect(found.line, mapping) }
   }
 
   const offset = ref.current?.getBoundingClientRect() ?? { left: 0, top: 0 }
+  const at = (value: DropRect): DropRect => ({
+    left: value.left - offset.left,
+    top: value.top - offset.top,
+    width: Math.max(value.width, 2),
+    height: Math.max(value.height, 2),
+  })
 
   return (
     <Box
@@ -211,30 +336,55 @@ export function DropOverlay({
         event.preventDefault()
         event.dataTransfer.dropEffect = 'copy'
         const found = hit(event)
-        setMarker(found?.marker ?? null)
+        if (!found) {
+          setMarker(null)
+          closeGap()
+          return
+        }
+        if (found.target.kind === 'sections' && doc) {
+          openGap(doc, boundsRef.current!, found.target.index)
+        } else {
+          closeGap()
+        }
+        setMarker({ box: found.box, line: found.line, gap: found.gap })
       }}
-      onDragLeave={() => setMarker(null)}
+      onDragLeave={() => {
+        setMarker(null)
+        closeGap()
+      }}
       onDrop={(event) => {
         event.preventDefault()
         const found = hit(event)
         setMarker(null)
+        closeGap()
         if (found) onDrop(found.target)
       }}
     >
       {marker && (
-        <Box
-          position="absolute"
-          pointerEvents="none"
-          bg="brand.solid"
-          rounded="full"
-          shadow="sm"
-          style={{
-            left: marker.left - offset.left,
-            top: marker.top - offset.top,
-            width: marker.width,
-            height: marker.height,
-          }}
-        />
+        <>
+          {/* The container: a dashed slot for a section gap, an outline for
+              the list a block lands in. */}
+          <Box
+            position="absolute"
+            pointerEvents="none"
+            rounded="lg"
+            borderWidth="1.5px"
+            borderStyle="dashed"
+            borderColor="brand.solid"
+            bg={marker.gap ? 'brand.subtle' : undefined}
+            opacity={marker.gap ? 0.7 : 1}
+            style={at(marker.box)}
+          />
+          {/* The line: exactly where the item sits, inside that container. */}
+          <Box
+            position="absolute"
+            pointerEvents="none"
+            bg="brand.solid"
+            rounded="full"
+            shadow="sm"
+            style={at(marker.line)}
+          />
+        </>
       )}
     </Box>
   )
