@@ -38,6 +38,8 @@ import {
   type FieldValues,
   type VideoRef,
 } from '../model/fields'
+import { readToken } from '../model/element-style'
+import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import type { SectionType } from '../model/sections'
 import { resolveScheme, schemeCssVars, themeCssVarGroups } from '../model/settings'
 import { textElementKey } from '../model/element-style'
@@ -182,7 +184,12 @@ export function BackgroundVideoSection({ settings }: SectionProps) {
       minH={height}
       bg="gray.900"
     >
-      <BackgroundVideo video={video} poster={poster} />
+      <BackgroundVideo
+        video={video}
+        poster={poster}
+        objectFit={readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')}
+        objectPosition={readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center')}
+      />
       <Flex
         position="relative"
         minH={height}
@@ -584,7 +591,15 @@ export function EditorialStatement({ settings }: SectionProps) {
     <Box position="relative" overflow="hidden" rounded={edge ? 'none' : 'l3'}>
       {src && (
         <Box position="absolute" inset={0}>
-          <ImageWithFallback src={src} alt="" w="full" h="full" objectFit="cover" loading="lazy" />
+          <ImageWithFallback
+            src={src}
+            alt=""
+            w="full"
+            h="full"
+            objectFit={readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')}
+            objectPosition={readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center')}
+            loading="lazy"
+          />
         </Box>
       )}
       <Flex
@@ -656,7 +671,15 @@ export function SplitScreen({ settings }: SectionProps) {
         overflow="hidden"
       >
         {src && (
-          <ImageWithFallback src={src} alt="" w="full" h="full" objectFit="cover" loading="lazy" />
+          <ImageWithFallback
+            src={src}
+            alt=""
+            w="full"
+            h="full"
+            objectFit={readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')}
+            objectPosition={readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center')}
+            loading="lazy"
+          />
         )}
       </Box>
 

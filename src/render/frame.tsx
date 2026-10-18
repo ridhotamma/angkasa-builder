@@ -137,6 +137,8 @@ export function SectionFrame({
           ...paint,
           bg: background.bg ?? paint.bg,
           media: background.media ?? paint.media,
+          mediaFit: background.fit ?? paint.mediaFit,
+          mediaPosition: background.position ?? paint.mediaPosition,
         }
       : paint
 

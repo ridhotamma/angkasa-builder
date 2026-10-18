@@ -6,6 +6,8 @@ import { useRef } from 'react'
 import { Image } from '@repo/theme'
 
 import { readText, readVideo } from '../model/fields'
+import { readToken } from '../model/element-style'
+import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { useSectionLayout } from './frame'
@@ -21,6 +23,8 @@ export function VideoHero({ settings }: SectionProps) {
   const video = readVideo(settings, 'video')
   const posterId = readText(settings, 'poster')
   const poster = posterId ? imageUrl(posterId, { width: 1920, height: 1080 }) : null
+  const fit = readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')
+  const position = readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center')
 
   if (!video && !poster) return <EmptyNotice>{text('pickVideo')}</EmptyNotice>
 
@@ -32,7 +36,7 @@ export function VideoHero({ settings }: SectionProps) {
       minH={heroHeight(settings)}
       bg="gray.900"
     >
-      <BackgroundVideo video={video} poster={poster} />
+      <BackgroundVideo video={video} poster={poster} objectFit={fit} objectPosition={position} />
       <BannerCopy settings={settings} onImage />
     </Box>
   )
@@ -95,7 +99,15 @@ export function ParallaxBanner({ settings }: SectionProps) {
     >
       {src && (
         <Box ref={layer} data-parallax="layer" position="absolute" inset="0" willChange="transform">
-          <Image src={src} alt="" w="full" h="full" objectFit="cover" loading="lazy" />
+          <Image
+            src={src}
+            alt=""
+            w="full"
+            h="full"
+            objectFit={readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')}
+            objectPosition={readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center')}
+            loading="lazy"
+          />
         </Box>
       )}
       <BannerCopy settings={settings} onImage={Boolean(src)} />

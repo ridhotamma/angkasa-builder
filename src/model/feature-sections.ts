@@ -27,6 +27,7 @@ import type {
   VideoField,
 } from './fields'
 import type { Localized } from './localized'
+import { photoFitField, photoPositionField } from './section-style'
 import type { SectionSchema } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -201,6 +202,8 @@ export const FEATURE_SECTION_SCHEMAS = [
     fields: [
       video('video', { en: 'Video', id: 'Video' }, true),
       image('poster', { en: 'Poster', id: 'Poster' }),
+      photoFitField,
+      photoPositionField,
       overlayField,
       choice(
         'height',
@@ -311,6 +314,8 @@ export const FEATURE_SECTION_SCHEMAS = [
     },
     fields: [
       image('image', { en: 'Background', id: 'Latar' }),
+      photoFitField,
+      photoPositionField,
       overlayField,
       text('eyebrow', { en: 'Eyebrow', id: 'Label kecil' }, 60, 'Our promise'),
       heading('Made slowly, on purpose'),
@@ -332,6 +337,8 @@ export const FEATURE_SECTION_SCHEMAS = [
     },
     fields: [
       image('image', { en: 'Photo', id: 'Foto' }),
+      photoFitField,
+      photoPositionField,
       choice(
         'imagePosition',
         { en: 'Photo side', id: 'Sisi foto' },

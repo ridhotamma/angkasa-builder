@@ -14,12 +14,31 @@
  */
 
 import type { SectionInstance } from '../model/content'
-import { readText, readVideo, type VideoRef } from '../model/fields'
+import { readToken } from '../model/element-style'
+import { readText, readVideo, type FieldValues, type VideoRef } from '../model/fields'
+import {
+  PHOTO_FIT_VALUES,
+  PHOTO_POSITION_VALUES,
+  type PhotoFit,
+  type PhotoPosition,
+} from '../model/section-style'
 
 export interface SectionBackground {
   /** A token background the renderer paints itself (the hero's subtle wash). */
   bg?: string
   media?: { imageId: string; video: VideoRef | null }
+  /** How the photo fills the frame, from the section's own `fit` field. */
+  fit?: PhotoFit
+  /** Which part of it stays in view, from the section's own `position` field. */
+  position?: PhotoPosition
+}
+
+/** The photo crop a banner's own settings ask for, validated like any token. */
+function photoCrop(settings: FieldValues): { fit: PhotoFit; position: PhotoPosition } {
+  return {
+    fit: readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover'),
+    position: readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center'),
+  }
 }
 
 /** The media/background a banner renderer paints, or `null` when it paints none. */
@@ -29,23 +48,23 @@ export function sectionBackground(section: SectionInstance): SectionBackground |
   switch (section.type) {
     case 'hero': {
       const imageId = readText(settings, 'image')
-      if (imageId) return { media: { imageId, video: null } }
+      if (imageId) return { media: { imageId, video: null }, ...photoCrop(settings) }
       // The renderer's own wash under a photo-less hero; the divider must match.
       return { bg: 'brand.subtle' }
     }
     case 'parallax-banner': {
       const imageId = readText(settings, 'image')
-      return imageId ? { media: { imageId, video: null } } : null
+      return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null
     }
     case 'video-hero':
     case 'background-video': {
       const imageId = readText(settings, 'poster')
       const video = readVideo(settings, 'video')
-      return imageId || video ? { media: { imageId, video } } : null
+      return imageId || video ? { media: { imageId, video }, ...photoCrop(settings) } : null
     }
     case 'editorial-statement': {
       const imageId = readText(settings, 'image')
-      return imageId ? { media: { imageId, video: null } } : null
+      return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null
     }
     default:
       return null

@@ -46,6 +46,7 @@ import {
 } from '../model/fields'
 import { CATEGORY_PREVIEW_PRODUCTS } from '../model/content'
 import { readToken, textElementKey } from '../model/element-style'
+import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import type { Link } from '../model/links'
 import { isRichDocEmpty } from '../model/rich-text'
 import type { SectionType } from '../model/sections'
@@ -264,6 +265,7 @@ function Hero({ settings }: SectionProps) {
     readText(settings, 'secondaryButtonLabel'),
   )
   const height = heroHeight(settings)
+  const fit = readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')
 
   if (!src && !hasCopy) {
     return <EmptyNotice>{empty('image')}</EmptyNotice>
@@ -285,7 +287,8 @@ function Hero({ settings }: SectionProps) {
           inset="0"
           w="full"
           h="full"
-          objectFit="cover"
+          objectFit={fit}
+          objectPosition={readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center')}
           fetchPriority="high"
         />
       )}
@@ -411,7 +414,8 @@ function BannerSlide({
         <ImageWithFallback
           src={bannerImageUrl(imageUrl, slide) ?? undefined}
           alt={readText(slide, 'alt')}
-          objectFit="cover"
+          objectFit={readToken(slide, 'fit', PHOTO_FIT_VALUES, 'cover')}
+          objectPosition={readToken(slide, 'position', PHOTO_POSITION_VALUES, 'center')}
           loading={eager ? 'eager' : 'lazy'}
           // A native image drag would steal the gesture from the slider.
           draggable={false}

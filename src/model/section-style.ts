@@ -27,6 +27,7 @@ import {
   readVideo,
   type Field,
   type FieldValues,
+  type SelectField,
   type VideoRef,
 } from './fields'
 import type { Localized } from './localized'
@@ -211,6 +212,32 @@ export const PHOTO_POSITIONS = [
 ] as const
 export type PhotoPosition = (typeof PHOTO_POSITIONS)[number]['value']
 export const PHOTO_POSITION_VALUES = PHOTO_POSITIONS.map((option) => option.value)
+
+/**
+ * The two fields every photo frame offers — how the picture fills it, and
+ * which part stays in view. Defined once so a banner, a section background
+ * and the Image block all say "Image size" and "Image position", read the
+ * same keys, and resolve through the same tokens.
+ */
+export const photoFitField: SelectField = {
+  kind: 'select',
+  key: 'fit',
+  label: { en: 'Image size', id: 'Ukuran gambar' },
+  help: {
+    en: 'How the photo fills the frame.',
+    id: 'Cara foto memenuhi bingkai.',
+  },
+  options: PHOTO_FITS,
+  default: 'cover',
+}
+
+export const photoPositionField: SelectField = {
+  kind: 'select',
+  key: 'position',
+  label: { en: 'Image position', id: 'Posisi gambar' },
+  options: PHOTO_POSITIONS,
+  default: 'center',
+}
 
 export const SECTION_STYLE_FIELDS: readonly Field[] = [
   {

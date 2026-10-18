@@ -18,6 +18,7 @@ import type { IconName } from './icons'
 import type { Localized } from './localized'
 import { CONSOLIDATED_SECTION_SCHEMAS, consolidatedAlias } from './consolidated-sections'
 import { FEATURE_SECTION_SCHEMAS } from './feature-sections'
+import { photoFitField, photoPositionField } from './section-style'
 
 // The icon catalogue lives in `./icons` so the primitive blocks can use it
 // without importing this module (which imports them). Re-exported here for
@@ -604,6 +605,8 @@ export const SECTION_SCHEMAS = [
         },
         default: true,
       },
+      photoFitField,
+      photoPositionField,
       heading(),
       subheading(),
       buttonLabel,
@@ -682,6 +685,8 @@ export const SECTION_SCHEMAS = [
           id: 'Tampil saat video dimuat, dan menggantikannya jika pembeli memilih mengurangi gerakan.',
         },
       },
+      photoFitField,
+      photoPositionField,
       heading('Feel the difference'),
       subheading(),
       buttonLabel,
@@ -706,6 +711,8 @@ export const SECTION_SCHEMAS = [
     defaultStyle: { width: 'edge' },
     fields: [
       { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+      photoFitField,
+      photoPositionField,
       heading('Crafted in small batches'),
       subheading(),
       buttonLabel,
@@ -756,6 +763,8 @@ export const SECTION_SCHEMAS = [
             default: '',
           },
           { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
+          photoFitField,
+          photoPositionField,
         ],
       },
       {

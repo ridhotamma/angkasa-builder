@@ -330,6 +330,42 @@ describe('section chrome', () => {
     expect(/background(-color)?:var\(--chakra-colors-brand-subtle\)/.test(html)).toBe(true)
   })
 
+  test('a hero photo takes its size and position, and its dividers follow', () => {
+    const section = createSection(
+      'hero',
+      { heading: 'Photo', image: 'hero-photo', fit: 'contain', position: 'top' },
+      { dividerTop: 'wave' },
+    )
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    // Identical styles collapse into one emotion rule, which the hero's photo
+    // and the divider's slice both wear — so the rule is asserted once, and
+    // the elements that must share it are counted.
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('object-position:top')
+    expect(html).not.toContain('object-fit:cover')
+    expect((html.match(/<img/g) ?? []).length).toBe(2)
+  })
+
+  test('a video banner poster crops by its own size and position', () => {
+    const section = createSection('video-hero', {
+      poster: 'poster',
+      fit: 'contain',
+      position: 'left',
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('object-position:left')
+  })
+
+  test('a banner slide crops its own photo', () => {
+    const section = createSection('banner-slider', {
+      slides: [{ image: 's1', fit: 'contain', position: 'bottom' }],
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('object-position:bottom')
+  })
+
   test('a testimonial photo is a plain visible image, never a hidden avatar', () => {
     const section = createSection('testimonials', {
       heading: 'Quotes',
