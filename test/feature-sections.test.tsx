@@ -33,7 +33,6 @@ const TYPES = [
   'masonry-gallery',
   'video-testimonials',
   'team',
-  'press',
   'editorial-statement',
   'split-screen',
   'social-wall',
@@ -86,12 +85,6 @@ const SECTIONS: SectionInstance[] = [
     heading: 'Our team',
     items: [{ name: 'Ayu', role: 'Founder', photo: 'p', link: { kind: 'none' } }],
   }),
-  createSection('press', {
-    heading: 'Press',
-    items: [
-      { source: 'The Journal', quote: 'A quiet phenomenon.', logo: '', link: { kind: 'none' } },
-    ],
-  }),
   createSection('editorial-statement', { heading: 'Made slowly', image: 'big' }),
   createSection('split-screen', { heading: 'Half and half', image: 'half' }),
   createSection('social-wall', {
@@ -137,8 +130,6 @@ describe('feature section library', () => {
       'It changed our mornings.',
       'Our team',
       'Ayu',
-      'Press',
-      'A quiet phenomenon.',
       'Made slowly',
       'Half and half',
       'Community',

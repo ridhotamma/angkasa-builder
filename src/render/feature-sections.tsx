@@ -525,73 +525,6 @@ export function Team({ settings }: SectionProps) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Press & awards                                                             */
-/* -------------------------------------------------------------------------- */
-
-export function Press({ settings }: SectionProps) {
-  const { imageUrl } = useRenderEnvironment()
-  const empty = useEmptyText()
-  const { frame, hover, tiltRef } = useCard()
-  const items = readList(settings, 'items').filter(
-    (item) => readText(item, 'source') || readText(item, 'quote') || readText(item, 'logo'),
-  )
-  if (items.length === 0) return <EmptyNotice>{empty('items')}</EmptyNotice>
-  const list = readText(settings, 'layout') === 'list'
-
-  const card = (item: FieldValues & { id: string }) => {
-    const logoId = readText(item, 'logo')
-    const logo = logoId ? imageUrl(logoId, { width: 360, height: 180 }) : null
-    const link = readLink(item, 'link')
-    const inner = (
-      <Stack gap="3" h="full" justify="space-between">
-        {readText(item, 'quote') && (
-          <Text fontSize="lg" lineHeight="tall" color="fg.muted">
-            “{readText(item, 'quote')}”
-          </Text>
-        )}
-        <Stack gap="2">
-          {logo && (
-            <ImageWithFallback
-              src={logo}
-              alt={readText(item, 'source')}
-              maxH="8"
-              maxW="32"
-              objectFit="contain"
-              loading="lazy"
-            />
-          )}
-          {readText(item, 'source') && (
-            <Text fontSize="sm" fontWeight="semibold">
-              {readText(item, 'source')}
-            </Text>
-          )}
-        </Stack>
-      </Stack>
-    )
-    return (
-      <Box key={item.id} ref={tiltRef} bg="bg.panel" rounded="l3" p="5" {...frame} {...hover}>
-        {link.kind === 'none' ? inner : <SmartLink link={link}>{inner}</SmartLink>}
-      </Box>
-    )
-  }
-
-  return (
-    <Stack gap="6">
-      <SectionColumn>
-        <SectionHeading field="heading">{readText(settings, 'heading')}</SectionHeading>
-      </SectionColumn>
-      {list ? (
-        <Stack gap="3">{items.map(card)}</Stack>
-      ) : (
-        <SimpleGrid columns={{ base: 1, sm: 2, md: Math.min(3, items.length) }} gap="5">
-          {items.map(card)}
-        </SimpleGrid>
-      )}
-    </Stack>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
 /* Editorial statement                                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -1106,7 +1039,6 @@ export const FEATURE_SECTION_RENDERERS = {
   'masonry-gallery': MasonryGallery,
   'video-testimonials': VideoTestimonials,
   team: Team,
-  press: Press,
   'editorial-statement': EditorialStatement,
   'split-screen': SplitScreen,
   'social-wall': SocialWall,

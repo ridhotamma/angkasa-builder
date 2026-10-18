@@ -501,13 +501,6 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
       { photo: P.avatarE, name: 'Sari Wijaya', role: 'Customer care' },
     ],
   }),
-  press: () => ({
-    items: [
-      { quote: 'A quiet favourite among people who notice the details.', source: 'The Journal' },
-      { quote: 'Small-batch done right — the quality speaks for itself.', source: 'Daily Post' },
-      { quote: 'One of the most thoughtful local labels right now.', source: 'Business Weekly' },
-    ],
-  }),
   'logo-list': () => ({
     items: [
       { image: P.camera, alt: 'The Journal' },

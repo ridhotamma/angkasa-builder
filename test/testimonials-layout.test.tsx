@@ -1,8 +1,9 @@
 /**
- * The testimonials list arrangement: one quote per row, full width, distinct
- * from the grid of cards. The `quotes` section ("Kutipan dan ulasan") offers
- * the four arrangements; the plain `testimonials` section offers three but
- * draws through the same renderer, so it honours a list too.
+ * The testimonials list arrangement: one quote per row, full width, the
+ * customer stacked beneath the quote — distinct from the grid of cards. The
+ * `quotes` section ("Kutipan dan ulasan") offers the four arrangements; the
+ * plain `testimonials` section offers three but draws through the same
+ * renderer, so it honours a list too.
  */
 
 import { describe, expect, test } from 'bun:test'
@@ -72,6 +73,23 @@ describe('the testimonials list layout', () => {
     expect(html).toContain('Fast delivery and the packaging was neat.')
     expect(html).toContain('Sari')
     expect(html).toContain('Jakarta')
+  })
+
+  test('stacks the customer beneath the quote, not beside it', () => {
+    const html = page([quotes({ layout: 'list' })])
+    const row = /<li[^>]*data-testimonial-row[^>]*>/.exec(html)?.[0] ?? ''
+    const cls = /class="([^"]+)"/.exec(row)?.[1]?.split(' ')[0]
+    const rule = cls
+      ? new RegExp(`\\.${cls.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\{[^}]*\\}`).exec(html)?.[0]
+      : ''
+    // The row is a column, left-aligned: quote first, byline under it.
+    expect(rule).toContain('flex-direction:column')
+    expect(rule).toContain('align-items:flex-start')
+    expect(rule).not.toContain('justify-content:space-between')
+    const quoteAt = html.indexOf('Fast delivery and the packaging was neat.')
+    const authorAt = html.indexOf('Sari')
+    expect(quoteAt).toBeGreaterThan(-1)
+    expect(authorAt).toBeGreaterThan(quoteAt)
   })
 
   test('the grid keeps its cards, not the list rows', () => {

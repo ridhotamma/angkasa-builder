@@ -31,7 +31,6 @@ const ALIASES = [
   'social-wall',
   'testimonials',
   'video-testimonials',
-  'press',
   'multicolumn',
   'team',
   'icon-features',

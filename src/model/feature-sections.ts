@@ -301,41 +301,6 @@ export const FEATURE_SECTION_SCHEMAS = [
     ],
   },
   {
-    type: 'press',
-    category: 'trust',
-    icon: 'logos',
-    name: { en: 'Press & awards', id: 'Pers & penghargaan' },
-    description: {
-      en: 'What the press said, with logos and links to the pieces.',
-      id: 'Apa kata pers, dengan logo dan tautan ke tulisannya.',
-    },
-    fields: [
-      heading('As seen in'),
-      list(
-        'items',
-        { en: 'Features', id: 'Liputan' },
-        { en: 'Feature', id: 'Liputan' },
-        'source',
-        12,
-        [
-          area('quote', { en: 'Quote', id: 'Kutipan' }, 300, 3),
-          text('source', { en: 'Source', id: 'Sumber' }, 100),
-          image('logo', { en: 'Logo', id: 'Logo' }),
-          link('link', { en: 'Link', id: 'Tautan' }),
-        ],
-      ),
-      choice(
-        'layout',
-        { en: 'Layout', id: 'Tata letak' },
-        [
-          { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
-          { value: 'list', label: { en: 'List', id: 'Daftar' } },
-        ],
-        'grid',
-      ),
-    ],
-  },
-  {
     type: 'editorial-statement',
     category: 'text',
     icon: 'statement',

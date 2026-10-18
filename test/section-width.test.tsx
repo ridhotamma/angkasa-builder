@@ -119,12 +119,12 @@ describe('full-bleed sections keep their words in the page column', () => {
   })
 
   test('an edge gallery keeps its heading in the column', () => {
-    const press = createSection(
-      'press',
-      { heading: 'Diliput', items: [{ source: 'Kompas' }] },
+    const wall = createSection(
+      'social-wall',
+      { heading: 'Komunitas', items: [{ image: 'x' }] },
       { width: 'edge' },
     )
-    expect(htmlOf(press)).toContain(PAGE_COLUMN)
+    expect(htmlOf(wall)).toContain(PAGE_COLUMN)
   })
 
   test('a contained section adds no second column', () => {

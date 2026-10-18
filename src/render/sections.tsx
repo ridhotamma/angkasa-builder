@@ -1331,8 +1331,8 @@ function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; au
 
 /**
  * The list arrangement: one testimonial per row, full width, separated by
- * hairlines — the quote on the left, the author on the right. Distinct from the
- * grid, which packs up to three cards across; the list reads top to bottom, one
+ * hairlines — the quote, and the customer beneath it. Distinct from the grid,
+ * which packs up to three cards across; the list reads top to bottom, one
  * voice at a time, and stays one per row at every width.
  */
 function TestimonialList({ items }: { items: TestimonialItem[] }) {
@@ -1350,16 +1350,15 @@ function TestimonialList({ items }: { items: TestimonialItem[] }) {
         <Flex
           as="li"
           key={item.id}
-          direction={{ base: 'column', md: 'row' }}
-          align={{ base: 'flex-start', md: 'center' }}
-          justify="space-between"
-          gap={{ base: '3', md: '8' }}
+          direction="column"
+          align="flex-start"
+          gap={{ base: '3', md: '4' }}
           py="6"
           borderBottomWidth="1px"
           borderColor="border.subtle"
           data-testimonial-row=""
         >
-          <Text fontSize={{ base: 'lg', md: 'xl' }} lineHeight="tall" flex="1" minW="0">
+          <Text fontSize={{ base: 'lg', md: 'xl' }} lineHeight="tall" minW="0">
             “{readText(item, 'quote')}”
           </Text>
           <TestimonialByline item={item} />

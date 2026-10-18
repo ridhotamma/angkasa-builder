@@ -98,8 +98,8 @@ export const ANIMATION_STYLES = ['none', 'subtle', 'expressive'] as const
 
 /**
  * What every card does when the shopper points at it — the same set for a
- * product, a category, a testimonial, a person, a press quote, an article, a
- * photo card: one setting, no card gets its own effects. A set, not one
+ * product, a category, a testimonial, a person, an article, a photo card: one
+ * setting, no card gets its own effects. A set, not one
  * choice: the effects combine, and the default — a brand outline and a slow
  * image zoom — is what every card did before the setting existed. `tilt` leans
  * the card toward the pointer (a ref, `useCard().tiltRef`); the rest are CSS.

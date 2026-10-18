@@ -89,8 +89,8 @@ describe('card hover', () => {
   })
 
   test('every card wears the same chosen effects', () => {
-    // Product, category, bento, columns, people, quotes, press, video quotes
-    // and stores: one setting, one result — no card opts out.
+    // Product, category, bento, columns, people, quotes and video quotes:
+    // one setting, one result — no card opts out.
     const cases: ReadonlyArray<[SectionType, Record<string, unknown>]> = [
       ['latest-products', {}],
       ['latest-products', { layout: 'bento' }],
@@ -99,7 +99,6 @@ describe('card hover', () => {
       ['cards', { card: 'text', items: [{ title: 'A', text: 'B' }] }],
       ['cards', { card: 'person', items: [{ name: 'A', role: 'B' }] }],
       ['quotes', { variant: 'quotes', items: [{ quote: 'Q', author: 'A' }] }],
-      ['quotes', { variant: 'press', items: [{ source: 'S', quote: 'Q' }] }],
       ['quotes', { variant: 'video', items: [{ name: 'A', quote: 'Q' }] }],
       ['store-locations', { items: [{ name: 'Store', address: 'Jl. Contoh 1' }] }],
       ['scroll-rail', { items: [{ title: 'A', text: 'B' }] }],

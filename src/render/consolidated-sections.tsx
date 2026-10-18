@@ -79,7 +79,6 @@ export function Gallery(props: SectionProps) {
 const QUOTES_VARIANT: Record<string, string> = {
   quotes: 'testimonials',
   video: 'video-testimonials',
-  press: 'press',
 }
 export function Quotes(props: SectionProps) {
   return draw(QUOTES_VARIANT[readText(props.settings, 'variant')] ?? 'testimonials', props)

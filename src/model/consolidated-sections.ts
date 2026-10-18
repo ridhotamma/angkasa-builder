@@ -236,7 +236,6 @@ export const SECTION_ALIASES: Readonly<Record<string, ConsolidatedVariant>> = {
 
   testimonials: { type: 'quotes', field: 'variant', value: 'quotes' },
   'video-testimonials': { type: 'quotes', field: 'variant', value: 'video' },
-  press: { type: 'quotes', field: 'variant', value: 'press' },
 
   multicolumn: { type: 'cards', field: 'card', value: 'text' },
   team: { type: 'cards', field: 'card', value: 'person' },
@@ -479,8 +478,8 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
     icon: 'quote',
     name: { en: 'Quotes and reviews', id: 'Kutipan dan ulasan' },
     description: {
-      en: 'What customers and the press say — quote cards, each with an optional video, or press logos.',
-      id: 'Kata pelanggan dan pers — kartu kutipan, masing-masing bisa dengan video, atau logo pers.',
+      en: 'What customers say — quote cards, each with an optional video.',
+      id: 'Kata para pelanggan — kartu kutipan, masing-masing bisa dengan video.',
     },
     fields: [
       choice(
@@ -489,7 +488,6 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         [
           { value: 'quotes', label: { en: 'Quotes', id: 'Kutipan' } },
           { value: 'video', label: { en: 'Quotes with video', id: 'Kutipan dengan video' } },
-          { value: 'press', label: { en: 'Press and awards', id: 'Pers dan penghargaan' } },
         ],
         'quotes',
       ),
@@ -536,10 +534,9 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
       },
       list('items', { en: 'Quotes', id: 'Kutipan' }, { en: 'Quote', id: 'Kutipan' }, 'author', 12, [
         // Each look reads its own fields off an item, so an item declares only
-        // those — a press logo has no place under a plain customer quote. What
-        // the storefront actually reads is the map: `Testimonials` takes
-        // quote/author/avatar/role, `VideoTestimonials` quote/name/role/video/
-        // poster, and `Press` quote/source/logo/link. All three read `quote`.
+        // those. What the storefront actually reads is the map: `Testimonials`
+        // takes quote/author/avatar/role and `VideoTestimonials` takes
+        // quote/name/role/video/poster. Both read `quote`.
         area('quote', { en: 'Quote', id: 'Kutipan' }, 600, 3),
         {
           ...text('author', { en: 'Name', id: 'Nama' }, 80),
@@ -565,21 +562,9 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
           ...image('poster', { en: 'Poster', id: 'Poster' }),
           showWhen: { key: 'variant', is: ['video'] },
         },
-        {
-          ...text('source', { en: 'Source', id: 'Sumber' }, 100),
-          showWhen: { key: 'variant', is: ['press'] },
-        },
-        {
-          ...image('logo', { en: 'Logo', id: 'Logo' }),
-          showWhen: { key: 'variant', is: ['press'] },
-        },
-        {
-          ...link('link', { en: 'Link', id: 'Tautan' }),
-          showWhen: { key: 'variant', is: ['press'] },
-        },
       ]),
       // Only the video look lays its cards out in a grid the seller chooses;
-      // the other two fix their own (quotes run to three, press by item count).
+      // the quotes look fixes its own (three across).
       ...columnsField(['2', '3', '4'], '3').map((field) => ({
         ...field,
         showWhen: { key: 'variant', is: ['video'] },

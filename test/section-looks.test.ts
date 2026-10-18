@@ -1,12 +1,12 @@
 /**
  * A section's fields must follow the look the seller picked.
  *
- * The quotes section is three sections wearing one name — `Testimonials`,
- * `VideoTestimonials` and `Press` — and each reads a different set of keys off
- * an item. Every field is stored whatever the look, so without `showWhen` the
- * editor drew all of them at once: press logos, video posters and customer
- * photos stacked under a plain quote. These tests pin what each look offers, by
- * interrogating the schema the way the editor does.
+ * The quotes section is two sections wearing one name — `Testimonials` and
+ * `VideoTestimonials` — and each reads a different set of keys off an item.
+ * Every field is stored whatever the look, so without `showWhen` the editor
+ * drew all of them at once: video posters and customer photos stacked under a
+ * plain quote. These tests pin what each look offers, by interrogating the
+ * schema the way the editor does.
  *
  * `isFieldShown` is given empty item values on purpose: an item is edited with
  * nothing in it, so the section's own choice is what has to decide.
@@ -46,21 +46,15 @@ describe('the quotes section follows its look', () => {
     expect(itemFields('quotes')).toEqual(['quote', 'author', 'avatar', 'role'])
   })
 
-  test('a video quote asks for the video, not the press logo', () => {
+  test('a video quote asks for the video, not the customer photo', () => {
     expect(itemFields('video')).toEqual(['quote', 'name', 'role', 'video', 'poster'])
-  })
-
-  test('press and awards asks for the source, logo and link', () => {
-    expect(itemFields('press')).toEqual(['quote', 'source', 'logo', 'link'])
   })
 
   test('no look is offered a field it does not read', () => {
     // The bug as reported: every look showed every field.
-    const offered = ['quotes', 'video', 'press'].flatMap(itemFields)
-    for (const key of ['author', 'avatar', 'name', 'role', 'source', 'logo', 'video', 'poster']) {
-      const looks = (['quotes', 'video', 'press'] as const).filter((look) =>
-        itemFields(look).includes(key),
-      )
+    const offered = ['quotes', 'video'].flatMap(itemFields)
+    for (const key of ['author', 'avatar', 'name', 'role', 'video', 'poster']) {
+      const looks = (['quotes', 'video'] as const).filter((look) => itemFields(look).includes(key))
       expect(offered).toContain(key)
       expect(looks.length).toBeGreaterThan(0)
       expect(looks.length).toBeLessThan(3)
@@ -68,10 +62,9 @@ describe('the quotes section follows its look', () => {
   })
 
   test('desktop columns belong to the video look alone', () => {
-    // The other two fix their own grid, so the control would be a lie.
+    // The quotes look fixes its own grid, so the control would be a lie.
     expect(fieldsUnder('quotes', 'columns', 'variant', 'video', true)).toContain('columns')
     expect(fieldsUnder('quotes', 'columns', 'variant', 'quotes', true)).not.toContain('columns')
-    expect(fieldsUnder('quotes', 'columns', 'variant', 'press', true)).not.toContain('columns')
   })
 })
 
