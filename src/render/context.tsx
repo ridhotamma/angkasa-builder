@@ -9,13 +9,14 @@
  * knowing which app they are in.
  */
 
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, type ComponentType, type ReactNode } from 'react'
 
 import { CATEGORY_PREVIEW_PRODUCTS } from '../model/content'
 import type { ElementKind } from '../model/element-style'
 import type { FieldValues, TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
+import type { SectionProps } from './sections'
 
 export interface StorefrontProductCard {
   id: string
@@ -286,6 +287,16 @@ export interface RenderEnvironment {
    * editor's own window would lay the phone preview out as a desktop.
    */
   getWindow?: () => Window
+  /**
+   * Compiled template sections, by type — Tier 1 of
+   * `docs/TEMPLATE_ENGINE.md`. The host builds this from an activated theme
+   * (`themeSectionResolver`), so a section the shipped registry does not know
+   * still renders inside the normal frame.
+   *
+   * Per environment, deliberately: a module-level registry would let one
+   * shop's compiled theme leak into another's render in the same process.
+   */
+  sections?: (type: string) => ComponentType<SectionProps> | null
   /** Editor only: text typed and elements clicked straight in the preview. */
   editing?: {
     onEditText: (sectionId: string, key: string, value: string) => void

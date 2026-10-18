@@ -86,4 +86,9 @@ export { SplitText, useTilt, VelocityMarquee } from './motion'
 export { SitePopup } from './popup'
 export { SplashScreen, splashSkipScript, type SplashShop } from './splash'
 export type { SectionProps } from './sections'
+export {
+  compiledSectionComponent,
+  themeSectionResolver,
+  type TemplateSectionOptions,
+} from './template'
 export { SNAPSHOT_WIDTH, TemplateSnapshotPage, type SnapshotPageProps } from './theme-preview'
