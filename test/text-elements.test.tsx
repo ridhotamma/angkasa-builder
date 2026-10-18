@@ -126,6 +126,10 @@ describe('text element overrides, as stored', () => {
       textDecoration: 'underline',
       textAlign: 'center',
     })
+    // 6XL is the top of the scale.
+    expect(textElementStyle(readTextElement({ size: '6xl' }))).toEqual({
+      fontSize: 'var(--chakra-font-sizes-6xl)',
+    })
   })
 
   test('text and button overrides coexist on one section', () => {

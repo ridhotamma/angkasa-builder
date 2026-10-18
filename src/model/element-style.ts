@@ -724,6 +724,7 @@ export const TEXT_ELEMENT_SIZES = [
   '3xl',
   '4xl',
   '5xl',
+  '6xl',
 ] as const
 export type TextElementSize = (typeof TEXT_ELEMENT_SIZES)[number]
 
@@ -836,6 +837,7 @@ const TEXT_ELEMENT_SIZE_OPTIONS = [
   option('3xl', { en: '3XL', id: '3XL' }),
   option('4xl', { en: '4XL', id: '4XL' }),
   option('5xl', { en: '5XL', id: '5XL' }),
+  option('6xl', { en: '6XL', id: '6XL' }),
 ]
 
 const TEXT_COLOR_OPTIONS = [
@@ -988,6 +990,7 @@ const TEXT_SIZE_CSS: Record<string, string> = {
   '3xl': 'var(--chakra-font-sizes-3xl)',
   '4xl': 'var(--chakra-font-sizes-4xl)',
   '5xl': 'var(--chakra-font-sizes-5xl)',
+  '6xl': 'var(--chakra-font-sizes-6xl)',
 }
 
 const TEXT_COLOR_CSS: Record<string, string> = {

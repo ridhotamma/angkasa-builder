@@ -12,7 +12,7 @@ import { renderToString } from 'react-dom/server'
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
-import { createSection, DEFAULT_THEME_SETTINGS } from '../src/index'
+import { createSection, DEFAULT_THEME_SETTINGS, sectionSchema } from '../src/index'
 import {
   RenderProvider,
   sampleStorefrontData,
@@ -97,14 +97,54 @@ describe('the editor preview', () => {
 })
 
 describe('the catalogue header', () => {
-  test('draws the title, the description, the count and the category chips', () => {
-    const html = catalog()
+  test('draws the title, the description, the count and the category filter', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('catalog-header', { showCount: true }),
+          createSection('catalog-products'),
+        ]}
+        env={env()}
+      />,
+    )
     expect(html).toContain('Kaos')
     expect(html).toContain('Semua kaos di toko ini.')
     expect(html).toContain('30 products')
     expect(html).toContain('All')
     expect(html).toContain('Jaket')
     expect(html).toContain('href="/products?category=jaket"')
+  })
+
+  test('the result count starts hidden', () => {
+    expect(catalog()).not.toContain('30 products')
+  })
+
+  test('the underline tab draws a line, not a box', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[createSection('catalog-header', { filterStyle: 'underline' })]}
+        env={env()}
+      />,
+    )
+    const anchor = /<a[^>]*aria-current="page"[^>]*>/.exec(html)?.[0] ?? ''
+    const cls = /class="[^"]*?(css-[a-z0-9]+)/.exec(anchor)?.[1] ?? ''
+    const rule = cls ? (new RegExp(`\\.${cls}\\{[^}]*\\}`).exec(html)?.[0] ?? '') : ''
+    // Only the bottom line: the button's own border is switched off, which is
+    // what boxed the active tab before.
+    expect(rule).toContain('border-width:0')
+    expect(rule).toContain('border-bottom-width:2px')
+  })
+
+  test('pill chips are still a choice, and underline is the default', () => {
+    const field = sectionSchema('catalog-header')!.fields.find(
+      (field) => field.key === 'filterStyle',
+    )
+    expect(field?.kind === 'select' && field.options.map((option) => option.value)).toEqual([
+      'chips',
+      'underline',
+      'select',
+    ])
+    expect(field?.kind === 'select' && field.default).toBe('underline')
   })
 
   test('marks the chip of the category being shown', () => {

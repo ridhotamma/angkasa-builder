@@ -164,6 +164,7 @@ const FONT_SIZES = [
   option('3xl', { en: '3XL', id: '3XL' }),
   option('4xl', { en: '4XL', id: '4XL' }),
   option('5xl', { en: '5XL', id: '5XL' }),
+  option('6xl', { en: '6XL', id: '6XL' }),
 ]
 
 /**
@@ -802,6 +803,7 @@ const FONT_SIZE: Record<string, string> = {
   '3xl': 'var(--chakra-font-sizes-3xl)',
   '4xl': 'var(--chakra-font-sizes-4xl)',
   '5xl': 'var(--chakra-font-sizes-5xl)',
+  '6xl': 'var(--chakra-font-sizes-6xl)',
 }
 
 const FONT_FAMILY: Record<string, string> = {
