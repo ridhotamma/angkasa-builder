@@ -9,9 +9,11 @@
  *
  * The indicator is the **container**, not a bare line. A section drop opens a
  * gap the width of the section column — half the space taken from the section
- * above, half from the one below, so the drop lands with equal room either
- * side — and the gap is drawn where they moved from: a dashed band, tinted,
- * with no other mark, because the space itself says where the section goes. A
+ * above, half from the one below — and the gap is drawn where they moved
+ * from: a dashed band, tinted, with no other mark, because the space itself
+ * says where the section goes. The band is centred on the whitespace the eye
+ * can see (the last content above to the first content below), so the room at
+ * its top and bottom looks the same whatever the neighbours' padding is. A
  * block drop outlines the list it lands in and keeps the line at the index.
  *
  * The slide is written on the iframe's own elements and taken back when the
@@ -24,6 +26,29 @@ import { Box } from '@chakra-ui/react'
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 
 import type { SectionInstance } from '../model/content'
+import {
+  chromeBounds,
+  closestSection,
+  gapBand,
+  gapInsets,
+  gapMotion,
+  insertionIndex,
+  sectionBounds,
+  type PageChrome,
+  type SectionBounds,
+} from './drop-geometry'
+
+export {
+  DROP_GAP_PX,
+  chromeBounds,
+  gapBand,
+  gapInsets,
+  gapMotion,
+  insertionIndex,
+  sectionBounds,
+  type PageChrome,
+  type SectionBounds,
+} from './drop-geometry'
 
 export type DropTarget =
   | { kind: 'sections'; index: number }
@@ -64,20 +89,9 @@ export function scaleRect(value: DropRect, frame: FrameMapping): DropRect {
   }
 }
 
-/** How tall the gap a dropped section opens is, in the iframe's own pixels. */
-export const DROP_GAP_PX = 96
-
 const GAP_MOTION = 'transform 180ms ease'
 /** Long enough for the slide back to finish before the transition is dropped. */
 const GAP_RESTORE_MS = 220
-
-export interface SectionBounds {
-  id: string
-  left: number
-  top: number
-  bottom: number
-  width: number
-}
 
 interface Hit {
   target: DropTarget
@@ -89,65 +103,11 @@ interface Hit {
   gap: boolean
 }
 
-/**
- * How far the sections on each side of the insertion point move, in the
- * iframe's own pixels.
- *
- * The gap opens **equally above and below** — half each way — so the space
- * the drop creates is the same on both sides of the line it lands on. The
- * page ends have no neighbour to give way, so there the whole gap falls on
- * the one side that exists.
- */
-export function gapMotion(at: number, count: number): { up: number; down: number } {
-  if (count === 0) return { up: 0, down: DROP_GAP_PX }
-  if (at <= 0) return { up: 0, down: DROP_GAP_PX }
-  if (at >= count) return { up: DROP_GAP_PX, down: 0 }
-  const half = DROP_GAP_PX / 2
-  return { up: half, down: half }
-}
-
-function closestSection(doc: Document, id: string): HTMLElement | null {
-  // Ids are the editor's own (letters, digits, `-`, `_`), so no escaping needed.
-  return doc.querySelector<HTMLElement>(`[data-section-id="${id}"]`)
-}
-
-/**
- * The sections' geometry, read once per drag.
- *
- * The gap transform moves the sections themselves, and
- * `getBoundingClientRect` includes transforms — a live read after the first
- * push would measure the gap, not the layout, and the marker would flicker
- * between two answers forever.
- */
-export function sectionBounds(doc: Document, ids: readonly string[]): SectionBounds[] {
-  const out: SectionBounds[] = []
-  for (const id of ids) {
-    const element = closestSection(doc, id)
-    if (!element) continue
-    const rect = element.getBoundingClientRect()
-    out.push({ id, left: rect.left, top: rect.top, bottom: rect.bottom, width: rect.width })
-  }
-  return out
-}
-
-/**
- * Where a point falls among the sections, in the cached layout: above a
- * section's middle inserts before it, below inserts after — so the gap opens
- * exactly where the pointer crossed the halfway line.
- */
-export function insertionIndex(bounds: readonly SectionBounds[], y: number): number {
-  for (let at = 0; at < bounds.length; at++) {
-    const bound = bounds[at]!
-    if (y < bound.top + (bound.bottom - bound.top) / 2) return at
-    if (y < bound.bottom) return at + 1
-  }
-  return bounds.length
-}
-
 /** Where a point inside the frame falls among the sections it holds. */
 function sectionAt(
   doc: Document,
   bounds: readonly SectionBounds[],
+  chrome: PageChrome,
   point: { x: number; y: number },
 ): Hit {
   const at = insertionIndex(bounds, point.y)
@@ -155,16 +115,19 @@ function sectionAt(
   // last one when the drop is at the end — so it lines up with the column the
   // sections actually use, never a neighbour's.
   const column = bounds[at] ?? bounds[bounds.length - 1]
-  const boundary =
-    at === 0 ? (bounds[0]?.top ?? point.y) : bounds[Math.min(at, bounds.length) - 1]!.bottom
-  // The band fills exactly the space the sections gave up, so it sits flush
-  // against both neighbours with the same room above and below its line.
+  const before = at > 0 ? bounds[at - 1]! : null
+  const after = at < bounds.length ? bounds[at]! : null
+  const boundary = before?.bottom ?? after?.top ?? point.y
+  // Those two insets go into the band's position, so the gaps look the same
+  // even when the neighbours pad themselves differently.
+  const { above, below } = gapInsets(before, after, chrome, boundary)
   const { up, down } = gapMotion(at, bounds.length)
+  const band = gapBand(above, below, up, down)
   const box: DropRect = {
     left: column?.left ?? 16,
-    top: boundary - up,
+    top: boundary + band.top,
     width: column?.width ?? Math.max(0, doc.documentElement.clientWidth - 32),
-    height: up + down,
+    height: band.height,
   }
   return { target: { kind: 'sections', index: at }, box, line: null, gap: true }
 }
@@ -256,6 +219,7 @@ export function DropOverlay({
   const docRef = useRef<Document | null>(null)
   docRef.current = doc
   const boundsRef = useRef<SectionBounds[] | null>(null)
+  const chromeRef = useRef<PageChrome | null>(null)
   const gapAtRef = useRef<number | null>(null)
   /** Every section this drag has styled, so the gap can be taken back exactly. */
   const touchedRef = useRef<Set<string>>(new Set())
@@ -272,6 +236,7 @@ export function DropOverlay({
     const target = docRef.current
     gapAtRef.current = null
     boundsRef.current = null
+    chromeRef.current = null
     const touched = touchedRef.current
     touchedRef.current = new Set()
     if (!target) return
@@ -338,7 +303,8 @@ export function DropOverlay({
     }
 
     const bounds = boundsRef.current ?? (boundsRef.current = sectionBounds(doc, sectionIds))
-    const found = sectionAt(doc, bounds, { x, y })
+    const chrome = chromeRef.current ?? (chromeRef.current = chromeBounds(doc))
+    const found = sectionAt(doc, bounds, chrome, { x, y })
     return {
       ...found,
       box: scaleRect(found.box, mapping),
