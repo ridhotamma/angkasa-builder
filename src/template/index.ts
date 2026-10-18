@@ -164,6 +164,16 @@ export {
   type TemplateThemeBuild,
 } from './publish'
 
+export { defaultThemeFiles } from './default-theme'
+
+export {
+  signThemePreview,
+  THEME_PREVIEW_COOKIE,
+  THEME_PREVIEW_MAX_AGE_SECONDS,
+  THEME_PREVIEW_PARAM,
+  verifyThemePreview,
+} from './preview'
+
 export {
   activateTheme,
   activateThemeFactory,
