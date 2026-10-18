@@ -18,10 +18,12 @@ import {
 } from '../src/index'
 import { surfacePaint } from '../src/render/dividers'
 import { spinStep } from '../src/render/feature-sections'
+import { BannerSliderTrack, sliderTransform } from '../src/render/sections'
 import { sectionBackground } from '../src/render/section-background'
 import {
   embedUrl,
   pageEdges,
+  RenderProvider,
   sampleStorefrontData,
   SectionsRenderer,
   type RenderEnvironment,
@@ -367,10 +369,10 @@ describe('section chrome', () => {
     expect(html).toContain('object-position:bottom')
   })
 
-  test('the slider offers half steps, so a slide can peek at each edge', () => {
+  test('the slider offers whole slides per view', () => {
     const perPage = sectionSchema('banner-slider')!.fields.find((field) => field.key === 'perPage')
     const values = perPage?.kind === 'select' ? perPage.options.map((option) => option.value) : []
-    expect(values).toEqual(['1', '1.5', '2', '2.5', '3'])
+    expect(values).toEqual(['1', '2', '3'])
   })
 
   test('the slider band holds one height however many slides show', () => {
@@ -387,23 +389,25 @@ describe('section chrome', () => {
           env={env()}
         />,
       )
-    for (const perPage of ['1', '1.5', '2', '2.5', '3']) {
-      // One band, shaped once: the 2:1 rule is on it alone, and the per-view
-      // choice only changes the columns inside — never the height the page
-      // around it sees.
-      const bands = slider(perPage).match(/aspect-ratio:2;/g) ?? []
+    for (const perPage of ['1', '2', '3']) {
+      const html = slider(perPage)
+      // One band, shaped once: the height is drawn as the band's own padding,
+      // and the per-view choice only changes the slides inside it — never the
+      // height the page around it sees. Padding is what makes the shape stick
+      // where a plain `aspect-ratio` would let the photos stretch the band.
+      const bands = html.match(/padding-bottom:50%/g) ?? []
       expect(bands.length, `perPage ${perPage}`).toBe(1)
+      expect(html, `perPage ${perPage}`).not.toMatch(/aspect-ratio:\d/)
     }
   })
 
-  test('the band can wear a wider shape, or fit the screen', () => {
+  test('the band can wear a wider shape', () => {
     const shape = sectionSchema('banner-slider')!.fields.find((field) => field.key === 'ratio')
     expect(shape?.kind === 'select' && shape.options.map((option) => option.value)).toEqual([
       '16/9',
       '2/1',
       '21/9',
       '3/1',
-      'screen',
       '1/1',
     ])
 
@@ -419,12 +423,57 @@ describe('section chrome', () => {
           env={env()}
         />,
       )
-    // Ultra wide: the same width, a shorter band.
-    expect(band('21/9')).toMatch(/aspect-ratio:2\.33/)
-    // Fit the screen: the viewport decides the height — no ratio at all.
-    const screen = band('screen')
-    expect(screen).toContain('100svh')
-    expect(screen).not.toMatch(/aspect-ratio:\d/)
+    // Ultra wide: the same width, a shorter band. The band's height is its
+    // own padding — the one form of ratio a taller photo cannot stretch.
+    expect(band('21/9')).toMatch(/padding-bottom:42\.85/)
+    // Panoramic: shorter still.
+    expect(band('3/1')).toMatch(/padding-bottom:33\.33/)
+  })
+
+  test('the slider track shifts instead of scrolling', () => {
+    const slides = [
+      { id: 'a', image: 's1' },
+      { id: 'b', image: 's2' },
+      { id: 'c', image: 's3' },
+    ]
+    const track = (perPage: number) =>
+      render(
+        <RenderProvider value={env()}>
+          <BannerSliderTrack slides={slides} perPage={perPage} ratio={2} loop autoplay={false} />
+        </RenderProvider>,
+      )
+    // Nothing inside the band is a scroll container: it cannot be wheeled,
+    // dragged or scrolled, and no scrollbar can appear inside it.
+    const one = track(1)
+    expect(one).not.toMatch(/overflow-(x|y)?:?(auto|scroll)/)
+    expect(one).toContain('translateX(0)')
+    // A finger still slides it: horizontal touches are ours, vertical pans
+    // stay with the page.
+    expect(one).toContain('touch-action:pan-y')
+    // One slide per view: a step is the slide's own width plus the gap.
+    expect(one).toContain('flex:0 0 calc((100% - 0px) / 1)')
+    // A dot per resting position — the last page still shows a full view.
+    expect((one.match(/aria-label="Slide [0-9]"/g) ?? []).length).toBe(3)
+    expect(one).toContain('aria-label="Previous slide"')
+    expect(one).toContain('aria-label="Next slide"')
+    // Two per view: two positions, and each slide is half the band.
+    const two = track(2)
+    expect(two).toContain('flex:0 0 calc((100% - 12px) / 2)')
+    expect((two.match(/aria-label="Slide [0-9]"/g) ?? []).length).toBe(2)
+    // A step carries the gap with it — a slide plus one gap — and a finger's
+    // drag rides on top of the position until it settles.
+    expect(sliderTransform(0, 1)).toBe('translateX(0)')
+    expect(sliderTransform(1, 1)).toBe('translateX(calc(-1 * calc((100% - 0px) / 1 + 12px) + 0px))')
+    expect(sliderTransform(1, 2)).toBe(
+      'translateX(calc(-1 * calc((100% - 12px) / 2 + 12px) + 0px))',
+    )
+    expect(sliderTransform(2, 2)).toBe(
+      'translateX(calc(-2 * calc((100% - 12px) / 2 + 12px) + 0px))',
+    )
+    // Mid-drag: the position plus the finger's own offset.
+    expect(sliderTransform(1, 1, -60)).toBe(
+      'translateX(calc(-1 * calc((100% - 0px) / 1 + 12px) + -60px))',
+    )
   })
 
   test('a single-slide slider is the same band', () => {
@@ -439,7 +488,10 @@ describe('section chrome', () => {
         env={env()}
       />,
     )
-    expect((html.match(/aspect-ratio:/g) ?? []).length).toBe(1)
+    // The band decides the height, not the photo: one padded box, no ratio
+    // left for the image to stretch.
+    expect((html.match(/padding-bottom:50%/g) ?? []).length).toBe(1)
+    expect(html).not.toMatch(/aspect-ratio:\d/)
     expect(html).toContain('object-fit:cover')
   })
 

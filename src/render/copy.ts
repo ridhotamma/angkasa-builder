@@ -116,6 +116,9 @@ const TEXT = {
     en: 'Your other published articles appear here.',
     id: 'Artikel lain yang sudah terbit tampil di sini.',
   },
+  previousSlide: { en: 'Previous slide', id: 'Slide sebelumnya' },
+  nextSlide: { en: 'Next slide', id: 'Slide berikutnya' },
+  slideNumber: { en: 'Slide {n}', id: 'Slide {n}' },
 } satisfies Record<string, Localized>
 
 export type RenderText = keyof typeof TEXT
