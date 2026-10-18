@@ -60,6 +60,13 @@ export const TEMPLATE_SLOTS = [
   'cartLineControls',
   'cartUnavailable',
   'cartCheckout',
+  'accountProfile',
+  'accountPassword',
+  'accountSignOut',
+  'accountAddresses',
+  'rewardClaim',
+  'rewardCopy',
+  'wishlistToggle',
 ] as const
 
 export type TemplateSlotName = (typeof TEMPLATE_SLOTS)[number]

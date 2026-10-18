@@ -142,7 +142,7 @@ const CATALOG = `<div class="tpl-default">
     {% if listing.description %}<p>{{ listing.description }}</p>{% endif %}
     {% if listing.categories.size > 0 %}
       <div class="d-chips">
-        <a class="d-chip{% if listing.current == blank %} d-chip--active{% endif %}" href="{{ routes.products }}">All</a>
+        {% if listing.current == blank %}<a class="d-chip d-chip--active" href="{{ routes.products }}">All</a>{% else %}<a class="d-chip" href="{{ routes.products }}">All</a>{% endif %}
         {% for category in listing.categories limit: 12 %}
           <a class="d-chip" href="{{ category.url }}">{{ category.name }}</a>
         {% endfor %}
@@ -262,11 +262,9 @@ const BLOG = `<div class="tpl-default">
     {% if blog.description %}<p>{{ blog.description }}</p>{% endif %}
     {% if blog.tags.size > 0 %}
       <div class="d-chips">
-        <a class="d-chip{% if blog.tag == blank %} d-chip--active{% endif %}" href="{{ blog.url }}">All</a>
+        {% if blog.tag == blank %}<a class="d-chip d-chip--active" href="{{ blog.url }}">All</a>{% else %}<a class="d-chip" href="{{ blog.url }}">All</a>{% endif %}
         {% for tag in blog.tags limit: 12 %}
-          <a class="d-chip{% if tag == blog.tag %} d-chip--active{% endif %}" href="{{ blog.url }}?tag={{ tag | url_encode }}">
-            #{{ tag }}
-          </a>
+          {% if tag == blog.tag %}<a class="d-chip d-chip--active" href="{{ blog.url }}?tag={{ tag | url_encode }}">#{{ tag }}</a>{% else %}<a class="d-chip" href="{{ blog.url }}?tag={{ tag | url_encode }}">#{{ tag }}</a>{% endif %}
         {% endfor %}
       </div>
     {% endif %}
@@ -347,6 +345,191 @@ const CART = `<div class="tpl-default">
 
     {% slot 'cartUnavailable' %}
     {% slot 'cartCheckout' %}
+  </section>
+</div>
+`
+
+const ACCOUNT_NAV = `<nav class="d-account-nav" aria-label="Account">
+  {% if active == 'profile' %}<a class="d-account-tab d-account-tab--active" aria-current="page" href="{{ routes.account }}">Profile</a>{% else %}<a class="d-account-tab" href="{{ routes.account }}">Profile</a>{% endif %}
+  {% if active == 'orders' %}<a class="d-account-tab d-account-tab--active" aria-current="page" href="{{ routes.account_orders }}">Orders</a>{% else %}<a class="d-account-tab" href="{{ routes.account_orders }}">Orders</a>{% endif %}
+  {% if active == 'wishlist' %}<a class="d-account-tab d-account-tab--active" aria-current="page" href="{{ routes.account_wishlist }}">Wishlist</a>{% else %}<a class="d-account-tab" href="{{ routes.account_wishlist }}">Wishlist</a>{% endif %}
+  {% if active == 'addresses' %}<a class="d-account-tab d-account-tab--active" aria-current="page" href="{{ routes.account_addresses }}">Addresses</a>{% else %}<a class="d-account-tab" href="{{ routes.account_addresses }}">Addresses</a>{% endif %}
+  {% if active == 'rewards' %}<a class="d-account-tab d-account-tab--active" aria-current="page" href="{{ routes.account_rewards }}">Rewards</a>{% else %}<a class="d-account-tab" href="{{ routes.account_rewards }}">Rewards</a>{% endif %}
+</nav>
+`
+
+const ACCOUNT = `<div class="tpl-default">
+  <section class="d-account">
+    <header class="d-account-head">
+      <p class="d-eyebrow">Account</p>
+      <h1>{% if customer.name %}Hello, {{ customer.name }}{% else %}Your account{% endif %}</h1>
+    </header>
+    {% render 'account-nav', active: 'profile' %}
+
+    <div class="d-account-card">
+      <h2>Profile</h2>
+      <p class="d-account-note">The name and number the shop uses to reach you. The email is what orders are filed under.</p>
+      {% slot 'accountProfile' %}
+    </div>
+
+    {% slot 'accountPassword' %}
+
+    <div class="d-account-card">
+      <h2>Sign out</h2>
+      <p class="d-account-note">Leaving ends this session on this device.</p>
+      {% slot 'accountSignOut' %}
+    </div>
+  </section>
+</div>
+`
+
+const ACCOUNT_ORDERS = `<div class="tpl-default">
+  <section class="d-account">
+    <header class="d-account-head">
+      <p class="d-eyebrow">Account</p>
+      <h1>Your orders</h1>
+    </header>
+    {% render 'account-nav', active: 'orders' %}
+
+    {% if customer.orders == blank %}
+      <p class="d-empty">No orders yet — the catalogue is one click away.</p>
+      <div class="d-account-actions">
+        <a class="d-button" href="{{ routes.products }}">Start shopping</a>
+      </div>
+    {% else %}
+      <div class="d-orders">
+        {% for order in customer.orders %}
+          <a class="d-order" href="{{ order.url }}">
+            <span class="d-order-main">
+              <span class="d-order-number">{{ order.order_number }}</span>
+              <span class="d-order-tags">
+                {% if order.status_label %}<span class="d-tag">{{ order.status_label }}</span>{% endif %}
+                {% if order.payment_label %}<span class="d-tag d-tag--warning">{{ order.payment_label }}</span>{% endif %}
+                {% if order.review_pending %}<span class="d-tag d-tag--brand">{{ order.review_label }}</span>{% endif %}
+              </span>
+              <span class="d-order-meta">{{ order.placed_at_label }} · {{ order.item_count_label }}</span>
+            </span>
+            <span class="d-order-total">{{ order.total | money }}</span>
+          </a>
+        {% endfor %}
+      </div>
+      {% if customer.orders_truncated %}
+        <p class="d-account-note">Older orders are on their own pages.</p>
+      {% endif %}
+    {% endif %}
+  </section>
+</div>
+`
+
+const ACCOUNT_ADDRESSES = `<div class="tpl-default">
+  <section class="d-account">
+    <header class="d-account-head">
+      <p class="d-eyebrow">Account</p>
+      <h1>Your addresses</h1>
+    </header>
+    {% render 'account-nav', active: 'addresses' %}
+    {% slot 'accountAddresses' %}
+  </section>
+</div>
+`
+
+const ACCOUNT_REWARDS = `<div class="tpl-default">
+  <section class="d-account">
+    <header class="d-account-head">
+      <p class="d-eyebrow">Account</p>
+      <h1>Rewards</h1>
+    </header>
+    {% render 'account-nav', active: 'rewards' %}
+
+    {% if customer.rewards == blank %}
+      <p class="d-empty">This shop has no rewards programme right now.</p>
+    {% else %}
+      <div class="d-balance">
+        <span class="d-balance-label">Points balance</span>
+        <span class="d-balance-value">{{ customer.rewards.balance }}</span>
+        <span class="d-balance-meta">Lifetime earned: {{ customer.rewards.lifetime_points }}</span>
+        {% if customer.rewards.tier %}
+          <span class="d-tag d-tag--brand">{{ customer.rewards.tier.name }}</span>
+        {% endif %}
+        {% if customer.rewards.next_tier %}
+          <span class="d-progress"><span class="d-progress-fill" style="width: {{ customer.rewards.next_tier.progress_percent }}%"></span></span>
+          <span class="d-balance-meta">{{ customer.rewards.next_tier.points_to_next }} points to {{ customer.rewards.next_tier.name }}</span>
+        {% elsif customer.rewards.at_top_tier %}
+          <span class="d-balance-meta">Top tier reached — every point still earns.</span>
+        {% endif %}
+      </div>
+
+      <div class="d-rewards">
+        {% for reward in customer.rewards.rewards %}
+          <div class="d-reward">
+            <span class="d-reward-main">
+              <span class="d-reward-name">{{ reward.name }}</span>
+              {% if reward.description %}<span class="d-reward-note">{{ reward.description }}</span>{% endif %}
+              <span class="d-reward-status">{{ reward.status_label }}</span>
+            </span>
+            <span class="d-reward-cost">{{ reward.points_cost }} pts</span>
+            {% slot 'rewardClaim', reward: reward %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <h2 class="d-account-sub">My codes</h2>
+      {% if customer.rewards.claims == blank %}
+        <p class="d-account-note">Codes you claim show up here.</p>
+      {% else %}
+        <div class="d-claims">
+          {% for claim in customer.rewards.claims %}
+            <div class="d-claim">
+              <span class="d-claim-main">
+                <span class="d-claim-name">{{ claim.reward_name }}{% if claim.used %} · used{% endif %}</span>
+                <span class="d-claim-code">{{ claim.code }}</span>
+                <span class="d-claim-meta">{{ claim.redeemed_at_label }} · {{ claim.points }} pts</span>
+              </span>
+              {% slot 'rewardCopy', claim: claim %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endif %}
+  </section>
+</div>
+`
+
+const ACCOUNT_WISHLIST = `<div class="tpl-default">
+  <section class="d-account">
+    <header class="d-account-head">
+      <p class="d-eyebrow">Account</p>
+      <h1>Your wishlist</h1>
+    </header>
+    {% render 'account-nav', active: 'wishlist' %}
+
+    {% if customer.wishlist == blank or customer.wishlist.products == blank %}
+      <p class="d-empty">Nothing saved yet — the heart on a product keeps it here.</p>
+      <div class="d-account-actions">
+        <a class="d-button" href="{{ routes.products }}">Browse the catalogue</a>
+      </div>
+    {% else %}
+      <div class="d-wishlist">
+        {% for product in customer.wishlist.products %}
+          <div class="d-wish">
+            <a class="d-card" href="{{ product.url }}">
+              <span class="d-card-media">
+                {% if product.image_url %}
+                  <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy" />
+                {% endif %}
+                {% if product.on_sale %}<span class="d-badge">Sale</span>{% endif %}
+              </span>
+              <span class="d-card-name">{{ product.name }}</span>
+              <span class="d-card-price">
+                {{ product.price | money }}
+                {% if product.on_sale %}<s>{{ product.compare_at_price | money }}</s>{% endif %}
+              </span>
+            </a>
+            <div class="d-wish-heart">{% slot 'wishlistToggle', product: product %}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   </section>
 </div>
 `
@@ -903,6 +1086,259 @@ const CSS = `/* The platform's default theme. Scoped under .tpl-default so it ne
   min-width: 4.5rem;
   text-align: right;
 }
+
+.d-account {
+  margin: 0 auto;
+  max-width: 48rem;
+  padding-top: clamp(2rem, 5vw, 3.5rem);
+}
+
+.d-account-head h1 {
+  font-family: var(--chakra-fonts-heading);
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  letter-spacing: -0.02em;
+  margin: 0.2rem 0 1.5rem;
+}
+
+.d-account-nav {
+  border-bottom: 1px solid var(--chakra-colors-border);
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+
+.d-account-tab {
+  border-bottom: 2px solid transparent;
+  color: var(--chakra-colors-fg-muted);
+  flex: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: -1px;
+  padding: 0.6rem 0.75rem;
+  white-space: nowrap;
+}
+
+.d-account-tab--active {
+  border-color: var(--chakra-colors-brand-solid);
+  color: var(--chakra-colors-fg);
+}
+
+.d-account-card {
+  background: var(--chakra-colors-bg-panel);
+  border: 1px solid var(--chakra-colors-border);
+  border-radius: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1.25rem;
+}
+
+.d-account-card h2,
+.d-account-sub {
+  font-family: var(--chakra-fonts-heading);
+  font-size: 1.05rem;
+  margin: 0 0 0.35rem;
+}
+
+.d-account-sub {
+  margin-top: 2rem;
+}
+
+.d-account-note,
+.d-account-meta {
+  color: var(--chakra-colors-fg-muted);
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+
+.d-account-actions {
+  padding-top: 0.5rem;
+  text-align: center;
+}
+
+.d-orders {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.d-order {
+  align-items: center;
+  background: var(--chakra-colors-bg-panel);
+  border: 1px solid var(--chakra-colors-border);
+  border-radius: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.d-order-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.d-order-number {
+  font-weight: 600;
+}
+
+.d-order-tags,
+.d-order-tags * {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.d-order-meta {
+  color: var(--chakra-colors-fg-muted);
+  font-size: 0.8rem;
+}
+
+.d-order-total {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.d-tag {
+  background: var(--chakra-colors-bg-muted);
+  border-radius: 999px;
+  color: var(--chakra-colors-fg-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+}
+
+.d-tag--warning {
+  background: var(--chakra-colors-orange-subtle);
+  color: var(--chakra-colors-orange-fg);
+}
+
+.d-tag--brand {
+  background: var(--chakra-colors-brand-subtle);
+  color: var(--chakra-colors-brand-fg);
+}
+
+.d-balance {
+  background: var(--chakra-colors-bg-panel);
+  border: 1px solid var(--chakra-colors-border);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+  padding: 1.25rem;
+}
+
+.d-balance-label {
+  color: var(--chakra-colors-fg-muted);
+  font-size: 0.8rem;
+}
+
+.d-balance-value {
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.d-balance-meta {
+  color: var(--chakra-colors-fg-subtle);
+  font-size: 0.8rem;
+}
+
+.d-progress {
+  background: var(--chakra-colors-bg-muted);
+  border-radius: 999px;
+  height: 0.4rem;
+  margin-top: 0.4rem;
+  overflow: hidden;
+  width: 100%;
+}
+
+.d-progress-fill {
+  background: var(--chakra-colors-brand-solid);
+  display: block;
+  height: 100%;
+}
+
+.d-rewards,
+.d-claims {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.d-reward,
+.d-claim {
+  align-items: center;
+  background: var(--chakra-colors-bg-panel);
+  border: 1px solid var(--chakra-colors-border);
+  border-radius: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.d-reward-main,
+.d-claim-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.d-reward-name,
+.d-claim-name {
+  font-weight: 600;
+}
+
+.d-reward-note {
+  color: var(--chakra-colors-fg-muted);
+  font-size: 0.8rem;
+}
+
+.d-reward-status,
+.d-claim-meta {
+  color: var(--chakra-colors-fg-subtle);
+  font-size: 0.75rem;
+}
+
+.d-reward-cost {
+  color: var(--chakra-colors-brand-solid);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.d-claim-code {
+  font-family: var(--chakra-fonts-mono);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.d-wishlist {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+}
+
+.d-wish {
+  position: relative;
+}
+
+.d-wish .d-card {
+  height: 100%;
+}
+
+.d-wish-heart {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+}
 `
 
 /** Every file of the platform's default theme, by theme-relative path. */
@@ -918,6 +1354,12 @@ export function defaultThemeFiles(): ThemeFiles {
     'templates/blog.tpl': BLOG,
     'templates/order-tracking.tpl': ORDER_TRACKING,
     'templates/cart.tpl': CART,
+    'templates/account.tpl': ACCOUNT,
+    'templates/account-orders.tpl': ACCOUNT_ORDERS,
+    'templates/account-addresses.tpl': ACCOUNT_ADDRESSES,
+    'templates/account-rewards.tpl': ACCOUNT_REWARDS,
+    'templates/account-wishlist.tpl': ACCOUNT_WISHLIST,
+    'snippets/account-nav.tpl': ACCOUNT_NAV,
     'snippets/product-card.tpl': CARD,
     'assets/theme.css': CSS,
   }

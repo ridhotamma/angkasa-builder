@@ -40,7 +40,20 @@ import type {
  * seller's custom page — and the host names the route when it renders.
  */
 export type TemplateRoute =
-  'home' | 'product' | 'article' | 'catalog' | 'orderTracking' | 'page' | 'search' | 'blog' | 'cart'
+  | 'home'
+  | 'product'
+  | 'article'
+  | 'catalog'
+  | 'orderTracking'
+  | 'page'
+  | 'search'
+  | 'blog'
+  | 'cart'
+  | 'account'
+  | 'accountOrders'
+  | 'accountAddresses'
+  | 'accountRewards'
+  | 'accountWishlist'
 
 /* -------------------------------------------------------------------------- */
 /* The type schema                                                            */
@@ -211,6 +224,10 @@ const ROUTES_SCHEMA = dropRecord({
   search: dropString,
   cart: dropString,
   account: dropString,
+  account_orders: dropString,
+  account_addresses: dropString,
+  account_rewards: dropString,
+  account_wishlist: dropString,
   order_tracking: dropString,
 })
 
@@ -323,6 +340,137 @@ export interface TemplateCartUnavailableLine {
   issue: string
 }
 
+/**
+ * The shopper an account route draws, passed by the host as `extras.customer`.
+ *
+ * Like the cart, an account is the host's own state — a session cookie and
+ * the rows behind it — never part of the route's `data`. Each account route
+ * fills the fields it has: `templates/account.tpl` reads the profile,
+ * `templates/account-orders.tpl` the orders, and so on. Everything a theme
+ * cannot compute itself (a localized date, a status label, the collapse of
+ * two badges into one) arrives as a string beside the stable code, so a
+ * theme may draw either.
+ */
+export interface TemplateCustomerDrop {
+  /** False until the host has read the session — a theme may hold a skeleton open. */
+  ready: boolean
+  name: string | null
+  email: string | null
+  phone: string | null
+  /** The order history, newest first (`templates/account-orders.tpl`). */
+  orders?: TemplateCustomerOrder[]
+  /** True when older orders exist than the page returned. */
+  orders_truncated?: boolean
+  /** The address book (`templates/account-addresses.tpl`). */
+  addresses?: TemplateCustomerAddress[]
+  /** The rewards screen (`templates/account-rewards.tpl`). */
+  rewards?: TemplateCustomerRewards | null
+  /** The saved products (`templates/account-wishlist.tpl`). */
+  wishlist?: TemplateCustomerWishlist | null
+}
+
+/** One order in the history, as `templates/account-orders.tpl` reads it. */
+export interface TemplateCustomerOrder {
+  order_number: string
+  /** The order page, access token and all. */
+  url: string
+  /** A stable code (`paid`, `shipped`, …). */
+  status: string
+  /** Localized; `null` when the payment badge replaces it. */
+  status_label: string | null
+  /** Localized; `null` when the money question is settled or was never live. */
+  payment_label: string | null
+  payment_method: string | null
+  review_pending: boolean
+  /** Localized: the "open for reviews" badge. */
+  review_label: string
+  /** ISO timestamp. */
+  placed_at: string
+  /** The same moment, formatted for the shop's locale. */
+  placed_at_label: string
+  item_count: number
+  /** Localized, e.g. `2 item`. */
+  item_count_label: string
+  total: number
+  /** The payment deadline for unpaid orders, ISO; `null` when paid. */
+  expires_at: string | null
+}
+
+/** One saved address, as `templates/account-addresses.tpl` reads it. */
+export interface TemplateCustomerAddress {
+  id: string
+  label: string
+  recipient_name: string
+  recipient_phone: string
+  /** The whole address on one line, composed when it was saved. */
+  formatted: string
+  line1: string
+  line2: string
+  village_name: string
+  district_name: string
+  regency_name: string
+  province_name: string
+  postal_code: string
+  notes: string
+  is_primary: boolean
+}
+
+/** The rewards screen, as `templates/account-rewards.tpl` reads it. */
+export interface TemplateCustomerRewards {
+  balance: number
+  lifetime_points: number
+  currency: string
+  tier: { name: string; color: string | null; earn_multiplier: number } | null
+  next_tier: { name: string; points_to_next: number; progress_percent: number } | null
+  /** True when a tier is held and there is nothing above it. */
+  at_top_tier: boolean
+  rewards: TemplateCustomerReward[]
+  claims: TemplateCustomerRewardClaim[]
+}
+
+/** One catalogue reward. The claim itself is the `rewardClaim` host slot. */
+export interface TemplateCustomerReward {
+  id: string
+  /** `voucher` or `free_item`. */
+  kind: string
+  name: string
+  description: string | null
+  points_cost: number
+  /** False when the tier, the balance or the claim cap says no. */
+  claimable: boolean
+  /** Localized: why not, or how many claims are left. */
+  status_label: string
+}
+
+/** One claimed code. The copy button is the `rewardCopy` host slot. */
+export interface TemplateCustomerRewardClaim {
+  id: string
+  reward_name: string
+  code: string
+  points: number
+  /** Localized date. */
+  redeemed_at_label: string
+  used: boolean
+}
+
+/** The saved products, as `templates/account-wishlist.tpl` reads them. */
+export interface TemplateCustomerWishlist {
+  currency: string
+  products: TemplateWishlistProduct[]
+}
+
+/** One saved product card. The heart is the `wishlistToggle` host slot. */
+export interface TemplateWishlistProduct {
+  id: string
+  name: string
+  slug: string
+  price: number
+  compare_at_price: number | null
+  on_sale: boolean
+  image_url: string | null
+  url: string
+}
+
 export interface TemplateScopeInput {
   data: StorefrontRenderData
   env: RenderEnvironment
@@ -341,6 +489,10 @@ export const ROUTE_DROPS: Record<string, string> = {
   search: '/search',
   cart: '/cart',
   account: '/account',
+  account_orders: '/account/orders',
+  account_addresses: '/account/addresses',
+  account_rewards: '/account/rewards',
+  account_wishlist: '/account/wishlist',
   order_tracking: '/track-order',
 }
 
@@ -422,6 +574,16 @@ function pageTitle(data: StorefrontRenderData, route: TemplateRoute): string {
       return 'Order tracking'
     case 'cart':
       return 'Cart'
+    case 'account':
+      return 'Account'
+    case 'accountOrders':
+      return 'Orders'
+    case 'accountAddresses':
+      return 'Addresses'
+    case 'accountRewards':
+      return 'Rewards'
+    case 'accountWishlist':
+      return 'Wishlist'
     case 'home':
       return data.shop.name
   }

@@ -99,9 +99,17 @@ export {
   type TemplateCartDrop,
   type TemplateCartLine,
   type TemplateCartUnavailableLine,
+  type TemplateCustomerAddress,
+  type TemplateCustomerDrop,
+  type TemplateCustomerOrder,
+  type TemplateCustomerReward,
+  type TemplateCustomerRewardClaim,
+  type TemplateCustomerRewards,
+  type TemplateCustomerWishlist,
   type TemplateRoute,
   type TemplateScope,
   type TemplateScopeInput,
+  type TemplateWishlistProduct,
 } from './drops'
 
 export { parseExpression, positionAt } from './expression'

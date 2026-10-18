@@ -16,7 +16,12 @@ import type { ElementKind } from '../model/element-style'
 import type { FieldValues, TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
-import type { TemplateCartLine } from '../template/drops'
+import type {
+  TemplateCartLine,
+  TemplateCustomerReward,
+  TemplateCustomerRewardClaim,
+  TemplateWishlistProduct,
+} from '../template/drops'
 import type { SectionProps } from './sections'
 
 export interface StorefrontProductCard {
@@ -319,6 +324,50 @@ export interface RenderEnvironment {
      * is. Renders nothing for an empty cart.
      */
     cartCheckout?: ReactNode
+    /**
+     * The account profile form, drawn where `templates/account.tpl` puts its
+     * `accountProfile` slot: name, phone, the read-only email and the save.
+     * The profile is the host's — the session, the write and the validation —
+     * so only it can draw the fields that change it.
+     */
+    accountProfile?: ReactNode
+    /**
+     * The change-password card, drawn where `templates/account.tpl` puts its
+     * `accountPassword` slot. The host holds the Appwrite session rules the
+     * card has to satisfy, including the re-mint after a password write.
+     */
+    accountPassword?: ReactNode
+    /**
+     * The sign-out button, drawn where `templates/account.tpl` puts its
+     * `accountSignOut` slot. Only the host can end the session.
+     */
+    accountSignOut?: ReactNode
+    /**
+     * The whole address book, drawn where
+     * `templates/account-addresses.tpl` puts its `accountAddresses` slot: the
+     * list, the add/edit dialog, the delete confirmation and the promotion to
+     * main. The CRUD is the host's — the same panel checks out a guest order.
+     */
+    accountAddresses?: ReactNode
+    /**
+     * One reward's claim button, drawn where
+     * `templates/account-rewards.tpl` puts its per-reward `rewardClaim` slot.
+     * Receives that reward from the `customer.rewards` drop.
+     */
+    rewardClaim?: (args: { reward: TemplateCustomerReward }) => ReactNode
+    /**
+     * One claimed code's copy button, drawn where
+     * `templates/account-rewards.tpl` puts its per-claim `rewardCopy` slot.
+     * Receives that claim from the drop.
+     */
+    rewardCopy?: (args: { claim: TemplateCustomerRewardClaim }) => ReactNode
+    /**
+     * One saved product's wishlist heart, drawn where
+     * `templates/account-wishlist.tpl` puts its per-product `wishlistToggle`
+     * slot. Receives that product from the drop; only the host's wishlist
+     * knows whether the heart is filled.
+     */
+    wishlistToggle?: (args: { product: TemplateWishlistProduct }) => ReactNode
   }
   /**
    * The signed-in shopper's saved products, when the host has a wishlist.
