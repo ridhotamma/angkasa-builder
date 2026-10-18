@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
 import { I18nProvider } from '@repo/i18n'
+import { SECTION_STAGGER_ENABLED } from '@repo/appwrite-config'
 import { system } from '@repo/theme'
 
 import {
@@ -66,12 +67,24 @@ describe('motion style options', () => {
     expect(readSectionStyle({}).stagger).toBe(false)
   })
 
-  test('stagger marks the frame even when the theme has no motion', () => {
+  test.skipIf(!SECTION_STAGGER_ENABLED)(
+    'stagger marks the frame even when the theme has no motion',
+    () => {
+      const html = page(
+        [createSection('rich-text', { heading: 'Hello', body: 'World' }, { stagger: true })],
+        env({ settings: { ...DEFAULT_THEME_SETTINGS, animation: 'none' } }),
+      )
+      expect(html).toContain('data-stagger="true"')
+      expect(html).toContain('Hello')
+    },
+  )
+
+  test.skipIf(SECTION_STAGGER_ENABLED)('a stored stagger is ignored while switched off', () => {
     const html = page(
       [createSection('rich-text', { heading: 'Hello', body: 'World' }, { stagger: true })],
       env({ settings: { ...DEFAULT_THEME_SETTINGS, animation: 'none' } }),
     )
-    expect(html).toContain('data-stagger="true"')
+    expect(html).not.toContain('data-stagger')
     expect(html).toContain('Hello')
   })
 })

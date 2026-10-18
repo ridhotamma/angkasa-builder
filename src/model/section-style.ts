@@ -15,6 +15,12 @@
  */
 
 import {
+  SECTION_STAGGER_ENABLED,
+  SECTION_STICKY_ENABLED,
+  SECTION_TEXT_SHADOW_ENABLED,
+} from '@repo/appwrite-config'
+
+import {
   readBoolean,
   readDate,
   readText,
@@ -180,8 +186,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'colorScheme',
     label: { en: 'Colour scheme', id: 'Skema warna' },
     help: {
-      en: 'Set the scheme colours in the Theme tab.',
-      id: 'Atur warna skema di tab Tema.',
+      en: 'Colours live in the Theme tab.',
+      id: 'Warnanya ada di tab Tema.',
     },
     options: (['default', ...SCHEME_KEYS] as const).map((value) => ({
       value,
@@ -221,8 +227,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'backgroundImage',
     label: { en: 'Background image', id: 'Gambar latar' },
     help: {
-      en: 'Also the poster while a background video loads.',
-      id: 'Juga menjadi poster saat video latar dimuat.',
+      en: 'Also the video’s poster.',
+      id: 'Sekaligus poster videonya.',
     },
     showWhen: { key: 'backgroundType', is: ['image', 'video'] },
   },
@@ -238,8 +244,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'backgroundOverlay',
     label: { en: 'Image shade', id: 'Peredup gambar' },
     help: {
-      en: 'Darkens a photo or video so text on it stays readable.',
-      id: 'Menggelapkan foto atau video agar teks di atasnya tetap terbaca.',
+      en: 'Keeps text readable over it.',
+      id: 'Menjaga teks tetap terbaca.',
     },
     options: SURFACE_OVERLAYS,
     default: 'light',
@@ -250,8 +256,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'textShadow',
     label: { en: 'Lift text over the image', id: 'Angkat teks di atas gambar' },
     help: {
-      en: 'A soft shadow behind the section’s text, for busy backgrounds.',
-      id: 'Bayangan halus di belakang teks bagian, untuk latar yang ramai.',
+      en: 'A soft shadow behind the text.',
+      id: 'Bayangan halus di belakang teks.',
     },
     default: false,
   },
@@ -260,8 +266,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'sticky',
     label: { en: 'Stick while scrolling', id: 'Menempel saat digulir' },
     help: {
-      en: 'The section holds at the top of the screen while the next one scrolls over it.',
-      id: 'Bagian ini menahan di atas layar saat bagian berikutnya bergulir menutupinya.',
+      en: 'Holds at the top while the next section scrolls over.',
+      id: 'Menahan di atas saat bagian berikut bergulir.',
     },
     default: false,
   },
@@ -284,8 +290,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'dividerTone',
     label: { en: 'Divider colour', id: 'Warna pembatas' },
     help: {
-      en: 'Automatic mirrors the section. Pick a band when the sections around it share a colour, so the shape still shows.',
-      id: 'Otomatis mengikuti bagian. Pilih warna bila bagian di sekitarnya sewarna, agar bentuknya tetap terlihat.',
+      en: 'Automatic matches the section. Pick a band when neighbours share its colour.',
+      id: 'Otomatis mengikuti bagian. Pilih warna bila sekitarnya sewarna.',
     },
     options: DIVIDER_TONES,
     default: 'auto',
@@ -310,8 +316,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'motionDistance',
     label: { en: 'Entrance distance', id: 'Jarak animasi' },
     help: {
-      en: 'How far the section travels. Fade and zoom ignore it.',
-      id: 'Seberapa jauh bagian bergerak. Memudar dan membesar mengabaikannya.',
+      en: 'How far it travels. Fade and zoom ignore it.',
+      id: 'Seberapa jauh bergerak. Memudar dan membesar mengabaikannya.',
     },
     options: MOTION_DISTANCES,
     default: 'medium',
@@ -330,8 +336,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'headline',
     label: { en: 'Heading animation', id: 'Animasi judul' },
     help: {
-      en: 'The section heading rises word by word. The preview shows the final text.',
-      id: 'Judul bagian muncul kata per kata. Pratinjau menampilkan teks akhir.',
+      en: 'Rises word by word. The preview shows the final text.',
+      id: 'Muncul kata per kata. Pratinjau menampilkan teks akhir.',
     },
     options: HEADLINE_ANIMATIONS,
     default: 'none',
@@ -341,8 +347,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'stagger',
     label: { en: 'Stagger entrance', id: 'Muncul berurutan' },
     help: {
-      en: 'Blocks enter one after another instead of all at once. Switches the section to a subtle entrance when motion is off.',
-      id: 'Blok-blok muncul satu per satu. Mengalihkan bagian ke animasi halus saat animasi mati.',
+      en: 'Blocks enter one after another.',
+      id: 'Blok muncul satu per satu.',
     },
     default: false,
   },
@@ -359,8 +365,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
       { value: 'edge', label: { en: 'Edge to edge', id: 'Penuh dari tepi ke tepi' } },
     ],
     help: {
-      en: 'Full-width background and edge to edge both keep the text in the page column, lined up with the header; edge to edge is for galleries and video that should span the screen.',
-      id: 'Latar selebar layar dan penuh dari tepi ke tepi sama-sama menjaga teks tetap di kolom halaman, sejajar dengan header; penuh dari tepi ke tepi untuk galeri dan video yang memenuhi layar.',
+      en: 'Text stays in the column; edge to edge lets photos and video span the screen.',
+      id: 'Teks tetap di kolom; penuh tepi ke tepi untuk media selebar layar.',
     },
     default: 'contained',
   },
@@ -370,8 +376,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     label: { en: 'Content width', id: 'Lebar konten' },
     options: CONTENT_WIDTHS,
     help: {
-      en: 'How wide the content may run, centred in the page. Page width lines up with the header; a narrower column suits a hero, a form or a reading section.',
-      id: 'Seberapa lebar konten, dipusatkan di halaman. Lebar halaman sejajar dengan header; kolom lebih sempit cocok untuk hero, formulir, atau bagian bacaan.',
+      en: 'How wide the content runs, centred. Page width lines up with the header.',
+      id: 'Seberapa lebar konten, dipusatkan. Lebar halaman sejajar dengan header.',
     },
     default: '6xl',
   },
@@ -408,8 +414,8 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'showFrom',
     label: { en: 'Show from', id: 'Tampil mulai' },
     help: {
-      en: 'Optional. Appears from this time.',
-      id: 'Opsional. Muncul mulai waktu ini.',
+      en: 'Appears from this time.',
+      id: 'Muncul mulai waktu ini.',
     },
   },
   {
@@ -417,14 +423,29 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
     key: 'showUntil',
     label: { en: 'Show until', id: 'Tampil sampai' },
     help: {
-      en: 'Optional. Disappears after this time.',
-      id: 'Opsional. Hilang setelah waktu ini.',
+      en: 'Disappears after this time.',
+      id: 'Hilang setelah waktu ini.',
     },
   },
 ]
 
 /** The keys of the style fields shown under "Visibility" rather than "Style". */
 export const VISIBILITY_STYLE_KEYS = ['visibility', 'showFrom', 'showUntil'] as const
+
+/**
+ * Style keys the editor does not offer, because their features are built but
+ * switched off — see the `SECTION_*_ENABLED` flags.
+ *
+ * Nothing is deleted when one lands here: the field, the sanitiser and the
+ * renderer all keep working, the stored value survives every save, and the
+ * day its flag flips back to `true` the toggle returns with the layout it
+ * always had.
+ */
+export const SWITCHED_OFF_STYLE_KEYS: readonly string[] = [
+  ...(SECTION_STICKY_ENABLED ? [] : ['sticky']),
+  ...(SECTION_TEXT_SHADOW_ENABLED ? [] : ['textShadow']),
+  ...(SECTION_STAGGER_ENABLED ? [] : ['stagger']),
+]
 
 export type SectionSpacing = (typeof SPACING)[number]['value']
 export type SectionWidth = 'contained' | 'full' | 'edge'

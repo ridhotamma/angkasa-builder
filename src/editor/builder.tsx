@@ -85,7 +85,7 @@ import {
   LuX,
 } from 'react-icons/lu'
 
-import { SECTION_LINKING_ENABLED, SECTION_STICKY_ENABLED } from '@repo/appwrite-config'
+import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
 import { Tooltip } from '@repo/theme'
 
 import {
@@ -129,7 +129,11 @@ import {
   type ThemeLayout,
 } from '../model/layout'
 import type { MenuItem } from '../model/menus'
-import { SECTION_STYLE_FIELDS, VISIBILITY_STYLE_KEYS } from '../model/section-style'
+import {
+  SECTION_STYLE_FIELDS,
+  SWITCHED_OFF_STYLE_KEYS,
+  VISIBILITY_STYLE_KEYS,
+} from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { googleFontsHref, themeDesignedForDark, type ThemeSettings } from '../model/settings'
 import {
@@ -165,8 +169,9 @@ import { ThemeSettingsPanel } from './theme-settings'
 const STYLE_FIELDS = SECTION_STYLE_FIELDS.filter(
   (field) =>
     !(VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key) &&
-    // The sticky toggle is built but switched off; see `SECTION_STICKY_ENABLED`.
-    (SECTION_STICKY_ENABLED || field.key !== 'sticky'),
+    // Built-but-switched-off features are not offered; the model and the
+    // renderer keep reading a stored value. See `SWITCHED_OFF_STYLE_KEYS`.
+    !SWITCHED_OFF_STYLE_KEYS.includes(field.key),
 )
 const VISIBILITY_FIELDS = SECTION_STYLE_FIELDS.filter((field) =>
   (VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key),

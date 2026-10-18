@@ -17,6 +17,7 @@ import { Box, Container, type BoxProps } from '@chakra-ui/react'
 import { createContext, useContext, type ReactNode } from 'react'
 
 import { ImageWithFallback } from '@repo/theme'
+import { SECTION_STAGGER_ENABLED, SECTION_TEXT_SHADOW_ENABLED } from '@repo/appwrite-config'
 
 import {
   isWithinSchedule,
@@ -144,7 +145,11 @@ export function SectionFrame({
     ...(style.visibility === 'desktop' && { hideBelow: 'md' }),
   } as const
 
-  const entrance = resolveEntrance(settings.animation, style)
+  // Stagger is built but switched off for now; the frame is where it is
+  // ignored, so the entrance and the cascade can never disagree.
+  // See `SECTION_STAGGER_ENABLED`.
+  const stagger = SECTION_STAGGER_ENABLED && style.stagger
+  const entrance = resolveEntrance(settings.animation, { ...style, stagger })
 
   // A photo background may also be a video's poster.
   const poster =
@@ -160,13 +165,15 @@ export function SectionFrame({
     ...(style.scheme && vars && { css: schemeCss(style.scheme, vars), color: 'fg' }),
     ...(paint.bg && { bg: paint.bg }),
     ...(paint.backgroundImage && { backgroundImage: paint.backgroundImage }),
-    ...(style.textShadow && {
-      css: {
-        ...(style.scheme && vars ? (schemeCss(style.scheme, vars) as object) : {}),
-        textShadow: '0 1px 3px rgba(0, 0, 0, 0.8), 0 2px 12px rgba(0, 0, 0, 0.5)',
-      },
-      color: style.scheme ? 'fg' : undefined,
-    }),
+    ...(SECTION_TEXT_SHADOW_ENABLED && style.textShadow
+      ? {
+          css: {
+            ...(style.scheme && vars ? (schemeCss(style.scheme, vars) as object) : {}),
+            textShadow: '0 1px 3px rgba(0, 0, 0, 0.8), 0 2px 12px rgba(0, 0, 0, 0.5)',
+          },
+          color: style.scheme ? 'fg' : undefined,
+        }
+      : {}),
     pt: floating ? '0' : padding(style.paddingTop, banded),
     pb: floating ? '0' : padding(style.paddingBottom, banded),
   }
@@ -248,7 +255,7 @@ export function SectionFrame({
       }}
     >
       <HeadlineContext.Provider value={style.headline}>
-        <ScrollReveal entrance={entrance} stagger={style.stagger}>
+        <ScrollReveal entrance={entrance} stagger={stagger}>
           {children}
         </ScrollReveal>
       </HeadlineContext.Provider>

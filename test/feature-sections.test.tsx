@@ -4,6 +4,7 @@ import { renderToString } from 'react-dom/server'
 import type { ReactNode } from 'react'
 
 import { I18nProvider } from '@repo/i18n'
+import { SECTION_TEXT_SHADOW_ENABLED } from '@repo/appwrite-config'
 import { system } from '@repo/theme'
 
 import {
@@ -227,13 +228,34 @@ describe('premium backgrounds', () => {
         backgroundType: 'image',
         backgroundImage: 'file',
         backgroundOverlay: 'dark',
-        textShadow: true,
       },
     )
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(html).toContain('Over a photo')
+  })
+
+  test.skipIf(!SECTION_TEXT_SHADOW_ENABLED)('a text shadow lifts the copy over a photo', () => {
+    const section = createSection(
+      'rich-text',
+      { heading: 'Over a photo', body: '' },
+      { backgroundType: 'image', backgroundImage: 'file', textShadow: true },
+    )
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(html).toContain('text-shadow:0 1px 3px rgba(0, 0, 0, 0.8),0 2px 12px rgba(0, 0, 0, 0.5)')
   })
+
+  test.skipIf(SECTION_TEXT_SHADOW_ENABLED)(
+    'a stored text shadow is ignored while switched off',
+    () => {
+      const section = createSection(
+        'rich-text',
+        { heading: 'Over a photo', body: '' },
+        { backgroundType: 'image', backgroundImage: 'file', textShadow: true },
+      )
+      const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+      expect(html).not.toContain('text-shadow:0 1px 3px')
+    },
+  )
 })
 
 describe('YouTube Shorts', () => {
