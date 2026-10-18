@@ -234,6 +234,26 @@ describe('premium backgrounds', () => {
     expect(html).toContain('Over a photo')
   })
 
+  test('a background photo takes its size and position from the style', () => {
+    // A stored row: the surface picker does not offer a photo background yet,
+    // so the style is written directly — the renderer honours it either way,
+    // and the day the picker offers one its two controls are already here.
+    const base = createSection('rich-text', { heading: 'Over a photo', body: '' })
+    const section = {
+      ...base,
+      style: {
+        ...base.style,
+        backgroundType: 'image',
+        backgroundImage: 'file',
+        backgroundSize: 'contain',
+        backgroundPosition: 'right top',
+      },
+    }
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('object-position:right top')
+  })
+
   test.skipIf(!SECTION_TEXT_SHADOW_ENABLED)('a text shadow lifts the copy over a photo', () => {
     const section = createSection(
       'rich-text',

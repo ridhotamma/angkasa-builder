@@ -20,6 +20,8 @@ import type {
   BackgroundPattern,
   DividerShape,
   DividerTone,
+  PhotoFit,
+  PhotoPosition,
   ResolvedSectionStyle,
   SurfaceOverlay,
 } from '../model/section-style'
@@ -93,6 +95,10 @@ export interface SurfacePaint {
   pattern: BackgroundPattern
   /** A photo or video layer under the content, if the section asked for one. */
   media: { imageId: string; video: VideoRef | null } | null
+  /** How the media layer fills its frame — the seller's `object-fit`. */
+  mediaFit: PhotoFit
+  /** Which part of it stays in view — the seller's `object-position`. */
+  mediaPosition: PhotoPosition
   /** How dark that layer is, so text on it stays readable. */
   overlay: SurfaceOverlay
 }
@@ -112,6 +118,8 @@ export function surfacePaint(style: ResolvedSectionStyle): SurfacePaint {
       style.backgroundType === 'gradient' ? GRADIENTS[style.backgroundGradient] : undefined,
     pattern: style.backgroundType === 'pattern' ? style.backgroundPattern : 'none',
     media,
+    mediaFit: style.backgroundSize,
+    mediaPosition: style.backgroundPosition,
     overlay: style.backgroundOverlay,
   }
 }
@@ -250,7 +258,8 @@ export function SectionDivider({
           inset={0}
           w="full"
           h="full"
-          objectFit="cover"
+          objectFit={paint.mediaFit}
+          objectPosition={paint.mediaPosition}
         />
       )}
       {shade && <Box position="absolute" inset={0} bg={shade} />}

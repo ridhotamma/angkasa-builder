@@ -11,7 +11,7 @@
  */
 
 import { Box, Flex, type BoxProps } from '@chakra-ui/react'
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, useState, type FocusEvent, type ReactNode, type RefObject } from 'react'
 
 import type { EntrancePreset } from '../model/section-style'
 import { loadMotion, revealRootMargin, useMotionEffect } from './motion/engine'
@@ -301,6 +301,69 @@ export function Parallax({
       {children}
     </Box>
   )
+}
+
+/**
+ * The reasons a marquee holds still, as one controlled `paused` boolean.
+ *
+ * Zag's own `pauseOnInteraction` pauses on hover and focus, but a focused node
+ * that unmounts — the editor re-renders a marquee's copies when a block inside
+ * is selected — fires no blur, so the machine stays paused; and because the
+ * pause was reported through an *uncontrolled* `paused`, taking a controlled
+ * `paused` away again cannot release it. The track then never runs again.
+ *
+ * Owning the reasons here keeps one owner: the pointer, focus and any click
+ * that lands outside all feed a single boolean, and a selection inside (the
+ * editor's `forcePaused`) is just one more. Leave, click away, or focus
+ * elsewhere, and the track runs again.
+ */
+export function useMarqueePause({
+  pauseOnInteraction = true,
+  forcePaused = false,
+}: {
+  /** Whether hovering or focusing the marquee pauses it at all. */
+  pauseOnInteraction?: boolean
+  /** Editor only: a selection sits inside, so the track holds still. */
+  forcePaused?: boolean
+} = {}) {
+  const [interacting, setInteracting] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!interacting || !pauseOnInteraction) return
+    // A focused node can be unmounted without a blur; any click or focus that
+    // lands outside the marquee is the same answer: run again.
+    const settle = (event: Event) => {
+      const root = rootRef.current
+      if (root && event.target instanceof Node && root.contains(event.target)) return
+      setInteracting(false)
+    }
+    document.addEventListener('focusin', settle)
+    document.addEventListener('pointerdown', settle, true)
+    return () => {
+      document.removeEventListener('focusin', settle)
+      document.removeEventListener('pointerdown', settle, true)
+    }
+  }, [interacting, pauseOnInteraction])
+
+  const paused = forcePaused || (pauseOnInteraction && interacting)
+
+  return {
+    paused,
+    // Spread on `Marquee.Root`: the machine's own interaction pausing stands
+    // down, and these props are the only thing that ever pauses the track.
+    rootProps: {
+      ref: rootRef,
+      paused,
+      pauseOnInteraction: false,
+      onPointerEnter: () => setInteracting(true),
+      onPointerLeave: () => setInteracting(false),
+      onFocus: () => setInteracting(true),
+      onBlur: (event: FocusEvent<HTMLElement>) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInteracting(false)
+      },
+    },
+  }
 }
 
 /**

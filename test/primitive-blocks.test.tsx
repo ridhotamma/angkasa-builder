@@ -257,6 +257,26 @@ describe('the new primitives, rendered', () => {
       expect(preview, note).toContain(note)
     }
   })
+
+  test('an image block crops by its own size and position', () => {
+    const section = createSection('blocks', {
+      blocks: [
+        {
+          id: 'img',
+          type: 'image',
+          settings: { image: 'photo', ratio: '4/3', fit: 'contain', position: 'top' },
+        },
+      ],
+    })
+    const html = render(
+      <SectionsRenderer
+        sections={[section]}
+        env={env({ imageUrl: () => 'https://cdn.test/photo.jpg' })}
+      />,
+    )
+    expect(html).toContain('object-fit:contain')
+    expect(html).toContain('object-position:top')
+  })
 })
 
 describe('the rating and collapsible primitives', () => {

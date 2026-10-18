@@ -198,14 +198,20 @@ export function SectionFrame({
           pointerEvents="none"
         >
           {paint.media.video ? (
-            <BackgroundVideo video={paint.media.video} poster={poster} />
+            <BackgroundVideo
+              video={paint.media.video}
+              poster={poster}
+              objectFit={style.backgroundSize}
+              objectPosition={style.backgroundPosition}
+            />
           ) : (
             <ImageWithFallback
               src={poster ?? undefined}
               alt=""
               w="full"
               h="full"
-              objectFit="cover"
+              objectFit={style.backgroundSize}
+              objectPosition={style.backgroundPosition}
               loading="lazy"
             />
           )}

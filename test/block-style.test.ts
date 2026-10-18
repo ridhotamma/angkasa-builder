@@ -520,4 +520,30 @@ describe('hover reactions', () => {
     expect(blockStyleCss({ hoverTransform: 'scale-999' })).toEqual({})
     expect(blockStyleCss({ hoverTrigger: 'group' })).toEqual({})
   })
+
+  test('an image zoom grows the photo, with its transition on the image', () => {
+    const css = blockStyleCss({ hoverImageZoom: 'zoom-in' })
+    // The image eases back on the way out, so the transition is on its own
+    // rest state — not the block's.
+    expect(css['& img']).toEqual({ transition: 'transform 600ms ease' })
+    expect(css['&:hover']).toEqual({ '& img': { transform: 'scale(1.05)' } })
+  })
+
+  test('the image zoom follows the group trigger too', () => {
+    const css = blockStyleCss({ hoverImageZoom: 'zoom-in', hoverTrigger: 'group' })
+    expect(css['[data-block-hover-group]:hover &']).toEqual({
+      '& img': { transform: 'scale(1.05)' },
+    })
+    expect(css['&:hover']).toBeUndefined()
+  })
+
+  test('the image zoom survives sanitising, and its default is dropped', () => {
+    const { block } = stored({
+      id: 'z',
+      type: 'image',
+      settings: {},
+      style: { hoverImageZoom: 'zoom-in', hoverTransform: 'default' },
+    })
+    expect(block!.style).toEqual({ hoverImageZoom: 'zoom-in' })
+  })
 })

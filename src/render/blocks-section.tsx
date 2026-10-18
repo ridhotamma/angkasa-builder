@@ -97,13 +97,14 @@ import {
 } from '../model/fields'
 import { localize, type Localized } from '../model/localized'
 import { isRichDocEmpty } from '../model/rich-text'
+import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { useMounted, usePrefersReducedMotion, useResponsive } from './hooks'
 import { FeatureIcon } from './icons'
 import { VideoFrame } from './media'
-import { Parallax, ScrollReveal } from './motion'
+import { Parallax, ScrollReveal, useMarqueePause } from './motion'
 import {
   buttonHoverCss,
   EditableText,
@@ -571,15 +572,30 @@ function ImageBlock({ block }: { block: BlockValue }) {
   const rounded = IMAGE_ROUNDED[readToken(block.settings, 'rounded', IMAGE_ROUNDING, 'md')]
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const fit = readToken(block.settings, 'fit', PHOTO_FIT_VALUES, 'cover')
+  const position = readToken(block.settings, 'position', PHOTO_POSITION_VALUES, 'center')
   const alt = readText(block.settings, 'alt')
   return (
-    <Box {...contentLayout(width, align)}>
+    <Box {...contentLayout(width, align)} rounded={rounded} overflow="hidden">
       {ratio ? (
-        <AspectRatio ratio={ratio} rounded={rounded} overflow="hidden" bg="bg.subtle">
-          <ImageWithFallback src={src} alt={alt} objectFit="cover" loading="lazy" />
+        <AspectRatio ratio={ratio} bg="bg.subtle">
+          <ImageWithFallback
+            src={src}
+            alt={alt}
+            objectFit={fit}
+            objectPosition={position}
+            loading="lazy"
+          />
         </AspectRatio>
       ) : (
-        <ImageWithFallback src={src} alt={alt} w="full" rounded={rounded} loading="lazy" />
+        <ImageWithFallback
+          src={src}
+          alt={alt}
+          w="full"
+          objectFit={fit}
+          objectPosition={position}
+          loading="lazy"
+        />
       )}
     </Box>
   )
@@ -1352,6 +1368,13 @@ function MarqueeBlock({ block }: { block: BlockValue }) {
   const align =
     COLUMN_JUSTIFY[readToken(block.settings, 'align', MARQUEE_ALIGNS, 'center')] ?? 'center'
   const editingInside = items.some((item) => holdsBlock(item, editing?.selectedBlockId))
+  // The track's one pause: the seller's hover setting, or a selection inside.
+  // The hook owns the resume (see `useMarqueePause`), so a block click can
+  // never leave the marquee stuck.
+  const marquee = useMarqueePause({
+    pauseOnInteraction: readBoolean(block.settings, 'pauseOnHover'),
+    forcePaused: editingInside,
+  })
 
   if (items.length === 0) {
     return (
@@ -1363,12 +1386,11 @@ function MarqueeBlock({ block }: { block: BlockValue }) {
 
   return (
     <Marquee.Root
+      {...marquee.rootProps}
       side={MARQUEE_SIDE[direction]}
       speed={speed}
       spacing={spacing}
       autoFill
-      pauseOnInteraction={readBoolean(block.settings, 'pauseOnHover')}
-      {...(editingInside && { paused: true })}
       h={
         vertical
           ? TRACK_HEIGHT[readToken(block.settings, 'height', TRACK_HEIGHTS, 'md')]

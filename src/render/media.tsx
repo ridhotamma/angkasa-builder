@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LuPause, LuPlay, LuVolume2, LuVolumeX } from 'react-icons/lu'
 
 import type { VideoRef } from '../model/fields'
+import type { PhotoFit, PhotoPosition } from '../model/section-style'
 import { useRenderEnvironment } from './context'
 import { useInView, usePrefersReducedMotion } from './hooks'
 
@@ -53,12 +54,14 @@ export function AmbientVideo({
   poster,
   controls = false,
   objectFit = 'cover',
+  objectPosition = 'center',
   ...props
 }: {
   fileId: string
   poster: string | null
   controls?: boolean
-  objectFit?: 'cover' | 'contain'
+  objectFit?: PhotoFit
+  objectPosition?: PhotoPosition
 } & BoxProps) {
   const { videoUrl, mode } = useRenderEnvironment()
   const reduced = usePrefersReducedMotion()
@@ -97,13 +100,22 @@ export function AmbientVideo({
           w="full"
           h="full"
           objectFit={objectFit}
+          objectPosition={objectPosition}
           display="block"
           // Muted autoplay on iOS needs the attribute, not just the property.
           {...{ 'webkit-playsinline': 'true' }}
         />
       ) : (
         poster && (
-          <chakra.img src={poster} alt="" w="full" h="full" objectFit={objectFit} display="block" />
+          <chakra.img
+            src={poster}
+            alt=""
+            w="full"
+            h="full"
+            objectFit={objectFit}
+            objectPosition={objectPosition}
+            display="block"
+          />
         )
       )}
       {src && !controls && (
@@ -223,9 +235,14 @@ function UploadedVideo({ fileId, poster }: { fileId: string; poster: string | nu
 export function BackgroundVideo({
   video,
   poster,
+  objectFit = 'cover',
+  objectPosition = 'center',
 }: {
   video: VideoRef | null
   poster: string | null
+  /** How the poster (and the video) fills the frame; the section's own choice. */
+  objectFit?: PhotoFit
+  objectPosition?: PhotoPosition
 }) {
   const reduced = usePrefersReducedMotion()
   if (!video || video.source !== 'upload' || reduced) {
@@ -237,9 +254,19 @@ export function BackgroundVideo({
         inset="0"
         w="full"
         h="full"
-        objectFit="cover"
+        objectFit={objectFit}
+        objectPosition={objectPosition}
       />
     ) : null
   }
-  return <AmbientVideo fileId={video.id} poster={poster} position="absolute" inset="0" />
+  return (
+    <AmbientVideo
+      fileId={video.id}
+      poster={poster}
+      objectFit={objectFit}
+      objectPosition={objectPosition}
+      position="absolute"
+      inset="0"
+    />
+  )
 }

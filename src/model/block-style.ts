@@ -650,6 +650,9 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
         option('-translate-y-1', { en: 'Rise slightly', id: 'Naik sedikit' }),
         option('-translate-y-2', { en: 'Rise more', id: 'Naik lebih' }),
       ]),
+      select('hoverImageZoom', { en: 'Image zoom', id: 'Zoom gambar' }, [
+        option('zoom-in', { en: 'Zoom in', id: 'Perbesar' }),
+      ]),
       select('hoverFilter', { en: 'Image filter', id: 'Filter gambar' }, [
         option('none', { en: 'None', id: 'Tidak ada' }),
         option('grayscale', { en: 'Greyscale', id: 'Abu-abu' }),
@@ -1144,6 +1147,13 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   const hover: BlockStyleCss = {}
   const hoverTransform = token(style, 'hoverTransform', TRANSFORM)
   if (hoverTransform) hover.transform = hoverTransform
+  // An image zoom: the photo grows inside whatever clips it — the same move
+  // the theme's card zoom makes, so a block and a card ease alike. The
+  // transition rides on the image itself so the growth eases back too.
+  if (readText(style, 'hoverImageZoom') === 'zoom-in') {
+    out['& img'] = { transition: 'transform 600ms ease' }
+    hover['& img'] = { transform: 'scale(1.05)' }
+  }
   const hoverFilter = token(style, 'hoverFilter', FILTER)
   if (hoverFilter) hover.filter = hoverFilter
   const hoverShadow = token(style, 'hoverShadow', SHADOW)

@@ -54,7 +54,7 @@ import { useRenderEnvironment, type StorefrontCategoryData } from './context'
 import { useRenderText } from './copy'
 import { useSectionLayout } from './frame'
 import { useResponsive } from './hooks'
-import { SplitText } from './motion'
+import { SplitText, useMarqueePause } from './motion'
 import { isPatternKey, patternStyle } from './patterns'
 import { RichTextView } from './rich-text'
 import {
@@ -1254,15 +1254,16 @@ function TestimonialMarquee({
   settings: FieldValues
 }) {
   const speed = readText(settings, 'speed') as keyof typeof MARQUEE_SPEED
+  const marquee = useMarqueePause()
 
   return (
     <Marquee.Root
+      {...marquee.rootProps}
       // `start` scrolls towards the start edge — right to left in an LTR page.
       side={readText(settings, 'direction') === 'right' ? 'end' : 'start'}
       speed={MARQUEE_SPEED[speed] ?? MARQUEE_SPEED.normal}
       spacing="1rem"
       autoFill
-      pauseOnInteraction
       // The strip's natural width is every card end to end. Pinned to its
       // container and clipped, so it can never widen the section — or the
       // page — around it.

@@ -28,6 +28,7 @@ import {
   textSizeField,
 } from './element-style'
 import type { Localized } from './localized'
+import { PHOTO_FITS, PHOTO_POSITIONS } from './section-style'
 import type { SectionPreset, SectionSchema } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -173,6 +174,24 @@ const image: BlockSchema = {
         { value: 'full', label: { en: 'Round', id: 'Bulat' } },
       ],
       default: 'md',
+    },
+    {
+      kind: 'select',
+      key: 'fit',
+      label: { en: 'Image size', id: 'Ukuran gambar' },
+      help: {
+        en: 'How the photo fills the frame.',
+        id: 'Cara foto memenuhi bingkai.',
+      },
+      options: PHOTO_FITS,
+      default: 'cover',
+    },
+    {
+      kind: 'select',
+      key: 'position',
+      label: { en: 'Image position', id: 'Posisi gambar' },
+      options: PHOTO_POSITIONS,
+      default: 'center',
     },
     contentWidthField(),
     alignmentField(),

@@ -42,7 +42,7 @@ import { findProductCard, useRenderEnvironment, type StorefrontProductCard } fro
 import { useRenderText } from './copy'
 import { useResponsive } from './hooks'
 import { AmbientVideo, VideoFrame } from './media'
-import { VelocityMarquee } from './motion'
+import { useMarqueePause, VelocityMarquee } from './motion'
 import { EditableText, EmptyNotice, SectionHeading, SmartLink, useOverlayProps } from './primitives'
 import { RichTextView } from './rich-text'
 import { alignOf, useEmptyText, type SectionProps } from './sections'
@@ -601,6 +601,7 @@ export function LogoList({ settings }: SectionProps) {
   const empty = useEmptyText()
   const items = readList(settings, 'items').filter((item) => readText(item, 'image'))
   const grey = readBoolean(settings, 'grayscale')
+  const marquee = useMarqueePause()
 
   const logo = (item: FieldValues & { id: string }) => (
     <SmartLink
@@ -638,10 +639,10 @@ export function LogoList({ settings }: SectionProps) {
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : readText(settings, 'layout') === 'marquee' ? (
         <Marquee.Root
+          {...marquee.rootProps}
           speed={speedOf(settings)}
           spacing="2rem"
           autoFill
-          pauseOnInteraction
           w="full"
           minW="0"
           overflow="hidden"

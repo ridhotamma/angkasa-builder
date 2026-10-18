@@ -180,6 +180,38 @@ export const HEADLINE_ANIMATIONS = [
 ] as const
 export type SectionHeadline = (typeof HEADLINE_ANIMATIONS)[number]['value']
 
+/**
+ * How a photo fills the frame it is cropped into — `object-fit` in words.
+ * Shared by a section's background photo and the Image block, so both crops
+ * are described the same way.
+ */
+export const PHOTO_FITS = [
+  { value: 'cover', label: { en: 'Fill the frame', id: 'Penuhi bingkai' } },
+  { value: 'contain', label: { en: 'Fit inside', id: 'Muat seluruhnya' } },
+  { value: 'fill', label: { en: 'Stretch to fit', id: 'Regangkan penuh' } },
+  { value: 'none', label: { en: 'Actual size', id: 'Ukuran asli' } },
+] as const
+export type PhotoFit = (typeof PHOTO_FITS)[number]['value']
+export const PHOTO_FIT_VALUES = PHOTO_FITS.map((option) => option.value)
+
+/**
+ * Which part of the photo stays in view when it is cropped — `object-position`
+ * in words: the middle, an edge, or a corner.
+ */
+export const PHOTO_POSITIONS = [
+  { value: 'center', label: { en: 'Centre', id: 'Tengah' } },
+  { value: 'top', label: { en: 'Top', id: 'Atas' } },
+  { value: 'bottom', label: { en: 'Bottom', id: 'Bawah' } },
+  { value: 'left', label: { en: 'Left', id: 'Kiri' } },
+  { value: 'right', label: { en: 'Right', id: 'Kanan' } },
+  { value: 'left top', label: { en: 'Top left', id: 'Kiri atas' } },
+  { value: 'right top', label: { en: 'Top right', id: 'Kanan atas' } },
+  { value: 'left bottom', label: { en: 'Bottom left', id: 'Kiri bawah' } },
+  { value: 'right bottom', label: { en: 'Bottom right', id: 'Kanan bawah' } },
+] as const
+export type PhotoPosition = (typeof PHOTO_POSITIONS)[number]['value']
+export const PHOTO_POSITION_VALUES = PHOTO_POSITIONS.map((option) => option.value)
+
 export const SECTION_STYLE_FIELDS: readonly Field[] = [
   {
     kind: 'select',
@@ -230,6 +262,26 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
       en: 'Also the video’s poster.',
       id: 'Sekaligus poster videonya.',
     },
+    showWhen: { key: 'backgroundType', is: ['image', 'video'] },
+  },
+  {
+    kind: 'select',
+    key: 'backgroundSize',
+    label: { en: 'Image size', id: 'Ukuran gambar' },
+    help: {
+      en: 'How the photo fills the section.',
+      id: 'Cara foto memenuhi bagian.',
+    },
+    options: PHOTO_FITS,
+    default: 'cover',
+    showWhen: { key: 'backgroundType', is: ['image', 'video'] },
+  },
+  {
+    kind: 'select',
+    key: 'backgroundPosition',
+    label: { en: 'Image position', id: 'Posisi gambar' },
+    options: PHOTO_POSITIONS,
+    default: 'center',
     showWhen: { key: 'backgroundType', is: ['image', 'video'] },
   },
   {
@@ -458,6 +510,10 @@ export interface ResolvedSectionStyle {
   backgroundPattern: BackgroundPattern
   /** A media file id for an image background, or the poster of a video one. */
   backgroundImageId: string
+  /** How the background photo fills the section. */
+  backgroundSize: PhotoFit
+  /** Which part of it stays in view. */
+  backgroundPosition: PhotoPosition
   /** An uploaded file behind the section; embeds cannot loop silently. */
   backgroundVideo: VideoRef | null
   backgroundOverlay: SurfaceOverlay
@@ -518,6 +574,8 @@ export function readSectionStyle(style: FieldValues): ResolvedSectionStyle {
       'none',
     ),
     backgroundImageId: readText(style, 'backgroundImage'),
+    backgroundSize: readOption(style, 'backgroundSize', PHOTO_FIT_VALUES, 'cover'),
+    backgroundPosition: readOption(style, 'backgroundPosition', PHOTO_POSITION_VALUES, 'center'),
     backgroundVideo: readVideo(style, 'backgroundVideo'),
     backgroundOverlay: readOption(
       style,
