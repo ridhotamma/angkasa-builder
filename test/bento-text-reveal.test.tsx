@@ -19,6 +19,7 @@ import {
 import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
 
 const BENTO_SECTIONS: SectionType[] = [
+  'product-list',
   'featured-collection',
   'collection-shelves',
   'latest-products',

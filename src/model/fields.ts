@@ -18,6 +18,12 @@ import { sanitizeLink, NO_LINK, type Link } from './links'
 import { EMPTY_RICH_DOC, richDocFromPlainText, sanitizeRichDoc, type RichDoc } from './rich-text'
 import { isLocalizedText, isLocalizedValue, STOREFRONT_LOCALES, type Localized } from './localized'
 
+/** One "a sibling holds one of these" rule; see `BaseField.showWhen`. */
+export interface ShowWhen {
+  key: string
+  is: readonly string[]
+}
+
 interface BaseField {
   key: string
   label: Localized
@@ -28,10 +34,19 @@ interface BaseField {
    * only: the value is still stored and sanitised, so switching back restores
    * what the seller had chosen.
    *
+   * Several rules mean all of them must hold: the quotes' speed sits under the
+   * running-cards `layout` *and* the quotes `variant`, say.
+   *
    * On a *list item's* field the sibling may be a field of the section the
    * list sits in — see the third parameter of `isFieldShown`.
    */
-  showWhen?: { key: string; is: readonly string[] }
+  showWhen?: ShowWhen | ShowWhen[]
+}
+
+/** The rules a field's `showWhen` declares, always as a list (empty when none). */
+export function showWhenRules(field: { showWhen?: BaseField['showWhen'] }): readonly ShowWhen[] {
+  if (!field.showWhen) return []
+  return Array.isArray(field.showWhen) ? field.showWhen : [field.showWhen]
 }
 
 /**
@@ -48,12 +63,12 @@ export function isFieldShown(
   values: FieldValues,
   outer?: FieldValues,
 ) {
-  if (!field.showWhen) return true
-  const key = field.showWhen.key
-  const raw = key in values ? values[key] : outer?.[key]
-  // A switch reads as `'true'` / `'false'`, so a field can follow one too.
-  const current = typeof raw === 'boolean' ? String(raw) : raw
-  return typeof current === 'string' && field.showWhen.is.includes(current)
+  return showWhenRules(field).every((rule) => {
+    const raw = rule.key in values ? values[rule.key] : outer?.[rule.key]
+    // A switch reads as `'true'` / `'false'`, so a field can follow one too.
+    const current = typeof raw === 'boolean' ? String(raw) : raw
+    return typeof current === 'string' && rule.is.includes(current)
+  })
 }
 
 export interface TextField extends BaseField {

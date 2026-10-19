@@ -105,3 +105,86 @@ describe('the story section follows its style', () => {
     expect(itemFields('timeline')).toEqual(['image', 'fit', 'position', 'label', 'title', 'text'])
   })
 })
+
+/** The section's own fields under a set of sibling values. */
+function sectionFields(type: string, values: Record<string, string>): string[] {
+  const schema = sectionSchema(type)
+  return ((schema?.fields ?? []) as readonly Field[])
+    .filter((field) => isFieldShown(field, values))
+    .map((field) => field.key)
+}
+
+describe('the product list follows its layout and source', () => {
+  test('text on tiles belongs to the bento alone', () => {
+    expect(sectionFields('product-list', { layout: 'bento' })).toContain('bentoText')
+    expect(sectionFields('product-list', { layout: 'grid' })).not.toContain('bentoText')
+    expect(sectionFields('product-list', { layout: 'slider' })).not.toContain('bentoText')
+  })
+
+  test('the column counts skip the bento, which lays its own tiles out', () => {
+    for (const layout of ['grid', 'slider']) {
+      expect(sectionFields('product-list', { layout }), layout).toContain('columns')
+      expect(sectionFields('product-list', { layout }), layout).toContain('mobileColumns')
+    }
+    expect(sectionFields('product-list', { layout: 'bento' })).not.toContain('columns')
+    expect(sectionFields('product-list', { layout: 'bento' })).not.toContain('mobileColumns')
+    // The related-products row works the same way.
+    expect(sectionFields('related-products', { layout: 'bento' })).not.toContain('columns')
+    expect(sectionFields('related-products', { layout: 'slider' })).toContain('columns')
+  })
+
+  test('the catalogue link belongs to the newest list alone', () => {
+    expect(sectionFields('product-list', { source: 'latest' })).toContain('showAll')
+    for (const source of ['collection', 'shelves', 'tabs']) {
+      expect(sectionFields('product-list', { source }), source).not.toContain('showAll')
+    }
+  })
+})
+
+describe('the statement follows its look', () => {
+  const shows = (layout: string) => sectionFields('statement', { layout })
+
+  test('a photo side belongs to the card and the split, not the full-bleed', () => {
+    expect(shows('contained')).toContain('imagePosition')
+    expect(shows('split')).toContain('imagePosition')
+    expect(shows('full')).not.toContain('imagePosition')
+  })
+
+  test('alignment belongs to the full-bleed statement alone', () => {
+    expect(shows('full')).toContain('align')
+    expect(shows('contained')).not.toContain('align')
+    expect(shows('split')).not.toContain('align')
+  })
+})
+
+describe('the quotes arrangement belongs to the plain look', () => {
+  const shows = (values: Record<string, string>) => sectionFields('quotes', values)
+
+  test('the video look fixes its own grid, so no arrangement is offered', () => {
+    expect(shows({ variant: 'quotes' })).toContain('layout')
+    expect(shows({ variant: 'video' })).not.toContain('layout')
+  })
+
+  test('running-card controls need the plain look and its running layout', () => {
+    expect(shows({ variant: 'quotes', layout: 'marquee' })).toContain('direction')
+    expect(shows({ variant: 'quotes', layout: 'marquee' })).toContain('speed')
+    expect(shows({ variant: 'quotes', layout: 'grid' })).not.toContain('direction')
+    // A video look never runs its cards, whatever the stored layout says.
+    expect(shows({ variant: 'video', layout: 'marquee' })).not.toContain('direction')
+    expect(shows({ variant: 'video', layout: 'marquee' })).not.toContain('speed')
+  })
+
+  test('autoplay needs the plain look and the slider layout', () => {
+    expect(shows({ variant: 'quotes', layout: 'carousel' })).toContain('autoplay')
+    expect(shows({ variant: 'quotes', layout: 'grid' })).not.toContain('autoplay')
+    expect(shows({ variant: 'video', layout: 'carousel' })).not.toContain('autoplay')
+  })
+})
+
+describe('the store locator sizes its own panes', () => {
+  test('the column counts belong to the card grid', () => {
+    expect(sectionFields('store-locations', { layout: 'grid' })).toContain('columns')
+    expect(sectionFields('store-locations', { layout: 'locator' })).not.toContain('columns')
+    expect(sectionFields('store-locations', { layout: 'locator' })).not.toContain('mobileColumns')
+  })
+})

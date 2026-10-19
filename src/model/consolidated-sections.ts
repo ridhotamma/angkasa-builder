@@ -194,15 +194,20 @@ const productLayoutField: Field = choice(
   'grid',
 )
 
-const bentoTextField: Field = choice(
-  'bentoText',
-  { en: 'Text on tiles', id: 'Teks di ubin' },
-  [
-    { value: 'always', label: { en: 'Always', id: 'Selalu' } },
-    { value: 'hover', label: { en: 'On hover', id: 'Saat disorot' } },
-  ],
-  'always',
-)
+const bentoTextField: Field = {
+  ...choice(
+    'bentoText',
+    { en: 'Text on tiles', id: 'Teks di ubin' },
+    [
+      { value: 'always', label: { en: 'Always', id: 'Selalu' } },
+      { value: 'hover', label: { en: 'On hover', id: 'Saat disorot' } },
+    ],
+    'always',
+  ),
+  // Only the bento tiles hide their text until hover; the grid and the slider
+  // always show the card's own copy.
+  showWhen: { key: 'layout', is: ['bento'] },
+}
 
 /* -------------------------------------------------------------------------- */
 /* Variant maps — the value a consolidated type stores, and the old types it  */
@@ -427,8 +432,18 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
       productLayoutField,
       bentoTextField,
       numberField('limit', { en: 'Products to show', id: 'Jumlah produk' }, 8),
-      ...columnsField(['2', '3', '4', '5', '6'], '4', '2'),
-      toggle('showAll', { en: 'Link to all products', id: 'Tautan ke semua produk' }, true),
+      // The bento lays its own tiles out, so the column counts only move the
+      // grid and the slider.
+      ...columnsField(['2', '3', '4', '5', '6'], '4', '2').map((field) => ({
+        ...field,
+        showWhen: { key: 'layout', is: ['grid', 'slider'] },
+      })),
+      {
+        // Only the newest list ends with a link to the whole catalogue; the
+        // collection looks always carry their own "See all" in the header.
+        ...toggle('showAll', { en: 'Link to all products', id: 'Tautan ke semua produk' }, true),
+        showWhen: { key: 'source', is: ['latest'] },
+      },
       {
         ...list('tabs', { en: 'Tabs', id: 'Tab' }, { en: 'Tab', id: 'Tab' }, 'label', 6, [
           { kind: 'collection', key: 'collectionId', label: { en: 'Collection', id: 'Koleksi' } },
@@ -503,17 +518,22 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
         'quotes',
       ),
       heading(''),
-      choice(
-        'layout',
-        { en: 'Arrangement', id: 'Susunan' },
-        [
-          { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
-          { value: 'marquee', label: { en: 'Running cards', id: 'Kartu berjalan' } },
-          { value: 'carousel', label: { en: 'Slider', id: 'Slider (geser)' } },
-          { value: 'list', label: { en: 'List', id: 'Daftar' } },
-        ],
-        'grid',
-      ),
+      {
+        // The video look lays its cards out itself; only the plain quotes
+        // read the arrangement.
+        ...choice(
+          'layout',
+          { en: 'Arrangement', id: 'Susunan' },
+          [
+            { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
+            { value: 'marquee', label: { en: 'Running cards', id: 'Kartu berjalan' } },
+            { value: 'carousel', label: { en: 'Slider', id: 'Slider (geser)' } },
+            { value: 'list', label: { en: 'List', id: 'Daftar' } },
+          ],
+          'grid',
+        ),
+        showWhen: { key: 'variant', is: ['quotes'] },
+      },
       {
         ...choice(
           'direction',
@@ -524,7 +544,10 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
           ],
           'left',
         ),
-        showWhen: { key: 'layout', is: ['marquee'] },
+        showWhen: [
+          { key: 'variant', is: ['quotes'] },
+          { key: 'layout', is: ['marquee'] },
+        ],
       },
       {
         ...choice(
@@ -537,11 +560,17 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
           ],
           'normal',
         ),
-        showWhen: { key: 'layout', is: ['marquee'] },
+        showWhen: [
+          { key: 'variant', is: ['quotes'] },
+          { key: 'layout', is: ['marquee'] },
+        ],
       },
       {
         ...toggle('autoplay', { en: 'Slide automatically', id: 'Geser otomatis' }),
-        showWhen: { key: 'layout', is: ['carousel'] },
+        showWhen: [
+          { key: 'variant', is: ['quotes'] },
+          { key: 'layout', is: ['carousel'] },
+        ],
       },
       list('items', { en: 'Quotes', id: 'Kutipan' }, { en: 'Quote', id: 'Kutipan' }, 'author', 12, [
         // Each look reads its own fields off an item, so an item declares only
@@ -727,7 +756,12 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
       image('image', { en: 'Photo', id: 'Foto' }),
       photoFitField,
       photoPositionField,
-      positionField('imagePosition', { en: 'Photo side', id: 'Sisi foto' }),
+      {
+        // The full-bleed statement puts the photo behind the words, so there
+        // is no side to pick; the card and the split both sit it beside them.
+        ...positionField('imagePosition', { en: 'Photo side', id: 'Sisi foto' }),
+        showWhen: { key: 'layout', is: ['contained', 'split'] },
+      },
       { ...overlayField, showWhen: { key: 'layout', is: ['full'] } },
       {
         ...text('eyebrow', { en: 'Eyebrow', id: 'Label kecil' }, 60, 'Our promise'),
@@ -737,7 +771,12 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
       body(900),
       buttonLabel('Learn more'),
       buttonLink,
-      alignField('left'),
+      {
+        // Only the full-bleed statement centres or left-aligns its words; the
+        // card and the split fix their own alignment.
+        ...alignField('left'),
+        showWhen: { key: 'layout', is: ['full'] },
+      },
       {
         ...choice(
           'tone',

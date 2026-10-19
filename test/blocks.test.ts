@@ -13,6 +13,7 @@ import {
 import { buttonAppearance, contentLayout, readToken, selfLayout } from '../src/model/element-style'
 import {
   createBlock,
+  isFieldShown,
   MAX_BLOCKS_PER_SECTION,
   readBlocks,
   sanitizeValues,
@@ -97,6 +98,15 @@ describe('blocks section schema', () => {
     expect(blockSchema('text')).toBeNull()
     expect(blockSchema('divider')).toBeNull()
     expect(blockSchema('columns')).toBeNull()
+  })
+
+  test('a spacer only asks for its line’s thickness and colour with the line on', () => {
+    const spacer = blockSchema('spacer')!
+    for (const key of ['thickness', 'tone']) {
+      const field = spacer.fields.find((candidate) => candidate.key === key)!
+      expect(isFieldShown(field, { line: true }), key).toBe(true)
+      expect(isFieldShown(field, { line: false }), key).toBe(false)
+    }
   })
 })
 

@@ -2456,7 +2456,12 @@ export const SECTION_SCHEMAS = [
           },
         ],
       },
-      ...columns(3, 1, 1),
+      // The list-and-map layout sizes its own two panes, so the column counts
+      // only move the card grid.
+      ...columns(3, 1, 1).map((field) => ({
+        ...field,
+        showWhen: { key: 'layout', is: ['grid'] },
+      })),
     ],
   },
   {
@@ -2669,7 +2674,12 @@ export const SECTION_SCHEMAS = [
       productLayout(),
       bentoText(),
       limit(4, 12),
-      ...columns(4, 2, 2),
+      // The bento lays its own tiles out, so the column counts only move the
+      // grid and the slider.
+      ...columns(4, 2, 2).map((field) => ({
+        ...field,
+        showWhen: { key: 'layout', is: ['grid', 'slider'] },
+      })),
     ],
   },
 

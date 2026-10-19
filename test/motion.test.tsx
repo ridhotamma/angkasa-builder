@@ -199,6 +199,16 @@ describe('scroll-rail section', () => {
     expect(isFieldShown({ showWhen: { key: 'layout', is: ['bento'] } }, { layout: 'bento' })).toBe(
       true,
     )
+    // Several rules mean all of them must hold.
+    const speed = {
+      showWhen: [
+        { key: 'variant', is: ['quotes'] },
+        { key: 'layout', is: ['marquee'] },
+      ],
+    }
+    expect(isFieldShown(speed, { variant: 'quotes', layout: 'marquee' })).toBe(true)
+    expect(isFieldShown(speed, { variant: 'video', layout: 'marquee' })).toBe(false)
+    expect(isFieldShown(speed, { variant: 'quotes', layout: 'grid' })).toBe(false)
   })
 })
 
