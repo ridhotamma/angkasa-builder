@@ -444,7 +444,11 @@ describe('section chrome', () => {
     // dragged or scrolled, and no scrollbar can appear inside it.
     const one = track(1)
     expect(one).not.toMatch(/overflow-(x|y)?:?(auto|scroll)/)
-    expect(one).toContain('translateX(0)')
+    // A loop doubles the track by a page at each end, so the first slide sits
+    // one page in — the step past an end has somewhere to glide to.
+    expect(one).toContain(sliderTransform(1, 1))
+    // One page of doubles: one slide before the first, one after the last.
+    expect((one.match(/inert=""/g) ?? []).length).toBe(2)
     // A finger still slides it: horizontal touches are ours, vertical pans
     // stay with the page.
     expect(one).toContain('touch-action:pan-y')
@@ -458,6 +462,9 @@ describe('section chrome', () => {
     const two = track(2)
     expect(two).toContain('flex:0 0 calc((100% - 12px * 1) / 2)')
     expect((two.match(/aria-label="Slide [0-9]"/g) ?? []).length).toBe(2)
+    // Two doubles at each end, and the track one page into them.
+    expect((two.match(/inert=""/g) ?? []).length).toBe(4)
+    expect(two).toContain(sliderTransform(2, 2))
     // A step carries the gap with it — a slide plus one gap — and a finger's
     // drag rides on top of the position until it settles.
     expect(sliderTransform(0, 1)).toBe('translateX(0)')
@@ -494,6 +501,28 @@ describe('section chrome', () => {
     // (one rule, shared by every inactive dot).
     expect(html).toContain('width:var(--chakra-sizes-6)')
     expect(html).toContain('width:var(--chakra-sizes-2\\.5)')
+  })
+
+  test('only the banner wears dots; the other sliders page by their arrows', () => {
+    const reels = render(
+      <SectionsRenderer
+        sections={[
+          createSection('video-reels', {
+            items: Array.from({ length: 8 }, (_, index) => ({ poster: `p${index}` })),
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    // No dots at the foot of the row. The pair of arrows is the whole
+    // indicator the shopper gets, the way the product row's slider works.
+    expect(reels).not.toContain('aria-label="Slide')
+    expect(reels).toContain('aria-label="Previous slide"')
+    expect(reels).toContain('aria-label="Next slide"')
+    // And the pair straddles the band's edge — half over the slides, half
+    // over the page margin — instead of sitting inside the last slide.
+    expect(reels).toMatch(/left:calc\(var\(--chakra-spacing-5\) \* -1\)/)
+    expect(reels).toMatch(/right:calc\(var\(--chakra-spacing-5\) \* -1\)/)
   })
 
   test('a single-slide slider is the same band', () => {

@@ -9,9 +9,18 @@
  *
  * The band is shaped by the caller: a photo band passes `ratio` (drawn by
  * `AspectRatio`, the one form of ratio a photo cannot stretch), while card
- * rows size themselves. The dots match the banner's wherever they go — the
- * active one a pill — and sit over the band's own bottom edge when the slides
- * are pictures, or in a row under it when they are content.
+ * rows size themselves. The edge arrows straddle the band's own edge — half
+ * over the slides, half over the page margin around them — and the dots, where
+ * a caller asks for them, match the banner's: the active one a pill, over the
+ * band's bottom edge when the slides are pictures, or in a row under it when
+ * they are content.
+ *
+ * A loop wraps by doubling: one page's worth of slides is repeated before the
+ * first and after the last, so a step past either end glides into the double
+ * instead of rewinding across the whole run — and the jump back onto the real
+ * slide is invisible, because the double is the same picture. The doubles are
+ * `inert` (no tab stop, nothing read out) and the editor canvas leaves them
+ * out entirely, since its drop layer and outlines count and measure slides.
  */
 
 import {
@@ -24,7 +33,15 @@ import {
   Text,
   type BoxProps,
 } from '@chakra-ui/react'
-import { Children, useEffect, useRef, useState, type ElementType, type ReactNode } from 'react'
+import {
+  Children,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ElementType,
+  type ReactNode,
+} from 'react'
 import {
   LuChevronDown,
   LuChevronLeft,
@@ -34,6 +51,7 @@ import {
   LuPlay,
 } from 'react-icons/lu'
 
+import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 
 /** Round arrows laid over a slider's edges; phones swipe instead. */
@@ -59,6 +77,13 @@ export const OVERLAY_ARROW = {
  */
 export type SliderSlotProps = Omit<BoxProps, 'direction'> & Record<`data-${string}`, unknown>
 
+/**
+ * The arrow buttons take anything an `IconButton` does — a viewer, say,
+ * repaints them as the shop's ink glass.
+ */
+export type SliderArrowProps = Omit<ComponentProps<typeof IconButton>, 'children'> &
+  Record<`data-${string}`, unknown>
+
 /** The room between slides, when the caller has no spacing of its own. */
 const DEFAULT_GAP = '12px'
 
@@ -71,6 +96,13 @@ const SLIDE_SWIPE_PX = 40
 /** Autoplay's beat, unless the caller sets its own. */
 const AUTOPLAY_MS = 5000
 
+/**
+ * How far the edge arrows sit from the band's own edge: a negative spacing,
+ * so the button floats half over the slides and half over the page around
+ * them — the pair the product row wears, now every slider's.
+ */
+const ARROW_EDGE_INSET = '-5'
+
 /** One slide's width, with the gaps between the slides taken off. */
 export function sliderBasis(perPage: number, gap = DEFAULT_GAP): string {
   return `(100% - ${gap} * ${perPage - 1}) / ${perPage}`
@@ -80,6 +112,9 @@ export function sliderBasis(perPage: number, gap = DEFAULT_GAP): string {
 export function sliderStep(perPage: number, gap = DEFAULT_GAP): string {
   return `calc(${sliderBasis(perPage, gap)} + ${gap})`
 }
+
+/** How long a wrap's glide is given before its jump back is taken anyway. */
+const WRAP_FALLBACK_MS = 700
 
 /**
  * The track's transform at a position, with a finger's drag added on.
@@ -125,7 +160,11 @@ export interface SliderProps {
    * bottom centre — the pair a fullscreen photo viewer wears.
    */
   arrowPlacement?: 'edges' | 'bottom'
-  /** Where the arrows sit, as a spacing token of their own edge. */
+  /**
+   * Where the arrows sit, as a spacing token of their own edge. The default
+   * is negative: the button straddles the edge, half over the slides and half
+   * over the page margin around them.
+   */
   arrowInset?: string
   /** The band's own shape, for photo bands. Cards size themselves instead. */
   ratio?: number
@@ -133,15 +172,18 @@ export interface SliderProps {
   peek?: string
   /** The slide to open on. */
   start?: number
+  /** Told whenever the resting slide changes (a viewer's backdrop follows it). */
+  onIndexChange?: (index: number) => void
   /** The editor's selection: the slide to hold in view, autoplay held with it. */
   active?: number
   /** The element the band wears (`section`, say). */
   as?: ElementType
-  /** Extra props for the root, the band, the track and each slide's wrapper. */
+  /** Extra props for the root, the band, the track, each slide and the arrows. */
   rootProps?: SliderSlotProps
   bandProps?: SliderSlotProps
   trackProps?: SliderSlotProps
   slideProps?: SliderSlotProps
+  arrowProps?: SliderArrowProps
 }
 
 export function Slider({
@@ -157,43 +199,83 @@ export function Slider({
   indicator = 'dots',
   arrows = true,
   arrowPlacement = 'edges',
-  arrowInset = '3',
+  arrowInset = ARROW_EDGE_INSET,
   ratio,
   peek,
   start = 0,
+  onIndexChange,
   active,
   as,
   rootProps,
   bandProps,
   trackProps,
   slideProps,
+  arrowProps,
 }: SliderProps) {
   const text = useRenderText()
+  const { editing } = useRenderEnvironment()
   const vertical = orientation === 'vertical'
   const gap = DEFAULT_GAP
   const perPageClamped = Math.max(1, Math.min(perPage, Math.max(1, count)))
   const last = Math.max(0, count - perPageClamped)
   const paged = last > 0
+  /** Whether the wrap doubles the track — never on the editor's own canvas. */
+  const wraps = loop && paged && !editing
+  /** How many slides the doubles repeat at each end: one page's worth. */
+  const doubles = wraps ? perPageClamped : 0
   const [index, setIndex] = useState(Math.max(0, Math.min(start, last)))
   const [paused, setPaused] = useState(false)
   const [playing, setPlaying] = useState(autoplay)
   const [dragPx, setDragPx] = useState(0)
   const [dragging, setDragging] = useState(false)
-  const at = Math.min(index, last)
+  /** The transition off for the one frame a wrap's jump back takes. */
+  const [snapping, setSnapping] = useState(false)
+  /** Steps asked for while a wrap was still gliding; taken once it lands. */
+  const wanted = useRef(0)
+  /** The resting slide — or, mid-wrap, the one the wrap is landing on. */
+  const at = index < 0 ? last : index > last ? 0 : index
   const basis = sliderBasis(perPageClamped, gap)
-  const shift = sliderTransform(at, perPageClamped, dragPx, gap, vertical)
+  // The doubles ride ahead of the slides, so the first real slide sits one
+  // page into the track.
+  const shift = sliderTransform(index + doubles, perPageClamped, dragPx, gap, vertical)
   /** The finger being followed, and where it started. */
   const dragFrom = useRef<{ pointerId: number; x: number } | null>(null)
   /** The editor's selection holds the track still while it is set. */
   const hold = active !== undefined && active >= 0
+  /** A wrap is gliding onto a double, or taking its jump back. */
+  const wrapping = index < 0 || index > last
+  const busy = wrapping || snapping
+
+  /** Where one step past a resting position lands: on a double, or the end. */
+  const goTo = (to: number) => {
+    if (to < 0) setIndex(wraps ? -doubles : loop ? last : 0)
+    else setIndex(to > last ? (wraps ? count : loop ? 0 : last) : to)
+  }
 
   const step = (delta: number) => {
-    const to = at + delta
-    if (to < 0) {
-      setIndex(loop ? last : 0)
+    // Retargeting a wrap mid-glide would animate the long way round, back
+    // across the run. The step waits for the jump back instead.
+    if (busy) {
+      wanted.current += delta
       return
     }
-    setIndex(to > last ? (loop ? 0 : last) : to)
+    goTo(index + delta)
+  }
+
+  /** A dot names a resting position; while a wrap glides, it waits with it. */
+  const select = (position: number) => {
+    if (busy) {
+      wanted.current = position - at
+      return
+    }
+    setIndex(position)
+  }
+
+  /** The glide onto a double has finished: the jump back, off-screen. */
+  const settle = () => {
+    if (!wrapping) return
+    setSnapping(true)
+    setIndex(at)
   }
 
   const endDrag = () => {
@@ -208,6 +290,56 @@ export function Slider({
     setIndex(Math.min(active, last))
   }, [active, last])
 
+  // A resize can move the last resting position under the state, and a wrap
+  // may be mid-glide when it does: land on the nearest slide, off the doubles.
+  useEffect(() => {
+    setIndex((current) => {
+      if (current < 0) return last
+      if (current >= count) return 0
+      return Math.min(current, last)
+    })
+  }, [count, last])
+
+  // Whoever needs to know where the track rests — a viewer's backdrop, say.
+  useEffect(() => {
+    onIndexChange?.(at)
+  }, [at, onIndexChange])
+
+  // The wrap landed on a double: the same pixels as the real slide, so the
+  // jump back is invisible. It still needs its own frame with the transition
+  // off — one for the browser to read the jumped-to position, then one to put
+  // the glide back — and a step asked for mid-flight leaves from there.
+  useEffect(() => {
+    if (!snapping) return
+    let after: number | undefined
+    const landed = globalThis.requestAnimationFrame(() => {
+      setSnapping(false)
+      if (wanted.current === 0) return
+      after = globalThis.requestAnimationFrame(() => {
+        const delta = wanted.current
+        wanted.current = 0
+        goTo(index + delta)
+      })
+    })
+    return () => {
+      globalThis.cancelAnimationFrame(landed)
+      if (after !== undefined) globalThis.cancelAnimationFrame(after)
+    }
+    // The frame reads the `index` and `goTo` of the render that set `snapping`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapping])
+
+  // The jump back rides on the glide ending. Should that event never come —
+  // the track inside a section hidden on this device, say — the wrap settles
+  // on its own a beat later, so a step is never swallowed with no way back.
+  useEffect(() => {
+    if (!wrapping) return
+    const timer = globalThis.setTimeout(settle, WRAP_FALLBACK_MS)
+    return () => globalThis.clearTimeout(timer)
+    // `settle` reads the render that started the wrap, which is this one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wrapping])
+
   // Autoplay advances on its own; the pointer resting on the band holds it,
   // and without a loop the last slide simply stays put. A held selection (the
   // editor) holds it too, so the seller is never reading a slide that moves.
@@ -215,16 +347,38 @@ export function Slider({
     if (!playing || !paged || paused || dragging || hold) return
     const timer = globalThis.setInterval(() => {
       setIndex((current) => {
-        const from = Math.min(current, last)
-        if (from < last) return from + 1
-        return loop ? 0 : from
+        const resting = current < 0 ? last : current > last ? 0 : current
+        // A wrap still gliding lands on the next slide by itself.
+        if (resting !== current) return current
+        if (resting < last) return resting + 1
+        return wraps ? count : loop ? 0 : resting
       })
     }, autoplayMs)
     return () => globalThis.clearInterval(timer)
-  }, [playing, paged, paused, dragging, hold, last, loop, autoplayMs])
+  }, [playing, paged, paused, dragging, hold, last, loop, wraps, count, autoplayMs])
 
   const toggle = autoplayToggle && paged
   const slides = Children.toArray(children)
+  /**
+   * The track's slides, with the wrap's doubles: the last page repeated before
+   * the first and the first repeated after the last, as the very same elements
+   * — so the picture the jump back leaves is the picture it lands on.
+   */
+  const lanes = wraps
+    ? [
+        ...slides.slice(-doubles).map((child, position) => ({
+          child,
+          key: `tail-${position}`,
+          double: true,
+        })),
+        ...slides.map((child, position) => ({ child, key: `slide-${position}`, double: false })),
+        ...slides.slice(0, doubles).map((child, position) => ({
+          child,
+          key: `head-${position}`,
+          double: true,
+        })),
+      ]
+    : slides.map((child, position) => ({ child, key: `slide-${position}`, double: false }))
   const band = (
     <Box
       data-slider-band=""
@@ -267,7 +421,8 @@ export function Slider({
     >
       {/* The track: as wide as the band, its slides running past the edge,
           clipped — never scrolled. While a finger drags it the transition is
-          off, so it tracks the finger exactly. */}
+          off, so it tracks the finger exactly — and so is the frame a wrap
+          jumps back on, where the pixels do not move. */}
       <Flex
         data-slider-track=""
         direction={vertical ? 'column' : 'row'}
@@ -275,13 +430,28 @@ export function Slider({
         h="full"
         flexShrink="0"
         gap={gap}
-        transition={dragging ? 'none' : `transform ${SLIDE_SHIFT}`}
+        transition={dragging || snapping ? 'none' : `transform ${SLIDE_SHIFT}`}
         style={{ transform: shift }}
+        onTransitionEnd={(event) => {
+          if (event.target !== event.currentTarget) return
+          // A child's own transition (a hover, say) ends here too; the track's
+          // is the transform. Not every DOM hands the property over, though.
+          if (event.propertyName && event.propertyName !== 'transform') return
+          settle()
+        }}
         {...trackProps}
       >
-        {slides.map((child, position) => (
-          <Box key={position} flex={`0 0 calc(${basis})`} minW="0" minH="0" {...slideProps}>
-            {child}
+        {lanes.map((lane) => (
+          <Box
+            key={lane.key}
+            flex={`0 0 calc(${basis})`}
+            minW="0"
+            minH="0"
+            {...slideProps}
+            // A double is the same slide again: no tab stop, nothing read out.
+            {...(lane.double ? { inert: true, 'aria-hidden': true } : {})}
+          >
+            {lane.child}
           </Box>
         ))}
       </Flex>
@@ -301,6 +471,7 @@ export function Slider({
             {...OVERLAY_ARROW}
             position="static"
             transform="none"
+            {...arrowProps}
             aria-label={text('previousSlide')}
             disabled={hold || (!loop && at === 0)}
             onClick={() => step(-1)}
@@ -311,6 +482,7 @@ export function Slider({
             {...OVERLAY_ARROW}
             position="static"
             transform="none"
+            {...arrowProps}
             aria-label={text('nextSlide')}
             disabled={hold || (!loop && at >= last)}
             onClick={() => step(1)}
@@ -327,6 +499,7 @@ export function Slider({
             {...(vertical
               ? { top: '2', left: '50%', transform: 'translateX(-50%)' }
               : { left: arrowInset })}
+            {...arrowProps}
             aria-label={text('previousSlide')}
             disabled={hold || (!loop && at === 0)}
             onClick={() => step(-1)}
@@ -338,6 +511,7 @@ export function Slider({
             {...(vertical
               ? { top: 'auto', bottom: '2', left: '50%', transform: 'translateX(-50%)' }
               : { right: arrowInset })}
+            {...arrowProps}
             aria-label={text('nextSlide')}
             disabled={hold || (!loop && at >= last)}
             onClick={() => step(1)}
@@ -348,7 +522,7 @@ export function Slider({
       )}
 
       {paged && dots === 'inside' && (
-        <SliderDots count={last + 1} at={at} onSelect={setIndex} overBand />
+        <SliderDots count={last + 1} at={at} onSelect={select} overBand />
       )}
     </Box>
   )
@@ -374,7 +548,7 @@ export function Slider({
           {at + 1} / {last + 1}
         </Text>
       )}
-      {dots === 'below' && <SliderDots count={last + 1} at={at} onSelect={setIndex} />}
+      {dots === 'below' && <SliderDots count={last + 1} at={at} onSelect={select} />}
     </Flex>
   )
 
@@ -408,9 +582,12 @@ function SliderDots({
   overBand?: boolean
 }) {
   const text = useRenderText()
-  const idle = overBand ? 'white/55' : 'fg/20'
-  const hover = overBand ? 'white/80' : 'fg/40'
-  const current = overBand ? 'white' : 'fg'
+  // Over a photo the dots are the shop's canvas (its own warm white) with a
+  // shadow; under a card row they wear the page's ink. Either way it is a
+  // theme colour, never a literal one.
+  const idle = overBand ? 'canvas/60' : 'fg/20'
+  const hover = overBand ? 'canvas/85' : 'fg/40'
+  const current = overBand ? 'canvas' : 'fg'
   return (
     <HStack
       {...(overBand ? { position: 'absolute', insetX: '0', bottom: '3', zIndex: '1' } : {})}

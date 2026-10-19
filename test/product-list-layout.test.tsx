@@ -78,12 +78,15 @@ describe('product list layouts', () => {
     const html = renderLatest({ heading: 'New in', limit: 8, layout: 'slider' })
     expect(html).toContain('data-product-layout="slider"')
     // The row is shifted by a transform — never a scroll container — and the
-    // arrows and pill dots ride it.
+    // arrows ride it. No dots at the foot: the banner is the one slider that
+    // wears them.
     expect(html).toContain('data-slider-track=""')
-    expect(html).toContain('transform:translateX(0)')
+    // Looped, so the row starts one page of doubles in and the transform is
+    // the track's own — never a scroll offset.
+    expect(html).toMatch(/transform:translateX\(calc\(/)
     expect(html).toContain('aria-label="Previous slide"')
     expect(html).toContain('aria-label="Next slide"')
-    expect(html).toContain('aria-label="Slide 2"')
+    expect(html).not.toContain('aria-label="Slide 2"')
     expect(html).not.toContain('data-product-layout="grid"')
   })
 

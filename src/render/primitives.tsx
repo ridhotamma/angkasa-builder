@@ -1246,8 +1246,8 @@ export function ProductGrid({
 
 /**
  * The shop's products in one row the shopper swipes, drags or pages with the
- * shared slider's arrows, dots and a finger. A short list is simply a still
- * row.
+ * shared slider's arrows and a finger — no dots; the banner is the one slider
+ * that wears them. A short list is simply a still row.
  */
 function ProductSlider({
   products,
@@ -1269,10 +1269,6 @@ function ProductSlider({
       count={products.length}
       perPage={perPage}
       loop
-      dots="below"
-      // The arrows straddle the row's outer edge — half over the card, half
-      // over the page margin.
-      arrowInset="-5"
       rootProps={{ 'data-product-layout': 'slider' }}
       slideProps={{ display: 'flex', alignItems: 'stretch' }}
     >

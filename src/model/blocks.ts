@@ -223,6 +223,8 @@ const spacer: BlockSchema = {
         { value: 'thick', label: { en: 'Thick', id: 'Tebal' } },
       ],
       default: 'thin',
+      // Only a spacer with its line on draws one.
+      showWhen: { key: 'line', is: ['true'] },
     },
     {
       kind: 'select',
@@ -235,6 +237,7 @@ const spacer: BlockSchema = {
         { value: 'brand', label: { en: 'Brand', id: 'Brand' } },
       ],
       default: 'border',
+      showWhen: { key: 'line', is: ['true'] },
     },
     contentWidthField(),
     alignmentField(),
@@ -875,7 +878,9 @@ const slider: BlockSchema = {
         { value: 'count', label: { en: 'Counter (2 / 5)', id: 'Penghitung (2 / 5)' } },
         { value: 'none', label: { en: 'None', id: 'Tanpa penanda' } },
       ],
-      default: 'dots',
+      // No dots at the foot of a slider unless the seller asks for them: the
+      // banner slider is the one that always wears them.
+      default: 'none',
     },
   ],
 }

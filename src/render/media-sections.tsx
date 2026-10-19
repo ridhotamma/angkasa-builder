@@ -183,7 +183,7 @@ export function VideoReels({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <Slider count={items.length} perPage={perPage} dots="inside" arrowInset="2">
+        <Slider count={items.length} perPage={perPage}>
           {items.map((item, index) => {
             const video = readVideo(item, 'video')
             const product = findProductCard(data, readText(item, 'productId'))

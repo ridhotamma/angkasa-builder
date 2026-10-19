@@ -361,7 +361,6 @@ function BannerSlider({ settings }: SectionProps) {
       loop={readBoolean(settings, 'loop')}
       autoplay={readBoolean(settings, 'autoplay')}
       dots="inside"
-      arrowInset="3"
     >
       {slides.map((slide, position) => (
         <BannerSlide key={String(slide.id)} slide={slide} eager={position === 0} />
@@ -1271,7 +1270,8 @@ function TestimonialMarquee({
 
 /**
  * One page of cards at a time — one on a phone, up to three on a desktop —
- * moved by the shared slider's arrows, dots, finger drag and autoplay.
+ * moved by the shared slider's arrows, finger drag and autoplay. No dots: the
+ * banner is the one slider that wears them.
  */
 function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; autoplay: boolean }) {
   const perPage = Math.min(useResponsive({ base: 1, md: 2, lg: 3 }), items.length)
@@ -1282,7 +1282,6 @@ function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; au
       perPage={perPage}
       loop
       autoplay={autoplay}
-      dots="below"
       slideProps={{ display: 'flex' }}
     >
       {items.map((item) => (

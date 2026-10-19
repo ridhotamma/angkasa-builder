@@ -1181,7 +1181,7 @@ function SliderBlock({ block }: { block: BlockValue }) {
     : undefined
   const peek = readBoolean(block.settings, 'peek') ? '2rem' : undefined
   const arrows = readToken(block.settings, 'arrows', SLIDER_ARROWS, 'overlay')
-  const indicator = readToken(block.settings, 'indicator', SLIDER_INDICATORS, 'dots')
+  const indicator = readToken(block.settings, 'indicator', SLIDER_INDICATORS, 'none')
   const interval = Number(readToken(block.settings, 'interval', SLIDER_INTERVALS, '5'))
   const autoplay = readBoolean(block.settings, 'autoplay') && !reduced
   const selectedSlide = slides.findIndex((slide) => holdsBlock(slide, editing?.selectedBlockId))
@@ -1207,7 +1207,6 @@ function SliderBlock({ block }: { block: BlockValue }) {
       dots={indicator === 'dots' ? 'below' : 'none'}
       indicator={indicator === 'count' ? 'count' : 'dots'}
       arrows={arrows === 'overlay'}
-      arrowInset="2"
       peek={peek}
       active={selectedSlide >= 0 ? selectedSlide : undefined}
       rootProps={{ 'data-block-hover-group': '' }}

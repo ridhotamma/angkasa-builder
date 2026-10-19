@@ -97,4 +97,13 @@ describe('the testimonials list layout', () => {
     expect(html).not.toContain('data-testimonial-row')
     expect(html).toContain('Fast delivery and the packaging was neat.')
   })
+
+  test('the slider pages by its arrows and wears no dots', () => {
+    const html = page([quotes({ layout: 'carousel' })])
+    // No dots at the foot of the cards: the banner is the one slider that
+    // wears them, so a carousel moves by its arrows and a finger.
+    expect(html).not.toContain('aria-label="Slide')
+    expect(html).toContain('aria-label="Previous slide"')
+    expect(html).toContain('aria-label="Next slide"')
+  })
 })

@@ -109,6 +109,8 @@ describe('slider and marquee blocks', () => {
       perPage: '1',
       interval: '5',
       arrows: 'overlay',
+      // No dots at the foot of a slider unless the seller asks for them.
+      indicator: 'none',
     })
     expect(marquee!.settings).toMatchObject({ direction: 'left', speed: 'normal' })
   })
@@ -136,8 +138,18 @@ describe('slider and marquee blocks', () => {
     for (const text of ['First slide', 'Second slide', 'Third slide']) {
       expect(html).toContain(text)
     }
+    // The default indicator is none: the arrows are the whole indicator.
+    expect(html).not.toContain('aria-label="Slide')
     expect(html).not.toContain('data-block-id')
     expect(html).not.toContain('data-block-list')
+  })
+
+  test('a slider the seller gives dots still draws them', () => {
+    const section = createSection('blocks', {
+      blocks: [{ ...SLIDER, settings: { ...SLIDER.settings, indicator: 'dots' } }],
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('aria-label="Slide 2"')
   })
 
   test('marquee repeats are hidden from assistive tech and inert', () => {

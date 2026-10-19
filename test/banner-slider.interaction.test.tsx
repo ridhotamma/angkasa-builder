@@ -12,7 +12,7 @@ import './happy-dom-setup'
 
 import { afterEach, describe, expect, test } from 'bun:test'
 import { Box, ChakraProvider } from '@chakra-ui/react'
-import { cleanup, fireEvent, render, type RenderResult } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, type RenderResult } from '@testing-library/react'
 
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
@@ -67,6 +67,53 @@ function pointer(
 ) {
   fireEvent[type](target, { pointerId: 1, pointerType, clientX })
 }
+
+describe('the wrap of a loop', () => {
+  /** The same track, looped. */
+  function looped(): RenderResult {
+    return render(
+      <ChakraProvider value={system}>
+        <I18nProvider locale="en" resources={{}}>
+          <RenderProvider value={env()}>
+            <Slider count={3} perPage={1} ratio={2} loop dots="inside">
+              <Box bg="bg.subtle" h="full" />
+              <Box bg="bg.subtle" h="full" />
+              <Box bg="bg.subtle" h="full" />
+            </Slider>
+          </RenderProvider>
+        </I18nProvider>
+      </ChakraProvider>,
+    )
+  }
+
+  test('a step past either end glides on, then lands without a rewind', () => {
+    const view = looped()
+    // The doubles put the first slide one page into the track.
+    expect(shift(view)).toBe(sliderTransform(1, 1))
+    fireEvent.click(view.getByLabelText('Previous slide'))
+    // Backward from the first slide: onto the last slide's double, one step —
+    // not a jump across the whole run.
+    expect(shift(view)).toBe('translateX(0)')
+    fireEvent.transitionEnd(view.container.querySelector('[data-slider-track]')!, {
+      propertyName: 'transform',
+    })
+    // The jump back is the last resting position, and the same pixels.
+    expect(shift(view)).toBe(sliderTransform(3, 1))
+  })
+
+  test('a wrap whose transition never ends settles on its own', async () => {
+    const view = looped()
+    fireEvent.click(view.getByLabelText('Previous slide'))
+    expect(shift(view)).toBe('translateX(0)')
+    // No `transitionend` ever comes — the track inside a section hidden on
+    // this device, say — so the wrap lands on its own beat instead, and the
+    // next step is never swallowed.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 800))
+    })
+    expect(shift(view)).toBe(sliderTransform(3, 1))
+  })
+})
 
 describe('the banner slider', () => {
   test('a dot moves the track, and the active dot is the one showing', () => {
