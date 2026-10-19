@@ -42,6 +42,85 @@ function renderLatest(settings: Record<string, unknown>): string {
   )
 }
 
+describe('product card hover image', () => {
+  /** The catalogue's first card with a different second photo. */
+  function withHover(overrides: Record<string, unknown> = {}): RenderEnvironment['data'] {
+    const data = sampleStorefrontData('Hover shop')
+    data.latest = data.latest.map((product, index) =>
+      index === 0
+        ? {
+            ...product,
+            imageUrl: 'https://images.test/primary.jpg',
+            secondaryImageUrl: 'https://images.test/secondary.jpg',
+            ...overrides,
+          }
+        : product,
+    )
+    return data
+  }
+
+  function card(layout = 'grid'): string {
+    return render(
+      <SectionsRenderer
+        sections={[createSection('product-list', { source: 'latest', layout, limit: 2 })]}
+        env={env({ data: withHover() })}
+      />,
+    )
+  }
+
+  test('the second photo stacks behind the first for the card hover', () => {
+    const html = card()
+    expect(html).toContain('https://images.test/primary.jpg')
+    expect(html).toContain('https://images.test/secondary.jpg')
+    expect(html).toContain('data-product-secondary=""')
+    // The card is the hover group the hidden photo waits for.
+    expect(html).toMatch(/class="[^"]*\bgroup\b[^"]*"/)
+  })
+
+  test('the bento tile wears the same hover photo', () => {
+    const html = card('bento')
+    expect(html).toContain('https://images.test/secondary.jpg')
+    expect(html).toContain('data-product-secondary=""')
+  })
+
+  test('a card without a second photo draws no hover layer', () => {
+    const data = sampleStorefrontData('Hover shop')
+    const html = render(
+      <SectionsRenderer
+        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
+        env={env({ data })}
+      />,
+    )
+    expect(html).not.toContain('data-product-secondary')
+  })
+
+  test('legacy card data with imageUrls uses its second photo too', () => {
+    const data = withHover({ secondaryImageUrl: undefined })
+    data.latest[0] = {
+      ...data.latest[0]!,
+      imageUrls: ['https://images.test/primary.jpg', 'https://images.test/secondary.jpg'],
+    }
+    const html = render(
+      <SectionsRenderer
+        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
+        env={env({ data })}
+      />,
+    )
+    expect(html).toContain('https://images.test/secondary.jpg')
+  })
+
+  test('a repeated primary photo never becomes a hover layer', () => {
+    const data = withHover({ secondaryImageUrl: 'https://images.test/primary.jpg' })
+    const html = render(
+      <SectionsRenderer
+        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
+        env={env({ data })}
+      />,
+    )
+    expect(html).not.toContain('data-product-secondary')
+  })
+})
+
 describe('product list layouts', () => {
   test('every product-list section offers the three layouts, grid by default', () => {
     for (const type of PRODUCT_LISTS) {
@@ -123,7 +202,7 @@ describe('product list layouts', () => {
     const html = renderLatest({ heading: 'New in', limit: 8, layout: 'slider' })
     // The carousel item is a flex box; without a width the card sizes to its
     // title, so a short one draws a narrower card than its neighbours.
-    const cardClass = /class="chakra-card__root ([^"]+)"/.exec(html)?.[1]?.split(' ')[0]
+    const cardClass = /class="[^"]*chakra-card__root ([^"]+)"/.exec(html)?.[1]?.split(' ')[0]
     expect(typeof cardClass).toBe('string')
     expect(html).toMatch(new RegExp(`\\.${cardClass}\\{[^}]*width:var\\(--chakra-sizes-full\\)`))
   })

@@ -1208,6 +1208,16 @@ export function WishlistButton({
   )
 }
 
+/**
+ * The second photo a product card shows on hover, if it is a different image
+ * from the primary. Old card data carries only `imageUrls`, so that is the
+ * fallback; a repeated file never becomes a hover layer.
+ */
+function hoverImageUrl(product: StorefrontProductCard): string | null {
+  const candidate = product.secondaryImageUrl ?? product.imageUrls?.[1] ?? null
+  return candidate && candidate !== product.imageUrl ? candidate : null
+}
+
 export function ProductCard({
   product,
   wishlist,
@@ -1222,10 +1232,12 @@ export function ProductCard({
   const soldOut = product.trackStock === true && product.available === 0
   const ratingCount = product.ratingCount ?? 0
   const soldCount = product.soldCount ?? 0
+  const secondaryImage = hoverImageUrl(product)
 
   return (
     <Card.Root
       ref={tiltRef}
+      className="group"
       position="relative"
       w="full"
       h="full"
@@ -1248,12 +1260,46 @@ export function ProductCard({
           rounded={flat ? 'l3' : undefined}
           overflow="hidden"
         >
-          <ImageWithFallback
-            src={product.imageUrl ?? undefined}
-            alt={product.name}
-            objectFit="cover"
-            loading="lazy"
-          />
+          {/* One child: Chakra's ratio box takes a single element. The two
+              photos then stack inside it, the second waiting for the hover. */}
+          <Box position="relative" w="full" h="full">
+            <ImageWithFallback
+              src={product.imageUrl ?? undefined}
+              alt={product.name}
+              position="absolute"
+              inset="0"
+              w="full"
+              h="full"
+              objectFit="cover"
+              loading="lazy"
+            />
+            {secondaryImage && (
+              <ImageWithFallback
+                src={secondaryImage}
+                alt=""
+                position="absolute"
+                inset="0"
+                w="full"
+                h="full"
+                objectFit="cover"
+                loading="lazy"
+                fetchPriority="low"
+                opacity={0}
+                transition="opacity 300ms ease, transform 600ms ease"
+                _groupHover={{ opacity: 1 }}
+                data-product-secondary=""
+                aria-hidden
+                // No second image on a touch screen: the card opens the product.
+                css={{
+                  '@media (hover: none)': { display: 'none' },
+                  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+                }}
+                // A photo that fails to load must not cover the primary with a
+                // placeholder icon.
+                fallback={<Box aria-hidden />}
+              />
+            )}
+          </Box>
         </AspectRatio>
         <Stack gap="1.5" p={flat ? '2' : { base: '3', sm: '3.5' }} flex="1">
           <Text fontSize={{ base: 'sm', sm: 'md' }} fontWeight="medium" lineClamp={2}>
@@ -1497,6 +1543,7 @@ function ProductBentoCard({
   const { data, formatPrice } = useRenderEnvironment()
   const { frame, hover } = useCard()
   const big = shape === 'big'
+  const secondaryImage = hoverImageUrl(product)
 
   return (
     <Card.Root
@@ -1527,6 +1574,29 @@ function ProductBentoCard({
           loading="lazy"
           transition="transform 600ms ease"
         />
+        {secondaryImage && (
+          <ImageWithFallback
+            src={secondaryImage}
+            alt=""
+            position="absolute"
+            inset="0"
+            w="full"
+            h="full"
+            objectFit="cover"
+            loading="lazy"
+            fetchPriority="low"
+            opacity={0}
+            transition="opacity 300ms ease, transform 600ms ease"
+            _groupHover={{ opacity: 1 }}
+            data-product-secondary=""
+            aria-hidden
+            css={{
+              '@media (hover: none)': { display: 'none' },
+              '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+            }}
+            fallback={<Box aria-hidden />}
+          />
+        )}
         <Box
           position="absolute"
           inset="0"

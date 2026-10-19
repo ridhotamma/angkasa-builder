@@ -25,6 +25,11 @@ export interface StorefrontProductCard {
   price: number
   compareAtPrice: number | null
   imageUrl: string | null
+  /**
+   * The product's second photo, shown when a shopper points at its card. The
+   * first gallery image is the primary; this one is the hover layer.
+   */
+  secondaryImageUrl?: string | null
   /** More photos, when the section shows a gallery (a featured product). */
   imageUrls?: string[]
   /** Plain text. Only read by sections that show it. */
