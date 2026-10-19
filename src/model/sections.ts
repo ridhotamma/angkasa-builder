@@ -34,6 +34,7 @@ import type {
 import type { IconName } from './icons'
 import type { Localized } from './localized'
 import {
+  BANNER_PHOTO_SHAPES,
   BANNER_SLIDES_PER_VIEW,
   photoFitField,
   photoPositionField,
@@ -1347,19 +1348,13 @@ export const SECTION_SCHEMAS = [
       {
         kind: 'select',
         key: 'ratio',
-        label: { en: 'Banner shape', id: 'Bentuk banner' },
+        label: { en: 'Photo shape', id: 'Bentuk foto' },
         help: {
-          en: 'The band’s height — it stays put however many slides show.',
-          id: 'Tinggi banner — tetap sama berapa pun slide yang tampil.',
+          en: 'Each photo is cropped to this shape. The banner height follows the photo, not a fixed box.',
+          id: 'Setiap foto dipotong ke bentuk ini. Tinggi banner mengikuti foto, bukan kotak tetap.',
         },
-        options: [
-          { value: '16/9', label: { en: 'Standard (16:9)', id: 'Standar (16:9)' } },
-          { value: '2/1', label: { en: 'Wide (2:1)', id: 'Lebar (2:1)' } },
-          { value: '21/9', label: { en: 'Ultra wide (21:9)', id: 'Ultra lebar (21:9)' } },
-          { value: '3/1', label: { en: 'Panoramic (3:1)', id: 'Panorama (3:1)' } },
-          { value: '1/1', label: { en: 'Square (1:1)', id: 'Persegi (1:1)' } },
-        ],
-        default: '16/9',
+        options: BANNER_PHOTO_SHAPES,
+        default: 'auto',
       },
       {
         kind: 'boolean',

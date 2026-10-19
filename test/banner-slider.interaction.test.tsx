@@ -10,7 +10,7 @@
 
 import './happy-dom-setup'
 
-import { afterEach, describe, expect, mock, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { Box, ChakraProvider } from '@chakra-ui/react'
 import {
   act,
@@ -129,6 +129,18 @@ describe('the wrap of a loop', () => {
 })
 
 describe('a drag across several slides', () => {
+  // The finger moves in a single tick here; the wall clock can still read a
+  // slow test run as a fast flick. Pin it so each drag settles by distance —
+  // exactly what the expectations describe.
+  let clock: () => number
+  beforeEach(() => {
+    clock = performance.now
+    performance.now = () => 0
+  })
+  afterEach(() => {
+    performance.now = clock
+  })
+
   /** Eight slides, one per view, so a flick has room to travel. */
   function row(): RenderResult {
     return render(
@@ -245,7 +257,6 @@ describe('the banner slider view', () => {
           <SectionsRenderer
             sections={[
               createSection('banner-slider', {
-                ratio: '2/1',
                 perPage: settings.perPage ?? '2',
                 perPageMobile: settings.perPageMobile ?? '1',
                 loop: settings.loop ?? true,
@@ -346,7 +357,6 @@ describe('the banner slider view', () => {
           <SectionsRenderer
             sections={[
               createSection('banner-slider', {
-                ratio: '2/1',
                 perPage: '3',
                 loop: true,
                 slides: [{ image: 's1' }, { image: 's2' }, { image: 's3' }],
@@ -396,8 +406,8 @@ describe('the banner slider view', () => {
     const view = banner({ perPage: '2' })
     const desktop = inScope(view)
     const next = await waitFor(() => desktop.getByLabelText('Next slide'))
-    // The overlays sit beside the clipped band, never inside it: a ratio band
-    // clipped its own children, which sawed this pair in half.
+    // The overlays sit beside the clipped band, never inside it: the photo
+    // band clips its own children, which once sawed this pair in half.
     expect(next.closest('[data-slider-band]')).toBeNull()
     expect(next.closest('[data-slider-frame]')).not.toBeNull()
   })

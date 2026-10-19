@@ -448,14 +448,13 @@ describe('section chrome', () => {
     expect(section.settings.perPageMobile).toBe('1.5')
   })
 
-  test('the slider band holds one height however many slides show', () => {
+  test('the banner band is shaped by its images, not a container ratio', () => {
     const slider = (perPage: string) =>
       render(
         <SectionsRenderer
           sections={[
             createSection('banner-slider', {
               perPage,
-              ratio: '2/1',
               slides: [{ image: 's1' }, { image: 's2' }, { image: 's3' }],
             }),
           ]}
@@ -464,15 +463,14 @@ describe('section chrome', () => {
       )
     for (const perPage of ['1', '1.5', '2', '2.5', '3']) {
       const html = slider(perPage)
-      // One band, shaped once: the height is drawn as the band's own padding,
-      // and the per-view choice only changes the slides inside it — never the
-      // height the page around it sees. Padding is what makes the shape stick
-      // where a plain `aspect-ratio` would let the photos stretch the band.
-      const bands = html.match(/padding-bottom:50%/g) ?? []
-      expect(bands.length, `perPage ${perPage}`).toBe(1)
+      // No padded box around the photos: each slide's own image sets the
+      // height, so a wide upload stays wide instead of being cropped into a
+      // container ratio.
+      expect(html, `perPage ${perPage}`).not.toMatch(/padding-bottom:\d+(?:\.\d+)?%/)
       expect(html, `perPage ${perPage}`).not.toMatch(/aspect-ratio:\d/)
       // The final slider is what the server sends — never a placeholder that
       // a slow connection later swaps out.
+      expect(html, `perPage ${perPage}`).toContain('data-slider-frame')
       expect(html, `perPage ${perPage}`).toContain('data-slider-track')
       expect(html, `perPage ${perPage}`).toContain('data-slider-slide')
       expect(html, `perPage ${perPage}`).not.toContain('aria-busy')
@@ -485,35 +483,37 @@ describe('section chrome', () => {
         expect(html, `perPage ${perPage}`).toContain('data-banner-variant="desktop"')
       }
     }
-  })
-
-  test('the band can wear a wider shape', () => {
+    // The shape setting crops the photos; `auto` is the default, so the band
+    // follows the upload's own ratio out of the box.
     const shape = sectionSchema('banner-slider')!.fields.find((field) => field.key === 'ratio')
+    expect(shape?.kind === 'select' && shape.default).toBe('auto')
     expect(shape?.kind === 'select' && shape.options.map((option) => option.value)).toEqual([
+      'auto',
       '16/9',
       '2/1',
       '21/9',
       '3/1',
       '1/1',
     ])
+  })
 
-    const band = (ratio: string) =>
-      render(
-        <SectionsRenderer
-          sections={[
-            createSection('banner-slider', {
-              ratio,
-              slides: [{ image: 's1' }, { image: 's2' }],
-            }),
-          ]}
-          env={env()}
-        />,
-      )
-    // Ultra wide: the same width, a shorter band. The band's height is its
-    // own padding — the one form of ratio a taller photo cannot stretch.
-    expect(band('21/9')).toMatch(/padding-bottom:42\.85/)
-    // Panoramic: shorter still.
-    expect(band('3/1')).toMatch(/padding-bottom:33\.33/)
+  test('a chosen photo shape crops the photos, and the band follows them', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('banner-slider', {
+            ratio: '21/9',
+            slides: [{ image: 's1' }, { image: 's2' }],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    // The shape sits on the slide's own photo, not on a padded band around
+    // it: the band takes its height from the cropped image.
+    expect(html).toMatch(/aspect-ratio:21\/9/)
+    expect(html).not.toMatch(/padding-bottom:\d+(?:\.\d+)?%/)
+    expect(html).toContain('object-fit:cover')
   })
 
   test('the slider track shifts instead of scrolling', () => {
@@ -611,21 +611,19 @@ describe('section chrome', () => {
     expect(reels).toMatch(/right:calc\(var\(--chakra-spacing-5\) \* -1\)/)
   })
 
-  test('a single-slide slider is the same band', () => {
+  test('a lone banner is just its picture, with no track to page', () => {
     const html = render(
       <SectionsRenderer
         sections={[
           createSection('banner-slider', {
-            ratio: '2/1',
             slides: [{ image: 's1', alt: 'One' }],
           }),
         ]}
         env={env()}
       />,
     )
-    // The band decides the height, not the photo: one padded box, no ratio
-    // left for the image to stretch.
-    expect((html.match(/padding-bottom:50%/g) ?? []).length).toBe(1)
+    // The photo is the band: no padded container ratio above it.
+    expect(html).not.toMatch(/padding-bottom:\d+(?:\.\d+)?%/)
     expect(html).not.toMatch(/aspect-ratio:\d/)
     expect(html).toContain('object-fit:cover')
     // A lone banner is still a picture, not a carousel: no track to page, and

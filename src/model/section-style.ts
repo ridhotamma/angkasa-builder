@@ -272,6 +272,24 @@ export const SLIDES_PER_VIEW_MOBILE = ['1', '1.2', '1.5', '2', '2.2', '2.5', '3'
  */
 export const BANNER_SLIDES_PER_VIEW = SLIDES_PER_VIEW_MOBILE
 
+/**
+ * The shape each banner photo is cropped to. `auto` leaves the upload's own
+ * shape alone; the fixed options crop the photo, and the band takes its height
+ * from that rendered photo rather than from a separate container ratio.
+ */
+export const BANNER_PHOTO_SHAPES = [
+  { value: 'auto', label: { en: 'Original (follow the photo)', id: 'Asli (ikut foto)' } },
+  { value: '16/9', label: { en: 'Standard (16:9)', id: 'Standar (16:9)' } },
+  { value: '2/1', label: { en: 'Wide (2:1)', id: 'Lebar (2:1)' } },
+  { value: '21/9', label: { en: 'Ultra wide (21:9)', id: 'Ultra lebar (21:9)' } },
+  { value: '3/1', label: { en: 'Panoramic (3:1)', id: 'Panorama (3:1)' } },
+  { value: '1/1', label: { en: 'Square (1:1)', id: 'Persegi (1:1)' } },
+] as const
+
+export const BANNER_PHOTO_SHAPE_VALUES = BANNER_PHOTO_SHAPES.map((option) => option.value)
+
+export type BannerPhotoShape = (typeof BANNER_PHOTO_SHAPES)[number]['value']
+
 /** The slides-per-view choice, shared by every slider that offers one. */
 export function slidesField(
   key: string,

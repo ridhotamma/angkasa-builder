@@ -226,8 +226,12 @@ export interface SliderProps {
    * over the page margin around them.
    */
   arrowInset?: string
-  /** The band's own shape, for photo bands. Cards size themselves instead. */
-  ratio?: number
+  /**
+   * The band's own shape, for photo bands. A number pins the band to that
+   * ratio; `'auto'` leaves the height to the slides themselves (a banner
+   * slider follows its images). Cards size themselves instead.
+   */
+  ratio?: number | 'auto'
   /** A margin around the band, so a slide can peek at the edges. */
   peek?: string
   /** The room between slides. Defaults to `DEFAULT_GAP`. */
@@ -725,14 +729,19 @@ export function Slider({
     </Flex>
   )
 
-  // A ratio band is positioned and clipped by `AspectRatio` to crop the
-  // photos. The overlays therefore sit beside it in a frame of the band's own
-  // box — inside, an arrow straddling the edge would be cut in half.
+  // A photo band clips its slides, so the overlays sit beside it in a frame of
+  // the band's own box — inside, an arrow straddling the edge would be cut in
+  // half. A numeric ratio also pins the band's shape in `AspectRatio`; `auto`
+  // leaves the height to the slides, so the banner follows its images.
   if (ratio !== undefined) {
     return (
       <Stack as={as} gap="3" {...rootProps}>
         <Box position="relative" data-slider-frame="">
-          <AspectRatio ratio={ratio}>{band}</AspectRatio>
+          {typeof ratio === 'number' ? (
+            <AspectRatio ratio={ratio}>{band}</AspectRatio>
+          ) : (
+            band
+          )}
           {overlays}
         </Box>
         {under}
