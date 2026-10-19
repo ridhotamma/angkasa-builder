@@ -346,10 +346,10 @@ export function BannerSlider({ settings }: SectionProps) {
   const autoplay = readBoolean(settings, 'autoplay')
   // Tokens for the lone banner's responsive `aspect-ratio`; numbers for the
   // slider's padded band, which wants the quotient.
-  const ratioToken = readToken(settings, 'ratio', BANNER_BAND_SHAPE_VALUES, '16/5')
-  const ratioMobileToken = readToken(settings, 'ratioMobile', BANNER_BAND_SHAPE_VALUES, '16/5')
-  const ratio = ratioValue(ratioToken)
-  const ratioMobile = ratioValue(ratioMobileToken)
+  const bandShape = readToken(settings, 'ratio', BANNER_BAND_SHAPE_VALUES, '16/5')
+  const bandShapeMobile = readToken(settings, 'ratioMobile', BANNER_BAND_SHAPE_VALUES, '16/5')
+  const bandRatio = ratioValue(bandShape)
+  const bandRatioMobile = ratioValue(bandShapeMobile)
   // Edge to edge, the band reaches the viewport itself: the slides drop their
   // rounded corners, exactly as the single banner's photo does.
   const rounded = width === 'edge' ? 'none' : 'l3'
@@ -357,17 +357,17 @@ export function BannerSlider({ settings }: SectionProps) {
   if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
   if (slides.length === 1) {
     return (
-      <Box as="section" aspectRatio={{ base: ratioMobileToken, md: ratioToken }} overflow="hidden">
+      <Box as="section" aspectRatio={{ base: bandShapeMobile, md: bandShape }} overflow="hidden">
         <BannerSlide slide={slides[0]!} eager rounded={rounded} />
       </Box>
     )
   }
 
-  const slider = (perPage: number, variant: string, band: number) => (
+  const slider = (perPage: number, variant: string, ratio: number) => (
     <Slider
       key={variant}
       as="div"
-      ratio={band}
+      ratio={ratio}
       count={slides.length}
       perPage={perPage}
       loop={loop}
@@ -390,10 +390,10 @@ export function BannerSlider({ settings }: SectionProps) {
     </Slider>
   )
 
-  if (phone === desktop && ratioMobile === ratio) {
+  if (phone === desktop && bandRatioMobile === bandRatio) {
     return (
       <Box as="section" data-banner-variant="all">
-        {slider(phone, 'all', ratioMobile)}
+        {slider(phone, 'all', bandRatioMobile)}
       </Box>
     )
   }
@@ -401,10 +401,10 @@ export function BannerSlider({ settings }: SectionProps) {
   return (
     <Box as="section">
       <Box data-banner-variant="phone" hideFrom="md">
-        {slider(phone, 'phone', ratioMobile)}
+        {slider(phone, 'phone', bandRatioMobile)}
       </Box>
       <Box data-banner-variant="desktop" hideBelow="md">
-        {slider(desktop, 'desktop', ratio)}
+        {slider(desktop, 'desktop', bandRatio)}
       </Box>
     </Box>
   )

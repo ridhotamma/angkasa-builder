@@ -59,14 +59,26 @@ describe('product card hover image', () => {
     return data
   }
 
+  const hoverOn = { ...DEFAULT_THEME_SETTINGS, productImageHover: true }
+
+  /** The first card of a latest list, with the theme settings under test. */
+  function firstCard(
+    data: RenderEnvironment['data'],
+    settings: RenderEnvironment['settings'] = DEFAULT_THEME_SETTINGS,
+  ): string {
+    return render(
+      <SectionsRenderer
+        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
+        env={env({ data, settings })}
+      />,
+    )
+  }
+
   function card(layout = 'grid'): string {
     return render(
       <SectionsRenderer
         sections={[createSection('product-list', { source: 'latest', layout, limit: 2 })]}
-        env={env({
-          data: withHover(),
-          settings: { ...DEFAULT_THEME_SETTINGS, productImageHover: true },
-        })}
+        env={env({ data: withHover(), settings: hoverOn })}
       />,
     )
   }
@@ -87,14 +99,7 @@ describe('product card hover image', () => {
   })
 
   test('a card without a second photo draws no hover layer', () => {
-    const data = sampleStorefrontData('Hover shop')
-    const html = render(
-      <SectionsRenderer
-        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
-        env={env({ data })}
-      />,
-    )
-    expect(html).not.toContain('data-product-secondary')
+    expect(firstCard(sampleStorefrontData('Hover shop'))).not.toContain('data-product-secondary')
   })
 
   test('legacy card data with imageUrls uses its second photo too', () => {
@@ -103,40 +108,16 @@ describe('product card hover image', () => {
       ...data.latest[0]!,
       imageUrls: ['https://images.test/primary.jpg', 'https://images.test/secondary.jpg'],
     }
-    const html = render(
-      <SectionsRenderer
-        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
-        env={env({
-          data,
-          settings: { ...DEFAULT_THEME_SETTINGS, productImageHover: true },
-        })}
-      />,
-    )
-    expect(html).toContain('https://images.test/secondary.jpg')
+    expect(firstCard(data, hoverOn)).toContain('https://images.test/secondary.jpg')
   })
 
   test('a repeated primary photo never becomes a hover layer', () => {
     const data = withHover({ secondaryImageUrl: 'https://images.test/primary.jpg' })
-    const html = render(
-      <SectionsRenderer
-        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
-        env={env({
-          data,
-          settings: { ...DEFAULT_THEME_SETTINGS, productImageHover: true },
-        })}
-      />,
-    )
-    expect(html).not.toContain('data-product-secondary')
+    expect(firstCard(data, hoverOn)).not.toContain('data-product-secondary')
   })
 
   test('the flip is off until the theme turns it on', () => {
-    const data = withHover()
-    const html = render(
-      <SectionsRenderer
-        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
-        env={env({ data })}
-      />,
-    )
+    const html = firstCard(withHover())
     expect(html).toContain('https://images.test/primary.jpg')
     expect(html).not.toContain('https://images.test/secondary.jpg')
     expect(html).not.toContain('data-product-secondary')

@@ -1103,6 +1103,8 @@ export interface CardTheme {
    * the theme does not ask for tilt.
    */
   tiltRef: RefCallback<HTMLDivElement>
+  /** Whether a product card may swap to its second photo on hover. */
+  imageHover: boolean
 }
 
 /**
@@ -1117,6 +1119,7 @@ export function useCard(): CardTheme {
     flat: settings.cardStyle === 'flat',
     hover: cardHoverProps(settings),
     tiltRef: useTilt(settings.cardHover.includes('tilt')),
+    imageHover: settings.productImageHover,
   }
 }
 
@@ -1218,6 +1221,40 @@ function hoverImageUrl(product: StorefrontProductCard): string | null {
   return candidate && candidate !== product.imageUrl ? candidate : null
 }
 
+/**
+ * The second product photo: an absolute layer over the primary, invisible
+ * until the card (its `.group` ancestor) is hovered. Shared by the grid card
+ * and the bento tile so the fade, the no-touch rule and the failed-load
+ * fallback cannot drift apart.
+ */
+function ProductHoverPhoto({ src }: { src: string }) {
+  return (
+    <ImageWithFallback
+      src={src}
+      alt=""
+      position="absolute"
+      inset="0"
+      w="full"
+      h="full"
+      objectFit="cover"
+      loading="lazy"
+      fetchPriority="low"
+      opacity={0}
+      transition="opacity 300ms ease, transform 600ms ease"
+      _groupHover={{ opacity: 1 }}
+      data-product-secondary=""
+      aria-hidden
+      // No second image on a touch screen: the card opens the product.
+      css={{
+        '@media (hover: none)': { display: 'none' },
+        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+      }}
+      // A photo that fails to load must not cover the primary with an icon.
+      fallback={<Box aria-hidden />}
+    />
+  )
+}
+
 export function ProductCard({
   product,
   wishlist,
@@ -1226,13 +1263,13 @@ export function ProductCard({
   /** A host wiring its own wishlist; falls back to the render environment. */
   wishlist?: RenderEnvironment['wishlist']
 }) {
-  const { data, formatPrice, settings } = useRenderEnvironment()
-  const { frame, flat, hover, tiltRef } = useCard()
+  const { data, formatPrice } = useRenderEnvironment()
+  const { frame, flat, hover, tiltRef, imageHover } = useCard()
   const text = useRenderText()
   const soldOut = product.trackStock === true && product.available === 0
   const ratingCount = product.ratingCount ?? 0
   const soldCount = product.soldCount ?? 0
-  const secondaryImage = settings.productImageHover ? hoverImageUrl(product) : null
+  const secondaryImage = imageHover ? hoverImageUrl(product) : null
 
   return (
     <Card.Root
@@ -1273,32 +1310,7 @@ export function ProductCard({
               objectFit="cover"
               loading="lazy"
             />
-            {secondaryImage && (
-              <ImageWithFallback
-                src={secondaryImage}
-                alt=""
-                position="absolute"
-                inset="0"
-                w="full"
-                h="full"
-                objectFit="cover"
-                loading="lazy"
-                fetchPriority="low"
-                opacity={0}
-                transition="opacity 300ms ease, transform 600ms ease"
-                _groupHover={{ opacity: 1 }}
-                data-product-secondary=""
-                aria-hidden
-                // No second image on a touch screen: the card opens the product.
-                css={{
-                  '@media (hover: none)': { display: 'none' },
-                  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-                }}
-                // A photo that fails to load must not cover the primary with a
-                // placeholder icon.
-                fallback={<Box aria-hidden />}
-              />
-            )}
+            {secondaryImage && <ProductHoverPhoto src={secondaryImage} />}
           </Box>
         </AspectRatio>
         <Stack gap="1.5" p={flat ? '2' : { base: '3', sm: '3.5' }} flex="1">
@@ -1540,10 +1552,10 @@ function ProductBentoCard({
   shape: BentoShape
   reveal: boolean
 }) {
-  const { data, formatPrice, settings } = useRenderEnvironment()
-  const { frame, hover } = useCard()
+  const { data, formatPrice } = useRenderEnvironment()
+  const { frame, hover, imageHover } = useCard()
   const big = shape === 'big'
-  const secondaryImage = settings.productImageHover ? hoverImageUrl(product) : null
+  const secondaryImage = imageHover ? hoverImageUrl(product) : null
 
   return (
     <Card.Root
@@ -1574,29 +1586,7 @@ function ProductBentoCard({
           loading="lazy"
           transition="transform 600ms ease"
         />
-        {secondaryImage && (
-          <ImageWithFallback
-            src={secondaryImage}
-            alt=""
-            position="absolute"
-            inset="0"
-            w="full"
-            h="full"
-            objectFit="cover"
-            loading="lazy"
-            fetchPriority="low"
-            opacity={0}
-            transition="opacity 300ms ease, transform 600ms ease"
-            _groupHover={{ opacity: 1 }}
-            data-product-secondary=""
-            aria-hidden
-            css={{
-              '@media (hover: none)': { display: 'none' },
-              '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-            }}
-            fallback={<Box aria-hidden />}
-          />
-        )}
+        {secondaryImage && <ProductHoverPhoto src={secondaryImage} />}
         <Box
           position="absolute"
           inset="0"
