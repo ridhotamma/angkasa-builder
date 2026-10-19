@@ -193,7 +193,7 @@ describe('the new primitives, rendered', () => {
       ],
     })
     const styledHtml = render(<SectionsRenderer sections={[styled]} env={env()} />)
-    expect(styledHtml).toContain('font-size:var(--chakra-font-sizes-3xl)')
+    expect(styledHtml).toContain('font-size:min(var(--chakra-font-sizes-3xl), 8vw)')
     expect(styledHtml).toContain('color:#112233')
     expect(styledHtml).not.toContain('font-size:var(--chakra-font-sizes-sm)')
   })

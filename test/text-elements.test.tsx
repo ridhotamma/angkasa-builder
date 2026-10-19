@@ -117,7 +117,7 @@ describe('text element overrides, as stored', () => {
         }),
       ),
     ).toEqual({
-      fontSize: 'var(--chakra-font-sizes-2xl)',
+      fontSize: 'min(var(--chakra-font-sizes-2xl), 8vw)',
       color: 'var(--chakra-colors-fg-muted)',
       fontWeight: '700',
       lineHeight: '1.7',
@@ -127,9 +127,10 @@ describe('text element overrides, as stored', () => {
       textDecoration: 'underline',
       textAlign: 'center',
     })
-    // 6XL is the top of the scale.
+    // 6XL is the top of the scale — and, like every step, it is capped on a
+    // narrow screen instead of overrunning the hero at a fixed 60px.
     expect(textElementStyle(readTextElement({ size: '6xl' }))).toEqual({
-      fontSize: 'var(--chakra-font-sizes-6xl)',
+      fontSize: 'min(var(--chakra-font-sizes-6xl), 8vw)',
     })
   })
 
@@ -169,7 +170,7 @@ describe('section-level text everywhere', () => {
         env={env()}
       />,
     )
-    expect(html).toContain('font-size:var(--chakra-font-sizes-2xl)')
+    expect(html).toContain('font-size:min(var(--chakra-font-sizes-2xl), 8vw)')
     expect(html).toContain('color:#ff0000')
     expect(html).not.toContain('data-element-id')
   })
@@ -213,7 +214,7 @@ describe('an overridden text element', () => {
   test('draws with its own font on the storefront, without editor affordances', () => {
     const html = render(<SectionsRenderer sections={[editorial(OVERRIDDEN)]} env={env()} />)
     expect(html).toContain('Made slowly')
-    expect(html).toContain('font-size:var(--chakra-font-sizes-5xl)')
+    expect(html).toContain('font-size:min(var(--chakra-font-sizes-5xl), 8vw)')
     expect(html).toContain('color:#ff0000')
     expect(html).toContain('font-weight:700')
     expect(html).toContain('line-height:1.1')

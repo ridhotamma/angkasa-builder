@@ -257,7 +257,7 @@ describe('resolving a block style to CSS', () => {
         maxHeight: 'xl',
       }),
     ).toMatchObject({
-      fontSize: 'var(--chakra-font-sizes-3xl)',
+      fontSize: 'min(var(--chakra-font-sizes-3xl), 8vw)',
       color: '#112233',
       lineHeight: '1.7',
       textDecoration: 'underline',

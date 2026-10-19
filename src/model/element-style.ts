@@ -993,6 +993,19 @@ const TEXT_SIZE_CSS: Record<string, string> = {
   '6xl': 'var(--chakra-font-sizes-6xl)',
 }
 
+/**
+ * A chosen size token, capped on small screens.
+ *
+ * An override is an absolute step — 6XL is 60px — which is right for a
+ * desktop hero but overruns a phone. `min(token, 8vw)` keeps the chosen step
+ * wherever it fits and lets the viewport take over below roughly 750px (sooner
+ * for smaller steps), without a second breakpoint table. The 8vw ceiling
+ * keeps the desktop and editor previews on the exact chosen size.
+ */
+export function responsiveFontSize(token: string): string {
+  return `min(${token}, 8vw)`
+}
+
 const TEXT_COLOR_CSS: Record<string, string> = {
   inherit: 'inherit',
   fg: 'var(--chakra-colors-fg)',
@@ -1038,8 +1051,9 @@ const TEXT_LETTER_SPACING_CSS: Record<string, string> = {
 /** Only what was overridden; every `default` is left off. */
 export function textElementStyle(overrides: TextElementOverrides): TextElementStyle {
   const out: TextElementStyle = {}
-  if (overrides.size !== 'default' && TEXT_SIZE_CSS[overrides.size]) {
-    out.fontSize = TEXT_SIZE_CSS[overrides.size]
+  const size = TEXT_SIZE_CSS[overrides.size]
+  if (overrides.size !== 'default' && size) {
+    out.fontSize = responsiveFontSize(size)
   }
   if (overrides.color === 'custom') {
     if (overrides.customColor) out.color = overrides.customColor

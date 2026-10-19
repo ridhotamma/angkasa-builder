@@ -23,7 +23,7 @@
  */
 
 import { readText, type Field, type FieldValues } from './fields'
-import { readToken } from './element-style'
+import { readToken, responsiveFontSize } from './element-style'
 import type { Localized } from './localized'
 import {
   MOTION_DELAYS,
@@ -1076,7 +1076,8 @@ export function blockStyleCss(style: FieldValues | undefined): BlockStyleCss {
   if (devices === 'desktop') out.mdDown = { display: 'none' }
 
   // Text
-  set('fontSize', token(style, 'fontSize', FONT_SIZE))
+  const fontSize = token(style, 'fontSize', FONT_SIZE)
+  if (fontSize) out.fontSize = responsiveFontSize(fontSize)
   const textColor = readText(style, 'color')
   if (textColor === 'custom') {
     const custom = readText(style, 'textColorCustom')
