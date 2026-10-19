@@ -21,6 +21,7 @@ import {
 } from '../src/index'
 import { surfacePaint } from '../src/render/dividers'
 import { spinStep } from '../src/render/feature-sections'
+import { AmbientVideo } from '../src/render/media'
 import { Slider, sliderTransform } from '../src/render/slider'
 import { sectionBackground } from '../src/render/section-background'
 import {
@@ -365,6 +366,27 @@ describe('section chrome', () => {
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(html).toContain('object-fit:contain')
     expect(html).toContain('object-position:left')
+  })
+
+  test('an ambient video draws no play, pause or volume chrome over it', () => {
+    const html = render(
+      <RenderProvider
+        value={env({
+          videoUrl: () => 'https://example.com/clip.mp4',
+          mode: 'live',
+        })}
+      >
+        <AmbientVideo fileId="clip" poster={null} />
+      </RenderProvider>,
+    )
+    expect(html).toContain('<video')
+    // Silent, looped decoration — never a native control bar.
+    expect(html).not.toContain('controls')
+    // And no custom play/pause or mute buttons either.
+    expect(html).not.toContain('aria-label="Pause"')
+    expect(html).not.toContain('aria-label="Play"')
+    expect(html).not.toContain('aria-label="Mute"')
+    expect(html).not.toContain('aria-label="Unmute"')
   })
 
   test('a looping video banner draws its rich body', () => {

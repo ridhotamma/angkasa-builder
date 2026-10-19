@@ -7,9 +7,8 @@
  * privacy-enhanced player or Vimeo's. No stored value reaches a `src` as-is.
  */
 
-import { AspectRatio, Box, chakra, IconButton, type BoxProps } from '@chakra-ui/react'
-import { useEffect, useRef, useState } from 'react'
-import { LuPause, LuPlay, LuVolume2, LuVolumeX } from 'react-icons/lu'
+import { AspectRatio, Box, chakra, type BoxProps } from '@chakra-ui/react'
+import { useEffect, useRef } from 'react'
 
 import type { VideoRef } from '../model/fields'
 import type { PhotoFit, PhotoPosition } from '../model/section-style'
@@ -46,20 +45,18 @@ export function embedUrl(
 /**
  * An uploaded video that plays muted and looped while it is on screen and
  * pauses when it is not — so a page of reels does not run twelve decoders at
- * once. A shopper who prefers less motion gets the still cover and a play
- * button instead.
+ * once. It is decoration: no play/pause or volume chrome is drawn over it, and
+ * a shopper who prefers less motion keeps the still cover.
  */
 export function AmbientVideo({
   fileId,
   poster,
-  controls = false,
   objectFit = 'cover',
   objectPosition = 'center',
   ...props
 }: {
   fileId: string
   poster: string | null
-  controls?: boolean
   objectFit?: PhotoFit
   objectPosition?: PhotoPosition
 } & BoxProps) {
@@ -67,21 +64,17 @@ export function AmbientVideo({
   const reduced = usePrefersReducedMotion()
   const [ref, inView] = useInView<HTMLDivElement>({ threshold: 0.2 })
   const video = useRef<HTMLVideoElement>(null)
-  const [playing, setPlaying] = useState(false)
-  const [muted, setMuted] = useState(true)
   const src = videoUrl?.(fileId) ?? null
 
   useEffect(() => {
     const element = video.current
     if (!element) return
     if (inView && !reduced) {
-      void element.play().then(
-        () => setPlaying(true),
-        () => setPlaying(false),
-      )
+      // Ambient video is decoration: a browser that refuses autoplay leaves
+      // the poster standing, with no play/pause or volume chrome over it.
+      void element.play().catch(() => undefined)
     } else {
       element.pause()
-      setPlaying(false)
     }
   }, [inView, reduced, src])
 
@@ -92,11 +85,10 @@ export function AmbientVideo({
           ref={video}
           src={src}
           poster={poster ?? undefined}
-          muted={muted}
+          muted
           loop
           playsInline
           preload={mode === 'preview' ? 'metadata' : 'none'}
-          controls={controls}
           w="full"
           h="full"
           objectFit={objectFit}
@@ -117,46 +109,6 @@ export function AmbientVideo({
             display="block"
           />
         )
-      )}
-      {src && !controls && (
-        <Box position="absolute" bottom="3" right="3" display="flex" gap="2" zIndex="1">
-          <IconButton
-            aria-label={playing ? 'Pause' : 'Play'}
-            size="xs"
-            rounded="full"
-            variant="subtle"
-            bg="blackAlpha.600"
-            color="white"
-            _hover={{ bg: 'blackAlpha.700' }}
-            onClick={(event) => {
-              event.stopPropagation()
-              const element = video.current
-              if (!element) return
-              if (element.paused) void element.play().then(() => setPlaying(true))
-              else {
-                element.pause()
-                setPlaying(false)
-              }
-            }}
-          >
-            {playing ? <LuPause /> : <LuPlay />}
-          </IconButton>
-          <IconButton
-            aria-label={muted ? 'Unmute' : 'Mute'}
-            size="xs"
-            rounded="full"
-            variant="subtle"
-            bg="blackAlpha.600"
-            color="white"
-            _hover={{ bg: 'blackAlpha.700' }}
-            onClick={(event) => {
-              event.stopPropagation()
-              setMuted((value) => !value)
-            }}
-          >
-            {muted ? <LuVolumeX /> : <LuVolume2 />}
-          </IconButton>
-        </Box>
       )}
     </Box>
   )
