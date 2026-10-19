@@ -528,6 +528,20 @@ describe('section chrome', () => {
     expect(html).toContain('object-fit:cover')
   })
 
+  test('an edge-to-edge band drops the slides’ rounded corners', () => {
+    const band = (style?: Record<string, unknown>) =>
+      render(
+        <SectionsRenderer
+          sections={[
+            createSection('banner-slider', { slides: [{ image: 's1' }, { image: 's2' }] }, style),
+          ]}
+          env={env()}
+        />,
+      )
+    expect(band({ width: 'edge' })).not.toContain('border-radius:var(--chakra-radii-l3)')
+    expect(band()).toContain('border-radius:var(--chakra-radii-l3)')
+  })
+
   test('the slider track shifts instead of scrolling', () => {
     const slides = ['a', 'b', 'c'].map((id) => <Box key={id} bg="bg.subtle" h="full" />)
     const track = (perPage: number) =>

@@ -158,6 +158,53 @@ describe('full-bleed sections keep their words in the page column', () => {
   })
 })
 
+describe('slider arrows follow the section edge', () => {
+  /** The banner slider, the first thing that met a full-bleed frame. */
+  function band(style: Record<string, unknown>): string {
+    return htmlOf(
+      createSection(
+        'banner-slider',
+        { perPage: '2', slides: [{ image: 's1' }, { image: 's2' }] },
+        style,
+      ),
+    )
+  }
+
+  test('an edge-to-edge band keeps its arrows inside the viewport', () => {
+    const html = band({ width: 'edge' })
+    // The usual pair hangs half outside the band; edge to edge there is no
+    // page margin to hang in, so the viewport would saw it in half.
+    expect(html).toContain('left:var(--chakra-spacing-4)')
+    expect(html).toContain('right:var(--chakra-spacing-4)')
+    expect(html).not.toMatch(/left:calc\(var\(--chakra-spacing-5\) \* -1\)/)
+    expect(html).not.toMatch(/right:calc\(var\(--chakra-spacing-5\) \* -1\)/)
+  })
+
+  test('a contained band keeps the straddle it has margin for', () => {
+    const html = band({ width: 'contained' })
+    expect(html).toContain('left:calc(var(--chakra-spacing-5) * -1)')
+    expect(html).toContain('right:calc(var(--chakra-spacing-5) * -1)')
+  })
+
+  test('a full-width band keeps it too — the frame gutter holds the pair', () => {
+    const html = band({ width: 'full' })
+    expect(html).toContain('left:calc(var(--chakra-spacing-5) * -1)')
+    expect(html).toContain('right:calc(var(--chakra-spacing-5) * -1)')
+  })
+
+  test('every slider in an edge section gets the same inside pair', () => {
+    const html = htmlOf(
+      createSection(
+        'video-reels',
+        { items: Array.from({ length: 8 }, (_, index) => ({ poster: `p${index}` })) },
+        { width: 'edge' },
+      ),
+    )
+    expect(html).toContain('left:var(--chakra-spacing-4)')
+    expect(html).not.toMatch(/left:calc\(var\(--chakra-spacing-5\) \* -1\)/)
+  })
+})
+
 describe('per-section content width', () => {
   test('defaults to the page column, and an unknown value falls back to it', () => {
     expect(readSectionStyle({}).contentWidth).toBe('6xl')

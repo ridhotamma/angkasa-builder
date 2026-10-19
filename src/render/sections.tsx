@@ -53,7 +53,7 @@ import { isRichDocEmpty } from '../model/rich-text'
 import { HEADER_HEIGHT_VAR, TABBAR_HEIGHT_VAR } from './chrome'
 import { useRenderEnvironment, type StorefrontCategoryData } from './context'
 import { useRenderText } from './copy'
-import { useSectionLayout } from './frame'
+import { useSectionLayout } from './section-layout'
 import { useResponsive } from './hooks'
 import { SplitText, useMarqueePause } from './motion'
 import { Slider } from './slider'
@@ -338,6 +338,7 @@ export function BannerImage({ settings }: SectionProps) {
 export function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
   const { imageUrl } = useRenderEnvironment()
+  const { width } = useSectionLayout()
   const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
   const desktop = Math.min(slidesPerView(readText(settings, 'perPage'), 2, 3), slides.length)
   const phone = Math.min(slidesPerView(readText(settings, 'perPageMobile'), 1, 3), slides.length)
@@ -349,12 +350,15 @@ export function BannerSlider({ settings }: SectionProps) {
   const ratioMobileToken = readToken(settings, 'ratioMobile', BANNER_BAND_SHAPE_VALUES, '16/5')
   const ratio = ratioValue(ratioToken)
   const ratioMobile = ratioValue(ratioMobileToken)
+  // Edge to edge, the band reaches the viewport itself: the slides drop their
+  // rounded corners, exactly as the single banner's photo does.
+  const rounded = width === 'edge' ? 'none' : 'l3'
 
   if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
   if (slides.length === 1) {
     return (
       <Box as="section" aspectRatio={{ base: ratioMobileToken, md: ratioToken }} overflow="hidden">
-        <BannerSlide slide={slides[0]!} eager />
+        <BannerSlide slide={slides[0]!} eager rounded={rounded} />
       </Box>
     )
   }
@@ -376,7 +380,12 @@ export function BannerSlider({ settings }: SectionProps) {
       dots={perPage > 1 ? 'below' : 'inside'}
     >
       {slides.map((slide, position) => (
-        <BannerSlide key={String(slide.id)} slide={slide} eager={position === 0} />
+        <BannerSlide
+          key={String(slide.id)}
+          slide={slide}
+          eager={position === 0}
+          rounded={rounded}
+        />
       ))}
     </Slider>
   )
@@ -405,7 +414,16 @@ export function BannerSlider({ settings }: SectionProps) {
  * One slide: the photo fills the band's whole box, cropped by the slide's own
  * size and position. Shared by the slider and the single-slide case.
  */
-function BannerSlide({ slide, eager }: { slide: FieldValues; eager: boolean }) {
+function BannerSlide({
+  slide,
+  eager,
+  rounded,
+}: {
+  slide: FieldValues
+  eager: boolean
+  /** `l3` in the page column; `none` when the band reaches the viewport. */
+  rounded: 'none' | 'l3'
+}) {
   const { imageUrl } = useRenderEnvironment()
 
   return (
@@ -417,7 +435,7 @@ function BannerSlide({ slide, eager }: { slide: FieldValues; eager: boolean }) {
         h="full"
         objectFit={readToken(slide, 'fit', PHOTO_FIT_VALUES, 'cover')}
         objectPosition={readToken(slide, 'position', PHOTO_POSITION_VALUES, 'center')}
-        rounded="l3"
+        rounded={rounded}
         overflow="hidden"
         bg="bg.subtle"
         loading={eager ? 'eager' : 'lazy'}

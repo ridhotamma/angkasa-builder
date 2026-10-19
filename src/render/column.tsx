@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { useSectionLayout } from './frame'
+import { useSectionLayout } from './section-layout'
 import { PageColumn } from './primitives'
 
 /**

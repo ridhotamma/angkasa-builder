@@ -14,7 +14,7 @@
  */
 
 import { Box, Container, type BoxProps } from '@chakra-ui/react'
-import { createContext, useContext, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 import { ImageWithFallback } from '@repo/theme'
 import { SECTION_STAGGER_ENABLED, SECTION_TEXT_SHADOW_ENABLED } from '@repo/appwrite-config'
@@ -24,10 +24,7 @@ import {
   readSectionStyle,
   resolveEntrance,
   type ResolvedSectionStyle,
-  type SectionContentWidth,
-  type SectionHeadline,
   type SectionSpacing,
-  type SectionWidth,
 } from '../model/section-style'
 import { resolveScheme, schemeCssVars, type SchemeKey } from '../model/settings'
 import { useRenderEnvironment } from './context'
@@ -43,6 +40,7 @@ import type { SectionBackground } from './section-background'
 import { BackgroundVideo } from './media'
 import { ScrollReveal } from './motion'
 import { FullBleed, HeadlineContext } from './primitives'
+import { SectionLayoutContext } from './section-layout'
 import type { FieldValues } from '../model/fields'
 
 const PADDING: Record<Exclude<SectionSpacing, 'auto'>, BoxProps['py']> = {
@@ -75,28 +73,6 @@ export function schemeCss(key: SchemeKey, vars: Record<string, string>): BoxProp
 
 export function useSectionStyle(style: FieldValues): ResolvedSectionStyle {
   return readSectionStyle(style)
-}
-
-/**
- * How the frame placed the section, for a renderer whose look depends on it:
- * a banner edge to edge loses its rounded corners, one inside a coloured band
- * needs no background of its own.
- */
-const SectionLayoutContext = createContext<{
-  width: SectionWidth
-  /** The cap the section's content runs at; renderers add the column for `edge`. */
-  contentWidth: SectionContentWidth
-  banded: boolean
-  headline: SectionHeadline
-}>({
-  width: 'contained',
-  contentWidth: '6xl',
-  banded: false,
-  headline: 'none',
-})
-
-export function useSectionLayout() {
-  return useContext(SectionLayoutContext)
 }
 
 /** Whether the storefront draws the section at all, judged at the environment's `now`. */

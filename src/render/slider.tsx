@@ -60,6 +60,7 @@ import {
 
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
+import { useSectionLayout } from './section-layout'
 
 /** Round arrows laid over a slider's edges; phones swipe instead. */
 export const OVERLAY_ARROW = {
@@ -128,6 +129,13 @@ const AUTOPLAY_MS = 5000
  * them — the pair the product row wears, now every slider's.
  */
 const ARROW_EDGE_INSET = '-5'
+
+/**
+ * The pair's inset when the band itself reaches the viewport edge. There is
+ * no page margin to straddle there, so the viewport would saw the buttons in
+ * half; keep them just inside instead.
+ */
+const ARROW_FULL_BLEED_INSET = '4'
 
 /** The browser clock behind a touch gesture, in milliseconds. */
 function gestureTime(): number {
@@ -262,7 +270,7 @@ export function Slider({
   indicator = 'dots',
   arrows = true,
   arrowPlacement = 'edges',
-  arrowInset = ARROW_EDGE_INSET,
+  arrowInset,
   ratio,
   peek,
   gap: gapProp = DEFAULT_GAP,
@@ -278,6 +286,15 @@ export function Slider({
 }: SliderProps) {
   const text = useRenderText()
   const { editing } = useRenderEnvironment()
+  const { width: sectionWidth } = useSectionLayout()
+  /**
+   * A band that reaches the viewport edge has no page margin for the arrows
+   * to straddle: keep them just inside, where the viewport cannot clip them.
+   * Every other band — and the product page's own gallery — keeps the pair
+   * half over the slides the way it always looked.
+   */
+  const resolvedArrowInset =
+    arrowInset ?? (sectionWidth === 'edge' ? ARROW_FULL_BLEED_INSET : ARROW_EDGE_INSET)
   const vertical = orientation === 'vertical'
   const gap = gapProp
   const perPageClamped = Math.max(1, Math.min(perPage, Math.max(1, count)))
@@ -551,7 +568,7 @@ export function Slider({
             data-slider-control=""
             {...(vertical
               ? { top: '2', left: '50%', transform: 'translateX(-50%)' }
-              : { left: arrowInset })}
+              : { left: resolvedArrowInset })}
             {...arrowProps}
             aria-label={text('previousSlide')}
             disabled={hold || (!loop && at === 0)}
@@ -564,7 +581,7 @@ export function Slider({
             data-slider-control=""
             {...(vertical
               ? { top: 'auto', bottom: '2', left: '50%', transform: 'translateX(-50%)' }
-              : { right: arrowInset })}
+              : { right: resolvedArrowInset })}
             {...arrowProps}
             aria-label={text('nextSlide')}
             disabled={hold || (!loop && at >= end)}
