@@ -45,7 +45,8 @@ function render(node: ReactNode): string {
 }
 
 function bandWithButton(overrides: Record<string, unknown>): SectionInstance {
-  return createSection('image-with-text', {
+  return createSection('statement', {
+    layout: 'contained',
     heading: 'A band',
     body: '',
     buttonLabel: '',

@@ -10,7 +10,7 @@
  * They are **seed data**, not a runtime fallback: `scripts/seed-themes.ts`
  * writes each one as a `scope: 'platform'` row of `themes`, after which the
  * developer console edits them like any other platform template and shops
- * install copies. `THEME_PRESETS` in `./presets` stays empty — nothing here
+ * install copies. There is no code-side preset library — nothing here
  * is offered from code at runtime, so the library still has one source of
  * truth.
  *
@@ -33,7 +33,6 @@ import {
 } from './content'
 import { findFontPair, findLook, findPalette } from './looks'
 import type { Localized } from './localized'
-import type { ThemePreset } from './presets'
 import type { SectionType } from './sections'
 import {
   sanitizeThemeSettings,
@@ -47,7 +46,12 @@ import {
   type ThemeSettings,
 } from './settings'
 
-export interface ThemeSeed extends ThemePreset {
+export interface ThemeSeed {
+  slug: string
+  name: string
+  description: Localized
+  /** The template content, built fresh on every install. */
+  content: () => ThemeContent
   /** Where the template sits in the developer console's library. */
   sortOrder: number
   /** The curated looks this template suggests when a shop restyles it. */
@@ -296,7 +300,7 @@ function noteComposed(heading: string, body: string): SectionInstance {
   )
 }
 
-/** A photo beside copy — the split screen and image-with-text layout. */
+/** A photo beside copy — the Statement section's contained and split layouts. */
 function imageTextComposed(copy: {
   heading: string
   body: string

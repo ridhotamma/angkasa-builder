@@ -69,7 +69,6 @@ import {
   parseCoordinates,
   readCoordinates,
   readPoint,
-  readRichText,
   readTable,
   readText,
   type BlockValue,

@@ -13,13 +13,7 @@ import { BENTO_COLUMNS, bentoPhoneColumns, bentoShape, gridColumns } from '../sr
 const IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"/>'
 
 /** Every section a catalogue draws its products through. */
-const PRODUCT_LISTS = [
-  'featured-collection',
-  'collection-shelves',
-  'latest-products',
-  'collection-tabs',
-  'related-products',
-] as const
+const PRODUCT_LISTS = ['product-list', 'related-products'] as const
 
 function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
   return {
@@ -44,14 +38,15 @@ function render(node: ReactNode): string {
 
 function renderLatest(settings: Record<string, unknown>): string {
   return render(
-    <SectionsRenderer sections={[createSection('latest-products', settings)]} env={env()} />,
+    <SectionsRenderer sections={[createSection('product-list', settings)]} env={env()} />,
   )
 }
 
 describe('product list layouts', () => {
   test('every product-list section offers the three layouts, grid by default', () => {
     for (const type of PRODUCT_LISTS) {
-      const field = sectionSchema(type)!.fields.find((candidate) => candidate.key === 'layout')
+      const schema = sectionSchema(type)!
+      const field = schema.fields.find((candidate) => candidate.key === 'layout')
       expect(field?.kind, type).toBe('select')
       if (field?.kind !== 'select') continue
       expect(
@@ -63,7 +58,7 @@ describe('product list layouts', () => {
   })
 
   test('an unknown layout falls back to the grid', () => {
-    const section = createSection('latest-products', { layout: 'carousel-ish' })
+    const section = createSection('product-list', { source: 'latest', layout: 'carousel-ish' })
     expect(section.settings.layout).toBe('grid')
   })
 
@@ -115,13 +110,6 @@ describe('product list layouts', () => {
       />,
     )
     expect(html).toContain('flex:0 0 calc((100% - 12px * 0.5) / 1.5)')
-  })
-
-  test('a slider saved before the per-view fields keeps its columns', () => {
-    // No `perPage` in the stored settings: the slider inherits the grid's
-    // columns (see `legacyKey`), so the row draws two cards on a phone.
-    const html = renderLatest({ heading: 'New in', limit: 8, layout: 'slider', mobileColumns: '2' })
-    expect(html).toContain('flex:0 0 calc((100% - 12px * 1) / 2)')
   })
 
   test('the arrows straddle the row edges, half over the page margin', () => {

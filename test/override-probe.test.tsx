@@ -32,7 +32,8 @@ function render(section: SectionInstance): string {
 }
 
 test('the editorial body takes the white copy colour over a photo', () => {
-  const section = createSection('editorial-statement', {
+  const section = createSection('statement', {
+    layout: 'full',
     heading: 'Quietly considered',
     eyebrow: 'The Studio',
     body: {
@@ -61,7 +62,8 @@ test('the editorial body takes the white copy colour over a photo', () => {
 })
 
 test('without a photo the editorial body keeps the muted page ink', () => {
-  const section = createSection('editorial-statement', {
+  const section = createSection('statement', {
+    layout: 'full',
     heading: 'Quietly considered',
     eyebrow: 'The Studio',
     body: 'Toko Ridho is built on a short list.',

@@ -175,36 +175,9 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
       buttonBlock('Shop the collection'),
     ],
   }),
-  custom: () => ({
-    blocks: [
-      headingBlock('Tell your story here', 'h2', 'xl'),
-      textBlock(
-        'Use this space for a short introduction — who you are, what you make, and why it matters.',
-        'lg',
-      ),
-      buttonBlock('Shop now'),
-    ],
-  }),
 
   /* Banners ---------------------------------------------------------------- */
 
-  hero: () => ({
-    image: P.storeRack,
-    heading: 'Everyday essentials, made to last',
-    subheading: 'A short list of things we actually use, made in small batches and priced fairly.',
-    buttonLabel: 'Shop the collection',
-    secondaryButtonLabel: 'Our story',
-  }),
-  'video-hero': () => ({
-    poster: P.fashionModel,
-    subheading: 'A minute inside the workshop, from first sketch to final stitch.',
-    buttonLabel: 'Watch the film',
-  }),
-  'parallax-banner': () => ({
-    image: P.boutique,
-    subheading: 'Small batches, honest materials, no shortcuts.',
-    buttonLabel: 'Explore the range',
-  }),
   'banner-slider': () => ({
     slides: [
       { image: P.storeRack, alt: 'New arrivals' },
@@ -225,13 +198,6 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
       'Today we still make in small batches, test everything ourselves, and pack every order by hand.',
     ),
   }),
-  'image-with-text': () => ({
-    image: P.coffeeBeans,
-    body: doc(
-      'Roasted in small batches, days before it reaches your door. Every bag is dated so you always know how fresh it is.',
-    ),
-    buttonLabel: 'Learn more',
-  }),
   faq: () => ({
     items: [
       {
@@ -250,53 +216,6 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
       {
         question: 'How do I care for my purchase?',
         answer: 'Wash cold and air dry. Every order includes a short care card.',
-      },
-    ],
-  }),
-  'scrolling-story': () => ({
-    steps: [
-      {
-        image: P.teamwork,
-        heading: 'It starts with a sketch',
-        body: doc('Every piece begins on paper, argued over until it earns its place.'),
-      },
-      {
-        image: P.packaging,
-        heading: 'Then the first sample',
-        body: doc('We wear it, wash it and use it for weeks before it goes anywhere near a shelf.'),
-      },
-      {
-        image: P.shopFront,
-        heading: 'And finally, your door',
-        body: doc('Orders are packed by the people who made them, and shipped the same day.'),
-      },
-    ],
-  }),
-  timeline: () => ({
-    items: [
-      {
-        label: '2019',
-        title: 'The first table',
-        text: 'We started with a market stall and exactly one product.',
-        image: P.market,
-      },
-      {
-        label: '2021',
-        title: 'Our own workshop',
-        text: 'Enough orders to stop renting space and build our own.',
-        image: P.teamwork,
-      },
-      {
-        label: '2023',
-        title: 'Going nationwide',
-        text: 'We shipped to every province for the first time.',
-        image: P.packaging,
-      },
-      {
-        label: '2026',
-        title: 'Still small on purpose',
-        text: 'Same hands, same standards, a slightly bigger bench.',
-        image: P.shopFront,
       },
     ],
   }),
@@ -351,31 +270,9 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
       ),
     ],
   }),
-  'editorial-statement': () => ({
-    image: P.boutique,
-    body: doc(
-      'We would rather make a few things properly than many things quickly. Everything here is designed to be used, repaired and kept.',
-    ),
-  }),
-  'split-screen': () => ({
-    image: P.coffeeBeans,
-    body: doc(
-      'From the first roast to the last bag on the shelf, every step happens within a few kilometres of where it was grown.',
-    ),
-  }),
 
   /* Media ------------------------------------------------------------------ */
 
-  'image-gallery': () => ({
-    items: [
-      { image: P.fashionModel, caption: 'Studio, morning light' },
-      { image: P.sneakersRed, caption: 'The everyday pair' },
-      { image: P.watch, caption: 'Details that last' },
-      { image: P.coffeeBeans, caption: 'Small-batch roast' },
-      { image: P.shopFront, caption: 'Our shop' },
-      { image: P.tote, caption: 'Made to carry' },
-    ],
-  }),
   video: () => ({
     poster: P.teamwork,
     subheading: 'A one-minute look at how it is made.',
@@ -403,55 +300,6 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
       photoCardBlock(P.watch, 'Field watch', 'A quiet face that goes with everything.'),
     ],
   }),
-  'masonry-gallery': () => ({
-    items: [
-      { image: P.storeRack, alt: 'Rack of new arrivals' },
-      { image: P.fashionModel, alt: 'Studio portrait' },
-      { image: P.sneakersRed, alt: 'Sneakers on a bench' },
-      { image: P.coffeeBeans, alt: 'Coffee beans' },
-      { image: P.watch, alt: 'A watch on a table' },
-      { image: P.tote, alt: 'Canvas tote' },
-    ],
-  }),
-  'video-testimonials': () => ({
-    items: [
-      {
-        name: 'Ayu',
-        role: 'Jakarta',
-        quote: 'The quality is far better than I expected.',
-        poster: P.avatarA,
-      },
-      {
-        name: 'Budi',
-        role: 'Bandung',
-        quote: 'Ordered on Monday and it arrived Wednesday.',
-        poster: P.avatarB,
-      },
-      {
-        name: 'Citra',
-        role: 'Surabaya',
-        quote: 'Support answered every question within minutes.',
-        poster: P.avatarC,
-      },
-    ],
-  }),
-  'background-video': () => ({
-    poster: P.teamwork,
-    subheading: 'A look inside the workshop.',
-    body: doc('Thirty seconds of what a normal morning looks like here.'),
-  }),
-  'social-wall': () => ({
-    items: [
-      { image: P.fashionModel, caption: '#newin' },
-      { image: P.tshirts, caption: '#everyday' },
-      { image: P.watch, caption: '#details' },
-      { image: P.coffeeBeans, caption: '#slowmornings' },
-      { image: P.tote, caption: '#carryall' },
-      { image: P.sneakersRed, caption: '#onthego' },
-      { image: P.shopFront, caption: '#ourcorner' },
-      { image: P.packaging, caption: '#packedbyhand' },
-    ],
-  }),
   'video-reels': () => ({
     items: [
       { poster: P.fashionModel, caption: 'New in this week', productId: '' },
@@ -467,40 +315,6 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
 
   /* Trust and store -------------------------------------------------------- */
 
-  testimonials: () => ({
-    items: [
-      {
-        quote:
-          'The quality is far better than I expected — it has held up beautifully after months of daily use.',
-        author: 'Ayu Lestari',
-        role: 'Jakarta',
-        avatar: P.avatarA,
-      },
-      {
-        quote:
-          'Ordered on Monday, arrived Wednesday, and the packaging was lovely. I will definitely order again.',
-        author: 'Budi Santoso',
-        role: 'Bandung',
-        avatar: P.avatarB,
-      },
-      {
-        quote: 'Their team answered every question within minutes. That kind of service is rare.',
-        author: 'Citra Dewi',
-        role: 'Surabaya',
-        avatar: P.avatarC,
-      },
-    ],
-  }),
-  team: () => ({
-    body: doc(
-      'A small team, on purpose — the people who make your order are the people who answer your messages.',
-    ),
-    items: [
-      { photo: P.avatarA, name: 'Rina Pratama', role: 'Founder and designer' },
-      { photo: P.avatarD, name: 'Adi Nugroho', role: 'Workshop lead' },
-      { photo: P.avatarE, name: 'Sari Wijaya', role: 'Customer care' },
-    ],
-  }),
   'logo-list': () => ({
     items: [
       { image: P.camera, alt: 'The Journal' },
@@ -508,54 +322,6 @@ export const SECTION_STARTERS: Partial<Record<SectionType, SectionStarter>> = {
       { image: P.headphones, alt: 'Business Weekly' },
       { image: P.ring, alt: 'Style Today' },
       { image: P.coffeeBag, alt: 'Morning Review' },
-    ],
-  }),
-  'icon-features': () => ({
-    heading: 'Why shop with us',
-    items: [
-      {
-        icon: 'truck',
-        title: 'Free delivery',
-        text: 'On every order over Rp 200.000, nationwide.',
-      },
-      {
-        icon: 'shield-check',
-        title: 'Secure payments',
-        text: 'QRIS, transfer and e-wallets — all encrypted.',
-      },
-      {
-        icon: 'refresh-cw',
-        title: 'Easy returns',
-        text: 'Unused items can go back within 14 days.',
-      },
-      {
-        icon: 'message-circle',
-        title: 'Real support',
-        text: 'A person answers, usually within the hour.',
-      },
-    ],
-  }),
-  multicolumn: () => ({
-    heading: 'Why shop with us',
-    items: [
-      {
-        image: P.packaging,
-        title: 'Packed with care',
-        text: 'Every order is checked and wrapped by hand before it ships.',
-        linkLabel: '',
-      },
-      {
-        image: P.payment,
-        title: 'Pay how you like',
-        text: 'QRIS, bank transfer, or your favourite e-wallet.',
-        linkLabel: '',
-      },
-      {
-        image: P.shopFront,
-        title: 'Visit the shop',
-        text: 'Come say hello — our door is open six days a week.',
-        linkLabel: 'Find us',
-      },
     ],
   }),
   'store-locations': () => ({

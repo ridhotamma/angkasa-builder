@@ -107,12 +107,12 @@ const TREE = [
     id: 'layout',
     type: 'test-custom-layout',
     settings: {
-      blocks: [{ id: 'nested', type: 'text', settings: { body: 'Nested in a custom layout' } }],
+      blocks: [{ id: 'nested', type: 'richtext', settings: { body: 'Nested in a custom layout' } }],
     },
   },
   {
     id: 'styled',
-    type: 'text',
+    type: 'richtext',
     settings: { body: 'Styled text' },
     style: { position: 'absolute', zIndex: '10', backgroundSize: 'cover' },
   },
@@ -147,7 +147,6 @@ function render(node: ReactNode): string {
 describe('custom blocks and widgets', () => {
   test('a registered widget becomes a first-class block', () => {
     const stored = readBlocks(section().settings, 'blocks')
-    // The `text` block converges on `richtext` through the block alias.
     expect(stored.map((block) => block.type)).toEqual([
       'test-widget-calculator',
       'test-custom-layout',
@@ -194,7 +193,7 @@ describe('custom blocks and widgets', () => {
             blocks: [
               {
                 id: 'caption',
-                type: 'text',
+                type: 'richtext',
                 settings: { body: 'Hover the card' },
                 style: {
                   hoverTrigger: 'group',

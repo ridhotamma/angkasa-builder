@@ -12,31 +12,40 @@ const STOCK = stockPhotoValue('https://images.pexels.com/photos/1/pexels-photo-1
 
 describe('image fields and stock photos', () => {
   test('a stock photo survives sanitising, an arbitrary URL does not', () => {
-    const withStock = createSection('image-with-text', { heading: 'Roastery', image: STOCK })
+    const withStock = createSection('statement', {
+      layout: 'contained',
+      heading: 'Roastery',
+      image: STOCK,
+    })
     expect(withStock.settings.image).toBe(STOCK)
 
-    const withUrl = createSection('image-with-text', {
+    const withUrl = createSection('statement', {
+      layout: 'contained',
       heading: 'Roastery',
       image: 'https://example.com/photo.jpg',
     })
     expect(withUrl.settings.image).toBe('')
 
-    const withId = createSection('image-with-text', { heading: 'Roastery', image: 'file-abc_1' })
+    const withId = createSection('statement', {
+      layout: 'contained',
+      heading: 'Roastery',
+      image: 'file-abc_1',
+    })
     expect(withId.settings.image).toBe('file-abc_1')
   })
 
   test('imageFileIds collects bucket files only', () => {
     const sections: SectionInstance[] = [
-      createSection('image-with-text', { image: 'file-abc_1' }),
-      createSection('image-with-text', { image: STOCK }),
+      createSection('statement', { layout: 'contained', image: 'file-abc_1' }),
+      createSection('statement', { layout: 'contained', image: STOCK }),
     ]
     expect(imageFileIds(sections)).toEqual(['file-abc_1'])
   })
 
   test('copying a layout keeps stock photos and clears unmapped files', () => {
     const sections: SectionInstance[] = [
-      createSection('image-with-text', { image: 'file-abc_1' }),
-      createSection('image-with-text', { image: STOCK }),
+      createSection('statement', { layout: 'contained', image: 'file-abc_1' }),
+      createSection('statement', { layout: 'contained', image: STOCK }),
     ]
     const copied = remapImageFileIds(sections, new Map())
     expect(copied[0]!.settings.image).toBe('')

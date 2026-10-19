@@ -60,7 +60,7 @@ describe('card hover', () => {
     expect(DEFAULT_THEME_SETTINGS.cardHover).toEqual(['outline', 'zoom'])
     // A theme saved before the setting existed reads the same.
     expect(sanitizeThemeSettings({}).cardHover).toEqual(['outline', 'zoom'])
-    const html = render('latest-products', {})
+    const html = render('product-list', {})
     expect(html).toMatch(OUTLINE)
     expect(html).toMatch(OUTLINE_BASE)
     expect(html).toMatch(ZOOM)
@@ -68,7 +68,7 @@ describe('card hover', () => {
   })
 
   test('the image zoom eases, not snaps — the transition is declared once', () => {
-    const html = render('latest-products', {})
+    const html = render('product-list', {})
     // The image owns the transition, so a card that zooms always eases; a
     // card that has to repeat it at its own call site is one that will forget,
     // which is exactly what a zoom that jumped looked like.
@@ -76,9 +76,7 @@ describe('card hover', () => {
     // Reduced motion: no movement and nothing left to transition.
     expect(html).toMatch(/:hover img\{[^}]*transform:none[^}]*transition:none/)
     // No zoom effect, no image transition minted for it.
-    expect(render('latest-products', {}, { cardHover: ['outline'] })).not.toMatch(
-      IMG_ZOOM_TRANSITION,
-    )
+    expect(render('product-list', {}, { cardHover: ['outline'] })).not.toMatch(IMG_ZOOM_TRANSITION)
   })
 
   test('drops unknown effects and keeps them in order', () => {
@@ -92,8 +90,8 @@ describe('card hover', () => {
     // Product, category, bento, columns, people, quotes and video quotes:
     // one setting, one result — no card opts out.
     const cases: ReadonlyArray<[SectionType, Record<string, unknown>]> = [
-      ['latest-products', {}],
-      ['latest-products', { layout: 'bento' }],
+      ['product-list', {}],
+      ['product-list', { layout: 'bento' }],
       ['category-rail', {}],
       ['category-rail', { layout: 'bento' }],
       ['cards', { card: 'text', items: [{ title: 'A', text: 'B' }] }],
@@ -127,7 +125,7 @@ describe('card hover', () => {
   })
 
   test('the shine sweep is a one-way overlay that runs on hover', () => {
-    const html = render('latest-products', {}, { cardHover: ['shine'] })
+    const html = render('product-list', {}, { cardHover: ['shine'] })
     // Rest: to the left, and with no transition — so leaving the card snaps the
     // light back to its start rather than dragging it back across.
     expect(html).toMatch(SHINE_BASE)
@@ -142,23 +140,23 @@ describe('card hover', () => {
   test('tilt stands the CSS lift and its transform transition down', () => {
     // The tilt transforms the card itself (GSAP); the CSS lift would fight it,
     // so it and its `transform` transition stand down — the shadow still moves.
-    const tilted = render('latest-products', {}, { cardHover: ['lift', 'tilt'] })
+    const tilted = render('product-list', {}, { cardHover: ['lift', 'tilt'] })
     expect(tilted).not.toMatch(LIFT)
     expect(tilted).not.toContain('transform 250ms ease, box-shadow')
     // Without tilt, the lift is back.
-    const lifted = render('latest-products', {}, { cardHover: ['lift'] })
+    const lifted = render('product-list', {}, { cardHover: ['lift'] })
     expect(lifted).toMatch(LIFT)
   })
 
   test('none at all leaves the cards still', () => {
-    const html = render('latest-products', {}, { cardHover: [] })
+    const html = render('product-list', {}, { cardHover: [] })
     expect(html).not.toMatch(OUTLINE)
     expect(html).not.toMatch(OUTLINE_BASE)
     expect(html).not.toMatch(ZOOM)
   })
 
   test('a bold card grows its hard shadow instead of adding a soft one', () => {
-    const html = render('latest-products', {}, { cardStyle: 'hard', cardHover: ['shadow'] })
+    const html = render('product-list', {}, { cardStyle: 'hard', cardHover: ['shadow'] })
     expect(html).toContain('box-shadow:6px 6px 0 var(--chakra-colors-fg)')
   })
 })

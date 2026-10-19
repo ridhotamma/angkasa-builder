@@ -46,7 +46,8 @@ function render(node: ReactNode): string {
 
 function accentButton(): SectionInstance {
   return {
-    ...createSection('image-with-text', {
+    ...createSection('statement', {
+      layout: 'contained',
       heading: 'Restyle me',
       body: '',
       buttonLabel: 'Shop now',
@@ -107,8 +108,8 @@ describe('element overrides, as stored', () => {
     const [section] = sanitizeSections([
       {
         id: 'a',
-        type: 'image-with-text',
-        settings: { heading: 'Hi' },
+        type: 'statement',
+        settings: { layout: 'contained', heading: 'Hi' },
         elements: { button: { tone: 'accent' }, empty: { variant: 'default' } },
       },
     ])
@@ -181,7 +182,8 @@ describe('an overridden button', () => {
     const html = render(
       <SectionsRenderer
         sections={[
-          createSection('image-with-text', {
+          createSection('statement', {
+            layout: 'contained',
             heading: 'Plain',
             body: '',
             buttonLabel: 'Shop now',

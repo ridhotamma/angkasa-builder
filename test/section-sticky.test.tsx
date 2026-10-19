@@ -34,7 +34,11 @@ function env(): RenderEnvironment {
 }
 
 function hero(style: Record<string, unknown> = {}) {
-  return createSection('hero', { heading: 'Judul', subheading: 'Subjudul' }, style)
+  return createSection(
+    'banner',
+    { media: 'image', heading: 'Judul', subheading: 'Subjudul' },
+    style,
+  )
 }
 
 function render(sections: ReturnType<typeof hero>[]): string {

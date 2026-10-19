@@ -44,7 +44,6 @@ import {
   LuGrid2X2,
   LuHeading,
   LuImage,
-  LuLayoutGrid,
   LuListTree,
   LuMap,
   LuMinus,
@@ -291,10 +290,6 @@ export function AddPalette({
   }, [scope])
 
   const blockSchemas = useMemo(() => registeredBlocks(), [])
-  const blockPresets = useMemo(() => {
-    const blocks = SECTION_SCHEMAS.find((schema) => schema.type === 'blocks')
-    return blocks?.presets ?? []
-  }, [])
 
   const needle = query.trim().toLowerCase()
   const match = (name: string, description: string) =>
@@ -307,11 +302,9 @@ export function AddPalette({
     sections: sectionEntries.filter((entry) =>
       match(l(entry.preset?.name ?? entry.schema.name), ''),
     ).length,
-    blocks:
-      blockPresets.filter((preset) => match(l(preset.name), l(preset.description))).length +
-      blockSchemas.filter((schema) =>
-        match(l(schema.name), schema.description ? l(schema.description) : ''),
-      ).length,
+    blocks: blockSchemas.filter((schema) =>
+      match(l(schema.name), schema.description ? l(schema.description) : ''),
+    ).length,
   }
   const nothing = matching[mode] === 0
 
@@ -438,29 +431,6 @@ export function AddPalette({
         </Stack>
       ) : (
         <Stack gap="5">
-          {blockPresets.length > 0 && (
-            <Stack gap="2">
-              <GroupHeading>{t('paletteLayouts')}</GroupHeading>
-              <SimpleGrid columns={1} gap="2">
-                {blockPresets
-                  .filter((preset) => match(l(preset.name), l(preset.description)))
-                  .map((preset) => (
-                    <PaletteCard
-                      key={preset.key}
-                      item={{
-                        kind: 'blocks',
-                        blocks: presetBlocks(preset),
-                        label: l(preset.name),
-                      }}
-                      name={l(preset.name)}
-                      description={l(preset.description)}
-                      icon={<Icon as={LuLayoutGrid} boxSize="4.5" />}
-                      onAdd={() => onAddBlocks(presetBlocks(preset), l(preset.name))}
-                    />
-                  ))}
-              </SimpleGrid>
-            </Stack>
-          )}
           <Stack gap="2">
             <GroupHeading>{t('palettePrimitives')}</GroupHeading>
             <SimpleGrid columns={1} gap="2">
@@ -488,10 +458,4 @@ export function AddPalette({
       )}
     </Stack>
   )
-}
-
-/** The Blocks section's preset layouts, with their stored block trees. */
-function presetBlocks(preset: SectionPreset): readonly PaletteBlock[] {
-  const blocks = preset.settings?.blocks
-  return Array.isArray(blocks) ? (blocks as PaletteBlock[]) : []
 }

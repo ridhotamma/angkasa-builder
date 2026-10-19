@@ -23,7 +23,7 @@ const TREE = [
   },
   {
     id: 'body',
-    type: 'text',
+    type: 'richtext',
     settings: { body: 'First line\n\nSecond line', size: 'md', align: 'left', width: 'medium' },
   },
   {
@@ -287,7 +287,7 @@ describe('the photo card block', () => {
               },
               {
                 id: 't',
-                type: 'text',
+                type: 'richtext',
                 settings: { body: 'Fizzy favourites', align: 'center', width: 'full' },
               },
             ],

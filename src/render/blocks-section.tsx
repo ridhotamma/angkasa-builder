@@ -15,14 +15,12 @@ import {
   Accordion,
   AspectRatio,
   Box,
-  Carousel,
   chakra,
   Container,
   Flex,
   Grid,
   Heading,
   Icon,
-  IconButton,
   Marquee,
   Stack,
   Text,
@@ -30,7 +28,7 @@ import {
   useMarqueeStyles,
   type BoxProps,
 } from '@chakra-ui/react'
-import { useContext, useEffect, type ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { LuStar } from 'react-icons/lu'
 
 import { StoreMap } from '@repo/geoapify/store-map'
@@ -1201,6 +1199,7 @@ function SliderBlock({ block }: { block: BlockValue }) {
     <Slider
       count={slides.length}
       perPage={perPage}
+      gap={spacing}
       autoplay={autoplay}
       autoplayMs={interval * 1000}
       // Anything that moves on its own needs a way to stop it (WCAG 2.2.2).

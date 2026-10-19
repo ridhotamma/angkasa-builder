@@ -143,7 +143,7 @@ export function FeaturedProduct({ settings }: SectionProps) {
 /* Collection tabs                                                            */
 /* -------------------------------------------------------------------------- */
 
-export function CollectionTabs({ settings }: SectionProps) {
+export function ProductListTabs({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
   const text = useRenderText()
   const empty = useEmptyText()

@@ -16,7 +16,6 @@ import type { ElementKind } from '../model/element-style'
 import type { FieldValues, TableValue } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
-import type { SectionProps } from './sections'
 
 export interface StorefrontProductCard {
   id: string
@@ -30,6 +29,15 @@ export interface StorefrontProductCard {
   imageUrls?: string[]
   /** Plain text. Only read by sections that show it. */
   description?: string
+  /** Average review score, one decimal. `0` with `ratingCount` 0 means unreviewed. */
+  rating?: number
+  ratingCount?: number
+  /** Units sold, when the shop tracks it. */
+  soldCount?: number
+  /** Units left to sell, or `null` when the shop does not track stock. */
+  available?: number | null
+  /** Whether `available` is enforced (a digital or made-to-order product is not). */
+  trackStock?: boolean
 }
 
 /** One photo in the product page's gallery. */

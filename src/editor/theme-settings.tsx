@@ -54,7 +54,7 @@ import {
   type ThemeSettings,
 } from '../model/settings'
 import type { SectionInstance } from '../model/content'
-import { STOREFRONT_LOCALES, type StorefrontLocale } from '../model/localized'
+import type { StorefrontLocale } from '../model/localized'
 import { SitePopup } from '../render/popup'
 import { SplashScreen, type SplashShop } from '../render/splash'
 import { ColorInput, Labeled, SelectInput } from './controls'

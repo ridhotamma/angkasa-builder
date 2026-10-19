@@ -18,7 +18,8 @@ function page(): PageContent {
   return {
     version: CONTENT_VERSION,
     sections: [
-      createSection('testimonials', {
+      createSection('quotes', {
+        variant: 'quotes',
         heading: { id: 'Halo', en: 'Hello' },
         items: [{ quote: { id: 'Bagus', en: 'Good' }, author: 'Sari' }],
       }),
@@ -49,7 +50,7 @@ describe('collectTranslationEntries', () => {
 
 describe('collectTranslationFields — what is actually translated', () => {
   test('a plain string reads in every column but is stored for none', () => {
-    const section = createSection('testimonials', { heading: 'Halo' })
+    const section = createSection('quotes', { variant: 'quotes', heading: 'Halo' })
     const field = collectTranslationFields([section]).find((entry) => entry.key === 'heading')!
     // Shown in both columns (the fallback), but nothing of its own is stored —
     // so the manager does not count it translated and the AI may fill `en`.
@@ -59,14 +60,15 @@ describe('collectTranslationFields — what is actually translated', () => {
   })
 
   test('a locale map reports exactly the locales it stores', () => {
-    const section = createSection('testimonials', { heading: { id: 'Halo' } })
+    const section = createSection('quotes', { variant: 'quotes', heading: { id: 'Halo' } })
     const field = collectTranslationFields([section]).find((entry) => entry.key === 'heading')!
     expect(field.translated).toEqual(['id'])
     expect(field.values.en ?? '').toBe('')
   })
 
   test('counts copy inside a list item too', () => {
-    const section = createSection('testimonials', {
+    const section = createSection('quotes', {
+      variant: 'quotes',
       items: [{ quote: { id: 'Bagus' }, author: 'Sari' }],
     })
     const fields = collectTranslationFields([section])

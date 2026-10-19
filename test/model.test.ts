@@ -47,8 +47,6 @@ import {
   serializeContent,
   ContentTooLargeError,
   storefrontHref,
-  THEME_PRESETS,
-  findPreset,
   themeCssVars,
   themeDesignedForDark,
   themeModeCssVars,
@@ -126,19 +124,6 @@ describe('coordinates', () => {
     expect(items[0]!.coordinates).toEqual({ latitude: -6.2, longitude: 106.8 })
     expect(items[1]!.coordinates).toBeNull()
   })
-
-  test('the old latitude and longitude fields fold into the pair', () => {
-    const [section] = sanitizeSections([
-      {
-        id: 's',
-        type: 'store-locations',
-        settings: { items: [{ name: 'A', latitude: '-6.2', longitude: '106.8' }] },
-      },
-    ])
-    const items = section!.settings.items as Array<Record<string, unknown>>
-    expect(items[0]!.coordinates).toEqual({ latitude: -6.2, longitude: 106.8 })
-    expect(items[0]).not.toHaveProperty('latitude')
-  })
 })
 
 describe('sections', () => {
@@ -147,17 +132,16 @@ describe('sections', () => {
       { id: 'a', type: 'nope', settings: {} },
       {
         id: 'b',
-        type: 'latest-products',
+        type: 'product-list',
         settings: { limit: 9999, heading: 42, style: 'color:red', columns: '3' },
       },
     ])
     expect(sections).toHaveLength(1)
-    // `latest-products` converges on the consolidated `product-list` with its
-    // `source` set; a 9999 limit and a 42 heading fall back to the merged type's
-    // defaults, and the unknown `style` key is dropped as before.
+    // A 9999 limit and a 42 heading fall back to the schema's defaults, and
+    // the unknown `style` key is dropped as before.
     expect(sections[0]!.type).toBe('product-list')
     expect(sections[0]!.settings).toEqual({
-      source: 'latest',
+      source: 'collection',
       collectionId: '',
       heading: '',
       layout: 'grid',
@@ -165,9 +149,7 @@ describe('sections', () => {
       limit: 8,
       columns: '3',
       mobileColumns: '2',
-      // The slider's own per-view inherits the grid's columns, so a layout
-      // saved before the split keeps its slides.
-      perPage: '3',
+      perPage: '4',
       perPageMobile: '2',
       showAll: true,
       tabs: [],
@@ -177,19 +159,13 @@ describe('sections', () => {
 
   test('every columns setting also offers the phone choice', () => {
     const types = [
-      'featured-collection',
-      'collection-shelves',
-      'latest-products',
-      'image-gallery',
-      'collection-tabs',
-      'multicolumn',
-      'icon-features',
+      'product-list',
+      'gallery',
+      'quotes',
+      'cards',
       'store-locations',
       'related-products',
-      'masonry-gallery',
-      'video-testimonials',
-      'team',
-      'social-wall',
+      'catalog-products',
     ]
     for (const type of types) {
       const schema = sectionSchema(type)
@@ -210,10 +186,10 @@ describe('sections', () => {
   })
 
   test('text sections stack on phones, product lists keep two', () => {
-    expect(createSection('icon-features', {}).settings.mobileColumns).toBe('1')
-    expect(createSection('multicolumn', {}).settings.mobileColumns).toBe('1')
-    expect(createSection('featured-collection', {}).settings.mobileColumns).toBe('2')
-    expect(createSection('image-gallery', {}).settings.mobileColumns).toBe('2')
+    expect(createSection('cards', { card: 'icon' }).settings.mobileColumns).toBe('1')
+    expect(createSection('cards', { card: 'text' }).settings.mobileColumns).toBe('1')
+    expect(createSection('product-list', { source: 'collection' }).settings.mobileColumns).toBe('2')
+    expect(createSection('gallery', { layout: 'grid' }).settings.mobileColumns).toBe('2')
   })
 
   test('an FAQ saved before it had look settings stays centred and narrow', () => {
@@ -262,16 +238,17 @@ describe('sections', () => {
   })
 
   test('sanitises list items, including their links', () => {
-    const [faq] = sanitizeSections([
+    const [gallery] = sanitizeSections([
       {
         id: 'f',
-        type: 'image-gallery',
+        type: 'gallery',
         settings: {
+          layout: 'grid',
           items: [{ image: 'file_1', link: { kind: 'url', href: 'javascript:x' }, extra: 1 }],
         },
       },
     ])
-    const items = faq!.settings.items as Array<Record<string, unknown>>
+    const items = gallery!.settings.items as Array<Record<string, unknown>>
     expect(items[0]!.link).toEqual({ kind: 'none' })
     expect(items[0]).not.toHaveProperty('extra')
     expect(typeof items[0]!.id).toBe('string')
@@ -279,8 +256,8 @@ describe('sections', () => {
 
   test('image ids are found and remapped, unmapped ones cleared', () => {
     const sections = [
-      createSection('hero', { image: 'old_a' }),
-      createSection('image-gallery', { items: [{ image: 'old_b' }, { image: 'gone' }] }),
+      createSection('banner', { media: 'image', image: 'old_a' }),
+      createSection('gallery', { layout: 'grid', items: [{ image: 'old_b' }, { image: 'gone' }] }),
     ]
     expect(imageFileIds(sections).sort()).toEqual(['gone', 'old_a', 'old_b'])
 
@@ -329,11 +306,6 @@ describe('theme content', () => {
     expect(settings.radius).toBe('md')
     expect(settings.typeScale).toBe('default')
     expect(settings.density).toBe('cozy')
-  })
-
-  test('the built-in library is empty — templates are designed from scratch', () => {
-    expect(THEME_PRESETS).toEqual([])
-    expect(findPreset('classic')).toBeNull()
   })
 
   test('recommended looks keep known keys, deduplicated and capped', () => {
@@ -551,7 +523,11 @@ describe('colour', () => {
 })
 
 describe('editing a section list', () => {
-  const page = () => [createSection('timeline'), createSection('faq'), createSection('lookbook')]
+  const page = () => [
+    createSection('story', { style: 'timeline' }),
+    createSection('faq'),
+    createSection('lookbook'),
+  ]
 
   test('moves a section one place, and not off either end', () => {
     const sections = page()
@@ -699,7 +675,7 @@ describe('per-instance overrides', () => {
   })
 
   test('a block override layers over the original and resets cleanly', () => {
-    const master = createSection('custom', {
+    const master = createSection('blocks', {
       blocks: [{ id: 'h', type: 'heading', settings: { text: 'Asli' } }],
     })
     const copy = { ...master, id: 'copy', linkedTo: master.id }
@@ -714,7 +690,7 @@ describe('per-instance overrides', () => {
   })
 
   test('a structural block change updates the original instead', () => {
-    const master = createSection('custom', {
+    const master = createSection('blocks', {
       blocks: [{ id: 'h', type: 'heading', settings: { text: 'Asli', align: 'left' } }],
     })
     const copy = { ...master, id: 'copy', linkedTo: master.id }

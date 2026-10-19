@@ -27,7 +27,7 @@ import {
   Text,
   type BoxProps,
 } from '@chakra-ui/react'
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { LuMinus, LuPlus } from 'react-icons/lu'
 
 import { Image, ImageWithFallback } from '@repo/theme'
@@ -47,7 +47,6 @@ import { readToken, textElementKey } from '../model/element-style'
 import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import type { Link } from '../model/links'
 import { isRichDocEmpty } from '../model/rich-text'
-import type { SectionType } from '../model/sections'
 import { HEADER_HEIGHT_VAR, TABBAR_HEIGHT_VAR } from './chrome'
 import { useRenderEnvironment, type StorefrontCategoryData } from './context'
 import { useRenderText } from './copy'
@@ -105,29 +104,6 @@ export const EMPTY = {
 export function useEmptyText() {
   const { locale } = useLocale()
   return (key: keyof typeof EMPTY) => EMPTY[key][locale] || EMPTY[key].en
-}
-
-/* -------------------------------------------------------------------------- */
-
-function AnnouncementBar({ settings }: SectionProps) {
-  const text = readText(settings, 'text')
-  if (!text) return null
-  return (
-    <SmartLink
-      link={readLink(settings, 'link')}
-      display="block"
-      bg="brand.solid"
-      color="brand.contrast"
-      textAlign="center"
-      fontSize="sm"
-      fontWeight="medium"
-      py="2.5"
-      px="4"
-      rounded="l2"
-    >
-      {text}
-    </SmartLink>
-  )
 }
 
 export const HERO_HEIGHT = {
@@ -251,7 +227,7 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
   )
 }
 
-function Hero({ settings }: SectionProps) {
+export function BannerImage({ settings }: SectionProps) {
   const { data, imageUrl } = useRenderEnvironment()
   const { width } = useSectionLayout()
   const empty = useEmptyText()
@@ -310,7 +286,7 @@ function Hero({ settings }: SectionProps) {
  * follows the number of visible slides — switching 1 → 2 → 3 changes the
  * crop, not the page. See `slider.tsx` for the track itself.
  */
-function BannerSlider({ settings }: SectionProps) {
+export function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
   const { imageUrl } = useRenderEnvironment()
   const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
@@ -455,7 +431,7 @@ function ratioValue(ratio: string): number {
 /** The band behind the shop's introduction; the logo overlaps its bottom edge. */
 const INTRO_BAND_HEIGHT = { base: '8rem', md: '12rem' } as const
 
-function ShopIntro({ settings }: SectionProps) {
+export function ShopIntro({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
   const align = alignOf(settings)
   const { shop } = data
@@ -546,7 +522,7 @@ function IntroBand({ settings }: { settings: FieldValues }) {
   )
 }
 
-function CategoryRail({ settings }: SectionProps) {
+export function CategoryRail({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
   const { frame, hover, tiltRef } = useCard()
   const empty = useEmptyText()
@@ -877,7 +853,7 @@ function ShelfHeader({
   )
 }
 
-function FeaturedCollection({ settings }: SectionProps) {
+export function ProductListCollection({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
   const empty = useEmptyText()
   const picked = readText(settings, 'collectionId')
@@ -913,7 +889,7 @@ function FeaturedCollection({ settings }: SectionProps) {
   )
 }
 
-function CollectionShelves({ settings }: SectionProps) {
+export function ProductListShelves({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
   const empty = useEmptyText()
   const limit = readNumber(settings, 'limit', 8)
@@ -945,7 +921,7 @@ function CollectionShelves({ settings }: SectionProps) {
   )
 }
 
-function LatestProducts({ settings }: SectionProps) {
+export function ProductListLatest({ settings }: SectionProps) {
   const { data } = useRenderEnvironment()
   const empty = useEmptyText()
   const products = data.latest.slice(0, readNumber(settings, 'limit', 12))
@@ -1004,7 +980,7 @@ function TextColumn({
   )
 }
 
-function RichText({ settings }: SectionProps) {
+export function RichText({ settings }: SectionProps) {
   const { mode } = useRenderEnvironment()
   const text = useRenderText()
   const align = alignOf(settings)
@@ -1029,7 +1005,7 @@ function RichText({ settings }: SectionProps) {
   )
 }
 
-function ImageWithText({ settings }: SectionProps) {
+export function StatementContained({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const fileId = readText(settings, 'image')
   const src = fileId ? imageUrl(fileId, { width: 900, height: 900 }) : null
@@ -1075,7 +1051,7 @@ function ImageWithText({ settings }: SectionProps) {
   )
 }
 
-function ImageGallery({ settings }: SectionProps) {
+export function GalleryGrid({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const { frame, flat, hover, tiltRef } = useCard()
   const empty = useEmptyText()
@@ -1155,7 +1131,7 @@ function FaqIndicator({ icon }: { icon: string }) {
   )
 }
 
-function Faq({ settings }: SectionProps) {
+export function Faq({ settings }: SectionProps) {
   const empty = useEmptyText()
   const items = readList(settings, 'items').filter((item) => readText(item, 'question'))
   const variant = readToken(settings, 'variant', FAQ_VARIANTS, 'enclosed')
@@ -1202,7 +1178,7 @@ type TestimonialItem = FieldValues & { id: string }
 /** Pixels per second for each of the running-cards speeds. */
 const MARQUEE_SPEED = { slow: 25, normal: 45, fast: 80 } as const
 
-function Testimonials({ settings }: SectionProps) {
+export function QuotesCards({ settings }: SectionProps) {
   const empty = useEmptyText()
   const items = readList(settings, 'items').filter((item) => readText(item, 'quote'))
   const layout = readText(settings, 'layout')
@@ -1400,20 +1376,3 @@ function TestimonialByline({ item }: { item: TestimonialItem }) {
     </HStack>
   )
 }
-
-/** The first sections' renderers; the full registry is `./registry`. */
-export const BASE_SECTION_RENDERERS = {
-  'announcement-bar': AnnouncementBar,
-  hero: Hero,
-  'banner-slider': BannerSlider,
-  'shop-intro': ShopIntro,
-  'category-rail': CategoryRail,
-  'featured-collection': FeaturedCollection,
-  'collection-shelves': CollectionShelves,
-  'latest-products': LatestProducts,
-  'rich-text': RichText,
-  'image-with-text': ImageWithText,
-  'image-gallery': ImageGallery,
-  faq: Faq,
-  testimonials: Testimonials,
-} satisfies Partial<Record<SectionType, ComponentType<SectionProps>>>

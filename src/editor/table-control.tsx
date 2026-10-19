@@ -41,7 +41,7 @@ import {
 } from 'react-icons/lu'
 
 import type { TableValue } from '../model/fields'
-import { useEditorText, type EditorMessage } from './messages'
+import { useEditorText } from './messages'
 
 /* -------------------------------------------------------------------------- */
 /* Edits                                                                      */

@@ -68,6 +68,7 @@ const TEXT = {
   inStock: { en: '{count} in stock', id: 'Stok {count}' },
   inStockUnlimited: { en: 'In stock', id: 'Stok tersedia' },
   soldOut: { en: 'Sold out', id: 'Habis' },
+  sold: { en: '{count} sold', id: '{count} terjual' },
   size: { en: 'Size', id: 'Ukuran' },
   quantity: { en: 'Quantity', id: 'Jumlah' },
   decreaseQuantity: { en: 'Decrease quantity', id: 'Kurangi jumlah' },

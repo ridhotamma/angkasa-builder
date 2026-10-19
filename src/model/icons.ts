@@ -286,24 +286,8 @@ export type CoreIconName = (typeof CORE_ICON_NAMES)[number]
 /** The empty value: the seller chose "No icon", and nothing is drawn. */
 export const NO_ICON = ''
 
-/**
- * The keys a layout saved before the set moved to Lucide names still holds,
- * and the Lucide name each became — so a merchant's chosen icon survives the
- * rename. Read by the sanitiser, which stores only the new name.
- */
-export const ICON_ALIASES: Record<string, IconName> = {
-  cash: 'banknote',
-  shield: 'shield-check',
-  refresh: 'refresh-cw',
-  chat: 'message-circle',
-  badge: 'badge-check',
-  pin: 'map-pin',
-  card: 'credit-card',
-}
-
 /** The catalogue name a stored value means, or null when it is empty or unknown. */
 export function resolveIconName(value: unknown): IconName | null {
   if (typeof value !== 'string' || value === NO_ICON) return null
-  const key = ICON_ALIASES[value] ?? value
-  return (ICON_NAMES as readonly string[]).includes(key) ? (key as IconName) : null
+  return (ICON_NAMES as readonly string[]).includes(value) ? (value as IconName) : null
 }

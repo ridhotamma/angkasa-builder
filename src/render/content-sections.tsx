@@ -76,7 +76,7 @@ function columnsOf(value: string, count: number, mobileColumns?: string) {
 /* Columns                                                                    */
 /* -------------------------------------------------------------------------- */
 
-export function Multicolumn({ settings }: SectionProps) {
+export function CardsText({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const { frame, flat, hover, tiltRef } = useCard()
   const empty = useEmptyText()
@@ -170,11 +170,11 @@ export function Multicolumn({ settings }: SectionProps) {
  * chapter being read. On a phone, where there is no room beside the text,
  * each chapter simply shows its own picture above it.
  */
-export function ScrollingStory({ settings }: SectionProps) {
+export function StoryChapters({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   // Two schemas reach this renderer: the consolidated `story` (style=chapters),
-  // whose list is `items`, and the legacy `scrolling-story` it replaced, whose
+  // whose list is `items`, and the story chapters look it draws, whose
   // list was `steps` — a layout saved before the move still carries that key.
   // Sanitising keeps only the declared one, so reading whichever is present is
   // exact; reading `steps` alone left every consolidated story blank.
@@ -355,7 +355,7 @@ export function ScrollingStory({ settings }: SectionProps) {
 /* Timeline                                                                   */
 /* -------------------------------------------------------------------------- */
 
-export function Timeline({ settings }: SectionProps) {
+export function StoryTimeline({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const items = readList(settings, 'items')
@@ -555,7 +555,7 @@ export function TableSection({ settings }: SectionProps) {
 /* Icons with text                                                            */
 /* -------------------------------------------------------------------------- */
 
-export function IconFeatures({ settings }: SectionProps) {
+export function CardsIcons({ settings }: SectionProps) {
   const empty = useEmptyText()
   const items = readList(settings, 'items').filter(
     (item) => readText(item, 'title') || readText(item, 'text'),

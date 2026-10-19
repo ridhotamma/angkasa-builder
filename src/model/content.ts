@@ -27,7 +27,6 @@ import {
   type FieldValues,
   type JsonValue,
 } from './fields'
-import { consolidateSettings, consolidatedAlias } from './consolidated-sections'
 import { sanitizeElements } from './element-style'
 import { sanitizeLayout, type ThemeLayout } from './layout'
 import { SECTION_STYLE_FIELDS } from './section-style'
@@ -245,11 +244,7 @@ export function sanitizeSections(value: unknown, scope: SectionScope = 'home'): 
     if (out.length >= MAX_SECTIONS) break
     if (!isRecord(raw) || !isSectionType(raw.type)) continue
 
-    // An old family member converges on its consolidated type here: the stored
-    // settings ride along under the variant field, so the page keeps its content
-    // and gains the new catalogue the next time it is saved.
-    const alias = consolidatedAlias(raw.type)
-    const type: SectionType = alias ? (alias.type as SectionType) : raw.type
+    const type: SectionType = raw.type
     const schema = sectionSchema(type)!
     if (!isSectionAllowed(schema, scope)) continue
     const count = counts.get(type) ?? 0
@@ -270,10 +265,7 @@ export function sanitizeSections(value: unknown, scope: SectionScope = 'home'): 
       id,
       type,
       hidden: raw.hidden === true,
-      settings: sanitizeValues(
-        schema.fields,
-        alias ? consolidateSettings(alias, raw.settings) : raw.settings,
-      ),
+      settings: sanitizeValues(schema.fields, raw.settings),
       style: sanitizeValues(SECTION_STYLE_FIELDS, raw.style),
       ...(Object.keys(elements).length > 0 && { elements }),
       ...(linkedTo && { linkedTo }),
@@ -713,6 +705,25 @@ export function applyInstanceEdit(
       : section,
   )
   return replaceOverrides(next, instanceId, { ...pair.instance.overrides, fields })
+}
+
+/** The home page a shop has before it publishes a theme of its own. */
+export function defaultHomeTemplate(): SectionInstance[] {
+  return [
+    createSection('banner', { useShopBanner: true, height: 'md' }),
+    createSection('shop-intro'),
+    createSection('category-rail'),
+    createSection('product-list', { source: 'shelves', limit: 8 }),
+    createSection('product-list', { source: 'latest', limit: 8 }),
+  ]
+}
+
+/** Whether any of `sections` is one of `types` — the reads a host must do. */
+export function hasSectionOfType(
+  sections: readonly SectionInstance[],
+  types: readonly string[],
+): boolean {
+  return sections.some((section) => types.includes(section.type))
 }
 
 /** The product page every theme starts with — and the one a theme without its own gets. */

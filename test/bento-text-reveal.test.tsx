@@ -18,15 +18,7 @@ import {
 } from '../src/index'
 import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
 
-const BENTO_SECTIONS: SectionType[] = [
-  'product-list',
-  'featured-collection',
-  'collection-shelves',
-  'latest-products',
-  'collection-tabs',
-  'related-products',
-  'category-rail',
-]
+const BENTO_SECTIONS: SectionType[] = ['product-list', 'related-products', 'category-rail']
 
 function render(type: SectionType, settings: Record<string, unknown>): string {
   const env: RenderEnvironment = {
@@ -56,12 +48,12 @@ describe('bento text on hover', () => {
   })
 
   test('product tiles keep their text visible by default', () => {
-    const html = render('latest-products', { layout: 'bento' })
+    const html = render('product-list', { layout: 'bento' })
     expect(html).not.toContain('data-text-reveal')
   })
 
   test('on hover, product tiles hide the text and bring it in, name before price', () => {
-    const html = render('latest-products', { layout: 'bento', bentoText: 'hover' })
+    const html = render('product-list', { layout: 'bento', bentoText: 'hover' })
     expect(html).toContain('data-text-reveal')
     expect(html).toContain('transition-delay:70ms')
     expect(html).toContain('transition-delay:140ms')

@@ -32,14 +32,11 @@ import {
 const IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"/>'
 
 const TYPES = [
-  'newsletter',
-  'background-video',
-  'masonry-gallery',
-  'video-testimonials',
-  'team',
-  'editorial-statement',
-  'split-screen',
-  'social-wall',
+  'banner',
+  'gallery',
+  'quotes',
+  'cards',
+  'statement',
   'floating-contact',
   'spin-360',
 ] as const
@@ -67,13 +64,14 @@ function render(node: ReactNode): string {
 }
 
 const SECTIONS: SectionInstance[] = [
-  createSection('newsletter', { heading: 'Newsletter please', buttonLabel: 'Join' }),
-  createSection('background-video', { heading: 'Video band', poster: 'shot' }),
-  createSection('masonry-gallery', {
+  createSection('banner', { media: 'background', heading: 'Video band', poster: 'shot' }),
+  createSection('gallery', {
+    layout: 'masonry',
     heading: 'Masonry',
     items: [{ image: 'a', alt: 'Photo one', link: { kind: 'none' } }],
   }),
-  createSection('video-testimonials', {
+  createSection('quotes', {
+    variant: 'video',
     heading: 'Voices',
     items: [
       {
@@ -85,13 +83,15 @@ const SECTIONS: SectionInstance[] = [
       },
     ],
   }),
-  createSection('team', {
+  createSection('cards', {
+    card: 'person',
     heading: 'Our team',
     items: [{ name: 'Ayu', role: 'Founder', photo: 'p', link: { kind: 'none' } }],
   }),
-  createSection('editorial-statement', { heading: 'Made slowly', image: 'big' }),
-  createSection('split-screen', { heading: 'Half and half', image: 'half' }),
-  createSection('social-wall', {
+  createSection('statement', { layout: 'full', heading: 'Made slowly', image: 'big' }),
+  createSection('statement', { layout: 'split', heading: 'Half and half', image: 'half' }),
+  createSection('gallery', {
+    layout: 'social',
     heading: 'Community',
     handle: '@ourstore',
     items: [{ image: 's', caption: 'Summer drop', link: { kind: 'none' } }],
@@ -125,7 +125,6 @@ describe('feature section library', () => {
   test('draws every feature section on the storefront', () => {
     const html = render(<SectionsRenderer sections={SECTIONS} env={env()} />)
     for (const text of [
-      'Newsletter please',
       'Video band',
       'Masonry',
       'Photo one',
@@ -316,8 +315,8 @@ describe('section chrome', () => {
 
   test('a banner divider carries the banner photo, not the page colour', () => {
     const section = createSection(
-      'hero',
-      { heading: 'Photo', image: 'hero-photo' },
+      'banner',
+      { media: 'image', heading: 'Photo', image: 'hero-photo' },
       { dividerTop: 'wave', dividerBottom: 'wave' },
     )
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
@@ -328,15 +327,19 @@ describe('section chrome', () => {
   })
 
   test('a photo-less hero divider mirrors its own wash', () => {
-    const section = createSection('hero', { heading: 'Wash' }, { dividerTop: 'wave' })
+    const section = createSection(
+      'banner',
+      { media: 'image', heading: 'Wash' },
+      { dividerTop: 'wave' },
+    )
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
     expect(/background(-color)?:var\(--chakra-colors-brand-subtle\)/.test(html)).toBe(true)
   })
 
   test('a hero photo takes its size and position, and its dividers follow', () => {
     const section = createSection(
-      'hero',
-      { heading: 'Photo', image: 'hero-photo', fit: 'contain', position: 'top' },
+      'banner',
+      { media: 'image', heading: 'Photo', image: 'hero-photo', fit: 'contain', position: 'top' },
       { dividerTop: 'wave' },
     )
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
@@ -350,7 +353,8 @@ describe('section chrome', () => {
   })
 
   test('a video banner poster crops by its own size and position', () => {
-    const section = createSection('video-hero', {
+    const section = createSection('banner', {
+      media: 'video',
       poster: 'poster',
       fit: 'contain',
       position: 'left',
@@ -697,7 +701,8 @@ describe('section chrome', () => {
   })
 
   test('a testimonial photo is a plain visible image, never a hidden avatar', () => {
-    const section = createSection('testimonials', {
+    const section = createSection('quotes', {
+      variant: 'quotes',
       heading: 'Quotes',
       items: [{ quote: 'Great', author: 'Rina', role: '', avatar: 'file1' }],
     })

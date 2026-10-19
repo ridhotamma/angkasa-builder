@@ -60,9 +60,9 @@ describe('a block narrowed to phones or desktops', () => {
     const blocks = readBlocks(
       createSection('blocks', {
         blocks: [
-          { id: 'a', type: 'text', settings: {}, style: { showOn: 'mobile' } },
-          { id: 'b', type: 'text', settings: {}, style: { showOn: 'tablet' } },
-          { id: 'c', type: 'text', settings: {}, style: { showOn: 'default' } },
+          { id: 'a', type: 'richtext', settings: {}, style: { showOn: 'mobile' } },
+          { id: 'b', type: 'richtext', settings: {}, style: { showOn: 'tablet' } },
+          { id: 'c', type: 'richtext', settings: {}, style: { showOn: 'default' } },
         ],
       }).settings,
       'blocks',

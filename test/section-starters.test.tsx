@@ -131,7 +131,7 @@ describe('section starters', () => {
       description: { en: 'Test', id: 'Uji' },
       settings: { heading: 'From the preset' },
     }
-    const section = createStarterSection('hero', preset, NOW)
+    const section = createStarterSection('banner', preset, NOW)
     expect(section.settings.heading).toBe('From the preset')
     // The starter's subheading is not dragged in beside a preset.
     expect(section.settings.subheading).toBe('')
@@ -202,8 +202,8 @@ describe('reseedSectionVariant', () => {
   })
 
   test('a section with no variant starters is returned untouched', () => {
-    const settings = createStarterSection('hero', null, NOW).settings
+    const settings = createStarterSection('banner', null, NOW).settings
     const next = { ...settings, heading: 'X' }
-    expect(reseedSectionVariant('hero', settings, next)).toBe(next)
+    expect(reseedSectionVariant('banner', settings, next)).toBe(next)
   })
 })

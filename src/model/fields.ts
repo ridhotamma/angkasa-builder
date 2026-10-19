@@ -15,7 +15,7 @@ import { hasCoordinates, isAssetKey, sanitizeStockPhoto } from '@repo/appwrite-c
 
 import { NO_ICON, resolveIconName, type IconName } from './icons'
 import { sanitizeLink, NO_LINK, type Link } from './links'
-import { EMPTY_RICH_DOC, richDocFromPlainText, sanitizeRichDoc, type RichDoc } from './rich-text'
+import { EMPTY_RICH_DOC, sanitizeRichDoc, type RichDoc } from './rich-text'
 import { isLocalizedText, isLocalizedValue, STOREFRONT_LOCALES, type Localized } from './localized'
 
 /** One "a sibling holds one of these" rule; see `BaseField.showWhen`. */
@@ -126,12 +126,6 @@ export interface CoordinatesField extends BaseField {
   default: CoordinatesValue | null
   /** Shown in the empty box, e.g. the pair Google Maps copies. */
   placeholder?: Localized
-  /**
-   * Where a layout saved before this field existed kept the pair instead —
-   * `latitude` and `longitude` as two fields of their own. Read once when the
-   * combined value is absent, then folded into it by the sanitiser.
-   */
-  legacy?: { latitude: string; longitude: string }
 }
 
 export interface SelectField extends BaseField {
@@ -143,13 +137,6 @@ export interface SelectField extends BaseField {
    * two-way choice the seller flips between, like cards or custom blocks.
    */
   segment?: boolean
-  /**
-   * The key a layout saved before this choice existed kept the same value
-   * under — read once when this field's own key is absent. Splitting one
-   * choice into two (a slider's slides-per-view out of the grid's columns)
-   * leaves every stored layout where it was.
-   */
-  legacyKey?: string
 }
 
 export interface BooleanField extends BaseField {
@@ -617,63 +604,6 @@ function sanitizeOverrides(fields: readonly Field[], value: unknown): FieldValue
   return Object.keys(out).length > 0 ? out : undefined
 }
 
-/**
- * Block types a consolidated block replaces: the old type, the new one, and how
- * to move the settings across. `sanitizeBlocks` rewrites an old type before it
- * looks it up, so a stored block converges on the new type on the next parse
- * rather than being dropped. The three merges: a plain paragraph is a rich-text
- * block with no marks; a divider is a spacer that draws a rule; two fixed
- * columns are a two-column grid with a `widths` choice.
- */
-const BLOCK_ALIASES: Record<
-  string,
-  { type: string; transform?: (settings: Record<string, unknown>) => Record<string, unknown> }
-> = {
-  text: {
-    type: 'richtext',
-    transform: (settings) => ({
-      ...settings,
-      body: richDocFromPlainText(typeof settings.body === 'string' ? settings.body : ''),
-    }),
-  },
-  divider: {
-    type: 'spacer',
-    transform: (settings) => ({ ...settings, size: settings.spacing ?? 'md', line: true }),
-  },
-  columns: {
-    type: 'grid',
-    transform: (settings) => ({
-      ...settings,
-      columns: '2',
-      widths: settings.layout ?? 'equal',
-      blocks: [
-        ...(Array.isArray(settings.left) ? settings.left : []),
-        ...(Array.isArray(settings.right) ? settings.right : []),
-      ],
-    }),
-  },
-  // A collapsible's one rich-text answer became nested content blocks, so its
-  // content can be anything a container holds.
-  collapsible: {
-    type: 'collapsible',
-    transform: (settings) =>
-      Array.isArray(settings.blocks)
-        ? settings
-        : {
-            ...settings,
-            blocks: settings.body ? [{ type: 'richtext', settings: { body: settings.body } }] : [],
-          },
-  },
-}
-
-/** The consolidated type and settings for a raw block, or it unchanged. */
-function normalizeBlock(type: string, settings: unknown): { type: string; settings: unknown } {
-  const alias = BLOCK_ALIASES[type]
-  if (!alias) return { type, settings }
-  const source = isRecord(settings) ? settings : {}
-  return { type: alias.type, settings: alias.transform ? alias.transform(source) : source }
-}
-
 function sanitizeBlocks(
   field: BlocksField,
   value: unknown,
@@ -695,8 +625,7 @@ function sanitizeBlocks(
     if (out.length >= field.max) break
     if (budget.blocks >= MAX_BLOCKS_PER_SECTION) break
     if (!isRecord(raw) || typeof raw.type !== 'string') continue
-    const normalized = normalizeBlock(raw.type, raw.settings)
-    const schema = field.blocks.find((block) => block.type === normalized.type)
+    const schema = field.blocks.find((block) => block.type === raw.type)
     if (!schema) continue
     const count = counts.get(schema.type) ?? 0
     if (schema.max !== undefined && count >= schema.max) continue
@@ -711,7 +640,7 @@ function sanitizeBlocks(
     out.push({
       id,
       type: schema.type,
-      settings: sanitizeValues(schema.fields, normalized.settings, budget, depth + 1),
+      settings: sanitizeValues(schema.fields, raw.settings, budget, depth + 1),
       ...(style && { style }),
     })
   }
@@ -807,25 +736,6 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/**
- * The raw value a field sanitises. A coordinates field with no combined value
- * of its own adopts the pair an older layout kept under two separate keys —
- * see `CoordinatesField.legacy` — so a saved pin survives the schema change.
- * A select field does the same with `legacyKey`, so a choice split in two
- * keeps its stored value.
- */
-function fieldInput(field: Field, source: Record<string, unknown>): unknown {
-  const value = source[field.key]
-  if (value !== undefined) return value
-  if (field.kind === 'coordinates' && field.legacy) {
-    const { latitude, longitude } = field.legacy
-    if (source[latitude] === undefined && source[longitude] === undefined) return undefined
-    return { latitude: source[latitude], longitude: source[longitude] }
-  }
-  if (field.kind === 'select' && field.legacyKey) return source[field.legacyKey]
-  return value
-}
-
 /** Every declared field, sanitised; every undeclared key, dropped. */
 export function sanitizeValues(
   fields: readonly Field[],
@@ -836,7 +746,7 @@ export function sanitizeValues(
   const source = isRecord(values) ? values : {}
   const out: FieldValues = {}
   for (const field of fields) {
-    out[field.key] = sanitizeField(field, fieldInput(field, source), budget, depth)
+    out[field.key] = sanitizeField(field, source[field.key], budget, depth)
   }
   return out
 }

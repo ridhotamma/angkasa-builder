@@ -16,7 +16,7 @@ import { useMotionEffect } from './motion/engine'
 import { EmptyNotice } from './primitives'
 import { BannerCopy, heroHeight, type SectionProps } from './sections'
 
-export function VideoHero({ settings }: SectionProps) {
+export function BannerVideo({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const { width } = useSectionLayout()
   const text = useRenderText()
@@ -52,7 +52,7 @@ const PARALLAX = { soft: 0.18, strong: 0.35 } as const
  * sixty times a second. A shopper who prefers less motion sees a still
  * image; so does a page without JavaScript.
  */
-export function ParallaxBanner({ settings }: SectionProps) {
+export function BannerParallax({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const { width } = useSectionLayout()
   const frame = useRef<HTMLDivElement>(null)

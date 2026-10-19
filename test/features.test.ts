@@ -23,7 +23,6 @@ import {
   schemeContrastIssues,
   schemeCssVars,
   scheduleState,
-  THEME_PRESETS,
   videoFileIds,
 } from '../src/index'
 import { schemeCss } from '../src/render/frame'
@@ -59,14 +58,14 @@ describe('videos', () => {
   })
 
   test('a background video field accepts uploads only', () => {
-    const [hero] = sanitizeSections([
+    const [banner] = sanitizeSections([
       {
         id: 'v',
-        type: 'video-hero',
-        settings: { video: { source: 'youtube', id: 'dQw4w9WgXcQ' } },
+        type: 'banner',
+        settings: { media: 'video', video: { source: 'youtube', id: 'dQw4w9WgXcQ' } },
       },
     ])
-    expect(hero!.settings.video).toBeNull()
+    expect(banner!.settings.video).toBeNull()
   })
 })
 
@@ -367,11 +366,5 @@ describe('layout', () => {
       transparentOnHome: false,
     })
     expect(layout.footer).toMatchObject({ colorScheme: 'default', showPages: true })
-  })
-})
-
-describe('presets', () => {
-  test('the built-in library is empty — templates are designed from scratch', () => {
-    expect(THEME_PRESETS).toEqual([])
   })
 })

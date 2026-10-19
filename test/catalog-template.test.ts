@@ -51,12 +51,12 @@ describe('the catalogue template', () => {
 
   test('general sections are allowed above and below the grid', () => {
     const sections = sanitizeCatalogTemplate([
-      createSection('hero', { heading: 'Sale' }),
+      createSection('banner', { media: 'image', heading: 'Sale' }),
       createSection('catalog-header'),
       createSection('catalog-products'),
       createSection('rich-text', { heading: 'About' }),
     ])
-    // `hero` converges on the consolidated `banner`; the order is untouched.
+    // The banner stays where the seller put it; the order is untouched.
     expect(types(sections)).toEqual(['banner', 'catalog-header', 'catalog-products', 'rich-text'])
   })
 

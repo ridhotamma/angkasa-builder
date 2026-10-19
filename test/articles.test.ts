@@ -47,11 +47,11 @@ describe('article template', () => {
 
   test('keeps where the seller put the header and the content', () => {
     const repaired = sanitizeArticleTemplate([
-      { id: 'b', type: 'hero', settings: {} },
+      { id: 'b', type: 'banner', settings: { media: 'image' } },
       { id: 'c', type: 'article-content', settings: {} },
       { id: 'h', type: 'article-header', settings: {} },
     ])
-    // `hero` converges on the consolidated `banner`; the order is untouched.
+    // The banner stays where it was; the order is untouched.
     expect(types(repaired)).toEqual(['banner', 'article-content', 'article-header'])
   })
 

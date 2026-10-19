@@ -91,7 +91,7 @@ describe('category rail list layout', () => {
 describe('categoryPreviewCount', () => {
   test('reads nothing unless a category rail is drawn as a list', () => {
     expect(categoryPreviewCount([createSection('category-rail', { layout: 'tiles' })])).toBe(0)
-    expect(categoryPreviewCount([createSection('latest-products')])).toBe(0)
+    expect(categoryPreviewCount([createSection('product-list', { source: 'latest' })])).toBe(0)
   })
 
   test('takes the largest list limit on the page', () => {

@@ -8,7 +8,7 @@ import { system } from '@repo/theme'
 
 import { sanitizeValues, type IconField } from '../src/index'
 import { IconPicker } from '../src/editor/icon-picker'
-import { ICON_ALIASES, ICON_NAMES } from '../src/model/icons'
+import { ICON_NAMES } from '../src/model/icons'
 
 const field: IconField = {
   kind: 'icon',
@@ -31,21 +31,11 @@ describe('the icon catalogue', () => {
   test('every name is unique', () => {
     expect(new Set(ICON_NAMES).size).toBe(ICON_NAMES.length)
   })
-
-  test('every legacy alias points at a real name', () => {
-    for (const name of Object.values(ICON_ALIASES)) {
-      expect(ICON_NAMES as readonly string[]).toContain(name)
-    }
-  })
 })
 
 describe('icon field sanitising', () => {
   test('a catalogue name is kept', () => {
     expect(sanitizeValues([field], { icon: 'shield-check' }).icon).toBe('shield-check')
-  })
-
-  test('a legacy name is folded into its Lucide name', () => {
-    expect(sanitizeValues([field], { icon: 'shield' }).icon).toBe('shield-check')
   })
 
   test('an empty value means "no icon", not the default', () => {

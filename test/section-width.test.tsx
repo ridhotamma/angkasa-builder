@@ -35,10 +35,11 @@ function env(): RenderEnvironment {
   }
 }
 
-function hero(style: Record<string, unknown>, settings: Record<string, unknown> = {}) {
+function banner(style: Record<string, unknown>, settings: Record<string, unknown> = {}) {
   return createSection(
-    'hero',
+    'banner',
     {
+      media: 'image',
       heading: 'Judul banner',
       subheading: 'Subjudul banner',
       buttonLabel: 'Belanja',
@@ -64,33 +65,33 @@ function htmlOf(section: SectionInstance): string {
 
 describe('banner content follows the page column', () => {
   test('an edge-to-edge banner keeps its copy in the page column', () => {
-    const html = htmlOf(hero({ width: 'edge' }))
+    const html = htmlOf(banner({ width: 'edge' }))
     expect(html).toContain(PAGE_COLUMN)
     expect(html).toContain('Judul banner')
   })
 
   test('a centered edge banner still centers inside that column', () => {
-    const html = htmlOf(hero({ width: 'edge' }, { align: 'center' }))
+    const html = htmlOf(banner({ width: 'edge' }, { align: 'center' }))
     expect(html).toContain(PAGE_COLUMN)
     expect(html).toContain('text-align:center')
   })
 
   test('a page-width banner keeps its own panel padding instead', () => {
-    const html = htmlOf(hero({}))
+    const html = htmlOf(banner({ width: 'contained' }))
     expect(html).not.toContain(PAGE_COLUMN)
     expect(html).toContain('Judul banner')
   })
 
   test('a full-width background frame supplies the column itself', () => {
-    const html = htmlOf(hero({ width: 'full', colorScheme: 'inverse' }))
+    const html = htmlOf(banner({ width: 'full', colorScheme: 'inverse' }))
     expect(html).toContain(PAGE_COLUMN)
     expect(html).toContain('Judul banner')
   })
 
   test('the video and parallax banners share the alignment', () => {
     const parallax = createSection(
-      'parallax-banner',
-      { heading: 'Paralaks', image: '' },
+      'banner',
+      { media: 'parallax', heading: 'Paralaks', image: '' },
       { width: 'edge' },
     )
     expect(htmlOf(parallax)).toContain(PAGE_COLUMN)
@@ -99,7 +100,9 @@ describe('banner content follows the page column', () => {
 
 describe('full-bleed sections keep their words in the page column', () => {
   test('split-screen aligns its copy while the photo still bleeds', () => {
-    const html = htmlOf(createSection('split-screen', { heading: 'Dua kolom', image: '' }))
+    const html = htmlOf(
+      createSection('statement', { layout: 'split', heading: 'Dua kolom', image: '' }),
+    )
     expect(html).toContain(PAGE_COLUMN)
     expect(html).toContain('Dua kolom')
     // The photo half still runs to the viewport edge.
@@ -107,21 +110,29 @@ describe('full-bleed sections keep their words in the page column', () => {
   })
 
   test('an editorial statement aligns its copy', () => {
-    const html = htmlOf(createSection('editorial-statement', { heading: 'Pernyataan', image: '' }))
+    const html = htmlOf(
+      createSection(
+        'statement',
+        { layout: 'full', heading: 'Pernyataan', image: '' },
+        { width: 'edge' },
+      ),
+    )
     expect(html).toContain(PAGE_COLUMN)
     expect(html).toContain('Pernyataan')
   })
 
   test('a background video aligns its copy when edge to edge', () => {
-    const html = htmlOf(createSection('background-video', { heading: 'Video' }, { width: 'edge' }))
+    const html = htmlOf(
+      createSection('banner', { media: 'background', heading: 'Video' }, { width: 'edge' }),
+    )
     expect(html).toContain(PAGE_COLUMN)
     expect(html).toContain('Video')
   })
 
   test('an edge gallery keeps its heading in the column', () => {
     const wall = createSection(
-      'social-wall',
-      { heading: 'Komunitas', items: [{ image: 'x' }] },
+      'gallery',
+      { layout: 'social', heading: 'Komunitas', items: [{ image: 'x' }] },
       { width: 'edge' },
     )
     expect(htmlOf(wall)).toContain(PAGE_COLUMN)
@@ -129,7 +140,11 @@ describe('full-bleed sections keep their words in the page column', () => {
 
   test('a contained section adds no second column', () => {
     const html = htmlOf(
-      createSection('editorial-statement', { heading: 'Biasa', image: '' }, { width: 'contained' }),
+      createSection(
+        'statement',
+        { layout: 'full', heading: 'Biasa', image: '' },
+        { width: 'contained' },
+      ),
     )
     expect(html).not.toContain(PAGE_COLUMN)
   })
@@ -142,18 +157,18 @@ describe('per-section content width', () => {
   })
 
   test('a contained section centres a narrower column', () => {
-    const html = htmlOf(hero({ contentWidth: 'md' }))
+    const html = htmlOf(banner({ contentWidth: 'md' }))
     expect(html).toContain('max-width:var(--chakra-sizes-md)')
     expect(html).toContain('Judul banner')
   })
 
   test('a full-width band uses the chosen column', () => {
-    const html = htmlOf(hero({ width: 'full', contentWidth: 'xl' }))
+    const html = htmlOf(banner({ width: 'full', contentWidth: 'xl' }))
     expect(html).toContain('max-width:var(--chakra-sizes-xl)')
   })
 
   test('an edge banner uses the chosen column', () => {
-    const html = htmlOf(hero({ width: 'edge', contentWidth: 'md' }))
+    const html = htmlOf(banner({ width: 'edge', contentWidth: 'md' }))
     expect(html).toContain('max-width:var(--chakra-sizes-md)')
   })
 

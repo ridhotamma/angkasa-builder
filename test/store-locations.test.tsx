@@ -200,25 +200,6 @@ describe('the map block', () => {
     expect(html).toContain('maps.google.com/maps?q=-6.2,106.816666')
     expect(html).toContain('title="Warung"')
   })
-
-  test('a block saved before the combined field keeps its pin', () => {
-    const html = render(
-      <SectionsRenderer
-        sections={[
-          createSection('blocks', {
-            blocks: [
-              {
-                type: 'map',
-                settings: { label: 'Warung', latitude: -6.2, longitude: 106.816666 },
-              },
-            ],
-          }),
-        ]}
-        env={env()}
-      />,
-    )
-    expect(html).toContain('maps.google.com/maps?q=-6.2,106.816666')
-  })
 })
 
 describe('contact sections read shop settings', () => {

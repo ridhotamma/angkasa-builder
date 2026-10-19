@@ -177,6 +177,8 @@ export interface SliderProps {
   ratio?: number
   /** A margin around the band, so a slide can peek at the edges. */
   peek?: string
+  /** The room between slides. Defaults to `DEFAULT_GAP`. */
+  gap?: string
   /** The slide to open on. */
   start?: number
   /** Told whenever the resting slide changes (a viewer's backdrop follows it). */
@@ -209,6 +211,7 @@ export function Slider({
   arrowInset = ARROW_EDGE_INSET,
   ratio,
   peek,
+  gap: gapProp = DEFAULT_GAP,
   start = 0,
   onIndexChange,
   active,
@@ -222,7 +225,7 @@ export function Slider({
   const text = useRenderText()
   const { editing } = useRenderEnvironment()
   const vertical = orientation === 'vertical'
-  const gap = DEFAULT_GAP
+  const gap = gapProp
   const perPageClamped = Math.max(1, Math.min(perPage, Math.max(1, count)))
   const last = Math.max(0, count - perPageClamped)
   // A fractional view still settles on whole slides: the last position is the

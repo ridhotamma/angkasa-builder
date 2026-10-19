@@ -32,7 +32,7 @@ function render(node: ReactNode): string {
   )
 }
 
-const SECTION = createSection('latest-products', { heading: 'New in', limit: 2 })
+const SECTION = createSection('product-list', { source: 'latest', heading: 'New in', limit: 2 })
 const FEATURED = createSection('featured-product', { productId: 'sample-0' })
 
 describe('wishlist heart on product cards', () => {

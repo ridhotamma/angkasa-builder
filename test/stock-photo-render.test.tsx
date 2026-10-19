@@ -37,7 +37,7 @@ function render(image: string): string {
   }
   const node: ReactNode = (
     <SectionsRenderer
-      sections={[createSection('hero', { heading: 'Hi', image: 'file-abc_1' })]}
+      sections={[createSection('banner', { media: 'image', heading: 'Hi', image: 'file-abc_1' })]}
       env={env}
     />
   )

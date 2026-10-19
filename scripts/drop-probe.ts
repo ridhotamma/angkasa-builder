@@ -45,7 +45,7 @@ function content(): ThemeContent {
           heading: 'Demo Batik',
           body: 'Batik cap dan tulis langsung dari perajin Solo dan Yogyakarta. Kemeja, blus, sampai kain lembaran — dibuat dengan pewarna alami dan jahitan rapi.',
         }),
-        createSection('featured-collection', { limit: 8, columns: '4' }),
+        createSection('product-list', { source: 'collection', limit: 8, columns: '4' }),
         createSection('rich-text', {
           heading: 'What our customers say',
           body: 'Every piece is cut and sewn in small batches, so the fit and the finish stay true.',

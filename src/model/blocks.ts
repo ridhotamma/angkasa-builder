@@ -37,7 +37,7 @@ import {
   SLIDES_PER_VIEW,
   SLIDES_PER_VIEW_MOBILE,
 } from './section-style'
-import type { SectionPreset, SectionSchema } from './sections'
+import type { SectionSchema } from './sections'
 
 /* -------------------------------------------------------------------------- */
 /* Block schemas                                                              */
@@ -512,7 +512,6 @@ const map: BlockSchema = {
       },
       placeholder: { en: '-6.244, 106.799', id: '-6.244, 106.799' },
       default: { latitude: -6.2, longitude: 106.816666 },
-      legacy: { latitude: 'latitude', longitude: 'longitude' },
     },
     {
       kind: 'select',
@@ -972,22 +971,6 @@ export function blockSchema(type: string): BlockSchema | null {
   return BLOCK_TYPES.find((block) => block.type === type) ?? null
 }
 
-/* -------------------------------------------------------------------------- */
-/* Ready-made primitive layouts                                               */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Webflow-style starter blocks: whole common layouts — a split hero, a
- * feature grid, pricing, an FAQ list, a call to action and a stats row —
- * composed entirely from the primitives above. A preset is only settings, so
- * a seller picks one from the add-section picker and then edits every block
- * of it like any other, on the same scale and with the same style overrides.
- *
- * Ids are deliberately absent: the sanitiser gives each block a fresh one,
- * so two copies of a preset never share ids.
- */
-const BLOCK_PRESETS: readonly SectionPreset[] = []
-
 // `as const` keeps the section's type a literal, so the library's union of
 // section types does not widen to `string` where this schema is registered.
 export const blocksSectionSchema = {
@@ -1011,25 +994,6 @@ export const blocksSectionSchema = {
     },
     spaceField('gap', { en: 'Spacing between blocks', id: 'Jarak antar blok' }, 'md'),
   ],
-  presets: BLOCK_PRESETS,
-} as const satisfies SectionSchema
-
-/**
- * The Custom section: the same composer under a name that says what it is
- * for — a blank canvas when none of the ready-made sections fit. It is a thin
- * alias of the Blocks section (same fields, same renderer, no presets), not a
- * second engine; the docs' "Custom section" is this primitive tree.
- */
-export const customSectionSchema = {
-  type: 'custom',
-  name: { en: 'Custom layout', id: 'Tata letak kustom' },
-  description: {
-    en: 'A blank canvas: compose anything from headings, text, buttons, images, video, icons, badges, ratings, collapsibles, rows, columns and grids.',
-    id: 'Kanvas kosong: susun apa pun dari judul, teks, tombol, gambar, video, ikon, lencana, rating, lipatan, baris, kolom, dan kisi.',
-  },
-  category: 'layout',
-  icon: 'blocks',
-  fields: blocksSectionSchema.fields,
 } as const satisfies SectionSchema
 
 /* -------------------------------------------------------------------------- */

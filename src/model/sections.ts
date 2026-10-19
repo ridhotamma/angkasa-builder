@@ -3,8 +3,12 @@
  *
  * This file is the schema half — names and fields, no React — so the admin
  * and developer servers can validate a saved layout without importing a
- * component. The renderers live in `../render/sections`, keyed by the same
+ * component. The renderers live in `../render/registry`, keyed by the same
  * `type`; a type with a schema and no renderer is a compile error there.
+ *
+ * One type per look. Where several looks share a template they are a family
+ * (`banner`, `product-list`, `gallery`, `quotes`, `cards`, `statement`,
+ * `story`) whose variant field picks the look; `../render/families` draws it.
  *
  * Adding a section: declare it here, render it there. Every template and page
  * in every shop can use it from that moment, which is the point — see "Scope
@@ -12,12 +16,23 @@
  */
 
 import { BLOCK_STYLE_FIELDS } from './block-style'
-import { blocksSectionSchema, customSectionSchema, BLOCK_TYPES } from './blocks'
-import type { BlockSchema, Field, ItemField, ListField, RichTextField, TextField } from './fields'
+import { blocksSectionSchema, BLOCK_TYPES } from './blocks'
+import type {
+  BlockSchema,
+  BooleanField,
+  Field,
+  ImageField,
+  ItemField,
+  LinkField,
+  ListField,
+  RichTextField,
+  SelectField,
+  TextareaField,
+  TextField,
+  VideoField,
+} from './fields'
 import type { IconName } from './icons'
 import type { Localized } from './localized'
-import { CONSOLIDATED_SECTION_SCHEMAS, consolidatedAlias } from './consolidated-sections'
-import { FEATURE_SECTION_SCHEMAS } from './feature-sections'
 import {
   photoFitField,
   photoPositionField,
@@ -123,8 +138,8 @@ export interface SectionSchema {
   fields: readonly Field[]
 }
 
-// The article and catalogue templates take the general sections too — a
-// newsletter under every article, a banner above the product grid — so both
+// The article and catalogue templates take the general sections too — a rich
+// text under every article, a banner above the product grid — so both
 // "everywhere" sets include them.
 const EVERYWHERE_BUT_PRODUCT: readonly SectionScope[] = ['home', 'page', 'article', 'catalog']
 const EVERYWHERE: readonly SectionScope[] = [
@@ -156,9 +171,7 @@ export function isSectionAllowed(schema: SectionSchema, scope: SectionScope): bo
  * a layout that already holds one keeps rendering, duplicating and saving it.
  */
 export function isSectionOffered(schema: SectionSchema, scope: SectionScope): boolean {
-  // A type a consolidated section replaces is kept for stored layouts but never
-  // offered — the consolidated card is the one the seller sees.
-  return !schema.hidden && !consolidatedAlias(schema.type) && isSectionAllowed(schema, scope)
+  return !schema.hidden && isSectionAllowed(schema, scope)
 }
 
 /** The presets the picker offers for a section, in order; hidden ones stay usable in stored layouts. */
@@ -178,11 +191,11 @@ const heading = (fallback = ''): TextField => ({
   default: fallback,
 })
 
-const body = (): RichTextField => ({
+const body = (max = 5000): RichTextField => ({
   kind: 'richtext',
   key: 'body',
   label: { en: 'Text', id: 'Teks' },
-  max: 5000,
+  max,
   default: '',
 })
 
@@ -194,6 +207,91 @@ const buttonLabel: ItemField = {
   max: 40,
   default: '',
 }
+
+/** The same button-label field, with a starting word — the family sections' default. */
+const buttonLabelText = (fallback: string): ItemField => ({ ...buttonLabel, default: fallback })
+
+/* The field builders the family sections share. They are the one vocabulary
+   every section declares its settings in; no family keeps a private copy. */
+
+const textField = (
+  key: string,
+  label: Localized,
+  max: number,
+  fallback = '',
+  help?: Localized,
+): TextField => ({ kind: 'text', key, label, max, default: fallback, ...(help ? { help } : {}) })
+
+const areaField = (key: string, label: Localized, max: number, rows = 4): TextareaField => ({
+  kind: 'textarea',
+  key,
+  label,
+  max,
+  default: '',
+  rows,
+})
+
+const imageField = (key: string, label: Localized, help?: Localized): ImageField => ({
+  kind: 'image',
+  key,
+  label,
+  ...(help ? { help } : {}),
+})
+
+const videoField = (key: string, label: Localized, uploadOnly = false): VideoField => ({
+  kind: 'video',
+  key,
+  label,
+  ...(uploadOnly ? { uploadOnly: true } : {}),
+})
+
+const linkField = (key: string, label: Localized): LinkField => ({ kind: 'link', key, label })
+
+const selectField = (
+  key: string,
+  label: Localized,
+  options: ReadonlyArray<{ value: string; label: Localized }>,
+  fallback: string,
+  help?: Localized,
+): SelectField => ({
+  kind: 'select',
+  key,
+  label,
+  options,
+  default: fallback,
+  ...(help ? { help } : {}),
+})
+
+const toggleField = (
+  key: string,
+  label: Localized,
+  fallback = false,
+  help?: Localized,
+): BooleanField => ({ kind: 'boolean', key, label, default: fallback, ...(help ? { help } : {}) })
+
+const listField = (
+  key: string,
+  label: Localized,
+  itemLabel: Localized,
+  titleKey: string,
+  max: number,
+  fields: readonly ItemField[],
+): ListField => ({ kind: 'list', key, label, itemLabel, titleKey, max, fields })
+
+const subheading = (fallback = ''): TextField =>
+  textField('subheading', { en: 'Subheading', id: 'Subjudul' }, 200, fallback)
+
+/** A left/right choice stored under `key`. */
+const positionField = (key: string, label: Localized, fallback = 'left'): SelectField =>
+  selectField(
+    key,
+    label,
+    [
+      { value: 'left', label: { en: 'Left', id: 'Kiri' } },
+      { value: 'right', label: { en: 'Right', id: 'Kanan' } },
+    ],
+    fallback,
+  )
 
 const buttonLink: ItemField = {
   kind: 'link',
@@ -301,33 +399,6 @@ const bentoText = (): ItemField => ({
   showWhen: { key: 'layout', is: ['bento'] },
 })
 
-const subheading = (fallback = ''): ItemField => ({
-  kind: 'textarea',
-  key: 'subheading',
-  label: { en: 'Subheading', id: 'Subjudul' },
-  max: 300,
-  default: fallback,
-  rows: 2,
-})
-
-const secondaryButtonLabel: ItemField = {
-  kind: 'text',
-  key: 'secondaryButtonLabel',
-  label: { en: 'Second button label', id: 'Teks tombol kedua' },
-  help: {
-    en: 'Optional, shown as an outline button.',
-    id: 'Opsional, tampil sebagai tombol garis.',
-  },
-  max: 40,
-  default: '',
-}
-
-const secondaryButtonLink: ItemField = {
-  kind: 'link',
-  key: 'secondaryButtonLink',
-  label: { en: 'Second button link', id: 'Tautan tombol kedua' },
-}
-
 const overlay: ItemField = {
   kind: 'select',
   key: 'overlay',
@@ -343,31 +414,6 @@ const overlay: ItemField = {
     { value: 'none', label: { en: 'None', id: 'Tanpa bayangan' } },
   ],
   default: 'gradient',
-}
-
-const bannerHeight = (fallback: 'sm' | 'md' | 'lg' | 'screen' = 'md'): ItemField => ({
-  kind: 'select',
-  key: 'height',
-  label: { en: 'Height', id: 'Tinggi' },
-  options: [
-    { value: 'sm', label: { en: 'Short', id: 'Pendek' } },
-    { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
-    { value: 'lg', label: { en: 'Tall', id: 'Tinggi' } },
-    { value: 'screen', label: { en: 'Full screen', id: 'Satu layar penuh' } },
-  ],
-  default: fallback,
-})
-
-const contentPosition: ItemField = {
-  kind: 'select',
-  key: 'contentPosition',
-  label: { en: 'Text position', id: 'Posisi teks' },
-  options: [
-    { value: 'top', label: { en: 'Top', id: 'Atas' } },
-    { value: 'middle', label: { en: 'Middle', id: 'Tengah' } },
-    { value: 'bottom', label: { en: 'Bottom', id: 'Bawah' } },
-  ],
-  default: 'bottom',
 }
 
 const speed: ItemField = {
@@ -560,183 +606,691 @@ const PRODUCT_INFO_BLOCKS: readonly BlockSchema[] = [
 /* The library                                                                */
 /* -------------------------------------------------------------------------- */
 
-/* -------------------------------------------------------------------------- */
-/* The library                                                                */
-/* -------------------------------------------------------------------------- */
-
 export const SECTION_SCHEMAS = [
   blocksSectionSchema,
-  customSectionSchema,
-  ...CONSOLIDATED_SECTION_SCHEMAS,
-  ...FEATURE_SECTION_SCHEMAS,
+
+  /* --- Section families: one type per family, a variant field picks the look --- */
+
   {
-    type: 'announcement-bar',
-    scopes: EVERYWHERE,
-    category: 'promotion',
-    icon: 'megaphone',
-    hidden: true,
-    name: { en: 'Announcement bar', id: 'Bar pengumuman' },
-    description: {
-      en: 'A thin strip for a promotion or notice.',
-      id: 'Strip tipis untuk promo atau pemberitahuan.',
-    },
-    fields: [
-      {
-        kind: 'text',
-        key: 'text',
-        label: { en: 'Text', id: 'Teks' },
-        max: 160,
-        default: 'Free delivery on orders over Rp 200.000',
-      },
-      { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
-    ],
-  },
-  {
-    type: 'hero',
+    type: 'banner',
     category: 'banners',
     icon: 'image',
-    name: { en: 'Hero banner', id: 'Banner utama' },
+    name: { en: 'Banner', id: 'Banner' },
     description: {
-      en: 'A large image with a headline and a button.',
-      id: 'Gambar besar dengan judul dan tombol.',
-    },
-    fields: [
-      { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
-      {
-        kind: 'boolean',
-        key: 'useShopBanner',
-        label: { en: "Use the shop's banner", id: 'Pakai banner toko' },
-        help: {
-          en: 'Shows the banner from shop settings when no image is picked.',
-          id: 'Menampilkan banner dari pengaturan toko jika gambar tidak dipilih.',
-        },
-        default: true,
-      },
-      photoFitField,
-      photoPositionField,
-      heading(),
-      subheading(),
-      buttonLabel,
-      buttonLink,
-      secondaryButtonLabel,
-      secondaryButtonLink,
-      align,
-      contentPosition,
-      bannerHeight('md'),
-      overlay,
-    ],
-    presets: [
-      {
-        key: 'centered-full',
-        name: { en: 'Hero — full width, centred', id: 'Banner — selebar layar, di tengah' },
-        description: {
-          en: 'Edge to edge, tall, with the headline in the middle.',
-          id: 'Penuh dari tepi ke tepi, tinggi, dengan judul di tengah.',
-        },
-        settings: {
-          heading: 'New season, new favourites',
-          subheading: 'Discover pieces made to last.',
-          buttonLabel: 'Shop now',
-          buttonLink: { kind: 'home' },
-          align: 'center',
-          contentPosition: 'middle',
-          height: 'lg',
-          overlay: 'dark',
-        },
-        style: { width: 'edge', paddingTop: 'none', paddingBottom: 'none' },
-      },
-      {
-        key: 'split-buttons',
-        hidden: true,
-        name: { en: 'Hero — two buttons', id: 'Banner — dua tombol' },
-        description: {
-          en: 'A headline with a main and a second button.',
-          id: 'Judul dengan tombol utama dan tombol kedua.',
-        },
-        settings: {
-          heading: 'Made for everyday',
-          buttonLabel: 'Shop women',
-          secondaryButtonLabel: 'Shop men',
-          height: 'lg',
-        },
-      },
-    ],
-  },
-  {
-    type: 'video-hero',
-    category: 'banners',
-    icon: 'video',
-    name: { en: 'Video banner', id: 'Banner video' },
-    description: {
-      en: 'A silent looping video behind a headline and buttons.',
-      id: 'Video berulang tanpa suara di belakang judul dan tombol.',
+      en: 'A headline and buttons over an image, a video, a looping background or a parallax photo.',
+      id: 'Judul dan tombol di atas gambar, video, latar berulang, atau foto paralaks.',
     },
     defaultStyle: { width: 'edge', paddingTop: 'none', paddingBottom: 'none' },
     fields: [
+      selectField(
+        'media',
+        { en: 'Background', id: 'Latar' },
+        [
+          { value: 'image', label: { en: 'Image', id: 'Gambar' } },
+          { value: 'video', label: { en: 'Video', id: 'Video' } },
+          { value: 'background', label: { en: 'Looping video', id: 'Video berulang' } },
+          { value: 'parallax', label: { en: 'Parallax photo', id: 'Foto paralaks' } },
+        ],
+        'image',
+      ),
       {
-        kind: 'video',
-        key: 'video',
-        label: { en: 'Video', id: 'Video' },
-        uploadOnly: true,
-        help: {
-          en: 'An MP4 or WebM up to 30 MB. Short (10–30 s) and without sound works best — it plays muted.',
-          id: 'MP4 atau WebM hingga 30 MB. Pendek (10–30 detik) dan tanpa suara paling cocok — diputar tanpa suara.',
-        },
+        ...imageField('image', { en: 'Image', id: 'Gambar' }),
+        showWhen: { key: 'media', is: ['image', 'parallax'] },
       },
       {
-        kind: 'image',
-        key: 'poster',
-        label: { en: 'Cover image', id: 'Gambar sampul' },
-        help: {
-          en: 'Shown while the video loads, and instead of it when a shopper prefers less motion.',
-          id: 'Tampil saat video dimuat, dan menggantikannya jika pembeli memilih mengurangi gerakan.',
-        },
+        ...toggleField(
+          'useShopBanner',
+          { en: "Use the shop's banner", id: 'Pakai banner toko' },
+          true,
+        ),
+        showWhen: { key: 'media', is: ['image'] },
       },
-      photoFitField,
-      photoPositionField,
-      heading('Feel the difference'),
-      subheading(),
-      buttonLabel,
+      {
+        ...videoField('video', { en: 'Video', id: 'Video' }, true),
+        showWhen: { key: 'media', is: ['video', 'background'] },
+      },
+      {
+        ...imageField('poster', { en: 'Cover image', id: 'Gambar sampul' }),
+        showWhen: { key: 'media', is: ['video', 'background'] },
+      },
+      {
+        ...photoFitField,
+        showWhen: { key: 'media', is: ['image', 'video', 'background', 'parallax'] },
+      },
+      {
+        ...photoPositionField,
+        showWhen: { key: 'media', is: ['image', 'video', 'background', 'parallax'] },
+      },
+      heading(''),
+      subheading(''),
+      buttonLabelText('Shop now'),
       buttonLink,
-      secondaryButtonLabel,
-      secondaryButtonLink,
-      { ...align, default: 'center' },
-      { ...contentPosition, default: 'middle' },
-      bannerHeight('lg'),
-      { ...overlay, default: 'dark' },
+      textField('secondaryButtonLabel', { en: 'Second button label', id: 'Teks tombol kedua' }, 40),
+      linkField('secondaryButtonLink', { en: 'Second button link', id: 'Tautan tombol kedua' }),
+      { ...align, default: 'left' },
+      {
+        ...selectField(
+          'contentPosition',
+          { en: 'Text position', id: 'Posisi teks' },
+          [
+            { value: 'top', label: { en: 'Top', id: 'Atas' } },
+            { value: 'middle', label: { en: 'Middle', id: 'Tengah' } },
+            { value: 'bottom', label: { en: 'Bottom', id: 'Bawah' } },
+          ],
+          'bottom',
+        ),
+      },
+      selectField(
+        'height',
+        { en: 'Height', id: 'Tinggi' },
+        [
+          { value: 'sm', label: { en: 'Short', id: 'Pendek' } },
+          { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+          { value: 'lg', label: { en: 'Tall', id: 'Tinggi' } },
+          { value: 'screen', label: { en: 'Full screen', id: 'Satu layar' } },
+        ],
+        'md',
+      ),
+      overlay,
+      {
+        ...selectField(
+          'intensity',
+          { en: 'Movement', id: 'Gerakan' },
+          [
+            { value: 'soft', label: { en: 'Soft', id: 'Halus' } },
+            { value: 'strong', label: { en: 'Strong', id: 'Kuat' } },
+          ],
+          'soft',
+        ),
+        showWhen: { key: 'media', is: ['parallax'] },
+      },
+      { ...body(600), showWhen: { key: 'media', is: ['background'] } },
     ],
   },
   {
-    type: 'parallax-banner',
-    category: 'banners',
-    icon: 'layers',
-    name: { en: 'Parallax banner', id: 'Banner paralaks' },
+    type: 'product-list',
+    scopes: [
+      'home',
+      'page',
+      'product',
+      'article',
+      'catalog',
+    ] as const satisfies readonly SectionScope[],
+    category: 'products',
+    icon: 'grid',
+    usesCatalogue: true,
+    name: { en: 'Product list', id: 'Daftar produk' },
     description: {
-      en: 'An image that moves slower than the page as it scrolls, with text on top.',
-      id: 'Gambar yang bergerak lebih lambat dari halaman saat digulir, dengan teks di atasnya.',
+      en: 'Products from a collection you pick, the newest, one shelf per collection, or several collections in tabs.',
+      id: 'Produk dari koleksi pilihan, terbaru, satu rak per koleksi, atau beberapa koleksi dalam tab.',
     },
-    defaultStyle: { width: 'edge' },
     fields: [
-      { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
+      selectField(
+        'source',
+        { en: 'Which products', id: 'Produk mana' },
+        [
+          { value: 'collection', label: { en: 'One collection', id: 'Satu koleksi' } },
+          { value: 'latest', label: { en: 'Newest', id: 'Terbaru' } },
+          {
+            value: 'shelves',
+            label: { en: 'One shelf per collection', id: 'Satu rak per koleksi' },
+          },
+          { value: 'tabs', label: { en: 'Collections in tabs', id: 'Koleksi dalam tab' } },
+        ],
+        'collection',
+      ),
+      {
+        kind: 'collection',
+        key: 'collectionId',
+        label: { en: 'Collection', id: 'Koleksi' },
+        emptyLabel: { en: 'First collection', id: 'Koleksi pertama' },
+        showWhen: { key: 'source', is: ['collection'] },
+      },
+      heading(''),
+      productLayout(),
+      bentoText(),
+      limit(8),
+      // The grid's whole columns and the slider's own per-view: the first
+      // only moves the grid, the second — whole or fractional, a card peeking
+      // at the edge — only the row.
+      ...columns(4, 2, 2).map((field) => ({
+        ...field,
+        showWhen: { key: 'layout', is: ['grid'] },
+      })),
+      {
+        ...slidesField(
+          'perPage',
+          { en: 'Slides on desktop', id: 'Slide di desktop' },
+          SLIDES_PER_VIEW,
+          '4',
+        ),
+        showWhen: { key: 'layout', is: ['slider'] },
+      },
+      {
+        ...slidesField(
+          'perPageMobile',
+          { en: 'Slides on phones', id: 'Slide di ponsel' },
+          SLIDES_PER_VIEW_MOBILE,
+          '2',
+        ),
+        showWhen: { key: 'layout', is: ['slider'] },
+      },
+      {
+        // Only the newest list ends with a link to the whole catalogue; the
+        // collection looks always carry their own "See all" in the header.
+        ...toggleField(
+          'showAll',
+          { en: 'Link to all products', id: 'Tautan ke semua produk' },
+          true,
+        ),
+        showWhen: { key: 'source', is: ['latest'] },
+      },
+      {
+        ...listField('tabs', { en: 'Tabs', id: 'Tab' }, { en: 'Tab', id: 'Tab' }, 'label', 6, [
+          { kind: 'collection', key: 'collectionId', label: { en: 'Collection', id: 'Koleksi' } },
+          textField('label', { en: 'Tab name', id: 'Nama tab' }, 40),
+        ]),
+        showWhen: { key: 'source', is: ['tabs'] },
+      },
+    ],
+  },
+  {
+    type: 'gallery',
+    category: 'media',
+    icon: 'gallery',
+    name: { en: 'Gallery', id: 'Galeri' },
+    description: {
+      en: 'A grid of photos — even, staggered like masonry, or a shop-your-feed wall with a handle.',
+      id: 'Kisi foto — rata, berselang seperti masonry, atau dinding feed dengan nama akun.',
+    },
+    fields: [
+      selectField(
+        'layout',
+        { en: 'Look', id: 'Tampilan' },
+        [
+          { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
+          { value: 'masonry', label: { en: 'Masonry', id: 'Masonry' } },
+          { value: 'social', label: { en: 'Social wall', id: 'Dinding sosial' } },
+        ],
+        'grid',
+      ),
+      heading(''),
+      {
+        ...textField('handle', { en: 'Handle', id: 'Nama akun' }, 60, '@yourshop'),
+        showWhen: { key: 'layout', is: ['social'] },
+      },
+      listField('items', { en: 'Photos', id: 'Foto' }, { en: 'Photo', id: 'Foto' }, 'caption', 30, [
+        // Each look reads its own fields off an item: `ImageGallery` and
+        // `SocialWall` take caption and link, `MasonryGallery` takes the alt
+        // text (its tiles have no room for a caption) and a link.
+        imageField('image', { en: 'Photo', id: 'Foto' }),
+        photoFitField,
+        photoPositionField,
+        {
+          ...textField('caption', { en: 'Caption', id: 'Keterangan' }, 160),
+          showWhen: { key: 'layout', is: ['grid', 'social'] },
+        },
+        {
+          ...textField('alt', { en: 'Description', id: 'Deskripsi' }, 160),
+          showWhen: { key: 'layout', is: ['masonry'] },
+        },
+        linkField('link', { en: 'Link (optional)', id: 'Tautan (opsional)' }),
+      ]),
+      ...columns(3, 2, 2),
+    ],
+  },
+  {
+    type: 'quotes',
+    category: 'trust',
+    icon: 'quote',
+    name: { en: 'Quotes and reviews', id: 'Kutipan dan ulasan' },
+    description: {
+      en: 'What customers say — quote cards, each with an optional video.',
+      id: 'Kata para pelanggan — kartu kutipan, masing-masing bisa dengan video.',
+    },
+    fields: [
+      selectField(
+        'variant',
+        { en: 'Look', id: 'Tampilan' },
+        [
+          { value: 'quotes', label: { en: 'Quotes', id: 'Kutipan' } },
+          { value: 'video', label: { en: 'Quotes with video', id: 'Kutipan dengan video' } },
+        ],
+        'quotes',
+      ),
+      heading(''),
+      {
+        // The video look lays its cards out itself; only the plain quotes
+        // read the arrangement.
+        ...selectField(
+          'layout',
+          { en: 'Arrangement', id: 'Susunan' },
+          [
+            { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
+            { value: 'marquee', label: { en: 'Running cards', id: 'Kartu berjalan' } },
+            { value: 'carousel', label: { en: 'Slider', id: 'Slider (geser)' } },
+            { value: 'list', label: { en: 'List', id: 'Daftar' } },
+          ],
+          'grid',
+        ),
+        showWhen: { key: 'variant', is: ['quotes'] },
+      },
+      {
+        ...selectField(
+          'direction',
+          { en: 'Direction', id: 'Arah berjalan' },
+          [
+            { value: 'left', label: { en: 'Right to left', id: 'Kanan ke kiri' } },
+            { value: 'right', label: { en: 'Left to right', id: 'Kiri ke kanan' } },
+          ],
+          'left',
+        ),
+        showWhen: [
+          { key: 'variant', is: ['quotes'] },
+          { key: 'layout', is: ['marquee'] },
+        ],
+      },
+      {
+        ...selectField(
+          'speed',
+          { en: 'Speed', id: 'Kecepatan' },
+          [
+            { value: 'slow', label: { en: 'Slow', id: 'Pelan' } },
+            { value: 'normal', label: { en: 'Normal', id: 'Normal' } },
+            { value: 'fast', label: { en: 'Fast', id: 'Cepat' } },
+          ],
+          'normal',
+        ),
+        showWhen: [
+          { key: 'variant', is: ['quotes'] },
+          { key: 'layout', is: ['marquee'] },
+        ],
+      },
+      {
+        ...toggleField('autoplay', { en: 'Slide automatically', id: 'Geser otomatis' }),
+        showWhen: [
+          { key: 'variant', is: ['quotes'] },
+          { key: 'layout', is: ['carousel'] },
+        ],
+      },
+      listField(
+        'items',
+        { en: 'Quotes', id: 'Kutipan' },
+        { en: 'Quote', id: 'Kutipan' },
+        'author',
+        12,
+        [
+          // Each look reads its own fields off an item, so an item declares only
+          // those. What the storefront actually reads is the map: `Testimonials`
+          // takes quote/author/avatar/role and `VideoTestimonials` takes
+          // quote/name/role/video/poster. Both read `quote`.
+          areaField('quote', { en: 'Quote', id: 'Kutipan' }, 600, 3),
+          {
+            ...textField('author', { en: 'Name', id: 'Nama' }, 80),
+            showWhen: { key: 'variant', is: ['quotes'] },
+          },
+          {
+            ...imageField('avatar', { en: 'Photo', id: 'Foto' }),
+            showWhen: { key: 'variant', is: ['quotes'] },
+          },
+          {
+            ...photoFitField,
+            showWhen: { key: 'variant', is: ['quotes'] },
+          },
+          {
+            ...photoPositionField,
+            showWhen: { key: 'variant', is: ['quotes'] },
+          },
+          {
+            ...textField('name', { en: 'Name', id: 'Nama' }, 80),
+            showWhen: { key: 'variant', is: ['video'] },
+          },
+          {
+            ...textField('role', { en: 'Detail', id: 'Keterangan' }, 80),
+            showWhen: { key: 'variant', is: ['quotes', 'video'] },
+          },
+          {
+            ...videoField('video', { en: 'Video', id: 'Video' }),
+            showWhen: { key: 'variant', is: ['video'] },
+          },
+          {
+            ...imageField('poster', { en: 'Poster', id: 'Poster' }),
+            showWhen: { key: 'variant', is: ['video'] },
+          },
+          {
+            ...photoFitField,
+            showWhen: { key: 'variant', is: ['video'] },
+          },
+          {
+            ...photoPositionField,
+            showWhen: { key: 'variant', is: ['video'] },
+          },
+        ],
+      ),
+      // Only the video look lays its cards out in a grid the seller chooses;
+      // the quotes look fixes its own (three across).
+      ...columns(3, 2, 1).map((field) => ({
+        ...field,
+        showWhen: { key: 'variant', is: ['video'] },
+      })),
+    ],
+  },
+  {
+    type: 'cards',
+    category: 'text',
+    icon: 'columns',
+    name: { en: 'Cards', id: 'Kartu' },
+    description: {
+      en: 'Side-by-side cards — image and text, the people behind the shop, or icons with short promises.',
+      id: 'Kartu berdampingan — gambar dan teks, orang-orang di balik toko, atau ikon dengan janji singkat.',
+    },
+    fields: [
+      selectField(
+        'card',
+        { en: 'Card type', id: 'Jenis kartu' },
+        [
+          { value: 'text', label: { en: 'Image and text', id: 'Gambar dan teks' } },
+          { value: 'person', label: { en: 'Person', id: 'Orang' } },
+          { value: 'icon', label: { en: 'Icon and text', id: 'Ikon dan teks' } },
+        ],
+        'text',
+      ),
+      heading(''),
+      // Only the person look draws a body — `Team` renders it under its
+      // heading. `Multicolumn` and `IconFeatures` carry their words per card.
+      { ...body(500), showWhen: { key: 'card', is: ['person'] } },
+      ...columns(3, 2, 1),
+      {
+        ...selectField(
+          'imageRatio',
+          { en: 'Image shape', id: 'Bentuk gambar' },
+          [
+            { value: '4/3', label: { en: 'Landscape', id: 'Mendatar' } },
+            { value: '1/1', label: { en: 'Square', id: 'Persegi' } },
+            { value: '3/4', label: { en: 'Portrait', id: 'Tegak' } },
+          ],
+          '4/3',
+        ),
+        showWhen: { key: 'card', is: ['text'] },
+      },
+      {
+        ...selectField(
+          'iconStyle',
+          { en: 'Icon style', id: 'Gaya ikon' },
+          [
+            { value: 'circle', label: { en: 'In a circle', id: 'Dalam lingkaran' } },
+            { value: 'plain', label: { en: 'Plain', id: 'Polos' } },
+          ],
+          'circle',
+        ),
+        showWhen: { key: 'card', is: ['icon'] },
+      },
+      { ...align, default: 'center' },
+      listField('items', { en: 'Cards', id: 'Kartu' }, { en: 'Card', id: 'Kartu' }, 'title', 12, [
+        // As with the quotes above, each card type reads its own fields off an
+        // item — `Multicolumn` takes image/title/text/link, `Team` takes
+        // photo/name/role/link, `IconFeatures` takes icon/title/text — so each
+        // declares only its own rather than leaving all nine on screen.
+        {
+          kind: 'icon',
+          key: 'icon',
+          label: { en: 'Icon', id: 'Ikon' },
+          default: 'truck',
+          showWhen: { key: 'card', is: ['icon'] },
+        },
+        {
+          ...imageField('image', { en: 'Image', id: 'Gambar' }),
+          showWhen: { key: 'card', is: ['text'] },
+        },
+        {
+          ...imageField('photo', { en: 'Photo', id: 'Foto' }),
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...photoFitField,
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...photoPositionField,
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...textField('title', { en: 'Title', id: 'Judul' }, 80),
+          showWhen: { key: 'card', is: ['text', 'icon'] },
+        },
+        {
+          ...areaField('text', { en: 'Text', id: 'Teks' }, 400, 3),
+          showWhen: { key: 'card', is: ['text', 'icon'] },
+        },
+        {
+          ...textField('name', { en: 'Name', id: 'Nama' }, 80),
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...textField('role', { en: 'Role', id: 'Peran' }, 80),
+          showWhen: { key: 'card', is: ['person'] },
+        },
+        {
+          ...textField('linkLabel', { en: 'Link text', id: 'Teks tautan' }, 40),
+          showWhen: { key: 'card', is: ['text'] },
+        },
+        {
+          ...linkField('link', { en: 'Link', id: 'Tautan' }),
+          showWhen: { key: 'card', is: ['text', 'person'] },
+        },
+      ]),
+    ],
+  },
+  {
+    type: 'statement',
+    category: 'media',
+    icon: 'image-text',
+    name: { en: 'Statement', id: 'Pernyataan' },
+    description: {
+      en: 'A photo with a message — a card beside the words, a full-width photo split half and half, or a photo behind giant type.',
+      id: 'Foto dengan pesan — kartu di samping teks, foto selebar layar terbagi dua, atau foto di belakang tipografi besar.',
+    },
+    fields: [
+      selectField(
+        'layout',
+        { en: 'Look', id: 'Tampilan' },
+        [
+          { value: 'contained', label: { en: 'Image and text', id: 'Gambar dan teks' } },
+          { value: 'split', label: { en: 'Split screen', id: 'Layar terbagi' } },
+          { value: 'full', label: { en: 'Full-bleed statement', id: 'Pernyataan penuh' } },
+        ],
+        'contained',
+      ),
+      imageField('image', { en: 'Photo', id: 'Foto' }),
       photoFitField,
       photoPositionField,
-      heading('Crafted in small batches'),
-      subheading(),
-      buttonLabel,
-      buttonLink,
-      { ...align, default: 'center' },
-      bannerHeight('lg'),
-      { ...overlay, default: 'dark' },
       {
-        kind: 'select',
-        key: 'intensity',
-        label: { en: 'Movement', id: 'Gerakan' },
-        options: [
-          { value: 'soft', label: { en: 'Soft', id: 'Halus' } },
-          { value: 'strong', label: { en: 'Strong', id: 'Kuat' } },
-        ],
-        default: 'soft',
+        // The full-bleed statement puts the photo behind the words, so there
+        // is no side to pick; the card and the split both sit it beside them.
+        ...positionField('imagePosition', { en: 'Photo side', id: 'Sisi foto' }),
+        showWhen: { key: 'layout', is: ['contained', 'split'] },
       },
+      { ...overlay, showWhen: { key: 'layout', is: ['full'] } },
+      {
+        ...textField('eyebrow', { en: 'Eyebrow', id: 'Label kecil' }, 60, 'Our promise'),
+        showWhen: { key: 'layout', is: ['full'] },
+      },
+      heading(''),
+      body(900),
+      buttonLabelText('Learn more'),
+      buttonLink,
+      {
+        // Only the full-bleed statement centres or left-aligns its words; the
+        // card and the split fix their own alignment.
+        ...align,
+        default: 'left',
+        showWhen: { key: 'layout', is: ['full'] },
+      },
+      {
+        ...selectField(
+          'tone',
+          { en: 'Panel', id: 'Panel' },
+          [
+            { value: 'page', label: { en: 'Page colours', id: 'Warna halaman' } },
+            { value: 'subtle', label: { en: 'Soft', id: 'Lembut' } },
+            { value: 'inverse', label: { en: 'Dark', id: 'Gelap' } },
+            { value: 'brand', label: { en: 'Brand', id: 'Brand' } },
+          ],
+          'subtle',
+        ),
+        showWhen: { key: 'layout', is: ['split'] },
+      },
+      {
+        ...selectField(
+          'minHeight',
+          { en: 'Height', id: 'Tinggi' },
+          [
+            { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+            { value: 'lg', label: { en: 'Tall', id: 'Tinggi' } },
+            { value: 'screen', label: { en: 'Full screen', id: 'Satu layar' } },
+          ],
+          'lg',
+        ),
+        showWhen: { key: 'layout', is: ['split'] },
+      },
+    ],
+  },
+  {
+    type: 'story',
+    category: 'text',
+    icon: 'story',
+    name: { en: 'Story', id: 'Cerita' },
+    description: {
+      en: 'Chapters of your story with a picture that changes, or milestones in order on a spine.',
+      id: 'Bab-bab cerita Anda dengan gambar yang berganti, atau tonggak berurutan di satu garis.',
+    },
+    fields: [
+      selectField(
+        'style',
+        { en: 'Style', id: 'Gaya' },
+        [
+          { value: 'chapters', label: { en: 'Scrolling chapters', id: 'Bab bergulir' } },
+          { value: 'timeline', label: { en: 'Timeline', id: 'Linimasa' } },
+        ],
+        'chapters',
+      ),
+      heading(''),
+      {
+        ...positionField('imagePosition', { en: 'Image position', id: 'Posisi gambar' }),
+        showWhen: { key: 'style', is: ['chapters'] },
+      },
+      listField(
+        'items',
+        { en: 'Steps', id: 'Langkah' },
+        { en: 'Step', id: 'Langkah' },
+        'heading',
+        16,
+        [
+          // As with the quotes and cards above: a chapter reads image/heading/body
+          // (`ScrollingStory`), a milestone reads image/label/title/text
+          // (`Timeline`), so each style declares only its own.
+          imageField('image', { en: 'Image', id: 'Gambar' }),
+          photoFitField,
+          photoPositionField,
+          {
+            ...textField('heading', { en: 'Heading', id: 'Judul' }, 100),
+            showWhen: { key: 'style', is: ['chapters'] },
+          },
+          {
+            ...body(1000),
+            showWhen: { key: 'style', is: ['chapters'] },
+          },
+          {
+            ...textField('label', { en: 'Year or date', id: 'Tahun atau tanggal' }, 30),
+            showWhen: { key: 'style', is: ['timeline'] },
+          },
+          {
+            ...textField('title', { en: 'Title', id: 'Judul' }, 100),
+            showWhen: { key: 'style', is: ['timeline'] },
+          },
+          {
+            ...areaField('text', { en: 'Text', id: 'Teks' }, 500, 3),
+            showWhen: { key: 'style', is: ['timeline'] },
+          },
+        ],
+      ),
+    ],
+  },
+
+  /* --- Storefront features --- */
+
+  {
+    type: 'floating-contact',
+    category: 'store',
+    icon: 'chat',
+    max: 1,
+    floating: true,
+    name: { en: 'Floating contact', id: 'Kontak mengambang' },
+    description: {
+      en: 'A WhatsApp and email button pinned to the corner, plus a back-to-top control.',
+      id: 'Tombol WhatsApp dan email di sudut layar, plus tombol kembali ke atas.',
+    },
+    fields: [
+      textField('whatsapp', { en: 'WhatsApp number', id: 'Nomor WhatsApp' }, 20, '', {
+        en: 'Leave empty for no chat button.',
+        id: 'Kosongkan tanpa tombol chat.',
+      }),
+      textField(
+        'whatsappMessage',
+        { en: 'Message typed for the shopper', id: 'Pesan yang sudah diketik' },
+        200,
+        'Hi! I have a question.',
+      ),
+      textField('email', { en: 'Email address', id: 'Alamat email' }, 120),
+      toggleField('showTop', { en: 'Back to top', id: 'Kembali ke atas' }, true),
+      selectField(
+        'position',
+        { en: 'Corner', id: 'Sudut' },
+        [
+          { value: 'right', label: { en: 'Bottom right', id: 'Kanan bawah' } },
+          { value: 'left', label: { en: 'Bottom left', id: 'Kiri bawah' } },
+        ],
+        'right',
+      ),
+    ],
+    defaultStyle: { paddingTop: 'none', paddingBottom: 'none' },
+  },
+  {
+    type: 'spin-360',
+    category: 'media',
+    icon: 'spin',
+    hidden: true,
+    name: { en: '360° spin', id: 'Putaran 360°' },
+    description: {
+      en: 'A product turned frame by frame — drag to spin. Frames, not a 3D model.',
+      id: 'Produk berputar bingkai demi bingkai — geser untuk memutar. Bingkai, bukan model 3D.',
+    },
+    fields: [
+      heading(''),
+      listField(
+        'frames',
+        { en: 'Frames', id: 'Bingkai' },
+        { en: 'Frame', id: 'Bingkai' },
+        'alt',
+        36,
+        [
+          imageField('image', { en: 'Frame', id: 'Bingkai' }),
+          textField('alt', { en: 'Description', id: 'Deskripsi' }, 120),
+        ],
+      ),
+      toggleField(
+        'autoSpin',
+        { en: 'Turn slowly on its own', id: 'Berputar perlahan sendiri' },
+        true,
+        {
+          en: 'Pauses while the shopper drags, then starts again.',
+          id: 'Berhenti saat pengunjung menggeser, lalu mulai lagi.',
+        },
+      ),
+      textField('caption', { en: 'Drag hint', id: 'Petunjuk geser' }, 120, 'Drag to spin', {
+        en: 'Shown over the photo until the shopper drags it.',
+        id: 'Ditampilkan di atas foto sampai pengunjung menggesernya.',
+      }),
     ],
   },
   {
@@ -960,78 +1514,6 @@ export const SECTION_SCHEMAS = [
     ],
   },
   {
-    type: 'featured-collection',
-    scopes: EVERYWHERE,
-    category: 'products',
-    icon: 'star',
-    name: { en: 'Featured collection', id: 'Koleksi unggulan' },
-    description: {
-      en: 'Products from one collection you pick.',
-      id: 'Produk dari satu koleksi pilihan.',
-    },
-    usesCatalogue: true,
-    fields: [
-      {
-        kind: 'collection',
-        key: 'collectionId',
-        label: { en: 'Collection', id: 'Koleksi' },
-        emptyLabel: { en: 'First collection', id: 'Koleksi pertama' },
-      },
-      {
-        ...(heading() as Extract<Field, { kind: 'text' }>),
-        help: {
-          en: "Leave empty to use the collection's name.",
-          id: 'Kosongkan untuk memakai nama koleksi.',
-        },
-      },
-      productLayout(),
-      bentoText(),
-      limit(8),
-      ...columns(4, 2, 2),
-    ],
-  },
-  {
-    type: 'collection-shelves',
-    category: 'products',
-    icon: 'shelves',
-    name: { en: 'All collections', id: 'Semua koleksi' },
-    description: {
-      en: 'One shelf per active collection, in their sort order.',
-      id: 'Satu rak untuk setiap koleksi aktif, sesuai urutan.',
-    },
-    usesCatalogue: true,
-    fields: [productLayout(), bentoText(), limit(8), ...columns(4, 2, 2)],
-  },
-  {
-    type: 'latest-products',
-    scopes: EVERYWHERE,
-    category: 'products',
-    icon: 'sparkles',
-    name: { en: 'Latest products', id: 'Produk terbaru' },
-    description: {
-      en: 'The most recently published products.',
-      id: 'Produk yang terakhir terbit.',
-    },
-    usesCatalogue: true,
-    fields: [
-      heading('New arrivals'),
-      productLayout(),
-      bentoText(),
-      limit(12),
-      ...columns(4, 2, 2),
-      {
-        kind: 'boolean',
-        key: 'showAll',
-        label: { en: 'Link to all products', id: 'Tautan ke semua produk' },
-        help: {
-          en: 'A "See all" link beside the heading, to the full catalogue with its category filter.',
-          id: 'Tautan "Lihat semua" di samping judul, ke katalog lengkap dengan filter kategori.',
-        },
-        default: true,
-      },
-    ],
-  },
-  {
     type: 'rich-text',
     scopes: EVERYWHERE,
     category: 'text',
@@ -1039,70 +1521,6 @@ export const SECTION_SCHEMAS = [
     name: { en: 'Text', id: 'Teks' },
     description: { en: 'A heading and paragraphs.', id: 'Judul dan paragraf.' },
     fields: [heading('Our story'), body(), align, width],
-  },
-  {
-    type: 'image-with-text',
-    scopes: EVERYWHERE,
-    category: 'media',
-    icon: 'image-text',
-    name: { en: 'Image with text', id: 'Gambar dengan teks' },
-    description: {
-      en: 'An image beside a heading and text.',
-      id: 'Gambar di samping judul dan teks.',
-    },
-    fields: [
-      { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
-      heading('Made with care'),
-      body(),
-      buttonLabel,
-      buttonLink,
-      {
-        kind: 'select',
-        key: 'imagePosition',
-        label: { en: 'Image position', id: 'Posisi gambar' },
-        options: [
-          { value: 'left', label: { en: 'Left', id: 'Kiri' } },
-          { value: 'right', label: { en: 'Right', id: 'Kanan' } },
-        ],
-        default: 'left',
-      },
-    ],
-  },
-  {
-    type: 'image-gallery',
-    scopes: EVERYWHERE,
-    category: 'media',
-    icon: 'gallery',
-    name: { en: 'Image gallery', id: 'Galeri gambar' },
-    description: {
-      en: 'A grid of images, each with an optional link.',
-      id: 'Kisi gambar, masing-masing bisa bertautan.',
-    },
-    fields: [
-      heading(),
-      ...columns(3, 2, 2),
-      {
-        kind: 'list',
-        key: 'items',
-        label: { en: 'Images', id: 'Gambar' },
-        itemLabel: { en: 'Image', id: 'Gambar' },
-        titleKey: 'caption',
-        max: 24,
-        fields: [
-          { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
-          photoFitField,
-          photoPositionField,
-          {
-            kind: 'text',
-            key: 'caption',
-            label: { en: 'Caption', id: 'Keterangan' },
-            max: 120,
-            default: '',
-          },
-          { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
-        ],
-      },
-    ],
   },
   {
     type: 'faq',
@@ -1178,106 +1596,6 @@ export const SECTION_SCHEMAS = [
       width,
     ],
   },
-  {
-    type: 'testimonials',
-    scopes: EVERYWHERE,
-    category: 'trust',
-    icon: 'quote',
-    name: { en: 'Testimonials', id: 'Testimoni' },
-    description: { en: 'What customers say about the shop.', id: 'Kata pelanggan tentang toko.' },
-    fields: [
-      heading('What our customers say'),
-      {
-        kind: 'select',
-        key: 'layout',
-        label: { en: 'Layout', id: 'Tampilan' },
-        options: [
-          { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
-          { value: 'marquee', label: { en: 'Running cards', id: 'Kartu berjalan' } },
-          { value: 'carousel', label: { en: 'Slider', id: 'Slider (geser)' } },
-        ],
-        default: 'grid',
-      },
-      {
-        kind: 'select',
-        key: 'direction',
-        label: { en: 'Direction', id: 'Arah berjalan' },
-        options: [
-          { value: 'left', label: { en: 'Right to left', id: 'Kanan ke kiri' } },
-          { value: 'right', label: { en: 'Left to right', id: 'Kiri ke kanan' } },
-        ],
-        default: 'left',
-        showWhen: { key: 'layout', is: ['marquee'] },
-      },
-      {
-        kind: 'select',
-        key: 'speed',
-        label: { en: 'Speed', id: 'Kecepatan' },
-        options: [
-          { value: 'slow', label: { en: 'Slow', id: 'Pelan' } },
-          { value: 'normal', label: { en: 'Normal', id: 'Normal' } },
-          { value: 'fast', label: { en: 'Fast', id: 'Cepat' } },
-        ],
-        default: 'normal',
-        showWhen: { key: 'layout', is: ['marquee'] },
-      },
-      {
-        kind: 'boolean',
-        key: 'autoplay',
-        label: { en: 'Slide automatically', id: 'Geser otomatis' },
-        help: {
-          en: 'Moves to the next card every few seconds.',
-          id: 'Pindah ke kartu berikutnya setiap beberapa detik.',
-        },
-        default: false,
-        showWhen: { key: 'layout', is: ['carousel'] },
-      },
-      {
-        kind: 'list',
-        key: 'items',
-        label: { en: 'Testimonials', id: 'Testimoni' },
-        itemLabel: { en: 'Testimonial', id: 'Testimoni' },
-        titleKey: 'author',
-        max: 12,
-        fields: [
-          {
-            kind: 'textarea',
-            key: 'quote',
-            label: { en: 'Quote', id: 'Kutipan' },
-            max: 600,
-            default: '',
-            rows: 3,
-          },
-          {
-            kind: 'text',
-            key: 'author',
-            label: { en: 'Name', id: 'Nama' },
-            max: 80,
-            default: '',
-          },
-          {
-            kind: 'image',
-            key: 'avatar',
-            label: { en: 'Photo', id: 'Foto' },
-            help: {
-              en: 'Optional. Without one, the initials are shown.',
-              id: 'Opsional. Tanpa foto, inisial nama yang ditampilkan.',
-            },
-          },
-          photoFitField,
-          photoPositionField,
-          {
-            kind: 'text',
-            key: 'role',
-            label: { en: 'Detail', id: 'Keterangan' },
-            placeholder: { en: 'e.g. Jakarta', id: 'mis. Jakarta' },
-            max: 80,
-            default: '',
-          },
-        ],
-      },
-    ],
-  },
 
   /* ---------------------------------------------------------------------- */
   /* Products                                                               */
@@ -1325,51 +1643,6 @@ export const SECTION_SCHEMAS = [
         ],
         default: 'left',
       },
-    ],
-  },
-  {
-    type: 'collection-tabs',
-    scopes: EVERYWHERE,
-    category: 'products',
-    icon: 'tabs',
-    name: { en: 'Collection tabs', id: 'Tab koleksi' },
-    description: {
-      en: 'Several collections behind tabs — New, Best sellers, Sale — in one section.',
-      id: 'Beberapa koleksi dalam tab — Terbaru, Terlaris, Diskon — dalam satu bagian.',
-    },
-    usesCatalogue: true,
-    fields: [
-      heading('Shop the edit'),
-      productLayout(),
-      bentoText(),
-      {
-        kind: 'list',
-        key: 'tabs',
-        label: { en: 'Tabs', id: 'Tab' },
-        itemLabel: { en: 'Tab', id: 'Tab' },
-        titleKey: 'label',
-        max: 6,
-        fields: [
-          {
-            kind: 'collection',
-            key: 'collectionId',
-            label: { en: 'Collection', id: 'Koleksi' },
-          },
-          {
-            kind: 'text',
-            key: 'label',
-            label: { en: 'Tab name', id: 'Nama tab' },
-            help: {
-              en: "Leave empty to use the collection's name.",
-              id: 'Kosongkan untuk memakai nama koleksi.',
-            },
-            max: 40,
-            default: '',
-          },
-        ],
-      },
-      limit(8),
-      ...columns(4, 2, 2),
     ],
   },
 
@@ -1824,67 +2097,6 @@ export const SECTION_SCHEMAS = [
   /* ---------------------------------------------------------------------- */
 
   {
-    type: 'multicolumn',
-    scopes: EVERYWHERE,
-    category: 'text',
-    icon: 'columns',
-    name: { en: 'Columns', id: 'Kolom' },
-    description: {
-      en: 'Cards side by side, each with an image, a title, text and a link.',
-      id: 'Kartu berdampingan, masing-masing dengan gambar, judul, teks, dan tautan.',
-    },
-    fields: [
-      heading('Why shop with us'),
-      ...columns(3, 2, 1),
-      {
-        kind: 'select',
-        key: 'imageRatio',
-        label: { en: 'Image shape', id: 'Bentuk gambar' },
-        options: [
-          { value: '4/3', label: { en: 'Landscape', id: 'Mendatar' } },
-          { value: '1/1', label: { en: 'Square', id: 'Persegi' } },
-          { value: '3/4', label: { en: 'Portrait', id: 'Tegak' } },
-        ],
-        default: '4/3',
-      },
-      align,
-      {
-        kind: 'list',
-        key: 'items',
-        label: { en: 'Columns', id: 'Kolom' },
-        itemLabel: { en: 'Column', id: 'Kolom' },
-        titleKey: 'title',
-        max: 12,
-        fields: [
-          { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
-          {
-            kind: 'text',
-            key: 'title',
-            label: { en: 'Title', id: 'Judul' },
-            max: 80,
-            default: '',
-          },
-          {
-            kind: 'textarea',
-            key: 'text',
-            label: { en: 'Text', id: 'Teks' },
-            max: 400,
-            default: '',
-            rows: 3,
-          },
-          {
-            kind: 'text',
-            key: 'linkLabel',
-            label: { en: 'Link text', id: 'Teks tautan' },
-            max: 40,
-            default: '',
-          },
-          { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
-        ],
-      },
-    ],
-  },
-  {
     type: 'pinned-scroll',
     category: 'text',
     icon: 'layers',
@@ -2012,95 +2224,6 @@ export const SECTION_SCHEMAS = [
             default: '',
           },
           { kind: 'link', key: 'link', label: { en: 'Link', id: 'Tautan' } },
-        ],
-      },
-    ],
-  },
-  {
-    type: 'scrolling-story',
-    category: 'text',
-    icon: 'story',
-    name: { en: 'Scrolling story', id: 'Cerita bergulir' },
-    description: {
-      en: 'Chapters of your story; the picture stays in place and changes as the shopper scrolls.',
-      id: 'Bab-bab cerita Anda; gambar tetap di tempat dan berganti saat pembeli menggulir.',
-    },
-    fields: [
-      heading('How it is made'),
-      {
-        kind: 'list',
-        key: 'steps',
-        label: { en: 'Chapters', id: 'Bab' },
-        itemLabel: { en: 'Chapter', id: 'Bab' },
-        titleKey: 'heading',
-        max: 8,
-        fields: [
-          { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
-          {
-            kind: 'text',
-            key: 'heading',
-            label: { en: 'Heading', id: 'Judul' },
-            max: 100,
-            default: '',
-          },
-          body(),
-        ],
-      },
-      {
-        kind: 'select',
-        key: 'imagePosition',
-        label: { en: 'Image position', id: 'Posisi gambar' },
-        options: [
-          { value: 'left', label: { en: 'Left', id: 'Kiri' } },
-          { value: 'right', label: { en: 'Right', id: 'Kanan' } },
-        ],
-        default: 'left',
-      },
-    ],
-  },
-  {
-    type: 'timeline',
-    scopes: EVERYWHERE,
-    category: 'text',
-    icon: 'timeline',
-    name: { en: 'Timeline', id: 'Linimasa' },
-    description: {
-      en: 'Milestones in order — how the brand started and grew.',
-      id: 'Tonggak secara berurutan — bagaimana brand dimulai dan tumbuh.',
-    },
-    fields: [
-      heading('Our journey'),
-      {
-        kind: 'list',
-        key: 'items',
-        label: { en: 'Milestones', id: 'Tonggak' },
-        itemLabel: { en: 'Milestone', id: 'Tonggak' },
-        titleKey: 'title',
-        max: 16,
-        fields: [
-          {
-            kind: 'text',
-            key: 'label',
-            label: { en: 'Year or date', id: 'Tahun atau tanggal' },
-            max: 30,
-            default: '',
-          },
-          {
-            kind: 'text',
-            key: 'title',
-            label: { en: 'Title', id: 'Judul' },
-            max: 100,
-            default: '',
-          },
-          {
-            kind: 'textarea',
-            key: 'text',
-            label: { en: 'Text', id: 'Teks' },
-            max: 500,
-            default: '',
-            rows: 3,
-          },
-          { kind: 'image', key: 'image', label: { en: 'Image', id: 'Gambar' } },
         ],
       },
     ],
@@ -2280,78 +2403,6 @@ export const SECTION_SCHEMAS = [
   /* Trust                                                                  */
   /* ---------------------------------------------------------------------- */
 
-  {
-    type: 'icon-features',
-    scopes: EVERYWHERE,
-    category: 'trust',
-    icon: 'badge',
-    name: { en: 'Icons with text', id: 'Ikon dengan teks' },
-    description: {
-      en: 'Short promises with icons: free shipping, COD, returns, guarantees.',
-      id: 'Janji singkat dengan ikon: gratis ongkir, COD, pengembalian, garansi.',
-    },
-    fields: [
-      heading(),
-      {
-        kind: 'list',
-        key: 'items',
-        label: { en: 'Items', id: 'Item' },
-        itemLabel: { en: 'Item', id: 'Item' },
-        titleKey: 'title',
-        max: 8,
-        fields: [
-          iconField('truck'),
-          {
-            kind: 'text',
-            key: 'title',
-            label: { en: 'Title', id: 'Judul' },
-            max: 60,
-            default: '',
-          },
-          {
-            kind: 'textarea',
-            key: 'text',
-            label: { en: 'Text', id: 'Teks' },
-            max: 200,
-            default: '',
-            rows: 2,
-          },
-        ],
-      },
-      ...columns(4, 2, 1),
-      {
-        kind: 'select',
-        key: 'iconStyle',
-        label: { en: 'Icon style', id: 'Gaya ikon' },
-        options: [
-          { value: 'circle', label: { en: 'In a circle', id: 'Dalam lingkaran' } },
-          { value: 'plain', label: { en: 'Plain', id: 'Polos' } },
-        ],
-        default: 'circle',
-      },
-      { ...align, default: 'center' },
-    ],
-    presets: [
-      {
-        key: 'indonesia-trust',
-        name: { en: 'Icons — shipping, COD, returns', id: 'Ikon — ongkir, COD, retur' },
-        description: {
-          en: 'The four promises Indonesian shoppers look for.',
-          id: 'Empat janji yang dicari pembeli Indonesia.',
-        },
-        settings: {
-          items: [
-            { icon: 'truck', title: 'Free shipping', text: 'On orders over Rp 200.000' },
-            { icon: 'banknote', title: 'Cash on delivery', text: 'Pay when it arrives' },
-            { icon: 'refresh-cw', title: '7-day returns', text: 'Change your mind, no fuss' },
-            { icon: 'shield-check', title: '100% original', text: 'Straight from the brand' },
-          ],
-        },
-        style: { colorScheme: 'subtle' },
-      },
-    ],
-  },
-
   /* ---------------------------------------------------------------------- */
   /* Shop information                                                       */
   /* ---------------------------------------------------------------------- */
@@ -2458,7 +2509,6 @@ export const SECTION_SCHEMAS = [
             },
             placeholder: { en: '-6.244, 106.799', id: '-6.244, 106.799' },
             default: null,
-            legacy: { latitude: 'latitude', longitude: 'longitude' },
           },
         ],
       },
@@ -2696,7 +2746,6 @@ export const SECTION_SCHEMAS = [
           '4',
         ),
         showWhen: { key: 'layout', is: ['slider'] },
-        legacyKey: 'columns',
       },
       {
         ...slidesField(
@@ -2706,7 +2755,6 @@ export const SECTION_SCHEMAS = [
           '2',
         ),
         showWhen: { key: 'layout', is: ['slider'] },
-        legacyKey: 'mobileColumns',
       },
     ],
   },

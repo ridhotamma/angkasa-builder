@@ -27,17 +27,10 @@ const formatPrice = (a: number) => `IDR ${a}`
 
 function Lab() {
   const [sections, setSections] = useState<SectionInstance[]>(() => [
-    createSection('hero', { heading: 'Feel the difference' }, { width: 'edge' }),
-    ...[
-      'rich-text',
-      'faq',
-      'multicolumn',
-      'testimonials',
-      'image-with-text',
-      'rich-text',
-      'faq',
-      'contact-cta',
-    ].map((t) => createSection(t as any)),
+    createSection('banner', { media: 'image', heading: 'Feel the difference' }, { width: 'edge' }),
+    ...['rich-text', 'faq', 'cards', 'quotes', 'statement', 'rich-text', 'faq', 'contact-cta'].map(
+      (t) => createSection(t as any),
+    ),
   ])
   const [layout, setLayout] = useState<ThemeLayout>(() => ({
     ...base,

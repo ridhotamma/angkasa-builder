@@ -1,6 +1,7 @@
 /**
- * The storefront feature sections' renderers (docs/PREMIUM-VISUALS.md, Tier 3
- * and the local Tier 4 pieces).
+ * The renderers reached from `families.tsx` for the looks that used to be
+ * their own feature sections, plus the two feature types that remain — the
+ * floating contact cluster and the 360° spin.
  *
  * Every one receives already-sanitised settings, draws its final state on the
  * server, and stands down for reduced motion. Media plays only when the
@@ -14,14 +15,13 @@ import {
   Dialog,
   Flex,
   Grid,
-  Heading,
   IconButton,
   Portal,
   SimpleGrid,
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FaWhatsapp } from 'react-icons/fa6'
 import { LuArrowUp, LuMail, LuPlay, LuRotate3D } from 'react-icons/lu'
@@ -40,7 +40,6 @@ import {
 } from '../model/fields'
 import { readToken } from '../model/element-style'
 import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
-import type { SectionType } from '../model/sections'
 import { resolveScheme, schemeCssVars, themeCssVarGroups } from '../model/settings'
 import { textElementKey } from '../model/element-style'
 import { TABBAR_HEIGHT_VAR } from './chrome'
@@ -76,45 +75,6 @@ function readMobileColumns(settings: FieldValues): number {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Newsletter                                                                 */
-/* -------------------------------------------------------------------------- */
-
-/** A links-first signup invitation: the form lives wherever the seller links. */
-export function Newsletter({ settings }: SectionProps) {
-  const align = alignOf(settings)
-  const note = readText(settings, 'note')
-  return (
-    <Stack
-      gap="4"
-      maxW="2xl"
-      mx="auto"
-      textAlign={align}
-      align={align === 'center' ? 'center' : 'flex-start'}
-    >
-      <SectionHeading align={align} field="heading">
-        {readText(settings, 'heading')}
-      </SectionHeading>
-      <RichTextView
-        doc={readRichText(settings, 'body')}
-        elementKey={textElementKey('body')}
-        field="body"
-      />
-      <ButtonRow settings={settings} align={align} />
-      {note && (
-        <ThemeText
-          as="p"
-          elementKey={textElementKey('note')}
-          field="note"
-          value={note}
-          fontSize="sm"
-          color="fg.muted"
-        />
-      )}
-    </Stack>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
 /* Background video                                                           */
 /* -------------------------------------------------------------------------- */
 
@@ -124,7 +84,7 @@ const BAND_POSITION: Record<string, 'flex-start' | 'center' | 'flex-end'> = {
   bottom: 'flex-end',
 }
 
-export function BackgroundVideoSection({ settings }: SectionProps) {
+export function BannerBackground({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const { width, contentWidth } = useSectionLayout()
   const video = readVideo(settings, 'video')
@@ -218,7 +178,7 @@ export function BackgroundVideoSection({ settings }: SectionProps) {
 /* Masonry gallery + lightbox                                                 */
 /* -------------------------------------------------------------------------- */
 
-export function MasonryGallery({ settings }: SectionProps) {
+export function GalleryMasonry({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const overlay = useOverlayProps()
@@ -342,7 +302,7 @@ function videoPoster(video: VideoRef | null, poster: string | null): string | nu
   return video?.source === 'youtube' ? `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg` : null
 }
 
-export function VideoTestimonials({ settings }: SectionProps) {
+export function QuotesVideo({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const overlay = useOverlayProps()
@@ -479,7 +439,7 @@ export function VideoTestimonials({ settings }: SectionProps) {
 /* Team                                                                       */
 /* -------------------------------------------------------------------------- */
 
-export function Team({ settings }: SectionProps) {
+export function CardsPeople({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const { frame, flat, hover, tiltRef } = useCard()
@@ -553,7 +513,7 @@ export function Team({ settings }: SectionProps) {
 /* Editorial statement                                                        */
 /* -------------------------------------------------------------------------- */
 
-export function EditorialStatement({ settings }: SectionProps) {
+export function StatementFull({ settings }: SectionProps) {
   const { imageUrl, mode } = useRenderEnvironment()
   const { width, contentWidth } = useSectionLayout()
   const align = alignOf(settings)
@@ -649,7 +609,7 @@ export function EditorialStatement({ settings }: SectionProps) {
 
 const SPLIT_MIN_H = { md: '22rem', lg: '32rem', screen: '100svh' } as const
 
-export function SplitScreen({ settings }: SectionProps) {
+export function StatementSplit({ settings }: SectionProps) {
   const { settings: theme, imageUrl } = useRenderEnvironment()
   const { contentWidth } = useSectionLayout()
   const fileId = readText(settings, 'image')
@@ -733,7 +693,7 @@ export function SplitScreen({ settings }: SectionProps) {
 /* Social wall                                                                */
 /* -------------------------------------------------------------------------- */
 
-export function SocialWall({ settings }: SectionProps) {
+export function GallerySocial({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
   const empty = useEmptyText()
   const { frame, hover, tiltRef } = useCard()
@@ -1073,17 +1033,3 @@ export function Spin360({ settings }: SectionProps) {
     </Stack>
   )
 }
-
-/** The feature sections, keyed by the same `type` as their schemas. */
-export const FEATURE_SECTION_RENDERERS = {
-  newsletter: Newsletter,
-  'background-video': BackgroundVideoSection,
-  'masonry-gallery': MasonryGallery,
-  'video-testimonials': VideoTestimonials,
-  team: Team,
-  'editorial-statement': EditorialStatement,
-  'split-screen': SplitScreen,
-  'social-wall': SocialWall,
-  'floating-contact': FloatingContact,
-  'spin-360': Spin360,
-} satisfies Partial<Record<SectionType, ComponentType<SectionProps>>>

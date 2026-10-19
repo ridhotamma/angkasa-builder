@@ -56,7 +56,9 @@ describe('template snapshot document', () => {
 
   test('survives sections with no shop content behind them', () => {
     const empty = content()
-    empty.templates.home = [createSection('featured-collection', { limit: 8, columns: '4' })]
+    empty.templates.home = [
+      createSection('product-list', { source: 'collection', limit: 8, columns: '4' }),
+    ]
     const html = renderTemplateSnapshotHtml({
       content: empty,
       data: { ...sampleStorefrontData(), collections: [], latest: [] },

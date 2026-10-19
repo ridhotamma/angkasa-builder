@@ -181,9 +181,10 @@ describe('slider and marquee blocks', () => {
       perPage: '2.5',
       perPageMobile: '1.5',
     })
-    // The server draw is the phone's: one and a half slides, a half one in.
+    // The server draw is the phone's: one and a half slides, a half one in —
+    // sized against the block's own gap (the default, one rem).
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)
-    expect(html).toContain('flex:0 0 calc((100% - 12px * 0.5) / 1.5)')
+    expect(html).toContain('flex:0 0 calc((100% - 1rem * 0.5) / 1.5)')
   })
 
   test('marquee repeats are hidden from assistive tech and inert', () => {

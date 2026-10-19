@@ -10,7 +10,6 @@ import {
   blockSchema,
   createSection,
   DEFAULT_THEME_SETTINGS,
-  isSectionOffered,
   readBlocks,
   sanitizeValues,
   sectionSchema,
@@ -131,23 +130,7 @@ describe('the expanded primitive library', () => {
   })
 })
 
-describe('the ready-made layouts', () => {
-  test('the composed block layouts were removed; the primitives are the escape hatch', () => {
-    expect(sectionSchema('blocks')!.presets ?? []).toEqual([])
-  })
-})
-
-describe('the Custom section', () => {
-  test('is withdrawn, and the Blocks composer covers it', () => {
-    const custom = sectionSchema('custom')
-    expect(custom).not.toBeNull()
-    // Same fields, by identity: one composer, not a second engine.
-    expect(custom!.fields).toBe(sectionSchema('blocks')!.fields)
-    // Withdrawn from the picker; a stored `custom` section converges on `blocks`.
-    expect(isSectionOffered(custom!, 'home')).toBe(false)
-    expect(isSectionOffered(sectionSchema('blocks')!, 'home')).toBe(true)
-  })
-
+describe('the Blocks composer', () => {
   test('builds and renders a primitive tree', () => {
     const built = createSection('blocks', {
       blocks: [{ id: 'h', type: 'heading', settings: { text: 'Kanvas kustom' } }],
@@ -324,7 +307,13 @@ describe('the rating and collapsible primitives', () => {
           type: 'collapsible',
           settings: {
             heading: 'Berapa lama pengirimannya?',
-            body: 'Diproses 1×24 jam, tiba 1–4 hari tergantung kota.',
+            blocks: [
+              {
+                id: 'a1',
+                type: 'richtext',
+                settings: { body: 'Diproses 1×24 jam, tiba 1–4 hari tergantung kota.' },
+              },
+            ],
             open: true,
           },
         },

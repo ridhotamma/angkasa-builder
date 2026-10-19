@@ -116,7 +116,7 @@ describe('sanitising a block style', () => {
   test('drops token values outside the allowlist', () => {
     const { block } = stored({
       id: 'a',
-      type: 'text',
+      type: 'richtext',
       settings: { body: 'x' },
       style: { position: 'explode', backgroundSize: 'cover' },
     })
@@ -301,7 +301,7 @@ describe('block motion', () => {
   test('entrance and parallax tokens survive sanitising, defaults are dropped', () => {
     const { block } = stored({
       id: 'm',
-      type: 'text',
+      type: 'richtext',
       settings: { body: 'x' },
       style: {
         motion: 'slide-up',
@@ -319,7 +319,7 @@ describe('block motion', () => {
 
     const plain = stored({
       id: 'm',
-      type: 'text',
+      type: 'richtext',
       settings: { body: 'x' },
       style: { motion: 'default', parallax: 'default' },
     })
@@ -358,8 +358,8 @@ describe('editing a block style', () => {
   test('sets and clears overrides in place', () => {
     const values = sanitizeValues([field], {
       blocks: [
-        { id: 'a', type: 'text', settings: { body: 'A' } },
-        { id: 'b', type: 'text', settings: { body: 'B' } },
+        { id: 'a', type: 'richtext', settings: { body: 'A' } },
+        { id: 'b', type: 'richtext', settings: { body: 'B' } },
       ],
     })
     const styled = updateBlockStyle([field], values, 'a', { zIndex: '20' })!
@@ -374,7 +374,7 @@ describe('editing a block style', () => {
   test('duplicating a block copies its overrides', () => {
     const { field: target, values } = stored({
       id: 'a',
-      type: 'text',
+      type: 'richtext',
       settings: { body: 'A' },
       style: { zIndex: '20' },
     })
@@ -444,7 +444,7 @@ describe('layout blocks', () => {
             justify: 'between',
             wrap: true,
             stackOnMobile: true,
-            blocks: [{ id: 'r-child', type: 'text', settings: { body: 'Beside' } }],
+            blocks: [{ id: 'r-child', type: 'richtext', settings: { body: 'Beside' } }],
           },
         },
         {
@@ -509,7 +509,7 @@ describe('hover reactions', () => {
   test('hover tokens survive sanitising and defaults are dropped', () => {
     const { block } = stored({
       id: 'h',
-      type: 'text',
+      type: 'richtext',
       settings: { body: 'x' },
       style: { hoverTransform: 'scale-105', hoverTrigger: 'self', hoverColor: 'default' },
     })

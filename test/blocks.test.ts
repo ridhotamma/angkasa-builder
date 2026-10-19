@@ -93,8 +93,8 @@ describe('blocks section schema', () => {
   })
 
   test('the merged-away types are no longer offered', () => {
-    // A stored `text`/`divider`/`columns` still converts (see below) but the
-    // picker has one block for each of those jobs now.
+    // The picker has one block for each of those jobs now, and a stored block
+    // of a removed type is dropped rather than converged.
     expect(blockSchema('text')).toBeNull()
     expect(blockSchema('divider')).toBeNull()
     expect(blockSchema('columns')).toBeNull()
@@ -139,7 +139,6 @@ describe('block sanitising', () => {
     expect(blocks[0]!.settings).toMatchObject({ size: 'lg' })
     expect(blocks[0]!.settings).not.toHaveProperty('sneaky')
   })
-
   test('the total block count stays inside the storage budget', () => {
     const wide = Array.from({ length: 60 }, (_, index) => ({
       id: `col-${index}`,
@@ -169,81 +168,6 @@ describe('block sanitising', () => {
       })),
     })
     expect(readBlocks(values, 'blocks')).toHaveLength(60)
-  })
-})
-
-describe('consolidated block types', () => {
-  const { field } = blocksField()
-
-  test('a text block becomes a rich-text block, keeping its words and size', () => {
-    const [block] = readBlocks(
-      sanitizeValues([field], {
-        blocks: [{ id: 't', type: 'text', settings: { body: 'Dua paragraf', size: 'lg' } }],
-      }),
-      'blocks',
-    )!
-    expect(block!.type).toBe('richtext')
-    expect(block!.settings.size).toBe('lg')
-    expect(JSON.stringify(block!.settings.body)).toContain('Dua paragraf')
-  })
-
-  test('a divider becomes a spacer that draws a line', () => {
-    const [block] = readBlocks(
-      sanitizeValues([field], {
-        blocks: [
-          {
-            id: 'd',
-            type: 'divider',
-            settings: { spacing: 'lg', thickness: 'thick', tone: 'brand' },
-          },
-        ],
-      }),
-      'blocks',
-    )!
-    expect(block!.type).toBe('spacer')
-    expect(block!.settings).toMatchObject({
-      size: 'lg',
-      line: true,
-      thickness: 'thick',
-      tone: 'brand',
-    })
-  })
-
-  test('a collapsible answer becomes nested content blocks', () => {
-    const [block] = readBlocks(
-      sanitizeValues([field], {
-        blocks: [
-          { id: 'c', type: 'collapsible', settings: { heading: 'Q', body: 'A rich answer' } },
-        ],
-      }),
-      'blocks',
-    )!
-    expect(block!.type).toBe('collapsible')
-    // The old one-body answer is now a rich-text child, so any blocks can go in.
-    expect(block!.settings.body).toBeUndefined()
-    expect(readBlocks(block!.settings, 'blocks').map((child) => child.type)).toEqual(['richtext'])
-  })
-
-  test('two fixed columns become a two-column grid', () => {
-    const [block] = readBlocks(
-      sanitizeValues([field], {
-        blocks: [
-          {
-            id: 'c',
-            type: 'columns',
-            settings: {
-              layout: 'rightWide',
-              left: [{ id: 'l', type: 'heading', settings: { text: 'L' } }],
-              right: [{ id: 'r', type: 'heading', settings: { text: 'R' } }],
-            },
-          },
-        ],
-      }),
-      'blocks',
-    )!
-    expect(block!.type).toBe('grid')
-    expect(block!.settings).toMatchObject({ columns: '2', widths: 'rightWide' })
-    expect(readBlocks(block!.settings, 'blocks').map((child) => child.id)).toEqual(['l', 'r'])
   })
 })
 

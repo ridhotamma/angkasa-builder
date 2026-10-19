@@ -46,14 +46,6 @@ export function sectionBackground(section: SectionInstance): SectionBackground |
   const { settings } = section
 
   switch (section.type) {
-    case 'hero': {
-      const imageId = readText(settings, 'image')
-      if (imageId) return { media: { imageId, video: null }, ...photoCrop(settings) }
-      // The renderer's own wash under a photo-less hero; the divider must match.
-      return { bg: 'brand.subtle' }
-    }
-    // The consolidated families dispatch to the renderers above; their
-    // settings say which photo they paint, so the mirror reads the same keys.
     case 'banner': {
       const media = readText(settings, 'media')
       if (media === 'video' || media === 'background') {
@@ -62,23 +54,11 @@ export function sectionBackground(section: SectionInstance): SectionBackground |
         return imageId || video ? { media: { imageId, video }, ...photoCrop(settings) } : null
       }
       const imageId = readText(settings, 'image')
-      return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null
+      if (imageId) return { media: { imageId, video: null }, ...photoCrop(settings) }
+      // The renderer's own wash under a photo-less banner; the divider must match.
+      return { bg: 'brand.subtle' }
     }
     case 'statement': {
-      const imageId = readText(settings, 'image')
-      return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null
-    }
-    case 'parallax-banner': {
-      const imageId = readText(settings, 'image')
-      return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null
-    }
-    case 'video-hero':
-    case 'background-video': {
-      const imageId = readText(settings, 'poster')
-      const video = readVideo(settings, 'video')
-      return imageId || video ? { media: { imageId, video }, ...photoCrop(settings) } : null
-    }
-    case 'editorial-statement': {
       const imageId = readText(settings, 'image')
       return imageId ? { media: { imageId, video: null }, ...photoCrop(settings) } : null
     }

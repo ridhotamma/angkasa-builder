@@ -55,7 +55,8 @@ const OVERRIDDEN: NonNullable<SectionInstance['elements']> = {
 }
 
 function editorial(elements?: SectionInstance['elements']): SectionInstance {
-  const section = createSection('editorial-statement', {
+  const section = createSection('statement', {
+    layout: 'full',
     heading: 'Made slowly',
     eyebrow: 'Our promise',
     body: 'A note about how we work.',
@@ -136,8 +137,8 @@ describe('text element overrides, as stored', () => {
     const [section] = sanitizeSections([
       {
         id: 'a',
-        type: 'editorial-statement',
-        settings: { heading: 'Hi', eyebrow: 'Eyebrow', body: '' },
+        type: 'statement',
+        settings: { layout: 'full', heading: 'Hi', eyebrow: 'Eyebrow', body: '' },
         elements: { 'text.heading': { size: '5xl' }, button: { tone: 'accent' } },
       },
     ])
@@ -149,7 +150,8 @@ describe('text element overrides, as stored', () => {
 
 describe('section-level text everywhere', () => {
   function imageText(elements?: SectionInstance['elements']): SectionInstance {
-    const section = createSection('image-with-text', {
+    const section = createSection('statement', {
+      layout: 'contained',
       heading: 'Judul bisa diatur',
       body: 'Paragraf isi yang bisa diatur.',
       buttonLabel: '',

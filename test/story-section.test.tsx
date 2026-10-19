@@ -1,11 +1,9 @@
 /**
  * A story section draws its chapters.
  *
- * The consolidated `story` stores its list under `items`, but `ScrollingStory`
- * was reading the old key name (`steps`) the retired `scrolling-story` used —
- * so every chapters-style story rendered as an empty notice, or nothing at all
- * on the storefront. The list key is not something a type-check can catch: the
- * schema and the renderer only meet here, at render time.
+ * The consolidated `story` stores its list under `items`. The list key is not
+ * something a type-check can catch: the schema and the renderer only meet
+ * here, at render time.
  */
 
 import { describe, expect, test } from 'bun:test'
@@ -66,16 +64,6 @@ describe('the story section', () => {
     }
     // The body copy of a chapter, not just the heading.
     expect(html).toContain('Every piece starts as a sketch.')
-  })
-
-  test('a layout saved under the old key still draws', () => {
-    // A `scrolling-story` written before the consolidation: same renderer, the
-    // list under its original name.
-    const legacy = createSection('scrolling-story', {
-      heading: 'How it is made',
-      steps: [{ image: '', heading: 'Drawn', body: { type: 'doc', content: [] } }],
-    })
-    expect(draw(legacy)).toContain('Drawn')
   })
 
   test('the timeline style draws its milestones', () => {

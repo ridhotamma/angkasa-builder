@@ -145,7 +145,7 @@ describe('scroll-rail section', () => {
           {
             type: 'column',
             settings: {
-              blocks: [{ type: 'text', settings: { body: 'A column stop' } }],
+              blocks: [{ type: 'richtext', settings: { body: 'A column stop' } }],
             },
           },
           { type: 'image', settings: { alt: 'A photo stop' } },
@@ -259,7 +259,7 @@ describe('stacked-cards section', () => {
           { type: 'heading', settings: { text: 'Block card one' } },
           {
             type: 'column',
-            settings: { blocks: [{ type: 'text', settings: { body: 'Block card two' } }] },
+            settings: { blocks: [{ type: 'richtext', settings: { body: 'Block card two' } }] },
           },
         ],
         // Old cards ride along in storage but do not show in blocks mode.
@@ -315,9 +315,10 @@ describe('stacked-cards section', () => {
 describe('scrolling-story section', () => {
   test('the picture sticks on the same header line as every other panel', () => {
     const html = page([
-      createSection('scrolling-story', {
+      createSection('story', {
+        style: 'chapters',
         heading: 'How it is made',
-        steps: [{ image: '', heading: 'It starts with a sketch', body: '' }],
+        items: [{ image: '', heading: 'It starts with a sketch', body: '' }],
       }),
     ])
     expect(html).toContain('How it is made')
@@ -352,7 +353,8 @@ describe('effect stylesheet', () => {
 
   test('column CTAs draw no hover underline', () => {
     const html = page([
-      createSection('multicolumn', {
+      createSection('cards', {
+        card: 'text',
         items: [
           {
             title: 'Tailoring',
@@ -480,7 +482,7 @@ describe('block motion', () => {
   test('a block entrance and parallax render their own wrappers', () => {
     const section = createSection('blocks', {
       blocks: [
-        { id: 'plain', type: 'text', settings: { body: 'Plain block' } },
+        { id: 'plain', type: 'richtext', settings: { body: 'Plain block' } },
         {
           id: 'move',
           type: 'heading',

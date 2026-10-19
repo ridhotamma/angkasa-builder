@@ -16,10 +16,6 @@ describe('iconGlyph', () => {
     expect(iconGlyph('coffee')).toBeTruthy()
   })
 
-  test('a legacy name resolves', () => {
-    expect(iconGlyph('shield')).toBeTruthy()
-  })
-
   test('an unknown name still draws something', () => {
     expect(iconGlyph('not-an-icon')).toBeTruthy()
   })

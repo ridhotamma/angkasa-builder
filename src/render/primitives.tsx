@@ -8,6 +8,7 @@
 
 import {
   AspectRatio,
+  Badge,
   Box,
   Button,
   Card,
@@ -16,6 +17,7 @@ import {
   GridItem,
   Heading,
   HStack,
+  Icon,
   IconButton,
   Link as ChakraLink,
   SimpleGrid,
@@ -35,7 +37,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import { LuHeart } from 'react-icons/lu'
+import { LuHeart, LuStar } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -56,7 +58,7 @@ import { sectionAnchorId, type Link } from '../model/links'
 import type { ButtonStyle, CardStyle, ThemeSettings } from '../model/settings'
 import type { SectionHeadline } from '../model/section-style'
 import { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
-import { useRenderEnvironment, type StorefrontProductCard } from './context'
+import { useRenderEnvironment, type RenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
 import { Slider } from './slider'
 
@@ -1118,6 +1120,51 @@ export function useCard(): CardTheme {
 }
 
 /**
+ * The published theme's shape for a page outside the builder — checkout, the
+ * receipt, the account — so its cards and buttons wear what the sections do.
+ * `null` means no published theme: the plain look those pages always had.
+ */
+export interface StorefrontLook {
+  /** Whether a published theme is shaping the page at all. */
+  themed: boolean
+  /** Spread on a page's outer `Card.Root`s: rounding and the theme's frame. */
+  card: BoxProps
+  /** Spread on a product or category card's root, after `card`. */
+  cardHover: BoxProps
+  /** The theme draws cards with no frame at all, so their content needs its own corners. */
+  flatCards: boolean
+  /** Corner sizes, largest to smallest: outer cards, tiles inside them, chips. */
+  radius: { card: string; tile: string; chip: string }
+  /** Spread on a page's primary action button. Empty without a theme. */
+  primaryButton: Partial<ReturnType<typeof buttonLook>>
+}
+
+const UNTHEMED_LOOK: StorefrontLook = {
+  themed: false,
+  card: { borderColor: 'border', rounded: 'xl' },
+  // No theme means no `cardHover` to follow: the emphasis these cards always
+  // had stays.
+  cardHover: { transition: 'border-color 150ms', _hover: { borderColor: 'brand.emphasized' } },
+  flatCards: false,
+  radius: { card: 'xl', tile: 'lg', chip: 'md' },
+  primaryButton: {},
+}
+
+export function storefrontLook(settings: ThemeSettings | null): StorefrontLook {
+  if (!settings) return UNTHEMED_LOOK
+  // The theme's three radius tokens, which its stylesheet sets per shop.
+  const radius = { card: 'l3', tile: 'l2', chip: 'l1' }
+  return {
+    themed: true,
+    card: { ...cardFrame(settings.cardStyle), rounded: radius.card },
+    cardHover: cardHoverProps(settings),
+    flatCards: settings.cardStyle === 'flat',
+    radius,
+    primaryButton: buttonLook(settings.buttonStyle),
+  }
+}
+
+/**
  * The heart a product surface overlays: filled when the shopper has saved the
  * product, writing through the host's wishlist. Renders nothing when the host
  * has none — the editor preview passes an empty set so it is visible on the
@@ -1125,9 +1172,15 @@ export function useCard(): CardTheme {
  */
 export function WishlistButton({
   product,
+  wishlist: store,
   ...props
-}: { product: StorefrontProductCard } & Omit<ComponentProps<typeof IconButton>, 'children'>) {
-  const { wishlist } = useRenderEnvironment()
+}: {
+  product: StorefrontProductCard
+  /** A host wiring its own wishlist; falls back to the render environment. */
+  wishlist?: RenderEnvironment['wishlist']
+} & Omit<ComponentProps<typeof IconButton>, 'children'>) {
+  const { wishlist: envWishlist } = useRenderEnvironment()
+  const wishlist = store ?? envWishlist
   const text = useRenderText()
   if (!wishlist) return null
   const saved = wishlist.ids.has(product.id)
@@ -1154,9 +1207,20 @@ export function WishlistButton({
   )
 }
 
-export function ProductCard({ product }: { product: StorefrontProductCard }) {
+export function ProductCard({
+  product,
+  wishlist,
+}: {
+  product: StorefrontProductCard
+  /** A host wiring its own wishlist; falls back to the render environment. */
+  wishlist?: RenderEnvironment['wishlist']
+}) {
   const { data, formatPrice } = useRenderEnvironment()
   const { frame, flat, hover, tiltRef } = useCard()
+  const text = useRenderText()
+  const soldOut = product.trackStock === true && product.available === 0
+  const ratingCount = product.ratingCount ?? 0
+  const soldCount = product.soldCount ?? 0
 
   return (
     <Card.Root
@@ -1204,13 +1268,52 @@ export function ProductCard({ product }: { product: StorefrontProductCard }) {
               </Text>
             )}
           </Stack>
+          {(ratingCount > 0 || soldOut || soldCount > 0) && (
+            <Stack direction="row" gap="1.5" align="center" wrap="wrap">
+              {/* No stars at all for an unreviewed product — "0.0" would read
+                  as a bad rating rather than as none. */}
+              {ratingCount > 0 && (
+                <Stack direction="row" gap="0.5" align="center">
+                  <Icon as={LuStar} boxSize="3" color="yellow.solid" fill="currentColor" />
+                  <Text fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums">
+                    {formatRating(product.rating ?? 0)} ({ratingCount})
+                  </Text>
+                </Stack>
+              )}
+              {soldOut && (
+                <Badge size="sm" variant="subtle" colorPalette="gray" rounded="md">
+                  {text('soldOut')}
+                </Badge>
+              )}
+              {soldCount > 0 && (
+                <Text fontSize="xs" color="fg.subtle">
+                  {text('sold', { count: soldCount })}
+                </Text>
+              )}
+            </Stack>
+          )}
         </Stack>
       </SmartLink>
       {/* Outside the link: a button nested in an anchor is neither valid HTML
           nor clickable without hijacking the navigation. */}
-      <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
+      <WishlistButton
+        product={product}
+        wishlist={wishlist}
+        position="absolute"
+        top="2"
+        right="2"
+        zIndex="1"
+      />
     </Card.Root>
   )
+}
+
+/** One decimal, in the reader's own locale — "4.8" or "4,8". */
+function formatRating(rating: number): string {
+  return new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(rating)
 }
 
 export function gridColumns(
@@ -1225,11 +1328,14 @@ export function ProductGrid({
   products,
   columns = '4',
   mobileColumns,
+  wishlist,
 }: {
   products: StorefrontProductCard[]
   columns?: string
   /** One or two columns on a phone; anything else keeps the phone default. */
   mobileColumns?: string
+  /** A host wiring its own wishlist; falls back to the render environment. */
+  wishlist?: RenderEnvironment['wishlist']
 }) {
   return (
     <SimpleGrid
@@ -1238,7 +1344,7 @@ export function ProductGrid({
       gap={{ base: '3', md: '5' }}
     >
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard key={product.id} product={product} wishlist={wishlist} />
       ))}
     </SimpleGrid>
   )
