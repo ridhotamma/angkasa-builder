@@ -34,7 +34,7 @@ import { useState } from 'react'
 // The brand marks come from the same set the footer's social links use, and
 // the generic ones from Lucide — the same match the rest of the page makes.
 import { FaFacebookF, FaWhatsapp, FaXTwitter } from 'react-icons/fa6'
-import { LuCheck, LuForward, LuLink, LuMail, LuRuler, LuStar } from 'react-icons/lu'
+import { LuCheck, LuForward, LuLink, LuMail, LuRuler, LuStar, LuX } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -505,25 +505,49 @@ function MosaicGallery({
         open={viewerOpen}
         onOpenChange={({ open }) => setViewerOpen(open)}
         // Mounted on open and removed once the exit animation has finished,
-        // so each opening starts the carousel on the photo that was tapped.
+        // so each opening starts the viewer on the photo that was tapped.
         lazyMount
         unmountOnExit
-        size="lg"
+        size="full"
         placement="center"
       >
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
-            <Dialog.Content p={{ base: '3', md: '4' }} pt="12">
-              <PhotoCarousel
-                images={images}
-                name={product.name}
-                start={viewing}
-                zoom={zoom}
-                arrows
-              />
+            {/* Fullscreen: the photo is the screen, so the viewer is the
+                whole viewport rather than a card inside it — and nothing
+                pads it top or bottom. */}
+            <Dialog.Content
+              p="0"
+              rounded="0"
+              h="100dvh"
+              maxH="100dvh"
+              bg="bg"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Dialog.Body p="0" h="full" w="full" display="flex">
+                <PhotoViewer images={images} name={product.name} start={viewing} />
+              </Dialog.Body>
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" top="2" right="2" aria-label={text('close')} />
+                <IconButton
+                  position="absolute"
+                  top="3"
+                  right="3"
+                  zIndex="2"
+                  rounded="full"
+                  size="md"
+                  // The gallery's own floating buttons, so the way out and the
+                  // way through wear one style: the wishlist heart and share.
+                  variant="surface"
+                  bg="bg/85"
+                  shadow="md"
+                  _hover={{ bg: 'bg' }}
+                  aria-label={text('close')}
+                >
+                  <LuX />
+                </IconButton>
               </Dialog.CloseTrigger>
             </Dialog.Content>
           </Dialog.Positioner>
@@ -534,41 +558,70 @@ function MosaicGallery({
 }
 
 /**
- * Every photo, one per page, on the shared slider — arrows on a desktop,
- * finger swipes and the pill dots over the photo's own bottom edge
- * everywhere. `onOpen` makes a tap on a photo open the viewer.
+ * The whole set, one photo per screen, filling the viewport: the photo is
+ * contained rather than cropped, the way a marketplace viewer shows it. The
+ * arrows pair up at the bottom centre and the close button floats in the
+ * corner; both sit over the photo, so nothing is boxed in.
  */
-function PhotoCarousel({
+function PhotoViewer({
   images,
   name,
-  start = 0,
-  zoom = false,
-  arrows = false,
-  onOpen,
+  start,
 }: {
   images: GalleryImage[]
   name: string
-  start?: number
-  zoom?: boolean
-  arrows?: boolean
-  onOpen?: (index: number) => void
+  start: number
 }) {
   return (
     <Slider
       count={images.length}
       perPage={1}
       start={start}
-      arrows={arrows}
-      dots="inside"
-      slideProps={{ display: 'flex', justifyContent: 'center' }}
+      arrows
+      arrowPlacement="bottom"
+      dots="none"
     >
       {images.map((image, index) => (
         <Box
           key={`${image.url}-${index}`}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          h="full"
           w="full"
-          onClick={onOpen ? () => onOpen(index) : undefined}
         >
-          <ZoomImage src={image.url} alt={index === 0 ? name : ''} zoom={zoom} />
+          <ImageWithFallback
+            src={image.url ?? undefined}
+            alt={index === 0 ? name : ''}
+            objectFit="contain"
+            maxH="full"
+            maxW="full"
+            fallbackIconSize="12"
+          />
+        </Box>
+      ))}
+    </Slider>
+  )
+}
+
+/**
+ * The gallery as a phone sees it: one photo per page, swiped, with the pill
+ * dots over the photo's own bottom edge. A tap opens the fullscreen viewer.
+ */
+function PhotoCarousel({
+  images,
+  name,
+  onOpen,
+}: {
+  images: GalleryImage[]
+  name: string
+  onOpen: (index: number) => void
+}) {
+  return (
+    <Slider count={images.length} perPage={1} dots="inside">
+      {images.map((image, index) => (
+        <Box key={`${image.url}-${index}`} w="full" onClick={() => onOpen(index)}>
+          <ZoomImage src={image.url} alt={index === 0 ? name : ''} zoom={false} />
         </Box>
       ))}
     </Slider>

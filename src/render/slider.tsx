@@ -44,7 +44,9 @@ export const OVERLAY_ARROW = {
   zIndex: '1',
   rounded: 'full',
   size: { base: 'sm', md: 'md' },
-  variant: 'subtle',
+  // The same button the rest of the shop wears — the wishlist heart and the
+  // gallery's share trigger — so every floating control reads as one family.
+  variant: 'surface',
   bg: 'bg/85',
   shadow: 'md',
   _hover: { bg: 'bg' },
@@ -118,6 +120,11 @@ export interface SliderProps {
   indicator?: 'dots' | 'count'
   /** Overlay arrows; the caller turns them off when the block has none. */
   arrows?: boolean
+  /**
+   * Where the arrows sit: over the band's side edges, or together at the
+   * bottom centre — the pair a fullscreen photo viewer wears.
+   */
+  arrowPlacement?: 'edges' | 'bottom'
   /** Where the arrows sit, as a spacing token of their own edge. */
   arrowInset?: string
   /** The band's own shape, for photo bands. Cards size themselves instead. */
@@ -149,6 +156,7 @@ export function Slider({
   dots = 'none',
   indicator = 'dots',
   arrows = true,
+  arrowPlacement = 'edges',
   arrowInset = '3',
   ratio,
   peek,
@@ -278,7 +286,41 @@ export function Slider({
         ))}
       </Flex>
 
-      {paged && arrows && (
+      {paged && arrows && arrowPlacement === 'bottom' && (
+        <HStack
+          position="absolute"
+          insetX="0"
+          // A little above the very edge, where a thumb (and the eye) expects
+          // the pair to sit.
+          bottom="6"
+          zIndex="1"
+          justifyContent="center"
+          gap="3"
+        >
+          <IconButton
+            {...OVERLAY_ARROW}
+            position="static"
+            transform="none"
+            aria-label={text('previousSlide')}
+            disabled={hold || (!loop && at === 0)}
+            onClick={() => step(-1)}
+          >
+            <LuChevronLeft />
+          </IconButton>
+          <IconButton
+            {...OVERLAY_ARROW}
+            position="static"
+            transform="none"
+            aria-label={text('nextSlide')}
+            disabled={hold || (!loop && at >= last)}
+            onClick={() => step(1)}
+          >
+            <LuChevronRight />
+          </IconButton>
+        </HStack>
+      )}
+
+      {paged && arrows && arrowPlacement === 'edges' && (
         <>
           <IconButton
             {...OVERLAY_ARROW}

@@ -52,6 +52,28 @@ function gallery(toggled: string[]) {
   )
 }
 
+/** A product with enough photos for the mosaic's "+N" tile to show. */
+function photoProduct(images: number) {
+  return {
+    id: 'product-1',
+    name: 'Gallery jacket',
+    slug: 'gallery-jacket',
+    price: 249_000,
+    compareAtPrice: null,
+    images: Array.from({ length: images }, (_, index) => ({
+      url: `photo-${index}`,
+      thumbUrl: `thumb-${index}`,
+    })),
+    description: 'A jacket.',
+    rating: null,
+    ratingCount: 0,
+    available: 3,
+    category: null,
+    sizeGuide: null,
+    related: [],
+  }
+}
+
 describe('the product gallery actions', () => {
   test('share opens the list of places to send it', async () => {
     const view = gallery([])
@@ -67,6 +89,38 @@ describe('the product gallery actions', () => {
     ]) {
       expect(within(dialog).getByText(label), label).toBeDefined()
     }
+  })
+
+  test('a photo opens the fullscreen viewer, arrows paired at the bottom', async () => {
+    const env: RenderEnvironment = {
+      data: { ...sampleStorefrontData('Gallery Shop'), product: photoProduct(6) },
+      settings: { ...DEFAULT_THEME_SETTINGS, splash: { ...DEFAULT_THEME_SETTINGS.splash } },
+      mode: 'preview',
+      imageUrl: () => null,
+      formatPrice: (amount, currency) => `${amount} ${currency}`,
+      now: new Date('2026-03-10T00:00:00.000Z'),
+    }
+    const view = render(
+      <ChakraProvider value={system}>
+        <I18nProvider locale="en" resources={{}}>
+          <RenderProvider value={env}>
+            <SectionsRenderer
+              sections={[createSection('product-info', { gallery: 'mosaic', stickyInfo: true })]}
+              env={env}
+            />
+          </RenderProvider>
+        </I18nProvider>
+      </ChakraProvider>,
+    )
+    fireEvent.click(view.getByLabelText('View all photos'))
+    const viewer = await view.findByRole('dialog')
+    // The photos ride the shared track, with the arrows paired at the bottom
+    // and no dots: the pair is the whole indicator in a viewer.
+    expect(viewer.querySelector('[data-slider-band]')).not.toBeNull()
+    const pair = within(viewer).getByLabelText('Previous slide').parentElement!
+    expect(within(pair).getByLabelText('Next slide')).toBeDefined()
+    expect(within(viewer).queryByLabelText('Slide 1')).toBeNull()
+    expect(within(viewer).getByLabelText('Close')).toBeDefined()
   })
 
   test('the heart is the host’s wishlist', () => {
