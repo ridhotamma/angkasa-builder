@@ -95,7 +95,22 @@ export type SliderArrowProps = Omit<ComponentProps<typeof IconButton>, 'children
 const DEFAULT_GAP = '12px'
 
 /** How long the track takes to glide one step, and its easing. */
-const SLIDE_SHIFT = '420ms cubic-bezier(0.32, 0.72, 0, 1)'
+const SLIDE_MS = 420
+const SLIDE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+
+/**
+ * A flick keeps travelling after the finger lifts. The projection turns the
+ * release speed into the distance the track coasts, and the glide is longer
+ * and softer than an arrow press so several slides can pass in one gesture.
+ */
+const FLING_PROJECTION_MS = 160
+const FLING_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)'
+/** The fastest flick we honour, in pixels per millisecond. */
+const MAX_FLING_PX_PER_MS = 3
+/** Below this gesture duration the speed is event noise, not a flick. */
+const MIN_FLING_MS = 16
+/** Only the last stretch of the gesture decides its speed. */
+const FLING_SAMPLE_MS = 100
 
 /**
  * How far a finger must travel before a swipe counts as a page when the
@@ -113,6 +128,27 @@ const AUTOPLAY_MS = 5000
  * them — the pair the product row wears, now every slider's.
  */
 const ARROW_EDGE_INSET = '-5'
+
+/** The browser clock behind a touch gesture, in milliseconds. */
+function gestureTime(): number {
+  return globalThis.performance?.now?.() ?? Date.now()
+}
+
+/**
+ * The release speed of a touch gesture, in pixels per millisecond. Only the
+ * final stretch counts, so a finger that stops before lifting does not fling;
+ * a gesture too short to time is a tap, not a flick.
+ */
+function releaseVelocity(samples: Array<{ x: number; time: number }>): number {
+  if (samples.length < 2) return 0
+  const last = samples[samples.length - 1]!
+  const recent = samples.filter((sample) => sample.time >= last.time - FLING_SAMPLE_MS)
+  const first = recent[0] ?? samples[0]!
+  const elapsed = last.time - first.time
+  if (elapsed < MIN_FLING_MS) return 0
+  const speed = (last.x - first.x) / elapsed
+  return Math.max(-MAX_FLING_PX_PER_MS, Math.min(MAX_FLING_PX_PER_MS, speed))
+}
 
 /** One slide's width, with the gaps between the slides taken off. */
 export function sliderBasis(perPage: number, gap = DEFAULT_GAP): string {
@@ -277,6 +313,8 @@ export function Slider({
   const [dragging, setDragging] = useState(false)
   /** The transition off for the one frame a wrap's jump back takes. */
   const [snapping, setSnapping] = useState(false)
+  /** A flick's own glide, or `null` for the normal arrow/dot step. */
+  const [glide, setGlide] = useState<{ ms: number; ease: string } | null>(null)
   /** Steps asked for while a wrap was still gliding; taken once it lands. */
   const wanted = useRef(0)
   /** A wrap is gliding onto a double, or taking its jump back. */
@@ -294,13 +332,22 @@ export function Slider({
   // against the band's whenever the view is fractional.
   const rest = wrapping ? index : Math.min(index, last)
   const shift = sliderTransform(rest + doubles, perPageClamped, dragPx, gap, vertical)
-  /** The finger being followed, and where it started. */
-  const dragFrom = useRef<{ pointerId: number; x: number } | null>(null)
+  /** The finger being followed, where it started, and how fast it moved. */
+  const dragFrom = useRef<{
+    pointerId: number
+    x: number
+    samples: Array<{ x: number; time: number }>
+  } | null>(null)
   /** The editor's selection holds the track still while it is set. */
   const hold = active !== undefined && active >= 0
 
-  /** Where one step past a resting position lands: on a double, or the end. */
-  const goTo = (to: number) => {
+  /**
+   * Where one step past a resting position lands: on a double, or the end.
+   * A flick passes its own glide length so several slides coast past instead
+   * of one abrupt step.
+   */
+  const goTo = (to: number, glideMs?: number) => {
+    setGlide(glideMs ? { ms: glideMs, ease: FLING_EASE } : null)
     if (to < 0) setIndex(wraps ? -doubles : loop ? end : 0)
     else setIndex(to > end ? (wraps ? count : loop ? 0 : end) : to)
   }
@@ -335,6 +382,7 @@ export function Slider({
     dragFrom.current = null
     setDragging(false)
     setDragPx(0)
+    setGlide(null)
   }
 
   /**
@@ -542,21 +590,37 @@ export function Slider({
       {...(peek ? (vertical ? { py: peek } : { px: peek }) : {})}
       onPointerDown={(event) => {
         if (event.pointerType === 'mouse' || !paged) return
+        const point = vertical ? event.clientY : event.clientX
         dragFrom.current = {
           pointerId: event.pointerId,
-          x: vertical ? event.clientY : event.clientX,
+          x: point,
+          samples: [{ x: point, time: gestureTime() }],
         }
+        setGlide(null)
         setDragging(true)
       }}
       onPointerMove={(event) => {
         const from = dragFrom.current
         if (!from || from.pointerId !== event.pointerId) return
-        setDragPx((vertical ? event.clientY : event.clientX) - from.x)
+        const point = vertical ? event.clientY : event.clientX
+        setDragPx(point - from.x)
+        from.samples.push({ x: point, time: gestureTime() })
+        // Keep the tail of the gesture: a finger that stops before lifting
+        // should not still fling on stale speed from a second ago.
+        const last = from.samples[from.samples.length - 1]!
+        from.samples = from.samples.filter(
+          (sample) => sample.time >= last.time - FLING_SAMPLE_MS,
+        )
       }}
       onPointerUp={(event) => {
         const from = dragFrom.current
         if (!from || from.pointerId !== event.pointerId) return
-        const moved = (vertical ? event.clientY : event.clientX) - from.x
+        const point = vertical ? event.clientY : event.clientX
+        const moved = point - from.x
+        // The speed at release carries the track on, so a flick glides several
+        // slides instead of stopping dead on the nearest one. A drag that stops
+        // before lifting has no speed and settles by distance alone.
+        const velocity = releaseVelocity([...from.samples, { x: point, time: gestureTime() }])
         endDrag()
         // A finger can cross several slides in one gesture: land on the
         // position nearest where it let go — `round` keeps a drag that stops
@@ -564,8 +628,15 @@ export function Slider({
         // reaches the card the finger travelled over, not just the next.
         const width = stepWidth(event.currentTarget)
         if (width > 0) {
-          const steps = Math.round(-moved / width)
-          if (steps !== 0) goTo(at + steps)
+          const projected = moved + velocity * FLING_PROJECTION_MS
+          const steps = Math.round(-projected / width)
+          if (steps !== 0) {
+            const glideMs = Math.min(
+              900,
+              SLIDE_MS + Math.max(0, Math.abs(steps) - 1) * 80 + Math.abs(velocity) * 120,
+            )
+            goTo(at + steps, glideMs)
+          }
           return
         }
         if (moved <= -SLIDE_SWIPE_PX) step(1)
@@ -593,13 +664,18 @@ export function Slider({
         h="full"
         flexShrink="0"
         gap={gap}
-        transition={dragging || snapping ? 'none' : `transform ${SLIDE_SHIFT}`}
+        transition={
+          dragging || snapping
+            ? 'none'
+            : `transform ${glide?.ms ?? SLIDE_MS}ms ${glide?.ease ?? SLIDE_EASE}`
+        }
         style={{ transform: shift }}
         onTransitionEnd={(event) => {
           if (event.target !== event.currentTarget) return
           // A child's own transition (a hover, say) ends here too; the track's
           // is the transform. Not every DOM hands the property over, though.
           if (event.propertyName && event.propertyName !== 'transform') return
+          setGlide(null)
           settle()
         }}
         {...trackProps}
