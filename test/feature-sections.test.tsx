@@ -453,6 +453,14 @@ describe('section chrome', () => {
       expect(html, `perPage ${perPage}`).toContain('data-slider-track')
       expect(html, `perPage ${perPage}`).toContain('data-slider-slide')
       expect(html, `perPage ${perPage}`).not.toContain('aria-busy')
+      // The phone and desktop views ship together and CSS picks one: a
+      // desktop never waits for hydration to get its real slide count.
+      if (perPage === '1') {
+        expect(html, `perPage ${perPage}`).toContain('data-banner-variant="all"')
+      } else {
+        expect(html, `perPage ${perPage}`).toContain('data-banner-variant="phone"')
+        expect(html, `perPage ${perPage}`).toContain('data-banner-variant="desktop"')
+      }
     }
   })
 

@@ -310,15 +310,23 @@ export function BannerImage({ settings }: SectionProps) {
  * look; two or more drop them into a row under it, in the page's own ink. The
  * view is the seller's slide count on each screen — whole or fractional, so
  * 1.5 leaves the next banner peeking on a phone and on a desktop alike.
+ *
+ * The phone and desktop views are **separate sliders in the server HTML**,
+ * each with its own fixed per-view and hidden by a CSS breakpoint. The server
+ * cannot measure the browser, so rendering one slider and switching its
+ * `perPage` after hydration would show a phone layout first on a desktop; two
+ * variants make the first paint already the final one at either width. When
+ * both settings resolve to the same per-view there is only one.
  */
 export function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
   const { imageUrl } = useRenderEnvironment()
   const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
-  const desktop = slidesPerView(readText(settings, 'perPage'), 2, 3)
-  const phone = slidesPerView(readText(settings, 'perPageMobile'), 1, 3)
-  const perPage = Math.min(useResponsive({ base: phone, md: desktop }), slides.length)
+  const desktop = Math.min(slidesPerView(readText(settings, 'perPage'), 2, 3), slides.length)
+  const phone = Math.min(slidesPerView(readText(settings, 'perPageMobile'), 1, 3), slides.length)
   const ratio = ratioValue(readText(settings, 'ratio'))
+  const loop = readBoolean(settings, 'loop')
+  const autoplay = readBoolean(settings, 'autoplay')
 
   if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
   if (slides.length === 1) {
@@ -329,17 +337,18 @@ export function BannerSlider({ settings }: SectionProps) {
     )
   }
 
-  return (
+  const slider = (perPage: number, variant: string) => (
     <Slider
-      as="section"
+      key={variant}
+      as="div"
       ratio={ratio}
       count={slides.length}
       perPage={perPage}
-      loop={readBoolean(settings, 'loop')}
+      loop={loop}
       // Banner slides are pictures, not editable blocks: the editor can draw
       // the wrap, so a looped full view rotates there just as it does live.
       wrapInEditor
-      autoplay={readBoolean(settings, 'autoplay')}
+      autoplay={autoplay}
       // One banner at a time keeps the dots over the photo; more than one
       // moves them under the band, in the theme's own ink.
       dots={perPage > 1 ? 'below' : 'inside'}
@@ -348,6 +357,25 @@ export function BannerSlider({ settings }: SectionProps) {
         <BannerSlide key={String(slide.id)} slide={slide} eager={position === 0} />
       ))}
     </Slider>
+  )
+
+  if (phone === desktop) {
+    return (
+      <Box as="section" data-banner-variant="all">
+        {slider(phone, 'all')}
+      </Box>
+    )
+  }
+
+  return (
+    <Box as="section">
+      <Box data-banner-variant="phone" hideFrom="md">
+        {slider(phone, 'phone')}
+      </Box>
+      <Box data-banner-variant="desktop" hideBelow="md">
+        {slider(desktop, 'desktop')}
+      </Box>
+    </Box>
   )
 }
 
