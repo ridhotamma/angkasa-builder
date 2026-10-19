@@ -318,6 +318,12 @@ export interface ThemeSettings {
   cardStyle: CardStyle
   /** What product and category cards do on hover; empty for nothing. */
   cardHover: CardHoverEffect[]
+  /**
+   * Whether a product card swaps to its second gallery photo on hover. On by
+   * default, so a product with a second photo has the familiar fashion-store
+   * flip; turning it off keeps the primary photo still.
+   */
+  productImageHover: boolean
   /** One step for every text size: compact, default or large. */
   typeScale: TypeScale
   /** One step for every gap, padding and control size: tight, cozy or airy. */
@@ -351,6 +357,7 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   buttonStyle: 'solid',
   cardStyle: 'border',
   cardHover: ['outline', 'zoom'],
+  productImageHover: true,
   // The middle of each scale is the storefront as it always was, so a theme
   // saved before these knobs existed reads exactly the same.
   typeScale: 'default',
@@ -398,6 +405,7 @@ const settingsSchema = z.object({
     .array(z.string())
     .transform((effects) => CARD_HOVER_EFFECTS.filter((effect) => effects.includes(effect)))
     .catch(DEFAULT_THEME_SETTINGS.cardHover),
+  productImageHover: z.boolean().catch(DEFAULT_THEME_SETTINGS.productImageHover),
   typeScale: z.enum(TYPE_SCALES).catch(DEFAULT_THEME_SETTINGS.typeScale),
   density: z.enum(DENSITIES).catch(DEFAULT_THEME_SETTINGS.density),
   pageWidth: z.enum(PAGE_WIDTHS).catch(DEFAULT_THEME_SETTINGS.pageWidth),

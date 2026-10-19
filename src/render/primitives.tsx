@@ -1226,13 +1226,13 @@ export function ProductCard({
   /** A host wiring its own wishlist; falls back to the render environment. */
   wishlist?: RenderEnvironment['wishlist']
 }) {
-  const { data, formatPrice } = useRenderEnvironment()
+  const { data, formatPrice, settings } = useRenderEnvironment()
   const { frame, flat, hover, tiltRef } = useCard()
   const text = useRenderText()
   const soldOut = product.trackStock === true && product.available === 0
   const ratingCount = product.ratingCount ?? 0
   const soldCount = product.soldCount ?? 0
-  const secondaryImage = hoverImageUrl(product)
+  const secondaryImage = settings.productImageHover ? hoverImageUrl(product) : null
 
   return (
     <Card.Root
@@ -1540,10 +1540,10 @@ function ProductBentoCard({
   shape: BentoShape
   reveal: boolean
 }) {
-  const { data, formatPrice } = useRenderEnvironment()
+  const { data, formatPrice, settings } = useRenderEnvironment()
   const { frame, hover } = useCard()
   const big = shape === 'big'
-  const secondaryImage = hoverImageUrl(product)
+  const secondaryImage = settings.productImageHover ? hoverImageUrl(product) : null
 
   return (
     <Card.Root

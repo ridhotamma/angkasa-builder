@@ -86,6 +86,14 @@ describe('card hover', () => {
     expect(sanitizeThemeSettings({ cardHover: [] }).cardHover).toEqual([])
   })
 
+  test('the product photo flip is on by default and can be turned off', () => {
+    expect(DEFAULT_THEME_SETTINGS.productImageHover).toBe(true)
+    // A theme saved before the setting existed keeps the familiar flip.
+    expect(sanitizeThemeSettings({}).productImageHover).toBe(true)
+    expect(sanitizeThemeSettings({ productImageHover: false }).productImageHover).toBe(false)
+    expect(sanitizeThemeSettings({ productImageHover: 'no' }).productImageHover).toBe(true)
+  })
+
   test('every card wears the same chosen effects', () => {
     // Product, category, bento, columns, people, quotes and video quotes:
     // one setting, one result — no card opts out.

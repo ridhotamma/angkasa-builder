@@ -119,6 +119,22 @@ describe('product card hover image', () => {
     )
     expect(html).not.toContain('data-product-secondary')
   })
+
+  test('the theme can keep the primary photo still', () => {
+    const data = withHover()
+    const html = render(
+      <SectionsRenderer
+        sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
+        env={env({
+          data,
+          settings: { ...DEFAULT_THEME_SETTINGS, productImageHover: false },
+        })}
+      />,
+    )
+    expect(html).toContain('https://images.test/primary.jpg')
+    expect(html).not.toContain('https://images.test/secondary.jpg')
+    expect(html).not.toContain('data-product-secondary')
+  })
 })
 
 describe('product list layouts', () => {

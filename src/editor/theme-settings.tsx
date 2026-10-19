@@ -585,6 +585,28 @@ export function ThemeSettingsPanel({
             </Stack>
             <Fieldset.HelperText>{t('cardHoverHelp')}</Fieldset.HelperText>
           </Fieldset.Root>
+
+          <Stack gap="1" pt="1">
+            <Switch.Root
+              size="sm"
+              colorPalette="brand"
+              w="full"
+              justifyContent="space-between"
+              checked={settings.productImageHover}
+              onCheckedChange={({ checked }) =>
+                onChange({ ...settings, productImageHover: checked })
+              }
+            >
+              <Switch.HiddenInput />
+              <Switch.Label fontSize="sm" fontWeight="normal">
+                {t('productImageHover')}
+              </Switch.Label>
+              <Switch.Control />
+            </Switch.Root>
+            <Text fontSize="xs" color="fg.muted">
+              {t('productImageHoverHelp')}
+            </Text>
+          </Stack>
         </ThemeSection>
 
         <ThemeSection value="size" title={t('size')}>

@@ -67,6 +67,11 @@ const MESSAGES = {
     en: 'What product and category cards do when a shopper points at them. Combine any; turn all off for none.',
     id: 'Yang dilakukan kartu produk dan kategori saat pembeli mengarahkan kursor. Gabungkan sesuka hati; matikan semua untuk tanpa efek.',
   },
+  productImageHover: { en: 'Second photo on hover', id: 'Foto kedua saat disorot' },
+  productImageHoverHelp: {
+    en: 'Product cards swap to the second gallery photo when a shopper points at them. Turn off to always show the primary photo.',
+    id: 'Kartu produk berganti ke foto kedua dari galeri saat pembeli mengarahkan kursor. Matikan untuk selalu menampilkan foto utama.',
+  },
   size: { en: 'Size', id: 'Ukuran' },
   localization: { en: 'Localization', id: 'Lokalisasi' },
   localizationHelp: {
