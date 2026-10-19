@@ -11,6 +11,7 @@ import {
   BANNER_SLIDES_PER_VIEW,
   createSection,
   DEFAULT_THEME_SETTINGS,
+  defaultHomeTemplate,
   parseVideoUrl,
   readSectionStyle,
   richDocFromPlainText,
@@ -387,6 +388,14 @@ describe('section chrome', () => {
     expect(html).not.toContain('aria-label="Play"')
     expect(html).not.toContain('aria-label="Mute"')
     expect(html).not.toContain('aria-label="Unmute"')
+  })
+
+  test('the default home never draws a blank CTA-only banner', () => {
+    // The default hero is the shop's own banner. With no banner image there is
+    // nothing to show, and the field's starter "Shop now" must not leave a
+    // coloured band with a lone button above the shop introduction.
+    const html = render(<SectionsRenderer sections={defaultHomeTemplate()} env={env()} />)
+    expect(html).not.toContain('Shop now')
   })
 
   test('a looping video banner draws its rich body', () => {

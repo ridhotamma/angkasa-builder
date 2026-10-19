@@ -713,7 +713,11 @@ export function applyInstanceEdit(
 /** The home page a shop has before it publishes a theme of its own. */
 export function defaultHomeTemplate(): SectionInstance[] {
   return [
-    createSection('banner', { useShopBanner: true, height: 'md' }),
+    // The hero is the shop's own banner, with no copy of its own. Clearing the
+    // button is deliberate: the banner's field starts with "Shop now", which
+    // would otherwise turn a shop with no banner image into a blank coloured
+    // band with a lone button above the real introduction.
+    createSection('banner', { useShopBanner: true, height: 'md', buttonLabel: '' }),
     createSection('shop-intro'),
     createSection('category-rail'),
     createSection('product-list', { source: 'shelves', limit: 8 }),
