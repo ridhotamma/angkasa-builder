@@ -31,17 +31,10 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import {
-  LuCheck,
-  LuFacebook,
-  LuLink,
-  LuMail,
-  LuMessageCircle,
-  LuRuler,
-  LuShare2,
-  LuStar,
-  LuTwitter,
-} from 'react-icons/lu'
+// The brand marks come from the same set the footer's social links use, and
+// the generic ones from Lucide — the same match the rest of the page makes.
+import { FaFacebookF, FaWhatsapp, FaXTwitter } from 'react-icons/fa6'
+import { LuCheck, LuForward, LuLink, LuMail, LuRuler, LuStar } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -243,19 +236,19 @@ function GalleryActions({ product }: { product: StorefrontProductDetail }) {
 
   const targets = [
     {
-      icon: LuFacebook,
+      icon: FaFacebookF,
       label: text('shareFacebook'),
       url: (url: string) =>
         `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
     },
     {
-      icon: LuTwitter,
+      icon: FaXTwitter,
       label: text('shareTwitter'),
       url: (url: string) =>
         `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(product.name)}`,
     },
     {
-      icon: LuMessageCircle,
+      icon: FaWhatsapp,
       label: text('shareWhatsapp'),
       url: (url: string) => `https://wa.me/?text=${encodeURIComponent(`${product.name} ${url}`)}`,
     },
@@ -280,7 +273,7 @@ function GalleryActions({ product }: { product: StorefrontProductDetail }) {
       >
         <Dialog.Trigger asChild>
           <IconButton {...PHOTO_ACTION} aria-label={text('share')}>
-            <LuShare2 />
+            <LuForward />
           </IconButton>
         </Dialog.Trigger>
         <Portal>
