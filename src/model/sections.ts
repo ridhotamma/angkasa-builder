@@ -34,7 +34,7 @@ import type {
 import type { IconName } from './icons'
 import type { Localized } from './localized'
 import {
-  BANNER_PHOTO_SHAPES,
+  BANNER_BAND_SHAPES,
   BANNER_SLIDES_PER_VIEW,
   photoFitField,
   photoPositionField,
@@ -1348,13 +1348,24 @@ export const SECTION_SCHEMAS = [
       {
         kind: 'select',
         key: 'ratio',
-        label: { en: 'Photo shape', id: 'Bentuk foto' },
+        label: { en: 'Band shape (desktop)', id: 'Bentuk banner (desktop)' },
         help: {
-          en: 'Each photo is cropped to this shape. The banner height follows the photo, not a fixed box.',
-          id: 'Setiap foto dipotong ke bentuk ini. Tinggi banner mengikuti foto, bukan kotak tetap.',
+          en: 'The slider’s height on desktop. Keep one ratio across the slides, with faces and text away from the edges.',
+          id: 'Tinggi slider di desktop. Pakai satu rasio untuk semua slide, dengan wajah dan teks jauh dari tepi.',
         },
-        options: BANNER_PHOTO_SHAPES,
-        default: 'auto',
+        options: BANNER_BAND_SHAPES,
+        default: '16/5',
+      },
+      {
+        kind: 'select',
+        key: 'ratioMobile',
+        label: { en: 'Band shape (phones)', id: 'Bentuk banner (ponsel)' },
+        help: {
+          en: 'The slider’s height on phones. A taller shape usually reads better on a small screen.',
+          id: 'Tinggi slider di ponsel. Bentuk yang lebih tinggi biasanya lebih enak dibaca di layar kecil.',
+        },
+        options: BANNER_BAND_SHAPES,
+        default: '16/5',
       },
       {
         kind: 'boolean',

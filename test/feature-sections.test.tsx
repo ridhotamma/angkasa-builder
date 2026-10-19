@@ -448,71 +448,83 @@ describe('section chrome', () => {
     expect(section.settings.perPageMobile).toBe('1.5')
   })
 
-  test('the banner band is shaped by its images, not a container ratio', () => {
-    const slider = (perPage: string) =>
-      render(
-        <SectionsRenderer
-          sections={[
-            createSection('banner-slider', {
-              perPage,
-              slides: [{ image: 's1' }, { image: 's2' }, { image: 's3' }],
-            }),
-          ]}
-          env={env()}
-        />,
-      )
-    for (const perPage of ['1', '1.5', '2', '2.5', '3']) {
-      const html = slider(perPage)
-      // No padded box around the photos: each slide's own image sets the
-      // height, so a wide upload stays wide instead of being cropped into a
-      // container ratio.
-      expect(html, `perPage ${perPage}`).not.toMatch(/padding-bottom:\d+(?:\.\d+)?%/)
-      expect(html, `perPage ${perPage}`).not.toMatch(/aspect-ratio:\d/)
-      // The final slider is what the server sends — never a placeholder that
-      // a slow connection later swaps out.
-      expect(html, `perPage ${perPage}`).toContain('data-slider-frame')
-      expect(html, `perPage ${perPage}`).toContain('data-slider-track')
-      expect(html, `perPage ${perPage}`).toContain('data-slider-slide')
-      expect(html, `perPage ${perPage}`).not.toContain('aria-busy')
-      // The phone and desktop views ship together and CSS picks one: a
-      // desktop never waits for hydration to get its real slide count.
-      if (perPage === '1') {
-        expect(html, `perPage ${perPage}`).toContain('data-banner-variant="all"')
-      } else {
-        expect(html, `perPage ${perPage}`).toContain('data-banner-variant="phone"')
-        expect(html, `perPage ${perPage}`).toContain('data-banner-variant="desktop"')
-      }
+  test('the band takes the seller’s shape on each screen', () => {
+    const fields = sectionSchema('banner-slider')!.fields
+    const shapes = (key: string) => {
+      const field = fields.find((candidate) => candidate.key === key)
+      return field?.kind === 'select' ? field.options.map((option) => option.value) : []
     }
-    // The shape setting crops the photos; `auto` is the default, so the band
-    // follows the upload's own ratio out of the box.
-    const shape = sectionSchema('banner-slider')!.fields.find((field) => field.key === 'ratio')
-    expect(shape?.kind === 'select' && shape.default).toBe('auto')
-    expect(shape?.kind === 'select' && shape.options.map((option) => option.value)).toEqual([
-      'auto',
-      '16/9',
-      '2/1',
-      '21/9',
-      '3/1',
-      '1/1',
-    ])
-  })
+    const expected = ['16/5', '16/9', '2/1', '21/9', '3/1', '1/1']
+    expect(shapes('ratio')).toEqual(expected)
+    expect(shapes('ratioMobile')).toEqual(expected)
+    // The default is the platform's wide banner shape on both screens.
+    const byDefault = createSection('banner-slider')
+    expect(byDefault.settings.ratio).toBe('16/5')
+    expect(byDefault.settings.ratioMobile).toBe('16/5')
 
-  test('a chosen photo shape crops the photos, and the band follows them', () => {
     const html = render(
       <SectionsRenderer
         sections={[
           createSection('banner-slider', {
-            ratio: '21/9',
+            perPage: '2',
+            perPageMobile: '1',
+            ratio: '16/9',
+            ratioMobile: '1/1',
+            slides: [{ image: 's1' }, { image: 's2' }, { image: 's3' }],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    // Each variant ships its own padded band, so the first paint already has
+    // the right height on either screen — no measuring, no swap.
+    expect(html).toContain('padding-bottom:56.25%')
+    expect(html).toContain('padding-bottom:100%')
+    // The photos do not give the band its height; the band crops them.
+    expect(html).not.toMatch(/aspect-ratio:\d/)
+    expect(html).toContain('data-banner-variant="phone"')
+    expect(html).toContain('data-banner-variant="desktop"')
+    expect(html).toContain('data-slider-frame')
+    expect(html).toContain('data-slider-track')
+    expect(html).not.toContain('aria-busy')
+  })
+
+  test('the same view and shape on both screens ship one slider', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('banner-slider', {
+            perPage: '2',
+            perPageMobile: '2',
+            ratio: '16/9',
+            ratioMobile: '16/9',
             slides: [{ image: 's1' }, { image: 's2' }],
           }),
         ]}
         env={env()}
       />,
     )
-    // The shape sits on the slide's own photo, not on a padded band around
-    // it: the band takes its height from the cropped image.
-    expect(html).toMatch(/aspect-ratio:21\/9/)
-    expect(html).not.toMatch(/padding-bottom:\d+(?:\.\d+)?%/)
+    expect(html).toContain('data-banner-variant="all"')
+    expect(html).not.toContain('data-banner-variant="phone"')
+    expect((html.match(/data-slider-track/g) ?? []).length).toBe(1)
+  })
+
+  test('a shape change moves the band, never the photo’s own box', () => {
+    const html = render(
+      <SectionsRenderer
+        sections={[
+          createSection('banner-slider', {
+            ratio: '21/9',
+            ratioMobile: '21/9',
+            slides: [{ image: 's1' }, { image: 's2' }],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    // The band is the padded box; the images fill it and stay cover-cropped.
+    expect(html).toMatch(/padding-bottom:42\.85/)
+    expect(html).not.toMatch(/aspect-ratio:\d/)
     expect(html).toContain('object-fit:cover')
   })
 
@@ -622,10 +634,29 @@ describe('section chrome', () => {
         env={env()}
       />,
     )
-    // The photo is the band: no padded container ratio above it.
+    // One band, shaped by the seller's ratio: a lone banner wears a plain
+    // responsive `aspect-ratio` instead of the slider's padded box.
+    expect(html).toMatch(/aspect-ratio:16\/5/)
     expect(html).not.toMatch(/padding-bottom:\d+(?:\.\d+)?%/)
-    expect(html).not.toMatch(/aspect-ratio:\d/)
     expect(html).toContain('object-fit:cover')
+
+    // The same lone banner can differ by screen: the desktop ratio arrives in
+    // a breakpoint rule, the phone one is the base.
+    const shaped = render(
+      <SectionsRenderer
+        sections={[
+          createSection('banner-slider', {
+            ratio: '16/9',
+            ratioMobile: '1/1',
+            slides: [{ image: 's1', alt: 'One' }],
+          }),
+        ]}
+        env={env()}
+      />,
+    )
+    expect(shaped).toMatch(/aspect-ratio:1\/1/)
+    expect(shaped).toMatch(/aspect-ratio:16\/9/)
+    expect(shaped).not.toMatch(/padding-bottom:\d+(?:\.\d+)?%/)
     // A lone banner is still a picture, not a carousel: no track to page, and
     // no indicator to page with.
     expect(html).not.toContain('data-slider-track')

@@ -44,10 +44,9 @@ import {
 import { CATEGORY_PREVIEW_PRODUCTS } from '../model/content'
 import { readToken, textElementKey } from '../model/element-style'
 import {
-  BANNER_PHOTO_SHAPE_VALUES,
+  BANNER_BAND_SHAPE_VALUES,
   PHOTO_FIT_VALUES,
   PHOTO_POSITION_VALUES,
-  type BannerPhotoShape,
 } from '../model/section-style'
 import type { Link } from '../model/links'
 import { isRichDocEmpty } from '../model/rich-text'
@@ -316,12 +315,13 @@ export function BannerImage({ settings }: SectionProps) {
  * at a time, with the shared slider's arrows, finger drag and pill dots. A
  * single slide is simply a still banner: there is nothing to slide to.
  *
- * The band is shaped by the **photos themselves**, not by a container ratio:
- * each slide is as tall as its image at the width it gets, so a wide upload
- * stays wide on a phone and a portrait one is not cropped into a letterbox.
- * The **Photo shape** setting crops each photo before it sets that height —
- * `auto` keeps the upload's own shape. The tallest slide sets the row's
- * height; the others fill it. See `slider.tsx` for the track itself.
+ * The band is the **Band shape** the seller picked, with desktop and phone
+ * values of their own. Photos fill that band with a cover crop (or the
+ * slide's own `contain`), which is why the section asks for one upload ratio
+ * across the slides instead of measuring them: a band that waits for image
+ * dimensions cannot paint its final height, and a row of mixed ratios still
+ * has to settle on one height. The shape is the design decision; the photo is
+ * cropped to it, not the other way around.
  *
  * One banner in view keeps the dots over the band, the familiar photo-slider
  * look; two or more drop them into a row under it, in the page's own ink. The
@@ -329,11 +329,11 @@ export function BannerImage({ settings }: SectionProps) {
  * 1.5 leaves the next banner peeking on a phone and on a desktop alike.
  *
  * The phone and desktop views are **separate sliders in the server HTML**,
- * each with its own fixed per-view and hidden by a CSS breakpoint. The server
- * cannot measure the browser, so rendering one slider and switching its
- * `perPage` after hydration would show a phone layout first on a desktop; two
+ * each with its own fixed per-view and band shape, hidden by a CSS breakpoint.
+ * The server cannot measure the browser, so rendering one slider and switching
+ * either after hydration would show a phone layout first on a desktop; two
  * variants make the first paint already the final one at either width. When
- * both settings resolve to the same per-view there is only one.
+ * both screens resolve to the same view and shape there is only one.
  */
 export function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
@@ -343,23 +343,27 @@ export function BannerSlider({ settings }: SectionProps) {
   const phone = Math.min(slidesPerView(readText(settings, 'perPageMobile'), 1, 3), slides.length)
   const loop = readBoolean(settings, 'loop')
   const autoplay = readBoolean(settings, 'autoplay')
-  const shape = readToken(settings, 'ratio', BANNER_PHOTO_SHAPE_VALUES, 'auto')
-  const photoShape = shape === 'auto' ? null : shape
+  // Tokens for the lone banner's responsive `aspect-ratio`; numbers for the
+  // slider's padded band, which wants the quotient.
+  const ratioToken = readToken(settings, 'ratio', BANNER_BAND_SHAPE_VALUES, '16/5')
+  const ratioMobileToken = readToken(settings, 'ratioMobile', BANNER_BAND_SHAPE_VALUES, '16/5')
+  const ratio = ratioValue(ratioToken)
+  const ratioMobile = ratioValue(ratioMobileToken)
 
   if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
   if (slides.length === 1) {
     return (
-      <Box as="section">
-        <BannerSlide slide={slides[0]!} eager shape={photoShape} />
+      <Box as="section" aspectRatio={{ base: ratioMobileToken, md: ratioToken }} overflow="hidden">
+        <BannerSlide slide={slides[0]!} eager />
       </Box>
     )
   }
 
-  const slider = (perPage: number, variant: string) => (
+  const slider = (perPage: number, variant: string, band: number) => (
     <Slider
       key={variant}
       as="div"
-      ratio="auto"
+      ratio={band}
       count={slides.length}
       perPage={perPage}
       loop={loop}
@@ -372,20 +376,15 @@ export function BannerSlider({ settings }: SectionProps) {
       dots={perPage > 1 ? 'below' : 'inside'}
     >
       {slides.map((slide, position) => (
-        <BannerSlide
-          key={String(slide.id)}
-          slide={slide}
-          eager={position === 0}
-          shape={photoShape}
-        />
+        <BannerSlide key={String(slide.id)} slide={slide} eager={position === 0} />
       ))}
     </Slider>
   )
 
-  if (phone === desktop) {
+  if (phone === desktop && ratioMobile === ratio) {
     return (
       <Box as="section" data-banner-variant="all">
-        {slider(phone, 'all')}
+        {slider(phone, 'all', ratioMobile)}
       </Box>
     )
   }
@@ -393,42 +392,24 @@ export function BannerSlider({ settings }: SectionProps) {
   return (
     <Box as="section">
       <Box data-banner-variant="phone" hideFrom="md">
-        {slider(phone, 'phone')}
+        {slider(phone, 'phone', ratioMobile)}
       </Box>
       <Box data-banner-variant="desktop" hideBelow="md">
-        {slider(desktop, 'desktop')}
+        {slider(desktop, 'desktop', ratio)}
       </Box>
     </Box>
   )
 }
 
 /**
- * One slide: the photo fills the slide's box, cropped by the slide's own size
- * and position — and by the section's photo shape when one is chosen. The box
- * itself comes from the photo, so the band never imposes a ratio of its own.
- * Shared by the slider and the single-slide case.
+ * One slide: the photo fills the band's whole box, cropped by the slide's own
+ * size and position. Shared by the slider and the single-slide case.
  */
-function BannerSlide({
-  slide,
-  eager,
-  shape,
-}: {
-  slide: FieldValues
-  eager: boolean
-  /** The chosen photo crop, or null for the upload's own shape. */
-  shape: Exclude<BannerPhotoShape, 'auto'> | null
-}) {
+function BannerSlide({ slide, eager }: { slide: FieldValues; eager: boolean }) {
   const { imageUrl } = useRenderEnvironment()
 
   return (
-    <SmartLink
-      link={readLink(slide, 'link')}
-      display="block"
-      // A fixed shape crops the photo and gives the slide its height; `auto`
-      // leaves the height to the photo itself.
-      {...(shape ? { aspectRatio: shape } : { h: 'full' })}
-      draggable={false}
-    >
+    <SmartLink link={readLink(slide, 'link')} display="block" h="full" draggable={false}>
       <ImageWithFallback
         src={bannerImageUrl(imageUrl, slide) ?? undefined}
         alt={readText(slide, 'alt')}
@@ -456,6 +437,12 @@ function bannerImageUrl(
   slide: FieldValues,
 ): string | null {
   return imageUrl(readText(slide, 'image'), { width: 1200, height: 800 }) ?? null
+}
+
+/** `'16/5'` as the number `AspectRatio` wants. */
+function ratioValue(ratio: string): number {
+  const [width, height] = ratio.split('/').map(Number)
+  return width && height ? width / height : 16 / 5
 }
 
 /** The band behind the shop's introduction; the logo overlaps its bottom edge. */
