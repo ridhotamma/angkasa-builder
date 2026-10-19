@@ -501,6 +501,19 @@ export function readableOn(background: string): string {
     : '#111111'
 }
 
+/**
+ * Text on a brand fill — a solid button's label, a brand badge.
+ *
+ * The platform's own brand is designed with white on it, and button labels are
+ * bold enough for the large-text floor (3:1). Taking the *higher* of white and
+ * black would flip the default orange to black even though white already
+ * passes, so white wins wherever it clears that floor; only a brand too light
+ * for white falls back to the readable dark.
+ */
+export function brandContrast(background: string): string {
+  return contrastRatio(background, '#ffffff') >= 3 ? '#ffffff' : readableOn(background)
+}
+
 export const BRAND_SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const
 
 /** A 50–950 ramp with `hex` at 500, tinted toward white and shaded toward black. */
@@ -541,7 +554,7 @@ export function contrastIssues(settings: ThemeSettings): ContrastIssue[] {
     issues.push('text')
   }
   const brand = settings.colors.brand
-  if (contrastRatio(brand, readableOn(brand)) < 3) issues.push('brand')
+  if (contrastRatio(brand, brandContrast(brand)) < 3) issues.push('brand')
   return issues
 }
 
@@ -759,7 +772,7 @@ export function themeCssVarGroups(settings: ThemeSettings): {
 
   Object.assign(always, {
     '--chakra-colors-brand-solid': brand,
-    '--chakra-colors-brand-contrast': readableOn(brand),
+    '--chakra-colors-brand-contrast': brandContrast(brand),
     '--chakra-colors-brand-emphasized': ramp[600],
     '--chakra-colors-brand-focus-ring': brand,
 
@@ -927,8 +940,8 @@ export function schemeCssVars(scheme: SchemeColors): Record<string, string> {
     '--chakra-colors-border-subtle': mix(text, background, 0.86),
     '--chakra-colors-border-emphasized': mix(text, background, 0.6),
     '--chakra-colors-brand-solid': button,
-    '--chakra-colors-brand-contrast': readableOn(button),
-    '--chakra-colors-brand-emphasized': mix(button, readableOn(button), 0.14),
+    '--chakra-colors-brand-contrast': brandContrast(button),
+    '--chakra-colors-brand-emphasized': mix(button, brandContrast(button), 0.14),
     '--chakra-colors-brand-fg': contrastRatio(button, background) >= 3 ? button : text,
     '--chakra-colors-brand-border': contrastRatio(button, background) >= 3 ? button : text,
     '--chakra-colors-brand-muted': mix(button, background, 0.7),

@@ -462,6 +462,21 @@ describe('colour', () => {
     expect(vars['--chakra-colors-brand-contrast']).toBe('#ffffff')
   })
 
+  test('the default orange keeps the system’s white button label', () => {
+    // White on #ff4f00 clears the large-text floor (3:1). Choosing the higher
+    // contrast of white and black instead flipped the default theme's buttons
+    // to black, unlike the shared system's `brand.contrast`.
+    expect(themeCssVars(DEFAULT_THEME_SETTINGS)['--chakra-colors-brand-contrast']).toBe('#ffffff')
+  })
+
+  test('a pale brand still gets dark text on its buttons', () => {
+    const vars = themeCssVars({
+      ...DEFAULT_THEME_SETTINGS,
+      colors: { ...DEFAULT_THEME_SETTINGS.colors, brand: '#ffb74d' },
+    })
+    expect(vars['--chakra-colors-brand-contrast']).toBe('#111111')
+  })
+
   test('the status palettes follow the shop’s own colours', () => {
     const vars = themeCssVars({
       ...DEFAULT_THEME_SETTINGS,
