@@ -6,7 +6,6 @@ import {
   Badge,
   Box,
   Button,
-  Field,
   Fieldset,
   Flex,
   HStack,
@@ -604,7 +603,9 @@ export function ThemeSettingsPanel({
               </Switch.Label>
               <Switch.Control />
             </Switch.Root>
-            <Field.HelperText>{t('productImageHoverHelp')}</Field.HelperText>
+            <Text textStyle="xs" color="fg.muted">
+              {t('productImageHoverHelp')}
+            </Text>
           </Stack>
         </ThemeSection>
 
