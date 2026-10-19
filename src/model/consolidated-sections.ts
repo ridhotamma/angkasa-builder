@@ -32,7 +32,13 @@ import type {
   VideoField,
 } from './fields'
 import type { Localized } from './localized'
-import { photoFitField, photoPositionField } from './section-style'
+import {
+  photoFitField,
+  photoPositionField,
+  slidesField,
+  SLIDES_PER_VIEW,
+  SLIDES_PER_VIEW_MOBILE,
+} from './section-style'
 import type { SectionScope, SectionSchema } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -432,12 +438,34 @@ export const CONSOLIDATED_SECTION_SCHEMAS = [
       productLayoutField,
       bentoTextField,
       numberField('limit', { en: 'Products to show', id: 'Jumlah produk' }, 8),
-      // The bento lays its own tiles out, so the column counts only move the
-      // grid and the slider.
+      // The grid's whole columns and the slider's own per-view: the first
+      // only moves the grid, the second — whole or fractional, a card peeking
+      // at the edge — only the row. An older row carries the grid's pair
+      // alone, and each slider setting inherits it (see `legacyKey`).
       ...columnsField(['2', '3', '4', '5', '6'], '4', '2').map((field) => ({
         ...field,
-        showWhen: { key: 'layout', is: ['grid', 'slider'] },
+        showWhen: { key: 'layout', is: ['grid'] },
       })),
+      {
+        ...slidesField(
+          'perPage',
+          { en: 'Slides on desktop', id: 'Slide di desktop' },
+          SLIDES_PER_VIEW,
+          '4',
+        ),
+        showWhen: { key: 'layout', is: ['slider'] },
+        legacyKey: 'columns',
+      },
+      {
+        ...slidesField(
+          'perPageMobile',
+          { en: 'Slides on phones', id: 'Slide di ponsel' },
+          SLIDES_PER_VIEW_MOBILE,
+          '2',
+        ),
+        showWhen: { key: 'layout', is: ['slider'] },
+        legacyKey: 'mobileColumns',
+      },
       {
         // Only the newest list ends with a link to the whole catalogue; the
         // collection looks always carry their own "See all" in the header.

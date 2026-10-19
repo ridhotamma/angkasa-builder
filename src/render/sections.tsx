@@ -905,6 +905,8 @@ function FeaturedCollection({ settings }: SectionProps) {
           textReveal={readText(settings, 'bentoText') === 'hover'}
           columns={readText(settings, 'columns')}
           mobileColumns={readText(settings, 'mobileColumns')}
+          perPage={readText(settings, 'perPage')}
+          perPageMobile={readText(settings, 'perPageMobile')}
         />
       )}
     </Stack>
@@ -934,6 +936,8 @@ function CollectionShelves({ settings }: SectionProps) {
             textReveal={readText(settings, 'bentoText') === 'hover'}
             columns={readText(settings, 'columns')}
             mobileColumns={readText(settings, 'mobileColumns')}
+            perPage={readText(settings, 'perPage')}
+            perPageMobile={readText(settings, 'perPageMobile')}
           />
         </Stack>
       ))}
@@ -964,6 +968,8 @@ function LatestProducts({ settings }: SectionProps) {
           textReveal={readText(settings, 'bentoText') === 'hover'}
           columns={readText(settings, 'columns')}
           mobileColumns={readText(settings, 'mobileColumns')}
+          perPage={readText(settings, 'perPage')}
+          perPageMobile={readText(settings, 'perPageMobile')}
         />
       )}
     </Stack>
@@ -1271,7 +1277,8 @@ function TestimonialMarquee({
 /**
  * One page of cards at a time — one on a phone, up to three on a desktop —
  * moved by the shared slider's arrows, finger drag and autoplay. No dots: the
- * banner is the one slider that wears them.
+ * banner is the one slider that wears them, and no loop either: the row ends
+ * on its last card.
  */
 function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; autoplay: boolean }) {
   const perPage = Math.min(useResponsive({ base: 1, md: 2, lg: 3 }), items.length)
@@ -1280,7 +1287,6 @@ function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; au
     <Slider
       count={items.length}
       perPage={perPage}
-      loop
       autoplay={autoplay}
       slideProps={{ display: 'flex' }}
     >

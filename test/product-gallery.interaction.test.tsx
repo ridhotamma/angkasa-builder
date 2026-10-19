@@ -62,8 +62,11 @@ function photoProduct(images: number) {
     price: 249_000,
     compareAtPrice: null,
     images: Array.from({ length: images }, (_, index) => ({
-      url: `photo-${index}`,
-      thumbUrl: `thumb-${index}`,
+      // Real URLs, so the photos render as `<img>` (a bare name like `photo-0`
+      // is an error in a browser, and the component quietly swaps in its
+      // fallback icon).
+      url: `https://example.com/photo-${index}.jpg`,
+      thumbUrl: `https://example.com/thumb-${index}.jpg`,
     })),
     description: 'A jacket.',
     rating: null,
@@ -76,7 +79,7 @@ function photoProduct(images: number) {
 }
 
 /** The gallery's page with a product carrying `images` photos. */
-function photos(images: number) {
+function photos(images: number, settings: Record<string, unknown> = {}) {
   const env: RenderEnvironment = {
     data: { ...sampleStorefrontData('Gallery Shop'), product: photoProduct(images) },
     settings: { ...DEFAULT_THEME_SETTINGS, splash: { ...DEFAULT_THEME_SETTINGS.splash } },
@@ -90,7 +93,9 @@ function photos(images: number) {
       <I18nProvider locale="en" resources={{}}>
         <RenderProvider value={env}>
           <SectionsRenderer
-            sections={[createSection('product-info', { gallery: 'mosaic', stickyInfo: true })]}
+            sections={[
+              createSection('product-info', { gallery: 'mosaic', stickyInfo: true, ...settings }),
+            ]}
             env={env}
           />
         </RenderProvider>
@@ -126,6 +131,28 @@ describe('the product gallery actions', () => {
     ]) {
       expect(within(dialog).getByText(label), label).toBeDefined()
     }
+  })
+
+  test('a photo magnifies under a desktop pointer only where the theme asked', () => {
+    // The grid is the layout whose photos take the pointer directly.
+    const zoomed = photos(2, { gallery: 'grid', zoom: true })
+    const growing = zoomed.container.querySelector('img')!
+    // The frame is the pointer's target; the photo inside is what scales.
+    fireEvent.pointerMove(growing.parentElement!, {
+      pointerType: 'mouse',
+      clientX: 10,
+      clientY: 10,
+    })
+    expect(growing.style.transform).toBe('scale(1.8)')
+
+    const plain = photos(2, { gallery: 'grid' })
+    const still = plain.container.querySelector('img')!
+    fireEvent.pointerMove(still.parentElement!, {
+      pointerType: 'mouse',
+      clientX: 10,
+      clientY: 10,
+    })
+    expect(still.style.transform).toBe('')
   })
 
   test('a photo opens the fullscreen viewer, arrows paired at the bottom', async () => {

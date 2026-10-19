@@ -43,6 +43,7 @@ import {
   LuMinus,
   LuPlus,
   LuRuler,
+  LuShoppingBag,
   LuStar,
   LuX,
 } from 'react-icons/lu'
@@ -87,9 +88,11 @@ function useProduct(): StorefrontProductDetail | null {
 /* -------------------------------------------------------------------------- */
 
 /**
- * A photo that magnifies under the pointer on a desktop: the image scales up
- * with its origin following the cursor, so the part being pointed at is the
- * part that grows. Touch screens pinch instead, and keep the plain photo.
+ * A photo in the gallery: a square frame, cropped to fill it — and, where the
+ * seller asked for it, one that magnifies under the pointer on a desktop. The
+ * image scales up with its origin following the cursor, so the part being
+ * pointed at is the part that grows. Touch screens pinch instead, and keep the
+ * plain photo.
  *
  * The scale eases in and out, but the origin never does. It stays where the
  * pointer last was after the pointer leaves, so the photo shrinks back toward
@@ -97,7 +100,7 @@ function useProduct(): StorefrontProductDetail | null {
  * exit, the photo lurched sideways mid-shrink. The origin is not eased either,
  * so while zoomed the photo pans with the pointer instead of trailing it.
  */
-function ZoomImage({ src, alt, zoom }: { src: string | null; alt: string; zoom: boolean }) {
+function GalleryPhoto({ src, alt, zoom }: { src: string | null; alt: string; zoom: boolean }) {
   const [origin, setOrigin] = useState('50% 50%')
   const [zoomed, setZoomed] = useState(false)
   return (
@@ -135,6 +138,14 @@ function ZoomImage({ src, alt, zoom }: { src: string | null; alt: string; zoom: 
   )
 }
 
+/**
+ * The photos as the seller arranged them: `thumbnails` is a cover with a strip
+ * under it, `mosaic` a marketplace's block of tiles, and `grid` and `stacked`
+ * the two plain ways to list them. Where a shape does not fit a phone — the
+ * mosaic's tiles cannot show at all there, and a grid or a stack is a long
+ * scroll — the phone gets one photo per page, swiped, instead. Both are in the
+ * markup and CSS picks one, so the server render already matches the screen.
+ */
 function Gallery({
   product,
   layout,
@@ -146,32 +157,41 @@ function Gallery({
 }) {
   const [active, setActive] = useState(0)
   const images = product.images.length > 0 ? product.images : [{ url: null, thumbUrl: null }]
+  // The viewer belongs to the layouts whose phone view is a slider; the
+  // cover-and-thumbnails layout below never opens one.
+  const viewer = usePhotoViewer(images, product.name)
 
   if (layout === 'grid' || layout === 'stacked') {
     return (
       <Box position="relative">
-        <SimpleGrid columns={layout === 'grid' ? { base: 1, sm: 2 } : 1} gap="3">
-          {images.map((image, index) => (
-            <Box
-              key={`${image.url}-${index}`}
-              gridColumn={layout === 'grid' && index === 0 ? { sm: 'span 2' } : undefined}
-            >
-              <ZoomImage src={image.url} alt={index === 0 ? product.name : ''} zoom={zoom} />
-            </Box>
-          ))}
-        </SimpleGrid>
+        <Box hideBelow="md">
+          <SimpleGrid columns={layout === 'grid' ? 2 : 1} gap="3">
+            {images.map((image, index) => (
+              <Box
+                key={`${image.url}-${index}`}
+                gridColumn={layout === 'grid' && index === 0 ? 'span 2' : undefined}
+              >
+                <GalleryPhoto src={image.url} alt={index === 0 ? product.name : ''} zoom={zoom} />
+              </Box>
+            ))}
+          </SimpleGrid>
+        </Box>
+        <Box hideFrom="md">
+          <PhotoCarousel images={images} name={product.name} onOpen={viewer.view} />
+        </Box>
         <GalleryActions product={product} />
+        {viewer.dialog}
       </Box>
     )
   }
 
-  if (layout === 'mosaic') return <MosaicGallery product={product} images={images} zoom={zoom} />
+  if (layout === 'mosaic') return <MosaicGallery product={product} images={images} />
 
   const cover = images[Math.min(active, images.length - 1)]!
   return (
     <Stack gap="3">
       <Box position="relative">
-        <ZoomImage src={cover.url} alt={product.name} zoom={zoom} />
+        <GalleryPhoto src={cover.url} alt={product.name} zoom={zoom} />
         <GalleryActions product={product} />
       </Box>
       {images.length > 1 && (
@@ -422,32 +442,96 @@ const MOSAIC_PLACEMENT: Record<number, Array<{ gridColumn: string; gridRow: stri
 }
 
 /**
+ * Opening one of the photos up: the state and the fullscreen dialog both
+ * layouts that show a phone slider share — the mosaic always, and the grid and
+ * stacked layouts on a phone. Opening and start are kept apart so closing only
+ * flips `open`: the photo stays on screen through the exit animation instead
+ * of vanishing first.
+ */
+function usePhotoViewer(images: GalleryImage[], name: string) {
+  const text = useRenderText()
+  const overlay = useOverlayProps()
+  const [open, setOpen] = useState(false)
+  const [start, setStart] = useState(0)
+
+  const dialog = (
+    <Dialog.Root
+      {...overlay}
+      open={open}
+      onOpenChange={({ open: next }) => setOpen(next)}
+      // Mounted on open and removed once the exit animation has finished,
+      // so each opening starts the viewer on the photo that was tapped.
+      lazyMount
+      unmountOnExit
+      size="full"
+      placement="center"
+    >
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          {/* Fullscreen: the photo is the screen, so the viewer is the
+              whole viewport rather than a card inside it — and nothing
+              pads it top or bottom. The shop's ink is the ground the
+              blurred photo copy sits on. */}
+          <Dialog.Content
+            p="0"
+            rounded="0"
+            h="100dvh"
+            maxH="100dvh"
+            bg="ink"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Dialog.Body p="0" h="full" w="full" display="flex">
+              <PhotoViewer images={images} name={name} start={start} />
+            </Dialog.Body>
+            <Dialog.CloseTrigger asChild>
+              <IconButton
+                {...VIEWER_ACTION}
+                position="absolute"
+                top="3"
+                right="3"
+                zIndex="2"
+                rounded="full"
+                size="md"
+                aria-label={text('close')}
+              >
+                <LuX />
+              </IconButton>
+            </Dialog.CloseTrigger>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
+  )
+
+  return {
+    /** Open the set at one photo. */
+    view: (index: number) => {
+      setStart(index)
+      setOpen(true)
+    },
+    dialog,
+  }
+}
+
+/**
  * A large cover beside a block of smaller photos, like a marketplace listing:
  * several photos in view at once, and a "+N" on the last tile when there are
- * more than fit. Any tile opens the whole set in a viewer at that photo, where
- * hover zoom applies. A phone is too narrow for the tiles to show anything, so
- * there it swipes one photo at a time. Both are in the markup and CSS picks
- * one, so the server render already matches the screen.
+ * more than fit. Any tile opens the whole set in the viewer at that photo. A
+ * phone is too narrow for the tiles to show anything, so there it swipes one
+ * photo at a time.
  */
 function MosaicGallery({
   product,
   images,
-  zoom,
 }: {
   product: StorefrontProductDetail
   images: GalleryImage[]
-  zoom: boolean
 }) {
   const text = useRenderText()
-  const overlay = useOverlayProps()
-  // Open and start photo are separate so closing only flips `open`: the photo
-  // stays on screen through the exit animation instead of vanishing first.
-  const [viewerOpen, setViewerOpen] = useState(false)
-  const [viewing, setViewingIndex] = useState(0)
-  const setViewing = (index: number) => {
-    setViewingIndex(index)
-    setViewerOpen(true)
-  }
+  const viewer = usePhotoViewer(images, product.name)
   const shown = images.slice(0, MOSAIC_TILES)
   const hidden = images.length - shown.length
   const placement = MOSAIC_PLACEMENT[shown.length] ?? []
@@ -460,7 +544,7 @@ function MosaicGallery({
       bg="bg.subtle"
       cursor="zoom-in"
       aria-label={overflow > 0 ? text('viewAllPhotos') : undefined}
-      onClick={() => setViewing(index)}
+      onClick={() => viewer.view(index)}
       css={{ '& img': { transition: 'opacity 0.15s' }, '&:hover img': { opacity: 0.9 } }}
     >
       <ImageWithFallback
@@ -521,60 +605,12 @@ function MosaicGallery({
       </Grid>
 
       <Box hideFrom="md">
-        <PhotoCarousel images={images} name={product.name} onOpen={setViewing} />
+        <PhotoCarousel images={images} name={product.name} onOpen={viewer.view} />
       </Box>
 
       <GalleryActions product={product} />
 
-      <Dialog.Root
-        {...overlay}
-        open={viewerOpen}
-        onOpenChange={({ open }) => setViewerOpen(open)}
-        // Mounted on open and removed once the exit animation has finished,
-        // so each opening starts the viewer on the photo that was tapped.
-        lazyMount
-        unmountOnExit
-        size="full"
-        placement="center"
-      >
-        <Portal>
-          <Dialog.Backdrop />
-          <Dialog.Positioner>
-            {/* Fullscreen: the photo is the screen, so the viewer is the
-                whole viewport rather than a card inside it — and nothing
-                pads it top or bottom. The shop's ink is the ground the
-                blurred photo copy sits on. */}
-            <Dialog.Content
-              p="0"
-              rounded="0"
-              h="100dvh"
-              maxH="100dvh"
-              bg="ink"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Dialog.Body p="0" h="full" w="full" display="flex">
-                <PhotoViewer images={images} name={product.name} start={viewing} />
-              </Dialog.Body>
-              <Dialog.CloseTrigger asChild>
-                <IconButton
-                  {...VIEWER_ACTION}
-                  position="absolute"
-                  top="3"
-                  right="3"
-                  zIndex="2"
-                  rounded="full"
-                  size="md"
-                  aria-label={text('close')}
-                >
-                  <LuX />
-                </IconButton>
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
-          </Dialog.Positioner>
-        </Portal>
-      </Dialog.Root>
+      {viewer.dialog}
     </Box>
   )
 }
@@ -672,7 +708,7 @@ function PhotoCarousel({
     <Slider count={images.length} perPage={1} dots="inside">
       {images.map((image, index) => (
         <Box key={`${image.url}-${index}`} w="full" onClick={() => onOpen(index)}>
-          <ZoomImage src={image.url} alt={index === 0 ? name : ''} zoom={false} />
+          <GalleryPhoto src={image.url} alt={index === 0 ? name : ''} zoom={false} />
         </Box>
       ))}
     </Slider>
@@ -852,6 +888,7 @@ function PurchaseStandIn({
             variant="outline"
             flex="1"
           >
+            <Icon as={LuShoppingBag} boxSize="5" />
             {text('addToCart')}
           </Button>
         </Flex>
@@ -1168,6 +1205,8 @@ export function RelatedProducts({ settings }: SectionProps) {
         textReveal={readText(settings, 'bentoText') === 'hover'}
         columns={readText(settings, 'columns')}
         mobileColumns={readText(settings, 'mobileColumns')}
+        perPage={readText(settings, 'perPage')}
+        perPageMobile={readText(settings, 'perPageMobile')}
       />
     </Stack>
   )

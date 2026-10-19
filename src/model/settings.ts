@@ -572,14 +572,14 @@ const DENSITY_FACTOR: Record<Density, number> = {
 
 /**
  * How far each page width moves Chakra's container tokens. The page column
- * (6xl, 72rem) is the anchor: narrow runs it at ~61rem, wide at ~86rem, and
+ * (6xl, 72rem) is the anchor: narrow runs it at ~61rem, wide at ~79rem, and
  * every other container follows by the same factor so a hero and a reading
  * column stay in proportion to the page.
  */
 const PAGE_WIDTH_FACTOR: Record<PageWidth, number> = {
   default: 1,
   narrow: 0.85,
-  wide: 1.2,
+  wide: 1.1,
 }
 
 /** Chakra's container-size tokens, in rem — the ladder a page width scales. */

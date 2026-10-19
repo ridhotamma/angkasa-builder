@@ -121,16 +121,27 @@ describe('the product list follows its layout and source', () => {
     expect(sectionFields('product-list', { layout: 'slider' })).not.toContain('bentoText')
   })
 
-  test('the column counts skip the bento, which lays its own tiles out', () => {
-    for (const layout of ['grid', 'slider']) {
-      expect(sectionFields('product-list', { layout }), layout).toContain('columns')
-      expect(sectionFields('product-list', { layout }), layout).toContain('mobileColumns')
-    }
-    expect(sectionFields('product-list', { layout: 'bento' })).not.toContain('columns')
-    expect(sectionFields('product-list', { layout: 'bento' })).not.toContain('mobileColumns')
+  test('the grid keeps whole columns, the slider its own per-view', () => {
+    const grid = sectionFields('product-list', { layout: 'grid' })
+    expect(grid).toContain('columns')
+    expect(grid).toContain('mobileColumns')
+    expect(grid).not.toContain('perPage')
+
+    const slider = sectionFields('product-list', { layout: 'slider' })
+    expect(slider).toContain('perPage')
+    expect(slider).toContain('perPageMobile')
+    expect(slider).not.toContain('columns')
+    expect(slider).not.toContain('mobileColumns')
+
+    // The bento lays its own tiles out, so neither pair applies.
+    const bento = sectionFields('product-list', { layout: 'bento' })
+    expect(bento).not.toContain('columns')
+    expect(bento).not.toContain('perPage')
+
     // The related-products row works the same way.
-    expect(sectionFields('related-products', { layout: 'bento' })).not.toContain('columns')
-    expect(sectionFields('related-products', { layout: 'slider' })).toContain('columns')
+    expect(sectionFields('related-products', { layout: 'grid' })).toContain('columns')
+    expect(sectionFields('related-products', { layout: 'slider' })).toContain('perPage')
+    expect(sectionFields('related-products', { layout: 'bento' })).not.toContain('perPage')
   })
 
   test('the catalogue link belongs to the newest list alone', () => {

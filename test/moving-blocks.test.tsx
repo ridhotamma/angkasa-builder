@@ -152,6 +152,40 @@ describe('slider and marquee blocks', () => {
     expect(html).toContain('aria-label="Slide 2"')
   })
 
+  test('the slider block has no loop to choose, and ends on its last slide', () => {
+    const schema = blockSchema('slider')!
+    expect(schema.fields.some((field) => field.key === 'loop')).toBe(false)
+    // A layout saved with the old toggle loses it on the next save, and the
+    // track opens on its first slide with no doubles of the last.
+    const values = createSection('blocks', {
+      blocks: [{ ...SLIDER, settings: { ...SLIDER.settings, loop: true } }],
+    }).settings
+    expect(readBlocks(values, 'blocks')[0]!.settings).not.toHaveProperty('loop')
+    const html = render(
+      <SectionsRenderer sections={[createSection('blocks', { blocks: [SLIDER] })]} env={env()} />,
+    )
+    expect(html).not.toContain('inert=""')
+  })
+
+  test('a fractional per-view peeks the next slide, on phones too', () => {
+    const section = createSection('blocks', {
+      blocks: [
+        {
+          ...SLIDER,
+          settings: { ...SLIDER.settings, perPage: '2.5', perPageMobile: '1.5' },
+        },
+      ],
+    })
+    const values = section.settings
+    expect(readBlocks(values, 'blocks')[0]!.settings).toMatchObject({
+      perPage: '2.5',
+      perPageMobile: '1.5',
+    })
+    // The server draw is the phone's: one and a half slides, a half one in.
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('flex:0 0 calc((100% - 12px * 0.5) / 1.5)')
+  })
+
   test('marquee repeats are hidden from assistive tech and inert', () => {
     const section = createSection('blocks', { blocks: [MARQUEE] })
     const html = render(<SectionsRenderer sections={[section]} env={env()} />)

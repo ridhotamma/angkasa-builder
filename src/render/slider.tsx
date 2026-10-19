@@ -105,7 +105,10 @@ const ARROW_EDGE_INSET = '-5'
 
 /** One slide's width, with the gaps between the slides taken off. */
 export function sliderBasis(perPage: number, gap = DEFAULT_GAP): string {
-  return `(100% - ${gap} * ${perPage - 1}) / ${perPage}`
+  // Whole or fractional, the gaps counted are one short of the view — and
+  // rounded to two places, so 1.2 does not print as 0.19999999999999996.
+  const gaps = Math.round((perPage - 1) * 100) / 100
+  return `(100% - ${gap} * ${gaps}) / ${perPage}`
 }
 
 /** One step along the track: a slide plus the gap that follows it. */
@@ -140,7 +143,11 @@ export interface SliderProps {
   children: ReactNode
   /** How many of them there are; the slider needs the count, not the nodes. */
   count: number
-  /** How many stand in the view at once (already resolved for the breakpoint). */
+  /**
+   * How many stand in the view at once, already resolved for the breakpoint.
+   * A fraction leaves the next slide peeking — 2.5 is half of the third — and
+   * the track still settles on whole slides, the last one right-aligned.
+   */
   perPage: number
   loop?: boolean
   autoplay?: boolean
@@ -218,12 +225,20 @@ export function Slider({
   const gap = DEFAULT_GAP
   const perPageClamped = Math.max(1, Math.min(perPage, Math.max(1, count)))
   const last = Math.max(0, count - perPageClamped)
+  // A fractional view still settles on whole slides: the last position is the
+  // last slide, its edge flush with the band's. A row of 2.5-a-view steps
+  // 1, 2, … and ends right-aligned rather than half-cut.
+  const end = Math.ceil(last)
   const paged = last > 0
-  /** Whether the wrap doubles the track — never on the editor's own canvas. */
-  const wraps = loop && paged && !editing
+  /**
+   * Whether the wrap doubles the track — never on the editor's own canvas,
+   * and only for a whole-page view: a wrap repeats whole pages, while a
+   * fractional one simply ends on its last slide.
+   */
+  const wraps = loop && paged && !editing && Number.isInteger(perPageClamped)
   /** How many slides the doubles repeat at each end: one page's worth. */
   const doubles = wraps ? perPageClamped : 0
-  const [index, setIndex] = useState(Math.max(0, Math.min(start, last)))
+  const [index, setIndex] = useState(Math.max(0, Math.min(start, end)))
   const [paused, setPaused] = useState(false)
   const [playing, setPlaying] = useState(autoplay)
   const [dragPx, setDragPx] = useState(0)
@@ -232,24 +247,30 @@ export function Slider({
   const [snapping, setSnapping] = useState(false)
   /** Steps asked for while a wrap was still gliding; taken once it lands. */
   const wanted = useRef(0)
-  /** The resting slide — or, mid-wrap, the one the wrap is landing on. */
-  const at = index < 0 ? last : index > last ? 0 : index
+  /** A wrap is gliding onto a double, or taking its jump back. */
+  const wrapping = index < 0 || index >= count
+  const busy = wrapping || snapping
+  /**
+   * The resting slide — or, mid-wrap, the one the wrap is landing on. A
+   * fractional view's last position may sit between slides, so the shift
+   * below clamps to `last` there and the row ends flush.
+   */
+  const at = wrapping ? (index < 0 ? end : 0) : Math.min(index, end)
   const basis = sliderBasis(perPageClamped, gap)
   // The doubles ride ahead of the slides, so the first real slide sits one
-  // page into the track.
-  const shift = sliderTransform(index + doubles, perPageClamped, dragPx, gap, vertical)
+  // page into the track — and the last position pulls the track's end up
+  // against the band's whenever the view is fractional.
+  const rest = wrapping ? index : Math.min(index, last)
+  const shift = sliderTransform(rest + doubles, perPageClamped, dragPx, gap, vertical)
   /** The finger being followed, and where it started. */
   const dragFrom = useRef<{ pointerId: number; x: number } | null>(null)
   /** The editor's selection holds the track still while it is set. */
   const hold = active !== undefined && active >= 0
-  /** A wrap is gliding onto a double, or taking its jump back. */
-  const wrapping = index < 0 || index > last
-  const busy = wrapping || snapping
 
   /** Where one step past a resting position lands: on a double, or the end. */
   const goTo = (to: number) => {
-    if (to < 0) setIndex(wraps ? -doubles : loop ? last : 0)
-    else setIndex(to > last ? (wraps ? count : loop ? 0 : last) : to)
+    if (to < 0) setIndex(wraps ? -doubles : loop ? end : 0)
+    else setIndex(to > end ? (wraps ? count : loop ? 0 : end) : to)
   }
 
   const step = (delta: number) => {
@@ -287,18 +308,18 @@ export function Slider({
   // The editor's selection: hold the slide it names in view while it is set.
   useEffect(() => {
     if (active === undefined || active < 0) return
-    setIndex(Math.min(active, last))
-  }, [active, last])
+    setIndex(Math.min(active, end))
+  }, [active, end])
 
   // A resize can move the last resting position under the state, and a wrap
   // may be mid-glide when it does: land on the nearest slide, off the doubles.
   useEffect(() => {
     setIndex((current) => {
-      if (current < 0) return last
+      if (current < 0) return end
       if (current >= count) return 0
-      return Math.min(current, last)
+      return Math.min(current, end)
     })
-  }, [count, last])
+  }, [count, end])
 
   // Whoever needs to know where the track rests — a viewer's backdrop, say.
   useEffect(() => {
@@ -347,15 +368,15 @@ export function Slider({
     if (!playing || !paged || paused || dragging || hold) return
     const timer = globalThis.setInterval(() => {
       setIndex((current) => {
-        const resting = current < 0 ? last : current > last ? 0 : current
+        const resting = current < 0 ? end : current >= count ? 0 : Math.min(current, end)
         // A wrap still gliding lands on the next slide by itself.
         if (resting !== current) return current
-        if (resting < last) return resting + 1
+        if (resting < end) return resting + 1
         return wraps ? count : loop ? 0 : resting
       })
     }, autoplayMs)
     return () => globalThis.clearInterval(timer)
-  }, [playing, paged, paused, dragging, hold, last, loop, wraps, count, autoplayMs])
+  }, [playing, paged, paused, dragging, hold, end, loop, wraps, count, autoplayMs])
 
   const toggle = autoplayToggle && paged
   const slides = Children.toArray(children)
@@ -484,7 +505,7 @@ export function Slider({
             transform="none"
             {...arrowProps}
             aria-label={text('nextSlide')}
-            disabled={hold || (!loop && at >= last)}
+            disabled={hold || (!loop && at >= end)}
             onClick={() => step(1)}
           >
             <LuChevronRight />
@@ -513,7 +534,7 @@ export function Slider({
               : { right: arrowInset })}
             {...arrowProps}
             aria-label={text('nextSlide')}
-            disabled={hold || (!loop && at >= last)}
+            disabled={hold || (!loop && at >= end)}
             onClick={() => step(1)}
           >
             {vertical ? <LuChevronDown /> : <LuChevronRight />}
@@ -522,7 +543,7 @@ export function Slider({
       )}
 
       {paged && dots === 'inside' && (
-        <SliderDots count={last + 1} at={at} onSelect={select} overBand />
+        <SliderDots count={end + 1} at={at} onSelect={select} overBand />
       )}
     </Box>
   )
@@ -545,10 +566,10 @@ export function Slider({
       )}
       {indicator === 'count' && (
         <Text fontSize="sm" color="fg.muted" fontVariantNumeric="tabular-nums">
-          {at + 1} / {last + 1}
+          {at + 1} / {end + 1}
         </Text>
       )}
-      {dots === 'below' && <SliderDots count={last + 1} at={at} onSelect={select} />}
+      {dots === 'below' && <SliderDots count={end + 1} at={at} onSelect={select} />}
     </Flex>
   )
 

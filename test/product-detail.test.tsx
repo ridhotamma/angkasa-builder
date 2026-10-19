@@ -15,7 +15,7 @@ import { renderToString } from 'react-dom/server'
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
-import { createSection, DEFAULT_THEME_SETTINGS } from '../src/index'
+import { createSection, DEFAULT_THEME_SETTINGS, sectionSchema } from '../src/index'
 import {
   RenderProvider,
   sampleStorefrontData,
@@ -36,13 +36,13 @@ function env(): RenderEnvironment {
   }
 }
 
-function page(gallery = 'mosaic'): string {
+function page(gallery = 'mosaic', settings: Record<string, unknown> = {}): string {
   return renderToString(
     <ChakraProvider value={system}>
       <I18nProvider locale="en" resources={{}}>
         <RenderProvider value={env()}>
           <SectionsRenderer
-            sections={[createSection('product-info', { gallery, stickyInfo: true })]}
+            sections={[createSection('product-info', { gallery, stickyInfo: true, ...settings })]}
             env={env()}
           />
         </RenderProvider>
@@ -95,13 +95,48 @@ describe('the product detail page', () => {
     expect(html).toMatch(new RegExp(`\\.${cls}\\{[^}]*flex-direction:row`))
   })
 
+  test('a phone gets the photo slider for every listing layout', () => {
+    for (const layout of ['grid', 'stacked', 'mosaic']) {
+      const html = page(layout)
+      // One photo per page, swiped, dots and all — the shape a phone expects
+      // in place of a grid, a stack or the mosaic's tiles.
+      expect(html, layout).toContain('data-slider-band')
+      expect(html, layout).toContain('aria-label="Slide 2"')
+      // Both views are drawn, each behind its own media query: the slider on a
+      // phone, the layout's own shape from `md` up.
+      expect(html, layout).toMatch(
+        /@media screen and \(min-width: 48rem\)\{\.css-[a-z0-9]+\{display:none;\}\}/,
+      )
+      expect(html, layout).toMatch(
+        /@media screen and \(max-width: 47\.9975rem\)\{\.css-[a-z0-9]+\{display:none;\}\}/,
+      )
+    }
+  })
+
+  test('the cover-and-thumbnails layout keeps its own shape on a phone', () => {
+    // Its cover already fills the screen; the strip below it is the chooser.
+    expect(page('thumbnails')).not.toContain('data-slider-band')
+  })
+
+  test('the hover zoom is a theme’s choice, off unless it asks', () => {
+    // The setting is offered, and starts off…
+    const field = sectionSchema('product-info')!.fields.find(
+      (candidate) => candidate.key === 'zoom',
+    )
+    expect(field?.kind === 'boolean' && field.default).toBe(false)
+    // …so the plain gallery wears no magnifier cursor…
+    expect(page('grid')).not.toContain('cursor:zoom-in')
+    // …while a theme that turns it on gets it — the pointer test in
+    // `product-gallery.interaction` is where the photo itself grows.
+    expect(page('grid', { zoom: true })).toContain('cursor:zoom-in')
+  })
+
   test('the buy box stand-in draws the storefront’s own rows, in its order', () => {
     // The picker's stock line and size axis, the rule, then the quantity and
     // the two actions — the storefront's box, row for row, so the canvas is
     // what the seller is laying the page out over. The note is the editor's.
-    const text = page('thumbnails')
-      .replace(/<style[\s\S]*?<\/style>/g, '')
-      .replace(/<[^>]+>/g, '|')
+    const html = page('thumbnails')
+    const text = html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, '|')
     let at = -1
     for (const row of [
       '4 in stock',
@@ -120,5 +155,8 @@ describe('the product detail page', () => {
       expect(found, row).toBeGreaterThan(at)
       at = found
     }
+    // The outline action wears the very bag the storefront's own wears; the
+    // primary has no icon there, and neither has one here.
+    expect(html).toMatch(/<button[^>]*>(?:<style[\s\S]*?<\/style>)*<svg[\s\S]*?<\/svg>Add to cart/)
   })
 })

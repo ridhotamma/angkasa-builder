@@ -210,6 +210,8 @@ export function CollectionTabs({ settings }: SectionProps) {
                   textReveal={readText(settings, 'bentoText') === 'hover'}
                   columns={readText(settings, 'columns')}
                   mobileColumns={readText(settings, 'mobileColumns')}
+                  perPage={readText(settings, 'perPage')}
+                  perPageMobile={readText(settings, 'perPageMobile')}
                 />
               )}
             </Tabs.Content>

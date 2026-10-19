@@ -143,6 +143,13 @@ export interface SelectField extends BaseField {
    * two-way choice the seller flips between, like cards or custom blocks.
    */
   segment?: boolean
+  /**
+   * The key a layout saved before this choice existed kept the same value
+   * under — read once when this field's own key is absent. Splitting one
+   * choice into two (a slider's slides-per-view out of the grid's columns)
+   * leaves every stored layout where it was.
+   */
+  legacyKey?: string
 }
 
 export interface BooleanField extends BaseField {
@@ -804,13 +811,19 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
  * The raw value a field sanitises. A coordinates field with no combined value
  * of its own adopts the pair an older layout kept under two separate keys —
  * see `CoordinatesField.legacy` — so a saved pin survives the schema change.
+ * A select field does the same with `legacyKey`, so a choice split in two
+ * keeps its stored value.
  */
 function fieldInput(field: Field, source: Record<string, unknown>): unknown {
   const value = source[field.key]
-  if (value !== undefined || field.kind !== 'coordinates' || !field.legacy) return value
-  const { latitude, longitude } = field.legacy
-  if (source[latitude] === undefined && source[longitude] === undefined) return undefined
-  return { latitude: source[latitude], longitude: source[longitude] }
+  if (value !== undefined) return value
+  if (field.kind === 'coordinates' && field.legacy) {
+    const { latitude, longitude } = field.legacy
+    if (source[latitude] === undefined && source[longitude] === undefined) return undefined
+    return { latitude: source[latitude], longitude: source[longitude] }
+  }
+  if (field.kind === 'select' && field.legacyKey) return source[field.legacyKey]
+  return value
 }
 
 /** Every declared field, sanitised; every undeclared key, dropped. */

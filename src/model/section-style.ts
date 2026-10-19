@@ -239,6 +239,48 @@ export const photoPositionField: SelectField = {
   default: 'center',
 }
 
+/**
+ * How many slides stand in view at once, as the slider's own scale. Whole
+ * steps are rows of cards; the fractional ones leave the next slide peeking —
+ * 1.5 is half of the one after, 3.2 a sliver of the fourth. Phones walk the
+ * same idea on a shorter ladder: three cards across a phone is already a
+ * thumbnail.
+ */
+export const SLIDES_PER_VIEW = [
+  '1',
+  '1.2',
+  '1.5',
+  '2',
+  '2.2',
+  '2.5',
+  '3',
+  '3.2',
+  '3.5',
+  '4',
+  '4.5',
+  '5',
+  '5.5',
+  '6',
+] as const
+
+export const SLIDES_PER_VIEW_MOBILE = ['1', '1.2', '1.5', '2', '2.2', '2.5', '3'] as const
+
+/** The slides-per-view choice, shared by every slider that offers one. */
+export function slidesField(
+  key: string,
+  label: Localized,
+  values: readonly string[],
+  fallback: string,
+): SelectField {
+  return {
+    kind: 'select',
+    key,
+    label,
+    options: values.map((value) => ({ value, label: { en: value, id: value } })),
+    default: fallback,
+  }
+}
+
 export const SECTION_STYLE_FIELDS: readonly Field[] = [
   {
     kind: 'select',

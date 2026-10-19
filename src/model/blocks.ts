@@ -28,7 +28,15 @@ import {
   textSizeField,
 } from './element-style'
 import type { Localized } from './localized'
-import { PHOTO_FITS, PHOTO_POSITIONS, photoFitField, photoPositionField } from './section-style'
+import {
+  PHOTO_FITS,
+  PHOTO_POSITIONS,
+  photoFitField,
+  photoPositionField,
+  slidesField,
+  SLIDES_PER_VIEW,
+  SLIDES_PER_VIEW_MOBILE,
+} from './section-style'
 import type { SectionPreset, SectionSchema } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -780,15 +788,13 @@ const trackHeightField = (showWhen: Field['showWhen']): Field => ({
   showWhen,
 })
 
-const perPageOptions = (counts: readonly number[]) =>
-  counts.map((n) => ({ value: String(n), label: { en: String(n), id: String(n) } }))
-
 /**
  * Blocks one after another in a swipeable track: every child is one slide,
  * so a slide can be an image, a photo card or a whole column of content.
  * Horizontal or vertical, several slides to a page, with arrows, dots or a
  * counter. Autoplay has a floor of three seconds and always draws a pause
- * control, and it never runs under reduced motion.
+ * control, and it never runs under reduced motion. The track ends on its last
+ * slide — only the banner slider loops.
  */
 const slider: BlockSchema = {
   type: 'slider',
@@ -809,32 +815,24 @@ const slider: BlockSchema = {
       ],
       default: 'horizontal',
     },
-    {
-      kind: 'select',
-      key: 'perPage',
-      label: { en: 'Slides at a time on desktop', id: 'Slide sekaligus di desktop' },
-      options: perPageOptions([1, 2, 3, 4]),
-      default: '1',
-    },
-    {
-      kind: 'select',
-      key: 'perPageMobile',
-      label: { en: 'Slides at a time on phones', id: 'Slide sekaligus di ponsel' },
-      options: perPageOptions([1, 2]),
-      default: '1',
-    },
+    slidesField(
+      'perPage',
+      { en: 'Slides at a time on desktop', id: 'Slide sekaligus di desktop' },
+      SLIDES_PER_VIEW,
+      '1',
+    ),
+    slidesField(
+      'perPageMobile',
+      { en: 'Slides at a time on phones', id: 'Slide sekaligus di ponsel' },
+      SLIDES_PER_VIEW_MOBILE,
+      '1',
+    ),
     trackHeightField({ key: 'orientation', is: ['vertical'] }),
     spaceField('gap', { en: 'Gap', id: 'Jarak' }, 'md'),
     {
       kind: 'boolean',
       key: 'peek',
       label: { en: 'Show the edges of the next slides', id: 'Tampilkan tepi slide berikutnya' },
-      default: false,
-    },
-    {
-      kind: 'boolean',
-      key: 'loop',
-      label: { en: 'Loop back to the start', id: 'Kembali ke awal' },
       default: false,
     },
     {

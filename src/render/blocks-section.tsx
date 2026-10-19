@@ -1147,10 +1147,13 @@ const SLIDER_ARROWS = ['overlay', 'none'] as const
 const SLIDER_INDICATORS = ['dots', 'count', 'none'] as const
 const SLIDER_INTERVALS = ['3', '5', '8'] as const
 
-/** A stored slides-per-page count, clamped to what the field offers. */
+/**
+ * A stored slides-per-view, clamped to what the field offers. Whole or
+ * fractional — a fraction leaves the next slide peeking.
+ */
 function perPageOf(block: BlockValue, key: string, max: number): number {
   const value = Number(readText(block.settings, key))
-  return Number.isInteger(value) ? Math.min(max, Math.max(1, value)) : 1
+  return Number.isFinite(value) ? Math.min(max, Math.max(1, value)) : 1
 }
 
 /**
@@ -1172,8 +1175,8 @@ function SliderBlock({ block }: { block: BlockValue }) {
   const slides = readBlocks(block.settings, 'blocks')
   const vertical =
     readToken(block.settings, 'orientation', SLIDER_ORIENTATIONS, 'horizontal') === 'vertical'
-  const desktop = perPageOf(block, 'perPage', 4)
-  const phone = perPageOf(block, 'perPageMobile', 2)
+  const desktop = perPageOf(block, 'perPage', 6)
+  const phone = perPageOf(block, 'perPageMobile', 3)
   const perPage = Math.min(useResponsive({ base: phone, md: desktop }), Math.max(1, slides.length))
   const spacing = SPACE_LENGTH[readToken(block.settings, 'gap', SPACES, 'md')]
   const height = vertical
@@ -1198,7 +1201,6 @@ function SliderBlock({ block }: { block: BlockValue }) {
     <Slider
       count={slides.length}
       perPage={perPage}
-      loop={readBoolean(block.settings, 'loop')}
       autoplay={autoplay}
       autoplayMs={interval * 1000}
       // Anything that moves on its own needs a way to stop it (WCAG 2.2.2).

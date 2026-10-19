@@ -165,6 +165,10 @@ describe('sections', () => {
       limit: 8,
       columns: '3',
       mobileColumns: '2',
+      // The slider's own per-view inherits the grid's columns, so a layout
+      // saved before the split keeps its slides.
+      perPage: '3',
+      perPageMobile: '2',
       showAll: true,
       tabs: [],
     })
@@ -537,7 +541,8 @@ describe('colour', () => {
     expect(narrow['--chakra-sizes-3xl']).toBe('40.8rem')
 
     const wide = themeCssVars({ ...DEFAULT_THEME_SETTINGS, pageWidth: 'wide' })
-    expect(wide['--chakra-sizes-6xl']).toBe('86.4rem')
+    expect(wide['--chakra-sizes-6xl']).toBe('79.2rem')
+    expect(wide['--chakra-sizes-3xl']).toBe('52.8rem')
 
     // An unknown value from another release reads as the default.
     const unknown = sanitizeThemeSettings({ pageWidth: 'gigantic' })

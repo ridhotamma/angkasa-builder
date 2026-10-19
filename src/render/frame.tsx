@@ -147,8 +147,8 @@ export function SectionFrame({
     ...(style.visibility === 'desktop' && { hideBelow: 'md' }),
   } as const
 
-  // Stagger is built but switched off for now; the frame is where it is
-  // ignored, so the entrance and the cascade can never disagree.
+  // Staggered, the entrance and the cascade must agree: a section that opted
+  // out of motion still gets a subtle entrance for its blocks to step through.
   // See `SECTION_STAGGER_ENABLED`.
   const stagger = SECTION_STAGGER_ENABLED && style.stagger
   const entrance = resolveEntrance(settings.animation, { ...style, stagger })

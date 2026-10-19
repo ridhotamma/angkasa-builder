@@ -18,7 +18,13 @@ import type { IconName } from './icons'
 import type { Localized } from './localized'
 import { CONSOLIDATED_SECTION_SCHEMAS, consolidatedAlias } from './consolidated-sections'
 import { FEATURE_SECTION_SCHEMAS } from './feature-sections'
-import { photoFitField, photoPositionField } from './section-style'
+import {
+  photoFitField,
+  photoPositionField,
+  slidesField,
+  SLIDES_PER_VIEW,
+  SLIDES_PER_VIEW_MOBILE,
+} from './section-style'
 
 // The icon catalogue lives in `./icons` so the primitive blocks can use it
 // without importing this module (which imports them). Re-exported here for
@@ -2618,7 +2624,9 @@ export const SECTION_SCHEMAS = [
         kind: 'boolean',
         key: 'zoom',
         label: { en: 'Zoom photos on hover', id: 'Perbesar foto saat disorot' },
-        default: true,
+        // Off unless a theme asks for it: a photo that grows under the pointer
+        // is a deliberate look, not the look the gallery starts with.
+        default: false,
       },
       {
         kind: 'boolean',
@@ -2674,12 +2682,32 @@ export const SECTION_SCHEMAS = [
       productLayout(),
       bentoText(),
       limit(4, 12),
-      // The bento lays its own tiles out, so the column counts only move the
-      // grid and the slider.
+      // The grid's whole columns and the slider's own per-view; an older row
+      // carries the grid's pair alone, and each slider setting inherits it.
       ...columns(4, 2, 2).map((field) => ({
         ...field,
-        showWhen: { key: 'layout', is: ['grid', 'slider'] },
+        showWhen: { key: 'layout', is: ['grid'] },
       })),
+      {
+        ...slidesField(
+          'perPage',
+          { en: 'Slides on desktop', id: 'Slide di desktop' },
+          SLIDES_PER_VIEW,
+          '4',
+        ),
+        showWhen: { key: 'layout', is: ['slider'] },
+        legacyKey: 'columns',
+      },
+      {
+        ...slidesField(
+          'perPageMobile',
+          { en: 'Slides on phones', id: 'Slide di ponsel' },
+          SLIDES_PER_VIEW_MOBILE,
+          '2',
+        ),
+        showWhen: { key: 'layout', is: ['slider'] },
+        legacyKey: 'mobileColumns',
+      },
     ],
   },
 

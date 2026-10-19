@@ -1245,30 +1245,43 @@ export function ProductGrid({
 }
 
 /**
+ * A stored slides-per-view, clamped to the slider's own scale. Whole steps
+ * are rows of cards; a fraction leaves the next card peeking.
+ */
+function slidesPerView(value: string | undefined, fallback: number, max: number): number {
+  const count = Number(value)
+  return Number.isFinite(count) && count > 0 ? Math.min(max, count) : fallback
+}
+
+/**
  * The shop's products in one row the shopper swipes, drags or pages with the
- * shared slider's arrows and a finger — no dots; the banner is the one slider
- * that wears them. A short list is simply a still row.
+ * shared slider's arrows and a finger — no dots and no loop: the row ends on
+ * its last card, and the banner is the one slider that wears dots. A short
+ * list is simply a still row.
  */
 function ProductSlider({
   products,
-  columns,
-  mobileColumns,
+  perPage,
+  perPageMobile,
 }: {
   products: StorefrontProductCard[]
-  columns: string
-  mobileColumns?: string
+  /** The seller's slides-per-view, whole or half steps, on each screen. */
+  perPage?: string
+  perPageMobile?: string
 }) {
-  // The chosen phone count, three cards on a tablet and the chosen desktop
-  // count, never more than the list itself.
-  const desktop = Math.min(6, Math.max(2, Number(columns) || 4))
-  const base = mobileColumns === '1' ? 1 : 2
-  const perPage = Math.min(useResponsive({ base, md: 3, lg: desktop }), products.length)
+  // The chosen phone count, three cards on a tablet — never more than the
+  // desktop view — and the chosen desktop count, never more than the list.
+  const desktop = slidesPerView(perPage, 4, 6)
+  const base = slidesPerView(perPageMobile, 2, 3)
+  const perView = Math.min(
+    useResponsive({ base, md: Math.min(3, desktop), lg: desktop }),
+    products.length,
+  )
 
   return (
     <Slider
       count={products.length}
-      perPage={perPage}
-      loop
+      perPage={perView}
       rootProps={{ 'data-product-layout': 'slider' }}
       slideProps={{ display: 'flex', alignItems: 'stretch' }}
     >
@@ -1502,18 +1515,33 @@ export function ProductList({
   layout = 'grid',
   columns = '4',
   mobileColumns,
+  perPage,
+  perPageMobile,
   textReveal = false,
 }: {
   products: StorefrontProductCard[]
   layout?: string
   columns?: string
-  /** One or two columns/slides on a phone. */
+  /** One or two columns on a phone; anything else keeps the phone default. */
   mobileColumns?: string
+  /**
+   * The slider's own per-view, whole or fractional, each screen. A layout
+   * saved before the pair existed carries only the grid's `columns`, which
+   * still reads as a whole number of slides.
+   */
+  perPage?: string
+  perPageMobile?: string
   /** The bento's text shows on hover only (the section's `bentoText`). */
   textReveal?: boolean
 }) {
   if (layout === 'slider')
-    return <ProductSlider products={products} columns={columns} mobileColumns={mobileColumns} />
+    return (
+      <ProductSlider
+        products={products}
+        perPage={perPage || columns}
+        perPageMobile={perPageMobile || mobileColumns}
+      />
+    )
   if (layout === 'bento') return <ProductBento products={products} reveal={textReveal} />
   return <ProductGrid products={products} columns={columns} mobileColumns={mobileColumns} />
 }
