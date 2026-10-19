@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { ChakraProvider } from '@chakra-ui/react'
+import { Box, ChakraProvider } from '@chakra-ui/react'
 import { renderToString } from 'react-dom/server'
 import type { ReactNode } from 'react'
 
@@ -18,7 +18,7 @@ import {
 } from '../src/index'
 import { surfacePaint } from '../src/render/dividers'
 import { spinStep } from '../src/render/feature-sections'
-import { BannerSliderTrack, sliderTransform } from '../src/render/sections'
+import { Slider, sliderTransform } from '../src/render/slider'
 import { sectionBackground } from '../src/render/section-background'
 import {
   embedUrl,
@@ -431,15 +431,13 @@ describe('section chrome', () => {
   })
 
   test('the slider track shifts instead of scrolling', () => {
-    const slides = [
-      { id: 'a', image: 's1' },
-      { id: 'b', image: 's2' },
-      { id: 'c', image: 's3' },
-    ]
+    const slides = ['a', 'b', 'c'].map((id) => <Box key={id} bg="bg.subtle" h="full" />)
     const track = (perPage: number) =>
       render(
         <RenderProvider value={env()}>
-          <BannerSliderTrack slides={slides} perPage={perPage} ratio={2} loop autoplay={false} />
+          <Slider count={3} perPage={perPage} ratio={2} loop dots="inside">
+            {slides}
+          </Slider>
         </RenderProvider>,
       )
     // Nothing inside the band is a scroll container: it cannot be wheeled,
@@ -451,45 +449,41 @@ describe('section chrome', () => {
     // stay with the page.
     expect(one).toContain('touch-action:pan-y')
     // One slide per view: a step is the slide's own width plus the gap.
-    expect(one).toContain('flex:0 0 calc((100% - 0px) / 1)')
+    expect(one).toContain('flex:0 0 calc((100% - 12px * 0) / 1)')
     // A dot per resting position — the last page still shows a full view.
     expect((one.match(/aria-label="Slide [0-9]"/g) ?? []).length).toBe(3)
     expect(one).toContain('aria-label="Previous slide"')
     expect(one).toContain('aria-label="Next slide"')
     // Two per view: two positions, and each slide is half the band.
     const two = track(2)
-    expect(two).toContain('flex:0 0 calc((100% - 12px) / 2)')
+    expect(two).toContain('flex:0 0 calc((100% - 12px * 1) / 2)')
     expect((two.match(/aria-label="Slide [0-9]"/g) ?? []).length).toBe(2)
     // A step carries the gap with it — a slide plus one gap — and a finger's
     // drag rides on top of the position until it settles.
     expect(sliderTransform(0, 1)).toBe('translateX(0)')
-    expect(sliderTransform(1, 1)).toBe('translateX(calc(-1 * calc((100% - 0px) / 1 + 12px) + 0px))')
+    expect(sliderTransform(1, 1)).toBe(
+      'translateX(calc(-1 * calc((100% - 12px * 0) / 1 + 12px) + 0px))',
+    )
     expect(sliderTransform(1, 2)).toBe(
-      'translateX(calc(-1 * calc((100% - 12px) / 2 + 12px) + 0px))',
+      'translateX(calc(-1 * calc((100% - 12px * 1) / 2 + 12px) + 0px))',
     )
     expect(sliderTransform(2, 2)).toBe(
-      'translateX(calc(-2 * calc((100% - 12px) / 2 + 12px) + 0px))',
+      'translateX(calc(-2 * calc((100% - 12px * 1) / 2 + 12px) + 0px))',
     )
     // Mid-drag: the position plus the finger's own offset.
     expect(sliderTransform(1, 1, -60)).toBe(
-      'translateX(calc(-1 * calc((100% - 0px) / 1 + 12px) + -60px))',
+      'translateX(calc(-1 * calc((100% - 12px * 0) / 1 + 12px) + -60px))',
     )
   })
 
   test('the dots ride in the band, with the active one a pill', () => {
     const html = render(
       <RenderProvider value={env()}>
-        <BannerSliderTrack
-          slides={[
-            { id: 'a', image: 's1' },
-            { id: 'b', image: 's2' },
-            { id: 'c', image: 's3' },
-          ]}
-          perPage={1}
-          ratio={2}
-          loop
-          autoplay={false}
-        />
+        <Slider count={3} perPage={1} ratio={2} loop dots="inside">
+          <Box bg="bg.subtle" h="full" />
+          <Box bg="bg.subtle" h="full" />
+          <Box bg="bg.subtle" h="full" />
+        </Slider>
       </RenderProvider>,
     )
     // Inside the band, centred on its bottom edge — not a row below it.

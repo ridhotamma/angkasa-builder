@@ -11,7 +11,7 @@
 import './happy-dom-setup'
 
 import { afterEach, describe, expect, test } from 'bun:test'
-import { ChakraProvider } from '@chakra-ui/react'
+import { Box, ChakraProvider } from '@chakra-ui/react'
 import { cleanup, fireEvent, render, type RenderResult } from '@testing-library/react'
 
 import { I18nProvider } from '@repo/i18n'
@@ -19,7 +19,7 @@ import { system } from '@repo/theme'
 
 import { DEFAULT_THEME_SETTINGS } from '../src/index'
 import { RenderProvider, sampleStorefrontData, type RenderEnvironment } from '../src/render/index'
-import { BannerSliderTrack, sliderTransform } from '../src/render/sections'
+import { Slider, sliderTransform } from '../src/render/slider'
 
 afterEach(() => cleanup())
 
@@ -39,17 +39,11 @@ function track(): RenderResult {
     <ChakraProvider value={system}>
       <I18nProvider locale="en" resources={{}}>
         <RenderProvider value={env()}>
-          <BannerSliderTrack
-            slides={[
-              { id: 'a', image: 's1' },
-              { id: 'b', image: 's2' },
-              { id: 'c', image: 's3' },
-            ]}
-            perPage={1}
-            ratio={2}
-            loop={false}
-            autoplay={false}
-          />
+          <Slider count={3} perPage={1} ratio={2} dots="inside">
+            <Box bg="bg.subtle" h="full" />
+            <Box bg="bg.subtle" h="full" />
+            <Box bg="bg.subtle" h="full" />
+          </Slider>
         </RenderProvider>
       </I18nProvider>
     </ChakraProvider>,

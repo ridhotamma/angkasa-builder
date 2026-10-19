@@ -119,6 +119,8 @@ const TEXT = {
   previousSlide: { en: 'Previous slide', id: 'Slide sebelumnya' },
   nextSlide: { en: 'Next slide', id: 'Slide berikutnya' },
   slideNumber: { en: 'Slide {n}', id: 'Slide {n}' },
+  playSlides: { en: 'Play slides', id: 'Putar slide' },
+  pauseSlides: { en: 'Pause slides', id: 'Jeda slide' },
 } satisfies Record<string, Localized>
 
 export type RenderText = keyof typeof TEXT

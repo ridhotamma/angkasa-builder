@@ -13,7 +13,6 @@ import {
   Avatar,
   Box,
   Card,
-  Carousel,
   Container,
   Flex,
   Grid,
@@ -21,7 +20,6 @@ import {
   Heading,
   HStack,
   Icon,
-  IconButton,
   Marquee,
   SimpleGrid,
   Skeleton,
@@ -30,7 +28,7 @@ import {
   type BoxProps,
 } from '@chakra-ui/react'
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
-import { LuChevronLeft, LuChevronRight, LuMinus, LuPlus } from 'react-icons/lu'
+import { LuMinus, LuPlus } from 'react-icons/lu'
 
 import { Image, ImageWithFallback } from '@repo/theme'
 import { useLocale } from '@repo/i18n'
@@ -56,6 +54,7 @@ import { useRenderText } from './copy'
 import { useSectionLayout } from './frame'
 import { useResponsive } from './hooks'
 import { SplitText, useMarqueePause } from './motion'
+import { Slider } from './slider'
 import { isPatternKey, patternStyle } from './patterns'
 import { RichTextView } from './rich-text'
 import {
@@ -68,7 +67,6 @@ import {
   EmptyNotice,
   FullBleed,
   gridColumns,
-  OVERLAY_ARROW,
   PageColumn,
   Paragraphs,
   ProductList,
@@ -303,24 +301,14 @@ function Hero({ settings }: SectionProps) {
 
 /**
  * Image banners in a row, each optionally a link — a whole page of `perPage`
- * at a time, arrows and dots underneath, a swipe with a finger. A single
- * slide is simply a still banner: there is nothing to slide to. Until the
- * images have settled a skeleton of the same shape stands in, so the swap
+ * at a time, with the shared slider's arrows, finger drag and pill dots. A
+ * single slide is simply a still banner: there is nothing to slide to. Until
+ * the images have settled a skeleton of the same shape stands in, so the swap
  * moves nothing below it.
- *
- * The track is one flex row shifted by `translateX` — deliberately **not** a
- * scroll container. A finger drags the row and it settles on release, but
- * nothing inside the band can be wheeled or scrolled, no scrollbar can
- * appear, and the resting position is this component's own state rather than
- * wherever a scroll happened to land. The mouse moves the slider only by its
- * arrows: a mouse drag belongs to the page, and in the editor to dragging
- * blocks.
  *
  * The band is the **Banner shape** the seller picked, and its height never
  * follows the number of visible slides — switching 1 → 2 → 3 changes the
- * crop, not the page. `AspectRatio` draws that height as padding and pins its
- * child to the box, which is the one form of ratio a photo cannot stretch;
- * the photos fill the band and crop.
+ * crop, not the page. See `slider.tsx` for the track itself.
  */
 function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
@@ -349,7 +337,7 @@ function BannerSlider({ settings }: SectionProps) {
     const columns = Math.min(Math.ceil(desktop), slides.length)
     return (
       <AspectRatio as="section" ratio={ratio} aria-busy>
-        <Flex gap={`${SLIDE_GAP_PX}px`}>
+        <Flex gap="12px">
           {Array.from({ length: columns }, (_, index) => (
             <Skeleton
               key={index}
@@ -365,230 +353,20 @@ function BannerSlider({ settings }: SectionProps) {
   }
 
   return (
-    <BannerSliderTrack
-      slides={slides}
-      perPage={perPage}
+    <Slider
+      as="section"
       ratio={ratio}
+      count={slides.length}
+      perPage={perPage}
       loop={readBoolean(settings, 'loop')}
       autoplay={readBoolean(settings, 'autoplay')}
-    />
-  )
-}
-
-/** The room between slides, in pixels. */
-const SLIDE_GAP_PX = 12
-
-/** How long the track takes to glide one step. */
-const SLIDE_SHIFT = 'transform 420ms cubic-bezier(0.32, 0.72, 0, 1)'
-
-/** How far a finger must travel before the swipe counts as a page. */
-const SLIDE_SWIPE_PX = 40
-
-/** One slide's width, with the gaps between the slides taken off. */
-export function sliderBasis(perPage: number): string {
-  return `(100% - ${(perPage - 1) * SLIDE_GAP_PX}px) / ${perPage}`
-}
-
-/** One step along the track: a slide plus the gap that follows it. */
-export function sliderStep(perPage: number): string {
-  return `calc(${sliderBasis(perPage)} + ${SLIDE_GAP_PX}px)`
-}
-
-/**
- * The track's transform at a position, with a finger's drag added on.
- *
- * At rest it is exactly the position's own, so the CSS in the page and the
- * first paint agree; a drag only ever adds a pixel offset, which settles back
- * to a position on release.
- */
-export function sliderTransform(at: number, perPage: number, dragPx = 0): string {
-  if (at === 0 && dragPx === 0) return 'translateX(0)'
-  return `translateX(calc(${-at} * ${sliderStep(perPage)} + ${dragPx}px))`
-}
-
-/**
- * The moving part of the slider: a flex row of slides shifted by `translateX`.
- *
- * `index` is the leftmost visible slide and `last` the last position that
- * still shows a full page, so the slider never rests on part of a slide. A
- * finger drags the row along — the track follows it, and on release it
- * settles on the next or previous page, or slides back. The mouse is left
- * out on purpose: a mouse drag inside the page (or the editor's own block
- * dragging) must never shift the slider.
- */
-export function BannerSliderTrack({
-  slides,
-  perPage,
-  ratio,
-  loop,
-  autoplay,
-}: {
-  slides: FieldValues[]
-  perPage: number
-  ratio: number
-  loop: boolean
-  autoplay: boolean
-}) {
-  const text = useRenderText()
-  const [index, setIndex] = useState(0)
-  const [paused, setPaused] = useState(false)
-  const [dragPx, setDragPx] = useState(0)
-  const [dragging, setDragging] = useState(false)
-  const last = Math.max(0, slides.length - perPage)
-  const at = Math.min(index, last)
-  const paged = slides.length > perPage
-  const basis = sliderBasis(perPage)
-  const shift = sliderTransform(at, perPage, dragPx)
-  /** The finger being followed, and where it started. */
-  const dragFrom = useRef<{ pointerId: number; x: number } | null>(null)
-
-  const step = (delta: number) => {
-    const to = at + delta
-    if (to < 0) {
-      setIndex(loop ? last : 0)
-      return
-    }
-    setIndex(to > last ? (loop ? 0 : last) : to)
-  }
-
-  const endDrag = () => {
-    dragFrom.current = null
-    setDragging(false)
-    setDragPx(0)
-  }
-
-  // Autoplay advances on its own; the pointer resting on the band holds it,
-  // and without a loop the last slide simply stays put.
-  useEffect(() => {
-    if (!autoplay || !paged || paused || dragging) return
-    const timer = globalThis.setInterval(() => {
-      setIndex((current) => {
-        const from = Math.min(current, last)
-        if (from < last) return from + 1
-        return loop ? 0 : from
-      })
-    }, 5000)
-    return () => globalThis.clearInterval(timer)
-  }, [autoplay, paged, paused, dragging, last, loop])
-
-  return (
-    <AspectRatio as="section" ratio={ratio}>
-      <Box
-        data-slider-band=""
-        // A finger slides the row, so the browser must leave horizontal
-        // touch moves to us and keep vertical ones for the page.
-        touchAction="pan-y"
-        onPointerDown={(event) => {
-          if (event.pointerType === 'mouse' || !paged) return
-          dragFrom.current = { pointerId: event.pointerId, x: event.clientX }
-          setDragging(true)
-        }}
-        onPointerMove={(event) => {
-          const from = dragFrom.current
-          if (!from || from.pointerId !== event.pointerId) return
-          setDragPx(event.clientX - from.x)
-        }}
-        onPointerUp={(event) => {
-          const from = dragFrom.current
-          if (!from || from.pointerId !== event.pointerId) return
-          const moved = event.clientX - from.x
-          endDrag()
-          if (moved <= -SLIDE_SWIPE_PX) step(1)
-          else if (moved >= SLIDE_SWIPE_PX) step(-1)
-        }}
-        onPointerCancel={endDrag}
-        onPointerEnter={(event) => {
-          if (event.pointerType === 'mouse') setPaused(true)
-        }}
-        onPointerLeave={(event) => {
-          if (event.pointerType === 'mouse') setPaused(false)
-        }}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={() => setPaused(false)}
-      >
-        {/* The row itself: as wide as the band, its slides running past the
-            edge, clipped — never scrolled. While a finger drags it the
-            transition is off, so it tracks the finger exactly. */}
-        <Flex
-          data-slider-track=""
-          h="full"
-          w="full"
-          flexShrink="0"
-          gap={`${SLIDE_GAP_PX}px`}
-          transition={dragging ? 'none' : SLIDE_SHIFT}
-          style={{ transform: shift }}
-        >
-          {slides.map((slide, position) => (
-            <Box key={String(slide.id)} flex={`0 0 calc(${basis})`} h="full" minW="0">
-              <BannerSlide slide={slide} eager={position === 0} />
-            </Box>
-          ))}
-        </Flex>
-
-        {paged && (
-          <>
-            <IconButton
-              {...OVERLAY_ARROW}
-              left="3"
-              aria-label={text('previousSlide')}
-              disabled={!loop && at === 0}
-              onClick={() => step(-1)}
-            >
-              <LuChevronLeft />
-            </IconButton>
-            <IconButton
-              {...OVERLAY_ARROW}
-              right="3"
-              aria-label={text('nextSlide')}
-              disabled={!loop && at >= last}
-              onClick={() => step(1)}
-            >
-              <LuChevronRight />
-            </IconButton>
-          </>
-        )}
-        {paged && <SliderDots count={last + 1} at={at} onSelect={setIndex} />}
-      </Box>
-    </AspectRatio>
-  )
-}
-
-/**
- * The page dots, laid over the band's bottom edge — one per position the
- * track can rest at. The active one stretches into a pill, so the current
- * page reads at a glance however busy the photo behind it is.
- */
-function SliderDots({
-  count,
-  at,
-  onSelect,
-}: {
-  count: number
-  at: number
-  onSelect: (position: number) => void
-}) {
-  const text = useRenderText()
-  return (
-    <HStack position="absolute" insetX="0" bottom="3" zIndex="1" justifyContent="center" gap="2">
-      {Array.from({ length: count }, (_, position) => (
-        <Box
-          key={position}
-          as="button"
-          w={position === at ? '6' : '2.5'}
-          h="2.5"
-          p="0"
-          rounded="full"
-          cursor="pointer"
-          transition="width 220ms cubic-bezier(0.32, 0.72, 0, 1), background-color 200ms"
-          bg={position === at ? 'white' : 'white/55'}
-          shadow="sm"
-          _hover={{ bg: position === at ? 'white' : 'white/80' }}
-          aria-label={text('slideNumber', { n: position + 1 })}
-          aria-current={position === at ? 'true' : undefined}
-          onClick={() => onSelect(position)}
-        />
+      dots="inside"
+      arrowInset="3"
+    >
+      {slides.map((slide, position) => (
+        <BannerSlide key={String(slide.id)} slide={slide} eager={position === 0} />
       ))}
-    </HStack>
+    </Slider>
   )
 }
 
@@ -1493,45 +1271,24 @@ function TestimonialMarquee({
 
 /**
  * One page of cards at a time — one on a phone, up to three on a desktop —
- * moved by the arrows, the dots, a swipe, or a drag with the mouse.
+ * moved by the shared slider's arrows, dots, finger drag and autoplay.
  */
 function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; autoplay: boolean }) {
   const perPage = Math.min(useResponsive({ base: 1, md: 2, lg: 3 }), items.length)
 
   return (
-    <Carousel.Root
-      slideCount={items.length}
-      slidesPerPage={perPage}
-      spacing="1rem"
+    <Slider
+      count={items.length}
+      perPage={perPage}
       loop
-      allowMouseDrag
-      autoplay={autoplay ? { delay: 5000 } : false}
-      gap="4"
+      autoplay={autoplay}
+      dots="below"
+      slideProps={{ display: 'flex' }}
     >
-      <Carousel.ItemGroup>
-        {items.map((item, index) => (
-          <Carousel.Item key={item.id} index={index} display="flex">
-            <TestimonialCard item={item} />
-          </Carousel.Item>
-        ))}
-      </Carousel.ItemGroup>
-
-      {items.length > perPage && (
-        <Carousel.Control justifyContent="center" gap="4">
-          <Carousel.PrevTrigger asChild>
-            <IconButton size="xs" variant="outline" rounded="full">
-              <LuChevronLeft />
-            </IconButton>
-          </Carousel.PrevTrigger>
-          <Carousel.Indicators />
-          <Carousel.NextTrigger asChild>
-            <IconButton size="xs" variant="outline" rounded="full">
-              <LuChevronRight />
-            </IconButton>
-          </Carousel.NextTrigger>
-        </Carousel.Control>
-      )}
-    </Carousel.Root>
+      {items.map((item) => (
+        <TestimonialCard key={item.id} item={item} />
+      ))}
+    </Slider>
   )
 }
 

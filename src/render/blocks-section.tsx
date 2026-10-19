@@ -26,21 +26,12 @@ import {
   Marquee,
   Stack,
   Text,
-  useCarouselContext,
   useMarqueeContext,
   useMarqueeStyles,
   type BoxProps,
 } from '@chakra-ui/react'
 import { useContext, useEffect, type ReactNode } from 'react'
-import {
-  LuChevronDown,
-  LuChevronLeft,
-  LuChevronRight,
-  LuChevronUp,
-  LuPause,
-  LuPlay,
-  LuStar,
-} from 'react-icons/lu'
+import { LuStar } from 'react-icons/lu'
 
 import { StoreMap } from '@repo/geoapify/store-map'
 import { useLocale } from '@repo/i18n'
@@ -101,7 +92,7 @@ import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import { blockRenderer, type BlockRenderer } from './block-registry'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
-import { useMounted, usePrefersReducedMotion, useResponsive } from './hooks'
+import { usePrefersReducedMotion, useResponsive } from './hooks'
 import { FeatureIcon } from './icons'
 import { VideoFrame } from './media'
 import { Parallax, ScrollReveal, useMarqueePause } from './motion'
@@ -114,6 +105,7 @@ import {
   type BlockTextOverrideProps,
 } from './primitives'
 import { RichTextView } from './rich-text'
+import { Slider } from './slider'
 import { useEmptyText, overlayProps, type SectionProps } from './sections'
 
 /* -------------------------------------------------------------------------- */
@@ -1161,20 +1153,6 @@ function perPageOf(block: BlockValue, key: string, max: number): number {
   return Number.isInteger(value) ? Math.min(max, Math.max(1, value)) : 1
 }
 
-/** One slide's share of the track, the same sum the carousel itself does. */
-const slideSize = (count: number, spacing: string) =>
-  `calc(100% / ${count} - ${spacing} * ${count - 1} / ${count})`
-
-const SLIDER_ARROW = {
-  position: 'absolute',
-  zIndex: '1',
-  rounded: 'full',
-  size: 'sm',
-  variant: 'subtle',
-  bg: 'bg/85',
-  shadow: 'md',
-} as const
-
 /**
  * Child blocks as slides. Until the page has hydrated it draws the first
  * page as a plain track of the same geometry — what the server, a snapshot
@@ -1190,7 +1168,6 @@ const SLIDER_ARROW = {
 function SliderBlock({ block }: { block: BlockValue }) {
   const drop = useDropTarget(block.id, 'blocks')
   const { editing } = useRenderEnvironment()
-  const mounted = useMounted()
   const reduced = usePrefersReducedMotion()
   const slides = readBlocks(block.settings, 'blocks')
   const vertical =
@@ -1217,129 +1194,46 @@ function SliderBlock({ block }: { block: BlockValue }) {
     )
   }
 
-  if (!mounted) {
-    const count = (n: number) => Math.min(n, slides.length)
-    const size = { base: slideSize(count(phone), spacing), md: slideSize(count(desktop), spacing) }
-    return (
-      <Grid
-        gridAutoFlow={vertical ? 'row' : 'column'}
-        {...(vertical ? { gridAutoRows: size, h: height } : { gridAutoColumns: size })}
-        gap={spacing}
-        overflow="hidden"
-        {...(peek && (vertical ? { py: peek } : { px: peek }))}
-        data-block-hover-group=""
-        {...drop}
-      >
-        {blockItems(slides)}
-      </Grid>
-    )
-  }
-
-  const paged = slides.length > perPage
-  const Prev = vertical ? LuChevronUp : LuChevronLeft
-  const Next = vertical ? LuChevronDown : LuChevronRight
-
   return (
-    <Carousel.Root
-      slideCount={slides.length}
-      slidesPerPage={perPage}
-      orientation={vertical ? 'vertical' : 'horizontal'}
-      spacing={spacing}
-      padding={peek}
+    <Slider
+      count={slides.length}
+      perPage={perPage}
       loop={readBoolean(block.settings, 'loop')}
-      autoplay={autoplay ? { delay: interval * 1000 } : false}
-      allowMouseDrag
-      data-block-hover-group=""
+      autoplay={autoplay}
+      autoplayMs={interval * 1000}
+      // Anything that moves on its own needs a way to stop it (WCAG 2.2.2).
+      autoplayToggle={autoplay}
+      orientation={vertical ? 'vertical' : 'horizontal'}
+      dots={indicator === 'dots' ? 'below' : 'none'}
+      indicator={indicator === 'count' ? 'count' : 'dots'}
+      arrows={arrows === 'overlay'}
+      arrowInset="2"
+      peek={peek}
+      active={selectedSlide >= 0 ? selectedSlide : undefined}
+      rootProps={{ 'data-block-hover-group': '' }}
+      // The band keeps the height the seller picked for a vertical track; a
+      // horizontal one is as tall as its tallest slide.
+      bandProps={{ flex: '1', minW: '0', ...(height ? { h: height } : {}) }}
+      trackProps={{
+        ...drop,
+        ...(Object.keys(drop).length > 0 && { 'data-block-axis': vertical ? 'y' : 'x' }),
+      }}
+      // Each slide fills its share of the track, so cards line up at one
+      // height and a vertical slide fills the window. The wrapper carries
+      // `data-block-slot`, which tells the palette's drop layer to look one
+      // level in for the blocks themselves.
+      slideProps={{
+        'data-block-slot': '',
+        display: 'flex',
+        flexDirection: 'column',
+        css: { '& > *': { flex: '1' } },
+      }}
     >
-      <Box position="relative" flex="1" minW="0">
-        <Carousel.ItemGroup
-          h={height}
-          {...drop}
-          {...(Object.keys(drop).length > 0 && { 'data-block-axis': vertical ? 'y' : 'x' })}
-        >
-          {slides.map((slide, index) => (
-            <Carousel.Item
-              key={slide.id}
-              index={index}
-              data-block-slot=""
-              // Each slide fills its share of the track, so cards line up
-              // at one height and a vertical slide fills the window.
-              display="flex"
-              flexDirection="column"
-              css={{ '& > *': { flex: '1' } }}
-            >
-              <BlockView block={slide} />
-            </Carousel.Item>
-          ))}
-        </Carousel.ItemGroup>
-        {paged && arrows === 'overlay' && (
-          <>
-            <Carousel.PrevTrigger asChild>
-              <IconButton
-                {...SLIDER_ARROW}
-                {...(vertical
-                  ? { top: '2', left: '50%', transform: 'translateX(-50%)' }
-                  : { left: '2', top: '50%', transform: 'translateY(-50%)' })}
-              >
-                <Prev />
-              </IconButton>
-            </Carousel.PrevTrigger>
-            <Carousel.NextTrigger asChild>
-              <IconButton
-                {...SLIDER_ARROW}
-                {...(vertical
-                  ? { bottom: '2', left: '50%', transform: 'translateX(-50%)' }
-                  : { right: '2', top: '50%', transform: 'translateY(-50%)' })}
-              >
-                <Next />
-              </IconButton>
-            </Carousel.NextTrigger>
-          </>
-        )}
-      </Box>
-      {paged && (autoplay || indicator !== 'none') && (
-        <Flex direction={vertical ? 'column' : 'row'} align="center" justify="center" gap="3">
-          {autoplay && (
-            // Anything that moves on its own for more than five seconds
-            // needs a way to stop it (WCAG 2.2.2).
-            <Carousel.AutoplayTrigger asChild>
-              <IconButton size="2xs" variant="ghost" rounded="full" color="fg.muted">
-                <Carousel.AutoplayIndicator paused={<LuPause />} play={<LuPlay />} />
-              </IconButton>
-            </Carousel.AutoplayTrigger>
-          )}
-          {indicator === 'dots' && <Carousel.Indicators />}
-          {indicator === 'count' && (
-            <Carousel.ProgressText
-              fontSize="sm"
-              color="fg.muted"
-              fontVariantNumeric="tabular-nums"
-            />
-          )}
-        </Flex>
-      )}
-      <SliderFollowsSelection index={selectedSlide} autoplay={autoplay} />
-    </Carousel.Root>
+      {slides.map((slide) => (
+        <BlockView key={slide.id} block={slide} />
+      ))}
+    </Slider>
   )
-}
-
-/**
- * Editor only: brings the slide holding the selected block into view and
- * holds it there, then lets autoplay carry on once the selection leaves.
- */
-function SliderFollowsSelection({ index, autoplay }: { index: number; autoplay: boolean }) {
-  const carousel = useCarouselContext()
-  useEffect(() => {
-    if (index < 0) {
-      if (autoplay) carousel.play()
-      return
-    }
-    carousel.pause()
-    carousel.scrollToIndex(index)
-    // The API object is new on every render; only a new selection should act.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, autoplay])
-  return null
 }
 
 const MARQUEE_DIRECTIONS = ['left', 'right', 'up', 'down'] as const

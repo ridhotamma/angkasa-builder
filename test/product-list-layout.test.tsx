@@ -74,19 +74,24 @@ describe('product list layouts', () => {
     expect(html).not.toContain('data-product-layout="bento"')
   })
 
-  test('the slider draws a carousel with arrows over its edges', () => {
+  test('the slider draws the shared track with arrows over its edges', () => {
     const html = renderLatest({ heading: 'New in', limit: 8, layout: 'slider' })
     expect(html).toContain('data-product-layout="slider"')
-    expect(html).toContain('data-scope="carousel"')
-    expect(html).toContain('data-part="prev-trigger"')
-    expect(html).toContain('data-part="next-trigger"')
+    // The row is shifted by a transform — never a scroll container — and the
+    // arrows and pill dots ride it.
+    expect(html).toContain('data-slider-track=""')
+    expect(html).toContain('transform:translateX(0)')
+    expect(html).toContain('aria-label="Previous slide"')
+    expect(html).toContain('aria-label="Next slide"')
+    expect(html).toContain('aria-label="Slide 2"')
     expect(html).not.toContain('data-product-layout="grid"')
   })
 
   test('a slider short enough for one page draws no arrows', () => {
     const html = renderLatest({ heading: 'New in', limit: 2, layout: 'slider' })
     expect(html).toContain('data-product-layout="slider"')
-    expect(html).not.toContain('data-part="prev-trigger"')
+    expect(html).not.toContain('aria-label="Previous slide"')
+    expect(html).not.toContain('aria-label="Slide 2"')
   })
 
   test('the arrows straddle the row edges, half over the page margin', () => {
@@ -108,7 +113,7 @@ describe('product list layouts', () => {
   test('the bento draws mixed tiles', () => {
     const html = renderLatest({ heading: 'New in', limit: 8, layout: 'bento' })
     expect(html).toContain('data-product-layout="bento"')
-    expect(html).not.toContain('data-scope="carousel"')
+    expect(html).not.toContain('data-slider-track')
   })
 
   test('the phone column choice reaches the grid', () => {

@@ -34,7 +34,9 @@ afterEach(() => cleanup())
 // `hideFrom="md"` mobile bar, which happy-dom (like a real desktop browser at
 // 1024px) hides from the accessibility tree at wider widths.
 ;(
-  window as unknown as { happyDOM?: { setViewport?: (size: { width: number; height: number }) => void } }
+  window as unknown as {
+    happyDOM?: { setViewport?: (size: { width: number; height: number }) => void }
+  }
 ).happyDOM?.setViewport?.({ width: 375, height: 812 })
 
 const shop: ChromeShop = { name: 'Toko Baru', logoUrl: null, description: '', email: null }

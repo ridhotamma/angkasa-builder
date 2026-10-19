@@ -11,7 +11,6 @@ import {
   Box,
   Button,
   Card,
-  Carousel,
   Container,
   Grid,
   GridItem,
@@ -36,7 +35,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import { LuChevronLeft, LuChevronRight, LuHeart } from 'react-icons/lu'
+import { LuHeart } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -59,6 +58,9 @@ import type { SectionHeadline } from '../model/section-style'
 import { BOLD_INK, boldButton, boldCard, boldShadow } from './bold'
 import { useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
+import { Slider } from './slider'
+
+export { OVERLAY_ARROW } from './slider'
 import { useResponsive } from './hooks'
 import { SplitText, useTilt } from './motion'
 
@@ -1242,24 +1244,10 @@ export function ProductGrid({
   )
 }
 
-/** Round arrows laid over a slider's edges; phones swipe instead. */
-export const OVERLAY_ARROW = {
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  zIndex: '1',
-  rounded: 'full',
-  size: { base: 'sm', md: 'md' },
-  variant: 'subtle',
-  bg: 'bg/85',
-  shadow: 'md',
-  _hover: { bg: 'bg' },
-  hideBelow: 'md',
-} as const
-
 /**
  * The shop's products in one row the shopper swipes, drags or pages with the
- * arrows floating over its edges. A short list is simply a still row.
+ * shared slider's arrows, dots and a finger. A short list is simply a still
+ * row.
  */
 function ProductSlider({
   products,
@@ -1275,45 +1263,23 @@ function ProductSlider({
   const desktop = Math.min(6, Math.max(2, Number(columns) || 4))
   const base = mobileColumns === '1' ? 1 : 2
   const perPage = Math.min(useResponsive({ base, md: 3, lg: desktop }), products.length)
-  const paged = products.length > perPage
 
   return (
-    <Carousel.Root
-      data-product-layout="slider"
-      slideCount={products.length}
-      slidesPerPage={perPage}
-      spacing="1rem"
+    <Slider
+      count={products.length}
+      perPage={perPage}
       loop
-      allowMouseDrag
-      gap="4"
+      dots="below"
+      // The arrows straddle the row's outer edge — half over the card, half
+      // over the page margin.
+      arrowInset="-5"
+      rootProps={{ 'data-product-layout': 'slider' }}
+      slideProps={{ display: 'flex', alignItems: 'stretch' }}
     >
-      {/* Positioned around the cards only, so each arrow straddles the row's
-          outer edge — half over the card, half over the page margin. */}
-      <Box position="relative">
-        <Carousel.ItemGroup alignItems="stretch">
-          {products.map((product, index) => (
-            <Carousel.Item key={product.id} index={index} display="flex" alignItems="stretch">
-              <ProductCard product={product} />
-            </Carousel.Item>
-          ))}
-        </Carousel.ItemGroup>
-
-        {paged && (
-          <>
-            <Carousel.PrevTrigger asChild>
-              <IconButton {...OVERLAY_ARROW} left="-5">
-                <LuChevronLeft />
-              </IconButton>
-            </Carousel.PrevTrigger>
-            <Carousel.NextTrigger asChild>
-              <IconButton {...OVERLAY_ARROW} right="-5">
-                <LuChevronRight />
-              </IconButton>
-            </Carousel.NextTrigger>
-          </>
-        )}
-      </Box>
-    </Carousel.Root>
+      {products.map((product) => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </Slider>
   )
 }
 

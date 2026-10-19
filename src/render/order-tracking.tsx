@@ -33,7 +33,11 @@ export function OrderTracking({ settings }: SectionProps) {
         </Heading>
       )}
       {body && <Text color="fg.muted">{body}</Text>}
-      {slots?.orderTracking ? slots.orderTracking(settings) : <OrderTrackingStandIn settings={settings} />}
+      {slots?.orderTracking ? (
+        slots.orderTracking(settings)
+      ) : (
+        <OrderTrackingStandIn settings={settings} />
+      )}
     </Stack>
   )
 }

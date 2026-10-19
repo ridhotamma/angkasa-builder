@@ -17,7 +17,6 @@ import {
   Box,
   Breadcrumb,
   Button,
-  Carousel,
   CloseButton,
   Dialog,
   Drawer,
@@ -31,8 +30,8 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { useState, type UIEvent } from 'react'
-import { LuChevronLeft, LuChevronRight, LuRuler, LuStar } from 'react-icons/lu'
+import { useState } from 'react'
+import { LuRuler, LuStar } from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -48,6 +47,7 @@ import {
 import { STICKY_BELOW_HEADER } from './chrome'
 import { previewProductDetail, useRenderEnvironment, type StorefrontProductDetail } from './context'
 import { useRenderText } from './copy'
+import { Slider } from './slider'
 import { DataTable } from './content-sections'
 import { FeatureIcon } from './icons'
 import {
@@ -347,23 +347,10 @@ function MosaicGallery({
   )
 }
 
-const PHOTO_ARROW = {
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  zIndex: '1',
-  rounded: 'full',
-  size: 'sm',
-  variant: 'subtle',
-  bg: 'bg/85',
-  shadow: 'md',
-  _hover: { bg: 'bg' },
-  hideBelow: 'md',
-} as const
-
 /**
- * Every photo, one per page, on the same default `Carousel` setup as the
- * banner slider. `onOpen` makes a tap on a photo open the viewer.
+ * Every photo, one per page, on the shared slider — arrows on a desktop,
+ * finger swipes and the pill dots over the photo's own bottom edge
+ * everywhere. `onOpen` makes a tap on a photo open the viewer.
  */
 function PhotoCarousel({
   images,
@@ -380,75 +367,25 @@ function PhotoCarousel({
   arrows?: boolean
   onOpen?: (index: number) => void
 }) {
-  const text = useRenderText()
-  // The slide nearest the scroll position, updated while the finger is still
-  // moving. The carousel's own page only changes once a swipe's momentum and
-  // snap have fully settled, which leaves the dots most of a second behind.
-  const [live, setLive] = useState(start)
-  const trackScroll = (event: UIEvent<HTMLElement>) => {
-    const el = event.currentTarget
-    const items = Array.from(el.children) as HTMLElement[]
-    const origin = items[0]?.offsetLeft ?? 0
-    const distance = (item: HTMLElement) => Math.abs(item.offsetLeft - origin - el.scrollLeft)
-    let nearest = 0
-    items.forEach((item, index) => {
-      if (distance(item) < distance(items[nearest]!)) nearest = index
-    })
-    setLive(nearest)
-  }
-
-  if (images.length === 1) {
-    return (
-      <Box onClick={onOpen && (() => onOpen(0))}>
-        <ZoomImage src={images[0]!.url} alt={name} zoom={zoom} />
-      </Box>
-    )
-  }
   return (
-    <Carousel.Root slideCount={images.length} defaultPage={start} allowMouseDrag gap="3">
-      <Box position="relative">
-        <Carousel.ItemGroup onScroll={trackScroll}>
-          {images.map((image, index) => (
-            <Carousel.Item key={`${image.url}-${index}`} index={index}>
-              <Box onClick={onOpen && (() => onOpen(index))}>
-                <ZoomImage src={image.url} alt={index === 0 ? name : ''} zoom={zoom} />
-              </Box>
-            </Carousel.Item>
-          ))}
-        </Carousel.ItemGroup>
-        {arrows && (
-          <>
-            <Carousel.PrevTrigger asChild>
-              <IconButton {...PHOTO_ARROW} left="3" aria-label={text('previousPhoto')}>
-                <LuChevronLeft />
-              </IconButton>
-            </Carousel.PrevTrigger>
-            <Carousel.NextTrigger asChild>
-              <IconButton {...PHOTO_ARROW} right="3" aria-label={text('nextPhoto')}>
-                <LuChevronRight />
-              </IconButton>
-            </Carousel.NextTrigger>
-          </>
-        )}
-      </Box>
-      {/* The carousel's own indicators, for their click and a11y wiring, but
-          lit from `live`: `_current` is overridden too, since it would
-          otherwise keep the stale page lit alongside. */}
-      <Carousel.IndicatorGroup justifyContent="center">
-        {images.map((image, index) => {
-          const bg = index === live ? 'colorPalette.solid' : 'colorPalette.subtle'
-          return (
-            <Carousel.Indicator
-              key={`${image.url}-${index}`}
-              index={index}
-              bg={bg}
-              _current={{ bg }}
-              transition="background-color 0.15s"
-            />
-          )
-        })}
-      </Carousel.IndicatorGroup>
-    </Carousel.Root>
+    <Slider
+      count={images.length}
+      perPage={1}
+      start={start}
+      arrows={arrows}
+      dots="inside"
+      slideProps={{ display: 'flex', justifyContent: 'center' }}
+    >
+      {images.map((image, index) => (
+        <Box
+          key={`${image.url}-${index}`}
+          w="full"
+          onClick={onOpen ? () => onOpen(index) : undefined}
+        >
+          <ZoomImage src={image.url} alt={index === 0 ? name : ''} zoom={zoom} />
+        </Box>
+      ))}
+    </Slider>
   )
 }
 

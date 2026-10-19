@@ -6,7 +6,6 @@
 import {
   AspectRatio,
   Box,
-  Carousel,
   chakra,
   CloseButton,
   Dialog,
@@ -40,6 +39,7 @@ import { textElementKey } from '../model/element-style'
 import { SectionColumn } from './column'
 import { findProductCard, useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
+import { Slider } from './slider'
 import { useResponsive } from './hooks'
 import { AmbientVideo, VideoFrame } from './media'
 import { useMarqueePause, VelocityMarquee } from './motion'
@@ -183,106 +183,53 @@ export function VideoReels({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <Carousel.Root
-          slideCount={items.length}
-          slidesPerPage={perPage}
-          spacing="12px"
-          allowMouseDrag
-          gap="3"
-        >
-          <Box position="relative">
-            <Carousel.ItemGroup>
-              {items.map((item, index) => {
-                const video = readVideo(item, 'video')
-                const product = findProductCard(data, readText(item, 'productId'))
-                return (
-                  <Carousel.Item key={item.id} index={index}>
-                    <Box
-                      position="relative"
-                      rounded="l3"
-                      overflow="hidden"
-                      bg="gray.900"
-                      cursor="pointer"
-                      onClick={() => setOpen(item.id)}
-                    >
-                      <AspectRatio ratio={9 / 16}>
-                        {video?.source === 'upload' ? (
-                          <AmbientVideo fileId={video.id} poster={poster(item)} />
-                        ) : (
-                          <ImageWithFallback
-                            src={poster(item) ?? undefined}
-                            alt=""
-                            objectFit="cover"
-                          />
-                        )}
-                      </AspectRatio>
-                      <Stack
-                        position="absolute"
-                        insetX="0"
-                        bottom="0"
-                        p="2.5"
-                        gap="2"
-                        bgGradient="to-t"
-                        gradientFrom="blackAlpha.700"
-                        gradientTo="transparent"
-                        pt="10"
-                      >
-                        {readText(item, 'caption') && (
-                          <Text color="white" fontSize="sm" fontWeight="medium" lineClamp={2}>
-                            {readText(item, 'caption')}
-                          </Text>
-                        )}
-                        {product && (
-                          <Box onClick={(event) => event.stopPropagation()}>
-                            <ProductChip product={product} onDark />
-                          </Box>
-                        )}
-                      </Stack>
+        <Slider count={items.length} perPage={perPage} dots="inside" arrowInset="2">
+          {items.map((item, index) => {
+            const video = readVideo(item, 'video')
+            const product = findProductCard(data, readText(item, 'productId'))
+            return (
+              <Box
+                key={item.id}
+                position="relative"
+                rounded="l3"
+                overflow="hidden"
+                bg="gray.900"
+                cursor="pointer"
+                onClick={() => setOpen(item.id)}
+              >
+                <AspectRatio ratio={9 / 16}>
+                  {video?.source === 'upload' ? (
+                    <AmbientVideo fileId={video.id} poster={poster(item)} />
+                  ) : (
+                    <ImageWithFallback src={poster(item) ?? undefined} alt="" objectFit="cover" />
+                  )}
+                </AspectRatio>
+                <Stack
+                  position="absolute"
+                  insetX="0"
+                  bottom="0"
+                  p="2.5"
+                  gap="2"
+                  bgGradient="to-t"
+                  gradientFrom="blackAlpha.700"
+                  gradientTo="transparent"
+                  pt="10"
+                >
+                  {readText(item, 'caption') && (
+                    <Text color="white" fontSize="sm" fontWeight="medium" lineClamp={2}>
+                      {readText(item, 'caption')}
+                    </Text>
+                  )}
+                  {product && (
+                    <Box onClick={(event) => event.stopPropagation()}>
+                      <ProductChip product={product} onDark />
                     </Box>
-                  </Carousel.Item>
-                )
-              })}
-            </Carousel.ItemGroup>
-            {items.length > perPage && (
-              <>
-                <Carousel.PrevTrigger asChild>
-                  <IconButton
-                    position="absolute"
-                    top="50%"
-                    left="2"
-                    transform="translateY(-50%)"
-                    zIndex="1"
-                    rounded="full"
-                    size="sm"
-                    variant="subtle"
-                    bg="bg/85"
-                    shadow="md"
-                    hideBelow="md"
-                  >
-                    <LuChevronLeft />
-                  </IconButton>
-                </Carousel.PrevTrigger>
-                <Carousel.NextTrigger asChild>
-                  <IconButton
-                    position="absolute"
-                    top="50%"
-                    right="2"
-                    transform="translateY(-50%)"
-                    zIndex="1"
-                    rounded="full"
-                    size="sm"
-                    variant="subtle"
-                    bg="bg/85"
-                    shadow="md"
-                    hideBelow="md"
-                  >
-                    <LuChevronRight />
-                  </IconButton>
-                </Carousel.NextTrigger>
-              </>
-            )}
-          </Box>
-        </Carousel.Root>
+                  )}
+                </Stack>
+              </Box>
+            )
+          })}
+        </Slider>
       )}
 
       <Dialog.Root
