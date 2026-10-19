@@ -343,31 +343,24 @@ function BannerSlider({ settings }: SectionProps) {
   }
 
   if (!ready) {
-    // The skeleton is the slider's own shape and its dots row, so nothing
-    // below moves when the real one swaps in.
+    // The skeleton is the slider's own shape, so nothing below moves when the
+    // real one swaps in. The dots live inside the band, so the band is all
+    // there is to draw.
     const columns = Math.min(Math.ceil(desktop), slides.length)
     return (
-      <Stack as="section" gap="3" aria-busy>
-        <AspectRatio ratio={ratio}>
-          <Flex gap={`${SLIDE_GAP_PX}px`}>
-            {Array.from({ length: columns }, (_, index) => (
-              <Skeleton
-                key={index}
-                flex="1"
-                rounded="l3"
-                h="full"
-                hideBelow={index > 0 ? 'md' : undefined}
-              />
-            ))}
-          </Flex>
-        </AspectRatio>
-        {/* A phone pages every slider; a desktop only one with more slides
-            than fit in a view. Three dots stand in for the real row either
-            way — only its height matters here. */}
-        <SkeletonDots
-          display={slides.length > desktop ? undefined : { base: 'flex', md: 'none' }}
-        />
-      </Stack>
+      <AspectRatio as="section" ratio={ratio} aria-busy>
+        <Flex gap={`${SLIDE_GAP_PX}px`}>
+          {Array.from({ length: columns }, (_, index) => (
+            <Skeleton
+              key={index}
+              flex="1"
+              rounded="l3"
+              h="full"
+              hideBelow={index > 0 ? 'md' : undefined}
+            />
+          ))}
+        </Flex>
+      </AspectRatio>
     )
   }
 
@@ -479,88 +472,92 @@ export function BannerSliderTrack({
   }, [autoplay, paged, paused, dragging, last, loop])
 
   return (
-    <Stack as="section" gap="3">
-      <AspectRatio ratio={ratio}>
-        <Box
-          // A finger slides the row, so the browser must leave horizontal
-          // touch moves to us and keep vertical ones for the page.
-          touchAction="pan-y"
-          onPointerDown={(event) => {
-            if (event.pointerType === 'mouse' || !paged) return
-            dragFrom.current = { pointerId: event.pointerId, x: event.clientX }
-            setDragging(true)
-          }}
-          onPointerMove={(event) => {
-            const from = dragFrom.current
-            if (!from || from.pointerId !== event.pointerId) return
-            setDragPx(event.clientX - from.x)
-          }}
-          onPointerUp={(event) => {
-            const from = dragFrom.current
-            if (!from || from.pointerId !== event.pointerId) return
-            const moved = event.clientX - from.x
-            endDrag()
-            if (moved <= -SLIDE_SWIPE_PX) step(1)
-            else if (moved >= SLIDE_SWIPE_PX) step(-1)
-          }}
-          onPointerCancel={endDrag}
-          onPointerEnter={(event) => {
-            if (event.pointerType === 'mouse') setPaused(true)
-          }}
-          onPointerLeave={(event) => {
-            if (event.pointerType === 'mouse') setPaused(false)
-          }}
-          onFocusCapture={() => setPaused(true)}
-          onBlurCapture={() => setPaused(false)}
+    <AspectRatio as="section" ratio={ratio}>
+      <Box
+        data-slider-band=""
+        // A finger slides the row, so the browser must leave horizontal
+        // touch moves to us and keep vertical ones for the page.
+        touchAction="pan-y"
+        onPointerDown={(event) => {
+          if (event.pointerType === 'mouse' || !paged) return
+          dragFrom.current = { pointerId: event.pointerId, x: event.clientX }
+          setDragging(true)
+        }}
+        onPointerMove={(event) => {
+          const from = dragFrom.current
+          if (!from || from.pointerId !== event.pointerId) return
+          setDragPx(event.clientX - from.x)
+        }}
+        onPointerUp={(event) => {
+          const from = dragFrom.current
+          if (!from || from.pointerId !== event.pointerId) return
+          const moved = event.clientX - from.x
+          endDrag()
+          if (moved <= -SLIDE_SWIPE_PX) step(1)
+          else if (moved >= SLIDE_SWIPE_PX) step(-1)
+        }}
+        onPointerCancel={endDrag}
+        onPointerEnter={(event) => {
+          if (event.pointerType === 'mouse') setPaused(true)
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType === 'mouse') setPaused(false)
+        }}
+        onFocusCapture={() => setPaused(true)}
+        onBlurCapture={() => setPaused(false)}
+      >
+        {/* The row itself: as wide as the band, its slides running past the
+            edge, clipped — never scrolled. While a finger drags it the
+            transition is off, so it tracks the finger exactly. */}
+        <Flex
+          data-slider-track=""
+          h="full"
+          w="full"
+          flexShrink="0"
+          gap={`${SLIDE_GAP_PX}px`}
+          transition={dragging ? 'none' : SLIDE_SHIFT}
+          style={{ transform: shift }}
         >
-          {/* The row itself: as wide as the band, its slides running past the
-              edge, clipped — never scrolled. While a finger drags it the
-              transition is off, so it tracks the finger exactly. */}
-          <Flex
-            h="full"
-            w="full"
-            flexShrink="0"
-            gap={`${SLIDE_GAP_PX}px`}
-            transition={dragging ? 'none' : SLIDE_SHIFT}
-            style={{ transform: shift }}
-          >
-            {slides.map((slide, position) => (
-              <Box key={String(slide.id)} flex={`0 0 calc(${basis})`} h="full" minW="0">
-                <BannerSlide slide={slide} eager={position === 0} />
-              </Box>
-            ))}
-          </Flex>
+          {slides.map((slide, position) => (
+            <Box key={String(slide.id)} flex={`0 0 calc(${basis})`} h="full" minW="0">
+              <BannerSlide slide={slide} eager={position === 0} />
+            </Box>
+          ))}
+        </Flex>
 
-          {paged && (
-            <>
-              <IconButton
-                {...OVERLAY_ARROW}
-                left="3"
-                aria-label={text('previousSlide')}
-                disabled={!loop && at === 0}
-                onClick={() => step(-1)}
-              >
-                <LuChevronLeft />
-              </IconButton>
-              <IconButton
-                {...OVERLAY_ARROW}
-                right="3"
-                aria-label={text('nextSlide')}
-                disabled={!loop && at >= last}
-                onClick={() => step(1)}
-              >
-                <LuChevronRight />
-              </IconButton>
-            </>
-          )}
-        </Box>
-      </AspectRatio>
-      {paged && <SliderDots count={last + 1} at={at} onSelect={setIndex} />}
-    </Stack>
+        {paged && (
+          <>
+            <IconButton
+              {...OVERLAY_ARROW}
+              left="3"
+              aria-label={text('previousSlide')}
+              disabled={!loop && at === 0}
+              onClick={() => step(-1)}
+            >
+              <LuChevronLeft />
+            </IconButton>
+            <IconButton
+              {...OVERLAY_ARROW}
+              right="3"
+              aria-label={text('nextSlide')}
+              disabled={!loop && at >= last}
+              onClick={() => step(1)}
+            >
+              <LuChevronRight />
+            </IconButton>
+          </>
+        )}
+        {paged && <SliderDots count={last + 1} at={at} onSelect={setIndex} />}
+      </Box>
+    </AspectRatio>
   )
 }
 
-/** One dot per position the track can rest at. */
+/**
+ * The page dots, laid over the band's bottom edge — one per position the
+ * track can rest at. The active one stretches into a pill, so the current
+ * page reads at a glance however busy the photo behind it is.
+ */
 function SliderDots({
   count,
   at,
@@ -572,33 +569,24 @@ function SliderDots({
 }) {
   const text = useRenderText()
   return (
-    <HStack gap="2" justifyContent="center">
+    <HStack position="absolute" insetX="0" bottom="3" zIndex="1" justifyContent="center" gap="2">
       {Array.from({ length: count }, (_, position) => (
         <Box
           key={position}
           as="button"
-          boxSize="2.5"
+          w={position === at ? '6' : '2.5'}
+          h="2.5"
           p="0"
           rounded="full"
           cursor="pointer"
-          transition="background-color 200ms"
-          bg={position === at ? 'fg' : 'fg/20'}
-          _hover={{ bg: position === at ? 'fg' : 'fg/40' }}
+          transition="width 220ms cubic-bezier(0.32, 0.72, 0, 1), background-color 200ms"
+          bg={position === at ? 'white' : 'white/55'}
+          shadow="sm"
+          _hover={{ bg: position === at ? 'white' : 'white/80' }}
           aria-label={text('slideNumber', { n: position + 1 })}
           aria-current={position === at ? 'true' : undefined}
           onClick={() => onSelect(position)}
         />
-      ))}
-    </HStack>
-  )
-}
-
-/** The dots row's shape, standing in while the images settle. */
-function SkeletonDots({ display }: { display?: BoxProps['display'] }) {
-  return (
-    <HStack gap="2" justifyContent="center" display={display}>
-      {Array.from({ length: 3 }, (_, index) => (
-        <Box key={index} boxSize="2.5" rounded="full" bg="bg.emphasized" />
       ))}
     </HStack>
   )

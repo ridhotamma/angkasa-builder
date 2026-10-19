@@ -476,6 +476,32 @@ describe('section chrome', () => {
     )
   })
 
+  test('the dots ride in the band, with the active one a pill', () => {
+    const html = render(
+      <RenderProvider value={env()}>
+        <BannerSliderTrack
+          slides={[
+            { id: 'a', image: 's1' },
+            { id: 'b', image: 's2' },
+            { id: 'c', image: 's3' },
+          ]}
+          perPage={1}
+          ratio={2}
+          loop
+          autoplay={false}
+        />
+      </RenderProvider>,
+    )
+    // Inside the band, centred on its bottom edge — not a row below it.
+    expect(html).toContain('bottom:var(--chakra-spacing-3)')
+    expect(html).toContain('inset-inline:0')
+    expect(html).toContain('justify-content:center')
+    // The resting page is a wider pill; the others keep the smaller width
+    // (one rule, shared by every inactive dot).
+    expect(html).toContain('width:var(--chakra-sizes-6)')
+    expect(html).toContain('width:var(--chakra-sizes-2\\.5)')
+  })
+
   test('a single-slide slider is the same band', () => {
     const html = render(
       <SectionsRenderer
