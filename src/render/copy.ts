@@ -121,6 +121,13 @@ const TEXT = {
   slideNumber: { en: 'Slide {n}', id: 'Slide {n}' },
   playSlides: { en: 'Play slides', id: 'Putar slide' },
   pauseSlides: { en: 'Pause slides', id: 'Jeda slide' },
+  share: { en: 'Share', id: 'Bagikan' },
+  shareProduct: { en: 'Share this product', id: 'Bagikan produk ini' },
+  shareFacebook: { en: 'Share to Facebook', id: 'Bagikan ke Facebook' },
+  shareTwitter: { en: 'Share to Twitter', id: 'Bagikan ke Twitter' },
+  shareWhatsapp: { en: 'Share via WhatsApp', id: 'Bagikan lewat WhatsApp' },
+  shareEmail: { en: 'Share via Email', id: 'Bagikan lewat Email' },
+  cancel: { en: 'Cancel', id: 'Batal' },
 } satisfies Record<string, Localized>
 
 export type RenderText = keyof typeof TEXT

@@ -31,7 +31,17 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import { LuRuler, LuStar } from 'react-icons/lu'
+import {
+  LuCheck,
+  LuFacebook,
+  LuLink,
+  LuMail,
+  LuMessageCircle,
+  LuRuler,
+  LuShare2,
+  LuStar,
+  LuTwitter,
+} from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -57,6 +67,7 @@ import {
   SectionHeading,
   SmartLink,
   useOverlayProps,
+  WishlistButton,
 } from './primitives'
 import { RichTextView } from './rich-text'
 import type { SectionProps } from './sections'
@@ -134,16 +145,19 @@ function Gallery({
 
   if (layout === 'grid' || layout === 'stacked') {
     return (
-      <SimpleGrid columns={layout === 'grid' ? { base: 1, sm: 2 } : 1} gap="3">
-        {images.map((image, index) => (
-          <Box
-            key={`${image.url}-${index}`}
-            gridColumn={layout === 'grid' && index === 0 ? { sm: 'span 2' } : undefined}
-          >
-            <ZoomImage src={image.url} alt={index === 0 ? product.name : ''} zoom={zoom} />
-          </Box>
-        ))}
-      </SimpleGrid>
+      <Box position="relative">
+        <SimpleGrid columns={layout === 'grid' ? { base: 1, sm: 2 } : 1} gap="3">
+          {images.map((image, index) => (
+            <Box
+              key={`${image.url}-${index}`}
+              gridColumn={layout === 'grid' && index === 0 ? { sm: 'span 2' } : undefined}
+            >
+              <ZoomImage src={image.url} alt={index === 0 ? product.name : ''} zoom={zoom} />
+            </Box>
+          ))}
+        </SimpleGrid>
+        <GalleryActions product={product} />
+      </Box>
     )
   }
 
@@ -152,7 +166,10 @@ function Gallery({
   const cover = images[Math.min(active, images.length - 1)]!
   return (
     <Stack gap="3">
-      <ZoomImage src={cover.url} alt={product.name} zoom={zoom} />
+      <Box position="relative">
+        <ZoomImage src={cover.url} alt={product.name} zoom={zoom} />
+        <GalleryActions product={product} />
+      </Box>
       {images.length > 1 && (
         <SimpleGrid columns={{ base: 5, md: 6 }} gap="2">
           {images.map((image, index) => (
@@ -182,6 +199,180 @@ function Gallery({
 }
 
 type GalleryImage = StorefrontProductDetail['images'][number]
+
+/** White circles over a photo, so the two actions read on any picture. */
+const PHOTO_ACTION = {
+  rounded: 'full',
+  size: 'md',
+  variant: 'surface',
+  bg: 'bg/85',
+  shadow: 'md',
+  _hover: { bg: 'bg' },
+} as const
+
+/**
+ * Share and save, floating over the gallery's bottom corner — the pair a
+ * marketplace listing puts on its photos. Share opens the same short list
+ * wherever the gallery is: Facebook, Twitter, WhatsApp, email, or the link
+ * copied. The heart is the shop's own wishlist, so it shows only where the
+ * host has one (and the editor's preview set makes it visible on the canvas).
+ *
+ * Nothing here navigates in the editor's preview: `mode` gates every window
+ * and the clipboard, so a click on the canvas can never take the seller away.
+ */
+function GalleryActions({ product }: { product: StorefrontProductDetail }) {
+  const text = useRenderText()
+  const { href, mode, wishlist } = useRenderEnvironment()
+  const overlay = useOverlayProps()
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  /** The listing's address as the shopper's browser knows it — the page may
+   * be on a custom domain — with the product's own title alongside it. */
+  const address = (element: HTMLElement) => {
+    const path = href({ kind: 'product', slug: product.slug })
+    if (!path) return null
+    const base = element.ownerDocument.defaultView?.location.href
+    return new URL(path, base).toString()
+  }
+
+  const open_ = (element: HTMLElement, url: string) => {
+    if (mode === 'preview') return
+    element.ownerDocument.defaultView?.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const targets = [
+    {
+      icon: LuFacebook,
+      label: text('shareFacebook'),
+      url: (url: string) =>
+        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+    },
+    {
+      icon: LuTwitter,
+      label: text('shareTwitter'),
+      url: (url: string) =>
+        `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(product.name)}`,
+    },
+    {
+      icon: LuMessageCircle,
+      label: text('shareWhatsapp'),
+      url: (url: string) => `https://wa.me/?text=${encodeURIComponent(`${product.name} ${url}`)}`,
+    },
+    {
+      icon: LuMail,
+      label: text('shareEmail'),
+      url: (url: string) =>
+        `mailto:?subject=${encodeURIComponent(product.name)}&body=${encodeURIComponent(url)}`,
+    },
+  ]
+
+  return (
+    <Stack position="absolute" bottom="3" right="3" gap="2" zIndex="2">
+      <Dialog.Root
+        {...overlay}
+        open={open}
+        onOpenChange={({ open }) => setOpen(open)}
+        lazyMount
+        unmountOnExit
+        size="xs"
+        placement={{ base: 'bottom', md: 'center' }}
+      >
+        <Dialog.Trigger asChild>
+          <IconButton {...PHOTO_ACTION} aria-label={text('share')}>
+            <LuShare2 />
+          </IconButton>
+        </Dialog.Trigger>
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content p="0" overflow="hidden" rounded={{ base: 't-xl', md: 'l3' }}>
+              <Dialog.Body p="0">
+                <Stack gap="0">
+                  {targets.map((target, index) => (
+                    <Button
+                      key={target.label}
+                      variant="ghost"
+                      justifyContent="start"
+                      gap="3"
+                      rounded="0"
+                      py="5"
+                      px="4"
+                      fontWeight="medium"
+                      {...(index < targets.length - 1 && {
+                        borderBottomWidth: '1px',
+                        borderColor: 'border.subtle',
+                      })}
+                      onClick={(event) => {
+                        const url = address(event.currentTarget)
+                        if (url) open_(event.currentTarget, target.url(url))
+                      }}
+                    >
+                      <target.icon />
+                      {target.label}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    justifyContent="start"
+                    gap="3"
+                    rounded="0"
+                    py="5"
+                    px="4"
+                    fontWeight="medium"
+                    onClick={async (event) => {
+                      if (mode === 'preview') return
+                      const url = address(event.currentTarget)
+                      if (!url) return
+                      try {
+                        await event.currentTarget.ownerDocument.defaultView?.navigator.clipboard.writeText(
+                          url,
+                        )
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 2000)
+                      } catch {
+                        // Clipboard refused (an old browser, an insecure
+                        // page): the address bar still has the link.
+                      }
+                    }}
+                  >
+                    {copied ? <LuCheck /> : <LuLink />}
+                    {copied ? text('linkCopied') : text('copyLink')}
+                  </Button>
+                </Stack>
+                <Button
+                  variant="ghost"
+                  w="full"
+                  rounded="0"
+                  py="5"
+                  borderTopWidth="1px"
+                  borderColor="border"
+                  fontWeight="medium"
+                  onClick={() => setOpen(false)}
+                >
+                  {text('cancel')}
+                </Button>
+              </Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+      {wishlist && (
+        <WishlistButton
+          {...PHOTO_ACTION}
+          product={{
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            price: product.price,
+            compareAtPrice: product.compareAtPrice,
+            imageUrl: product.images[0]?.url ?? null,
+          }}
+        />
+      )}
+    </Stack>
+  )
+}
 
 /** How many photos the mosaic shows before its last tile turns into "+N". */
 const MOSAIC_TILES = 5
@@ -282,9 +473,7 @@ function MosaicGallery({
   )
 
   return (
-    <>
-      {/* A CSS aspect ratio, not `AspectRatio`: that one makes its child a
-          flex box, which would undo the grid. */}
+    <Box position="relative">
       <Grid
         hideBelow="md"
         aspectRatio="3 / 2"
@@ -294,6 +483,8 @@ function MosaicGallery({
         rounded="l3"
         overflow="hidden"
       >
+        {/* A CSS aspect ratio, not `AspectRatio`: that one makes its child a
+            flex box, which would undo the grid. */}
         <Box gridColumn="1" gridRow="1 / 3" display="grid" minW="0" minH="0">
           {tile(shown[0]!, 0, 0)}
         </Box>
@@ -313,6 +504,8 @@ function MosaicGallery({
       <Box hideFrom="md">
         <PhotoCarousel images={images} name={product.name} onOpen={setViewing} />
       </Box>
+
+      <GalleryActions product={product} />
 
       <Dialog.Root
         {...overlay}
@@ -343,7 +536,7 @@ function MosaicGallery({
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
-    </>
+    </Box>
   )
 }
 
