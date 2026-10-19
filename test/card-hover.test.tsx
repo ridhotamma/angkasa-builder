@@ -86,12 +86,12 @@ describe('card hover', () => {
     expect(sanitizeThemeSettings({ cardHover: [] }).cardHover).toEqual([])
   })
 
-  test('the product photo flip is on by default and can be turned off', () => {
-    expect(DEFAULT_THEME_SETTINGS.productImageHover).toBe(true)
-    // A theme saved before the setting existed keeps the familiar flip.
-    expect(sanitizeThemeSettings({}).productImageHover).toBe(true)
-    expect(sanitizeThemeSettings({ productImageHover: false }).productImageHover).toBe(false)
-    expect(sanitizeThemeSettings({ productImageHover: 'no' }).productImageHover).toBe(true)
+  test('the product photo flip is off by default and can be turned on', () => {
+    expect(DEFAULT_THEME_SETTINGS.productImageHover).toBe(false)
+    // A theme saved before the setting existed starts on the primary photo.
+    expect(sanitizeThemeSettings({}).productImageHover).toBe(false)
+    expect(sanitizeThemeSettings({ productImageHover: true }).productImageHover).toBe(true)
+    expect(sanitizeThemeSettings({ productImageHover: 'yes' }).productImageHover).toBe(false)
   })
 
   test('every card wears the same chosen effects', () => {

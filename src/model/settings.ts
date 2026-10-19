@@ -319,9 +319,9 @@ export interface ThemeSettings {
   /** What product and category cards do on hover; empty for nothing. */
   cardHover: CardHoverEffect[]
   /**
-   * Whether a product card swaps to its second gallery photo on hover. On by
-   * default, so a product with a second photo has the familiar fashion-store
-   * flip; turning it off keeps the primary photo still.
+   * Whether a product card swaps to its second gallery photo on hover. Off by
+   * default: the primary photo is what every card shows until the seller opts
+   * into the fashion-store flip.
    */
   productImageHover: boolean
   /** One step for every text size: compact, default or large. */
@@ -357,7 +357,7 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   buttonStyle: 'solid',
   cardStyle: 'border',
   cardHover: ['outline', 'zoom'],
-  productImageHover: true,
+  productImageHover: false,
   // The middle of each scale is the storefront as it always was, so a theme
   // saved before these knobs existed reads exactly the same.
   typeScale: 'default',

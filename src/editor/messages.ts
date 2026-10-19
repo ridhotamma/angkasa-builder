@@ -69,8 +69,8 @@ const MESSAGES = {
   },
   productImageHover: { en: 'Second photo on hover', id: 'Foto kedua saat disorot' },
   productImageHoverHelp: {
-    en: 'Product cards swap to the second gallery photo when a shopper points at them. Turn off to always show the primary photo.',
-    id: 'Kartu produk berganti ke foto kedua dari galeri saat pembeli mengarahkan kursor. Matikan untuk selalu menampilkan foto utama.',
+    en: 'Show the second gallery photo when a shopper points at a product card. Off keeps the primary photo.',
+    id: 'Tampilkan foto kedua dari galeri saat pembeli mengarahkan kursor ke kartu produk. Mati berarti selalu memakai foto utama.',
   },
   size: { en: 'Size', id: 'Ukuran' },
   localization: { en: 'Localization', id: 'Lokalisasi' },

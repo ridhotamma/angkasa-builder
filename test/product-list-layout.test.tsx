@@ -63,7 +63,10 @@ describe('product card hover image', () => {
     return render(
       <SectionsRenderer
         sections={[createSection('product-list', { source: 'latest', layout, limit: 2 })]}
-        env={env({ data: withHover() })}
+        env={env({
+          data: withHover(),
+          settings: { ...DEFAULT_THEME_SETTINGS, productImageHover: true },
+        })}
       />,
     )
   }
@@ -103,7 +106,10 @@ describe('product card hover image', () => {
     const html = render(
       <SectionsRenderer
         sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
-        env={env({ data })}
+        env={env({
+          data,
+          settings: { ...DEFAULT_THEME_SETTINGS, productImageHover: true },
+        })}
       />,
     )
     expect(html).toContain('https://images.test/secondary.jpg')
@@ -114,21 +120,21 @@ describe('product card hover image', () => {
     const html = render(
       <SectionsRenderer
         sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
-        env={env({ data })}
+        env={env({
+          data,
+          settings: { ...DEFAULT_THEME_SETTINGS, productImageHover: true },
+        })}
       />,
     )
     expect(html).not.toContain('data-product-secondary')
   })
 
-  test('the theme can keep the primary photo still', () => {
+  test('the flip is off until the theme turns it on', () => {
     const data = withHover()
     const html = render(
       <SectionsRenderer
         sections={[createSection('product-list', { source: 'latest', limit: 1 })]}
-        env={env({
-          data,
-          settings: { ...DEFAULT_THEME_SETTINGS, productImageHover: false },
-        })}
+        env={env({ data })}
       />,
     )
     expect(html).toContain('https://images.test/primary.jpg')
