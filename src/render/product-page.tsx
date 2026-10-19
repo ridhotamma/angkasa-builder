@@ -542,12 +542,14 @@ function PurchaseStandIn() {
           </Box>
         ))}
       </HStack>
-      <Stack direction={{ base: 'column', sm: 'row' }} gap="3">
-        <Button flex="1" size="lg" variant="outline" colorPalette="brand">
-          {text('addToCart')}
-        </Button>
-        <Button flex="1" size="lg" colorPalette="brand">
+      {/* One action per line, the primary on top — the same arrangement the
+          storefront's own buy buttons use. */}
+      <Stack gap="3">
+        <Button size="lg" colorPalette="brand" w="full">
           {text('buyNow')}
+        </Button>
+        <Button size="lg" variant="outline" colorPalette="brand" w="full">
+          {text('addToCart')}
         </Button>
       </Stack>
       <Text fontSize="xs" color="fg.muted">
@@ -791,13 +793,13 @@ export function ProductInfo({ settings }: SectionProps) {
         </Breadcrumb.Root>
       )}
       <Grid
-        // The mosaic packs up to five photos into its column, so it gets a
-        // wider share of the row; at the usual width its small tiles are
-        // thumbnails. Not two thirds: that squeezed the buy buttons until
-        // "Add to cart" clipped.
+        // The mosaic packs up to five photos into its column, so it takes two
+        // thirds of the row — the width a photo-led product page wants. The
+        // actions under the details stack full width, so the narrower details
+        // column costs nothing there.
         templateColumns={{
           base: '1fr',
-          lg: gallery === 'mosaic' ? 'minmax(0, 3fr) minmax(0, 2fr)' : '1.1fr 1fr',
+          lg: gallery === 'mosaic' ? 'minmax(0, 2fr) minmax(0, 1fr)' : '1.1fr 1fr',
         }}
         gap={{ base: '8', lg: '12' }}
         alignItems="start"
