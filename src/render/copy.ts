@@ -61,6 +61,17 @@ const TEXT = {
   },
   addToCart: { en: 'Add to cart', id: 'Tambah ke keranjang' },
   buyNow: { en: 'Buy now', id: 'Beli sekarang' },
+  /**
+   * The buy box's own rows, worded exactly as the storefront words them — the
+   * editor's stand-in draws the same ones, so the preview reads as the page.
+   */
+  inStock: { en: '{count} in stock', id: 'Stok {count}' },
+  inStockUnlimited: { en: 'In stock', id: 'Stok tersedia' },
+  soldOut: { en: 'Sold out', id: 'Habis' },
+  size: { en: 'Size', id: 'Ukuran' },
+  quantity: { en: 'Quantity', id: 'Jumlah' },
+  decreaseQuantity: { en: 'Decrease quantity', id: 'Kurangi jumlah' },
+  increaseQuantity: { en: 'Increase quantity', id: 'Tambah jumlah' },
   saveToWishlist: { en: 'Save to wishlist', id: 'Simpan ke wishlist' },
   savedToWishlist: { en: 'Saved to wishlist', id: 'Tersimpan di wishlist' },
   reviewsPreview: {

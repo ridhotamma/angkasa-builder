@@ -270,7 +270,13 @@ export interface RenderEnvironment {
    * out and gets stand-ins.
    */
   slots?: {
-    productPurchase?: ReactNode
+    /**
+     * The variant picker and buy buttons. They are handed how much room the
+     * page left them: the mosaic packs its photos into the wide column, and
+     * the narrow details column that leaves is one where two actions in a row
+     * would clip, so a box stacks them there.
+     */
+    productPurchase?: (info: { narrowColumn: boolean }) => ReactNode
     productReviews?: ReactNode
     /**
      * The article's own sections, drawn where the template's

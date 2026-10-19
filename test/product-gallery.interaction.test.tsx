@@ -11,7 +11,7 @@ import './happy-dom-setup'
 
 import { afterEach, describe, expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
-import { cleanup, fireEvent, render, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
 
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
@@ -23,6 +23,7 @@ import {
   SectionsRenderer,
   type RenderEnvironment,
 } from '../src/render/index'
+import { sliderTransform } from '../src/render/slider'
 
 afterEach(() => cleanup())
 
@@ -74,6 +75,42 @@ function photoProduct(images: number) {
   }
 }
 
+/** The gallery's page with a product carrying `images` photos. */
+function photos(images: number) {
+  const env: RenderEnvironment = {
+    data: { ...sampleStorefrontData('Gallery Shop'), product: photoProduct(images) },
+    settings: { ...DEFAULT_THEME_SETTINGS, splash: { ...DEFAULT_THEME_SETTINGS.splash } },
+    mode: 'preview',
+    imageUrl: () => null,
+    formatPrice: (amount, currency) => `${amount} ${currency}`,
+    now: new Date('2026-03-10T00:00:00.000Z'),
+  }
+  return render(
+    <ChakraProvider value={system}>
+      <I18nProvider locale="en" resources={{}}>
+        <RenderProvider value={env}>
+          <SectionsRenderer
+            sections={[createSection('product-info', { gallery: 'mosaic', stickyInfo: true })]}
+            env={env}
+          />
+        </RenderProvider>
+      </I18nProvider>
+    </ChakraProvider>,
+  )
+}
+
+/** The viewer's own track, as the slider wrote it. */
+function viewerTrack(dialog: HTMLElement): string {
+  return dialog.querySelector<HTMLElement>('[data-slider-track]')!.style.transform
+}
+
+/** Let the wrap's own frames run — the jump back takes two. */
+async function frames() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 40))
+  })
+}
+
 describe('the product gallery actions', () => {
   test('share opens the list of places to send it', async () => {
     const view = gallery([])
@@ -92,26 +129,7 @@ describe('the product gallery actions', () => {
   })
 
   test('a photo opens the fullscreen viewer, arrows paired at the bottom', async () => {
-    const env: RenderEnvironment = {
-      data: { ...sampleStorefrontData('Gallery Shop'), product: photoProduct(6) },
-      settings: { ...DEFAULT_THEME_SETTINGS, splash: { ...DEFAULT_THEME_SETTINGS.splash } },
-      mode: 'preview',
-      imageUrl: () => null,
-      formatPrice: (amount, currency) => `${amount} ${currency}`,
-      now: new Date('2026-03-10T00:00:00.000Z'),
-    }
-    const view = render(
-      <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
-          <RenderProvider value={env}>
-            <SectionsRenderer
-              sections={[createSection('product-info', { gallery: 'mosaic', stickyInfo: true })]}
-              env={env}
-            />
-          </RenderProvider>
-        </I18nProvider>
-      </ChakraProvider>,
-    )
+    const view = photos(6)
     fireEvent.click(view.getByLabelText('View all photos'))
     const viewer = await view.findByRole('dialog')
     // The photos ride the shared track, with the arrows paired at the bottom
@@ -121,6 +139,48 @@ describe('the product gallery actions', () => {
     expect(within(pair).getByLabelText('Next slide')).toBeDefined()
     expect(within(viewer).queryByLabelText('Slide 1')).toBeNull()
     expect(within(viewer).getByLabelText('Close')).toBeDefined()
+  })
+
+  test('the viewer loops: past either end, on into the next photo', async () => {
+    const view = photos(6)
+    fireEvent.click(view.getByLabelText('View all photos'))
+    const viewer = await view.findByRole('dialog')
+    const track = viewer.querySelector<HTMLElement>('[data-slider-track]')!
+    // The "+N" tile is the fifth photo, so the viewer opens on it.
+    const next = within(viewer).getByLabelText('Next slide')
+    fireEvent.click(next)
+    expect(viewerTrack(viewer)).toBe(sliderTransform(6, 1))
+    // One more step leaves the last photo, gliding *forward* onto the double
+    // of the first — one slide on, not a rewind across the whole set.
+    fireEvent.click(next)
+    expect(viewerTrack(viewer)).toBe(sliderTransform(7, 1))
+    // The double is the first photo's own pixels, so the jump back is invisible.
+    fireEvent.transitionEnd(track, { propertyName: 'transform' })
+    expect(viewerTrack(viewer)).toBe(sliderTransform(1, 1))
+    await frames()
+    // And the other way: back from the first photo, onto the last's double.
+    fireEvent.click(within(viewer).getByLabelText('Previous slide'))
+    expect(viewerTrack(viewer)).toBe('translateX(0)')
+    fireEvent.transitionEnd(track, { propertyName: 'transform' })
+    expect(viewerTrack(viewer)).toBe(sliderTransform(6, 1))
+    await frames()
+  })
+
+  test('a step asked for mid-wrap is taken once the wrap lands', async () => {
+    const view = photos(6)
+    fireEvent.click(view.getByLabelText('View all photos'))
+    const viewer = await view.findByRole('dialog')
+    const track = viewer.querySelector<HTMLElement>('[data-slider-track]')!
+    const next = within(viewer).getByLabelText('Next slide')
+    fireEvent.click(next)
+    fireEvent.click(next)
+    // Still gliding, and asked for one more: the track must not be sent back
+    // across the set to reach it — the step waits, then glides on.
+    fireEvent.click(next)
+    fireEvent.transitionEnd(track, { propertyName: 'transform' })
+    expect(viewerTrack(viewer)).toBe(sliderTransform(1, 1))
+    await frames()
+    expect(viewerTrack(viewer)).toBe(sliderTransform(2, 1))
   })
 
   test('the heart is the host’s wishlist', () => {

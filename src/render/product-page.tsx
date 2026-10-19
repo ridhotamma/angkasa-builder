@@ -20,6 +20,7 @@ import {
   CloseButton,
   Dialog,
   Drawer,
+  Flex,
   Grid,
   Heading,
   HStack,
@@ -34,7 +35,17 @@ import { useState } from 'react'
 // The brand marks come from the same set the footer's social links use, and
 // the generic ones from Lucide — the same match the rest of the page makes.
 import { FaFacebookF, FaWhatsapp, FaXTwitter } from 'react-icons/fa6'
-import { LuCheck, LuForward, LuLink, LuMail, LuRuler, LuStar, LuX } from 'react-icons/lu'
+import {
+  LuCheck,
+  LuForward,
+  LuLink,
+  LuMail,
+  LuMinus,
+  LuPlus,
+  LuRuler,
+  LuStar,
+  LuX,
+} from 'react-icons/lu'
 
 import { ImageWithFallback } from '@repo/theme'
 
@@ -201,6 +212,21 @@ const PHOTO_ACTION = {
   bg: 'bg/85',
   shadow: 'md',
   _hover: { bg: 'bg' },
+} as const
+
+/**
+ * The viewer's own buttons: the shop's ink at a glass' transparency over the
+ * photo, with the shop's canvas for the glyph — so the close and the arrows
+ * read on any picture without a colour of their own. The pair stays on a
+ * phone, unlike the overlay pair over a band: a fullscreen photo shows no
+ * edge of the next one, so the buttons are the only sign the set continues.
+ */
+const VIEWER_ACTION = {
+  variant: 'plain',
+  bg: 'ink/60',
+  color: 'canvas',
+  _hover: { bg: 'ink/75' },
+  hideBelow: undefined,
 } as const
 
 /**
@@ -453,8 +479,8 @@ function MosaicGallery({
           display="flex"
           alignItems="center"
           justifyContent="center"
-          bg="blackAlpha.500"
-          color="white"
+          bg="ink/60"
+          color="canvas"
           fontSize="2xl"
           fontWeight="semibold"
           fontVariantNumeric="tabular-nums"
@@ -516,13 +542,14 @@ function MosaicGallery({
           <Dialog.Positioner>
             {/* Fullscreen: the photo is the screen, so the viewer is the
                 whole viewport rather than a card inside it — and nothing
-                pads it top or bottom. */}
+                pads it top or bottom. The shop's ink is the ground the
+                blurred photo copy sits on. */}
             <Dialog.Content
               p="0"
               rounded="0"
               h="100dvh"
               maxH="100dvh"
-              bg="bg"
+              bg="ink"
               display="flex"
               alignItems="center"
               justifyContent="center"
@@ -532,18 +559,13 @@ function MosaicGallery({
               </Dialog.Body>
               <Dialog.CloseTrigger asChild>
                 <IconButton
+                  {...VIEWER_ACTION}
                   position="absolute"
                   top="3"
                   right="3"
                   zIndex="2"
                   rounded="full"
                   size="md"
-                  // The gallery's own floating buttons, so the way out and the
-                  // way through wear one style: the wishlist heart and share.
-                  variant="surface"
-                  bg="bg/85"
-                  shadow="md"
-                  _hover={{ bg: 'bg' }}
                   aria-label={text('close')}
                 >
                   <LuX />
@@ -558,10 +580,15 @@ function MosaicGallery({
 }
 
 /**
- * The whole set, one photo per screen, filling the viewport: the photo is
- * contained rather than cropped, the way a marketplace viewer shows it. The
- * arrows pair up at the bottom centre and the close button floats in the
- * corner; both sit over the photo, so nothing is boxed in.
+ * The whole set, one photo per screen, the way a marketplace viewer shows it:
+ * the photo is contained rather than cropped and centred on the screen, over
+ * a blurred, zoomed copy of itself so the frame never reads as empty. The
+ * arrows pair up at the bottom centre — on phones too — and the close button
+ * floats in the corner; both drawn in the shop's own ink and canvas.
+ *
+ * The pair never disables and never rewinds: the slider loops seamlessly, so
+ * stepping past the last photo glides on into the first and stepping back
+ * from the first lands on the last — the way a marketplace viewer cycles.
  */
 function PhotoViewer({
   images,
@@ -572,35 +599,59 @@ function PhotoViewer({
   name: string
   start: number
 }) {
+  const [current, setCurrent] = useState(start)
+  const resting = images[Math.min(current, Math.max(0, images.length - 1))]
   return (
-    <Slider
-      count={images.length}
-      perPage={1}
-      start={start}
-      arrows
-      arrowPlacement="bottom"
-      dots="none"
-    >
-      {images.map((image, index) => (
-        <Box
-          key={`${image.url}-${index}`}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          h="full"
-          w="full"
-        >
+    <Box position="relative" w="full" h="full">
+      {resting?.url && (
+        // The backdrop is the photo itself, blown up and blurred — the same
+        // picture, so it always agrees with what is in front of it.
+        <Box position="absolute" inset="0" overflow="hidden" aria-hidden="true">
           <ImageWithFallback
-            src={image.url ?? undefined}
-            alt={index === 0 ? name : ''}
-            objectFit="contain"
-            maxH="full"
-            maxW="full"
-            fallbackIconSize="12"
+            src={resting.url}
+            alt=""
+            objectFit="cover"
+            w="full"
+            h="full"
+            filter="blur(48px)"
+            transform="scale(1.2)"
           />
         </Box>
-      ))}
-    </Slider>
+      )}
+      <Slider
+        count={images.length}
+        perPage={1}
+        loop
+        start={start}
+        arrows
+        arrowPlacement="bottom"
+        dots="none"
+        onIndexChange={setCurrent}
+        rootProps={{ h: 'full' }}
+        bandProps={{ flex: '1' }}
+        arrowProps={VIEWER_ACTION}
+      >
+        {images.map((image, index) => (
+          <Box
+            key={`${image.url}-${index}`}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            h="full"
+            w="full"
+          >
+            <ImageWithFallback
+              src={image.url ?? undefined}
+              alt={index === 0 ? name : ''}
+              objectFit="contain"
+              maxH="full"
+              maxW="full"
+              fallbackIconSize="12"
+            />
+          </Box>
+        ))}
+      </Slider>
+    </Box>
   )
 }
 
@@ -697,37 +748,115 @@ function SizeGuideDrawer({ product, label }: { product: StorefrontProductDetail;
   )
 }
 
-/** What the editor shows where the storefront's variant picker and buy buttons go. */
-function PurchaseStandIn() {
+/**
+ * What the editor shows where the storefront's variant picker and buy buttons
+ * go: the same rows in the same order the storefront draws them — the stock
+ * line, a sample size axis, the rule, the quantity row and the two actions —
+ * so the seller lays the page out over the box shoppers will actually meet.
+ * Only the note at the end is the editor's own.
+ */
+function PurchaseStandIn({
+  product,
+  narrowColumn,
+}: {
+  product: StorefrontProductDetail
+  narrowColumn: boolean
+}) {
   const text = useRenderText()
+  // The same three sentences the storefront's own picker says, off the same
+  // fact: a product the shop does not count (`available` is null) is simply
+  // in stock.
+  const stock =
+    product.available === null
+      ? text('inStockUnlimited')
+      : product.available > 0
+        ? text('inStock', { count: product.available })
+        : text('soldOut')
+
   return (
-    <Stack gap="4" pt="4" borderTopWidth="1px" borderColor="border">
-      <HStack gap="2" wrap="wrap">
-        {['S', 'M', 'L', 'XL'].map((size, index) => (
-          <Box
-            key={size}
-            px="4"
-            py="2"
-            rounded="l2"
-            borderWidth="1px"
-            borderColor={index === 1 ? 'brand.solid' : 'border'}
-            fontSize="sm"
-            fontWeight="medium"
-          >
-            {size}
-          </Box>
-        ))}
-      </HStack>
-      {/* One action per line, the primary on top — the same arrangement the
-          storefront's own buy buttons use. */}
-      <Stack gap="3">
-        <Button size="lg" colorPalette="brand" w="full">
-          {text('buyNow')}
-        </Button>
-        <Button size="lg" variant="outline" colorPalette="brand" w="full">
-          {text('addToCart')}
-        </Button>
+    <Stack gap="4">
+      <Stack gap="5">
+        <Text fontSize="sm" color={product.available === 0 ? 'danger.fg' : 'fg.muted'}>
+          {stock}
+        </Text>
+        <Stack gap="2">
+          <Text fontSize="sm" fontWeight="medium">
+            {text('size')}
+            <Text as="span" color="fg.muted" fontWeight="normal">
+              {' '}
+              — M
+            </Text>
+          </Text>
+          <HStack gap="2" wrap="wrap">
+            {['S', 'M', 'L', 'XL'].map((size) => (
+              <Button
+                key={size}
+                size="sm"
+                rounded="pill"
+                variant={size === 'M' ? 'solid' : 'outline'}
+                colorPalette={size === 'M' ? 'brand' : undefined}
+              >
+                {size}
+              </Button>
+            ))}
+          </HStack>
+        </Stack>
       </Stack>
+
+      {/* The quantity and the actions sit under the rule in the storefront's
+          own box, and the pair shares one line wherever the details column has
+          the room — the mosaic leaves it narrow, and there they stack, as on
+          a phone. */}
+      <Stack gap="4" pt="4" borderTopWidth="1px" borderColor="border">
+        <HStack gap="3" justify="space-between">
+          <Text fontSize="sm" fontWeight="medium" color="fg.muted">
+            {text('quantity')}
+          </Text>
+          <HStack gap="1" borderWidth="1px" borderColor="border" rounded="md" p="1">
+            <IconButton
+              aria-label={text('decreaseQuantity')}
+              size={{ base: 'sm', md: 'xs' }}
+              variant="ghost"
+              // One is the least a shopper may take, exactly as the
+              // storefront's own stepper starts.
+              disabled
+            >
+              <Icon as={LuMinus} boxSize={{ base: '4', md: '3' }} />
+            </IconButton>
+            <Text
+              px={{ base: '4', md: '3' }}
+              fontSize={{ base: 'md', md: 'sm' }}
+              fontWeight="medium"
+              fontVariantNumeric="tabular-nums"
+            >
+              1
+            </Text>
+            <IconButton
+              aria-label={text('increaseQuantity')}
+              size={{ base: 'sm', md: 'xs' }}
+              variant="ghost"
+            >
+              <Icon as={LuPlus} boxSize={{ base: '4', md: '3' }} />
+            </IconButton>
+          </HStack>
+        </HStack>
+
+        <Flex direction={{ base: 'column', sm: narrowColumn ? 'column' : 'row' }} gap="3" w="full">
+          <Button minH={{ base: '14', md: '12' }} fontWeight="bold" colorPalette="brand" flex="1">
+            {text('buyNow')}
+          </Button>
+          <Button
+            minH={{ base: '14', md: '12' }}
+            fontWeight="bold"
+            colorPalette="brand"
+            variant="outline"
+            flex="1"
+          >
+            {text('addToCart')}
+          </Button>
+        </Flex>
+      </Stack>
+
       <Text fontSize="xs" color="fg.muted">
         {text('purchasePreview')}
       </Text>
@@ -735,7 +864,15 @@ function PurchaseStandIn() {
   )
 }
 
-function Block({ block, product }: { block: BlockValue; product: StorefrontProductDetail }) {
+function Block({
+  block,
+  product,
+  narrowColumn,
+}: {
+  block: BlockValue
+  product: StorefrontProductDetail
+  narrowColumn: boolean
+}) {
   const { data, formatPrice, slots } = useRenderEnvironment()
   const text = useRenderText()
   const settings = block.settings
@@ -794,7 +931,13 @@ function Block({ block, product }: { block: BlockValue; product: StorefrontProdu
       )
     }
     case 'purchase':
-      return <>{slots?.productPurchase ?? <PurchaseStandIn />}</>
+      return (
+        <>
+          {slots?.productPurchase?.({ narrowColumn }) ?? (
+            <PurchaseStandIn product={product} narrowColumn={narrowColumn} />
+          )}
+        </>
+      )
     case 'stock': {
       const threshold = readNumber(settings, 'threshold', 5)
       if (product.available === null || product.available <= 0 || product.available > threshold) {
@@ -862,9 +1005,11 @@ function isTab(block: BlockValue): boolean {
 function BlockList({
   blocks,
   product,
+  narrowColumn,
 }: {
   blocks: BlockValue[]
   product: StorefrontProductDetail
+  narrowColumn: boolean
 }) {
   const text = useRenderText()
   const groups: Array<{ tabs: BlockValue[] } | { block: BlockValue }> = []
@@ -880,7 +1025,14 @@ function BlockList({
     <Stack gap="5">
       {groups.map((group, index) => {
         if ('block' in group)
-          return <Block key={group.block.id} block={group.block} product={product} />
+          return (
+            <Block
+              key={group.block.id}
+              block={group.block}
+              product={product}
+              narrowColumn={narrowColumn}
+            />
+          )
         // A folded description of a product with none would be an empty tab.
         const tabs = group.tabs.filter((tab) => tab.type !== 'description' || product.description)
         if (tabs.length === 0) return null
@@ -970,9 +1122,9 @@ export function ProductInfo({ settings }: SectionProps) {
       )}
       <Grid
         // The mosaic packs up to five photos into its column, so it takes two
-        // thirds of the row — the width a photo-led product page wants. The
-        // actions under the details stack full width, so the narrower details
-        // column costs nothing there.
+        // thirds of the row — the width a photo-led product page wants. What
+        // that leaves on the details side is narrow: the buy box is told so,
+        // and stacks its actions there rather than squeezing them into a row.
         templateColumns={{
           base: '1fr',
           lg: gallery === 'mosaic' ? 'minmax(0, 2fr) minmax(0, 1fr)' : '1.1fr 1fr',
@@ -982,7 +1134,11 @@ export function ProductInfo({ settings }: SectionProps) {
       >
         <Gallery product={product} layout={gallery} zoom={readBoolean(settings, 'zoom')} />
         <Box position={{ lg: sticky ? 'sticky' : 'static' }} top={{ lg: STICKY_BELOW_HEADER }}>
-          <BlockList blocks={readBlocks(settings, 'blocks')} product={product} />
+          <BlockList
+            blocks={readBlocks(settings, 'blocks')}
+            product={product}
+            narrowColumn={gallery === 'mosaic'}
+          />
         </Box>
       </Grid>
     </Stack>
