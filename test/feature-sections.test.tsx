@@ -448,6 +448,11 @@ describe('section chrome', () => {
       const bands = html.match(/padding-bottom:50%/g) ?? []
       expect(bands.length, `perPage ${perPage}`).toBe(1)
       expect(html, `perPage ${perPage}`).not.toMatch(/aspect-ratio:\d/)
+      // The final slider is what the server sends — never a placeholder that
+      // a slow connection later swaps out.
+      expect(html, `perPage ${perPage}`).toContain('data-slider-track')
+      expect(html, `perPage ${perPage}`).toContain('data-slider-slide')
+      expect(html, `perPage ${perPage}`).not.toContain('aria-busy')
     }
   })
 

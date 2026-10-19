@@ -22,12 +22,11 @@ import {
   Icon,
   Marquee,
   SimpleGrid,
-  Skeleton,
   Stack,
   Text,
   type BoxProps,
 } from '@chakra-ui/react'
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { LuMinus, LuPlus } from 'react-icons/lu'
 
 import { Image, ImageWithFallback } from '@repo/theme'
@@ -298,9 +297,10 @@ export function BannerImage({ settings }: SectionProps) {
 /**
  * Image banners in a row, each optionally a link — a whole page of `perPage`
  * at a time, with the shared slider's arrows, finger drag and pill dots. A
- * single slide is simply a still banner: there is nothing to slide to. Until
- * the images have settled a skeleton of the same shape stands in, so the swap
- * moves nothing below it.
+ * single slide is simply a still banner: there is nothing to slide to. The
+ * slider is the first thing the server draws: its band has the seller's shape
+ * and its images fill their own boxes, so a slow connection never swaps a
+ * placeholder for a different layout.
  *
  * The band is the **Banner shape** the seller picked, and its height never
  * follows the number of visible slides — switching 1 → 2 → 3 changes the
@@ -319,9 +319,6 @@ export function BannerSlider({ settings }: SectionProps) {
   const phone = slidesPerView(readText(settings, 'perPageMobile'), 1, 3)
   const perPage = Math.min(useResponsive({ base: phone, md: desktop }), slides.length)
   const ratio = ratioValue(readText(settings, 'ratio'))
-  const ready = useImagesSettled(
-    slides.length > 1 ? slides.map((slide) => bannerImageUrl(imageUrl, slide)) : [],
-  )
 
   if (slides.length === 0) return <EmptyNotice>{empty('slides')}</EmptyNotice>
   if (slides.length === 1) {
@@ -329,55 +326,6 @@ export function BannerSlider({ settings }: SectionProps) {
       <AspectRatio as="section" ratio={ratio}>
         <BannerSlide slide={slides[0]!} eager />
       </AspectRatio>
-    )
-  }
-
-  if (!ready) {
-    // The skeleton is the slider's own shape, so nothing below moves when the
-    // real one swaps in: the band, and the dots row too wherever more than one
-    // banner will show — inside the band it needs no row of its own.
-    const columns = Math.min(Math.ceil(desktop), slides.length)
-    const phoneColumns = Math.min(Math.ceil(phone), slides.length)
-    const dotsBelowPhone = phone > 1 && slides.length > phone
-    const dotsBelowDesktop = desktop > 1 && slides.length > desktop
-    const dotsBelow = dotsBelowPhone || dotsBelowDesktop
-    const phoneDots = Math.max(1, Math.ceil(slides.length - phone) + 1)
-    const desktopDots = Math.max(1, Math.ceil(slides.length - desktop) + 1)
-    return (
-      <Stack as="section" gap="3" aria-busy>
-        <AspectRatio ratio={ratio}>
-          <Flex gap="12px">
-            {Array.from({ length: Math.max(columns, phoneColumns) }, (_, index) => (
-              <Skeleton
-                key={index}
-                flex="1"
-                rounded="l3"
-                h="full"
-                hideBelow={index >= phoneColumns ? 'md' : undefined}
-                hideFrom={index >= columns ? 'md' : undefined}
-              />
-            ))}
-          </Flex>
-        </AspectRatio>
-        {dotsBelow && (
-          <HStack
-            justifyContent="center"
-            gap="2"
-            // The row the settled slider draws where it draws it, at the same
-            // height, so the page under the band does not budge.
-            {...(dotsBelowPhone ? {} : { hideBelow: 'md' })}
-            {...(dotsBelowDesktop ? {} : { hideFrom: 'md' })}
-            aria-hidden
-          >
-            {Array.from(
-              { length: dotsBelowPhone ? phoneDots : desktopDots },
-              (_, index) => (
-                <Skeleton key={index} boxSize="2.5" rounded="full" />
-              ),
-            )}
-          </HStack>
-        )}
-      </Stack>
     )
   }
 
@@ -423,6 +371,9 @@ function BannerSlide({ slide, eager }: { slide: FieldValues; eager: boolean }) {
         overflow="hidden"
         bg="bg.subtle"
         loading={eager ? 'eager' : 'lazy'}
+        // The first banner is above the fold: fetch it ahead of the rest so
+        // the band fills as soon as the connection allows.
+        fetchPriority={eager ? 'high' : undefined}
         // A native image drag would steal the gesture from the slider.
         draggable={false}
       />
@@ -430,54 +381,12 @@ function BannerSlide({ slide, eager }: { slide: FieldValues; eager: boolean }) {
   )
 }
 
-/** One URL per slide, shared by the preload and the `<img>` so the second hits the cache. */
+/** The slide's image at the band's own crop size. */
 function bannerImageUrl(
   imageUrl: ReturnType<typeof useRenderEnvironment>['imageUrl'],
   slide: FieldValues,
 ): string | null {
   return imageUrl(readText(slide, 'image'), { width: 1200, height: 800 }) ?? null
-}
-
-/** Longest the slider waits on its images before showing anyway. */
-const IMAGE_SETTLE_TIMEOUT_MS = 10_000
-
-/**
- * `true` once the page has hydrated and every URL has loaded or failed.
- *
- * `false` on the server and on the first client render — an effect is what
- * says the script is running. Once `true` it stays `true`: adding a slide in
- * the editor should not blank the whole slider while one more image loads.
- * A failed image counts as settled, since `ImageWithFallback` has a
- * placeholder for it, and the timeout keeps one stalled request from hiding
- * the slider indefinitely.
- */
-function useImagesSettled(urls: (string | null)[]): boolean {
-  const [settled, setSettled] = useState(false)
-  const key = urls.filter(Boolean).join('\n')
-
-  useEffect(() => {
-    if (settled) return
-    let cancelled = false
-    const pending = key
-      ? key.split('\n').map(
-          (url) =>
-            new Promise<void>((resolve) => {
-              const image = new window.Image()
-              image.onload = image.onerror = () => resolve()
-              image.src = url
-            }),
-        )
-      : []
-    const timeout = new Promise<void>((resolve) => setTimeout(resolve, IMAGE_SETTLE_TIMEOUT_MS))
-    void Promise.race([Promise.all(pending), timeout]).then(() => {
-      if (!cancelled) setSettled(true)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [key, settled])
-
-  return settled
 }
 
 /** `'16/9'` as the number `AspectRatio` wants. */
