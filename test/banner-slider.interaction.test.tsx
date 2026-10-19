@@ -10,7 +10,7 @@
 
 import './happy-dom-setup'
 
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, mock, test } from 'bun:test'
 import { Box, ChakraProvider } from '@chakra-ui/react'
 import { act, cleanup, fireEvent, render, waitFor, type RenderResult } from '@testing-library/react'
 
@@ -304,6 +304,36 @@ describe('the banner slider view', () => {
     await waitFor(() => expect(view.container.querySelector('[data-slider-track]')).not.toBeNull())
     expect(view.queryByLabelText('Next slide')).toBeNull()
     expect(view.queryByLabelText('Slide 1')).toBeNull()
+  })
+
+  test('the editor picker lets the slider controls act, but selects the section', async () => {
+    const onSelect = mock(() => undefined)
+    const view = render(
+      <ChakraProvider value={system}>
+        <I18nProvider locale="en" resources={{}}>
+          <SectionsRenderer
+            sections={[
+              createSection('banner-slider', {
+                ratio: '2/1',
+                perPage: '3',
+                loop: true,
+                slides: [{ image: 's1' }, { image: 's2' }, { image: 's3' }],
+              }),
+            ]}
+            env={{ ...env(), getWindow: () => windowAt(true) }}
+            onSelect={onSelect}
+          />
+        </I18nProvider>
+      </ChakraProvider>,
+    )
+    const next = await waitFor(() => view.getByLabelText('Next slide') as HTMLButtonElement)
+    // An arrow pages the banner instead of being swallowed by the picker.
+    fireEvent.click(next)
+    expect(view.getByLabelText('Slide 2').getAttribute('aria-current')).toBe('true')
+    expect(onSelect).not.toHaveBeenCalled()
+    // Anywhere else in the section still selects it.
+    fireEvent.click(view.container.querySelector('[data-slider-slide]')!)
+    expect(onSelect).toHaveBeenCalled()
   })
 
   test('a fractional view reaches the slides, on desktop and phone alike', async () => {

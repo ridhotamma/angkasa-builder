@@ -34,6 +34,7 @@ import type {
 import type { IconName } from './icons'
 import type { Localized } from './localized'
 import {
+  BANNER_SLIDES_PER_VIEW,
   photoFitField,
   photoPositionField,
   slidesField,
@@ -1330,13 +1331,13 @@ export const SECTION_SCHEMAS = [
       slidesField(
         'perPage',
         { en: 'Slides on desktop', id: 'Slide di desktop' },
-        SLIDES_PER_VIEW,
+        BANNER_SLIDES_PER_VIEW,
         '2',
       ),
       slidesField(
         'perPageMobile',
         { en: 'Slides on phones', id: 'Slide di ponsel' },
-        SLIDES_PER_VIEW_MOBILE,
+        BANNER_SLIDES_PER_VIEW,
         '1',
       ),
       {

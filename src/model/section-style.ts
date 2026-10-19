@@ -265,6 +265,13 @@ export const SLIDES_PER_VIEW = [
 
 export const SLIDES_PER_VIEW_MOBILE = ['1', '1.2', '1.5', '2', '2.2', '2.5', '3'] as const
 
+/**
+ * The banner's own scale stops at three across on every screen: a fourth slice
+ * of an ultra-wide band is a thumbnail, not a banner. Older saved settings
+ * above it are clamped to three by the renderer.
+ */
+export const BANNER_SLIDES_PER_VIEW = SLIDES_PER_VIEW_MOBILE
+
 /** The slides-per-view choice, shared by every slider that offers one. */
 export function slidesField(
   key: string,

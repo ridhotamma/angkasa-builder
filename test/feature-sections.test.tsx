@@ -8,6 +8,7 @@ import { SECTION_TEXT_SHADOW_ENABLED } from '@repo/appwrite-config'
 import { system } from '@repo/theme'
 
 import {
+  BANNER_SLIDES_PER_VIEW,
   createSection,
   DEFAULT_THEME_SETTINGS,
   parseVideoUrl,
@@ -15,7 +16,6 @@ import {
   richDocFromPlainText,
   sectionAnchorId,
   sectionSchema,
-  SLIDES_PER_VIEW,
   SLIDES_PER_VIEW_MOBILE,
   type SectionInstance,
 } from '../src/index'
@@ -393,8 +393,10 @@ describe('section chrome', () => {
       const field = fields.find((candidate) => candidate.key === key)
       return field?.kind === 'select' ? field.options.map((option) => option.value) : []
     }
-    expect(values('perPage')).toEqual([...SLIDES_PER_VIEW])
+    // The banner tops out at three across, on both screens.
+    expect(values('perPage')).toEqual([...BANNER_SLIDES_PER_VIEW])
     expect(values('perPageMobile')).toEqual([...SLIDES_PER_VIEW_MOBILE])
+    expect(BANNER_SLIDES_PER_VIEW).not.toContain('4')
     // A fraction is a real choice on both screens, not just an option label.
     const section = createSection('banner-slider', { perPage: '2.5', perPageMobile: '1.5' })
     expect(section.settings.perPage).toBe('2.5')

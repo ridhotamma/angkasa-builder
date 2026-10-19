@@ -315,7 +315,7 @@ export function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
   const { imageUrl } = useRenderEnvironment()
   const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
-  const desktop = slidesPerView(readText(settings, 'perPage'), 2, 6)
+  const desktop = slidesPerView(readText(settings, 'perPage'), 2, 3)
   const phone = slidesPerView(readText(settings, 'perPageMobile'), 1, 3)
   const perPage = Math.min(useResponsive({ base: phone, md: desktop }), slides.length)
   const ratio = ratioValue(readText(settings, 'ratio'))

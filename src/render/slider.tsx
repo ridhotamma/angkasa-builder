@@ -472,6 +472,7 @@ export function Slider({
         >
           <IconButton
             {...OVERLAY_ARROW}
+            data-slider-control=""
             position="static"
             transform="none"
             {...arrowProps}
@@ -483,6 +484,7 @@ export function Slider({
           </IconButton>
           <IconButton
             {...OVERLAY_ARROW}
+            data-slider-control=""
             position="static"
             transform="none"
             {...arrowProps}
@@ -498,6 +500,7 @@ export function Slider({
         <>
           <IconButton
             {...OVERLAY_ARROW}
+            data-slider-control=""
             {...(vertical
               ? { top: '2', left: '50%', transform: 'translateX(-50%)' }
               : { left: arrowInset })}
@@ -510,6 +513,7 @@ export function Slider({
           </IconButton>
           <IconButton
             {...OVERLAY_ARROW}
+            data-slider-control=""
             {...(vertical
               ? { top: 'auto', bottom: '2', left: '50%', transform: 'translateX(-50%)' }
               : { right: arrowInset })}
@@ -625,6 +629,7 @@ export function Slider({
         // Anything that moves on its own for more than five seconds needs a
         // way to stop it (WCAG 2.2.2).
         <IconButton
+          data-slider-control=""
           size="2xs"
           variant="ghost"
           rounded="full"
@@ -701,6 +706,7 @@ function SliderDots({
         <Box
           key={position}
           as="button"
+          data-slider-control=""
           w={position === at ? '6' : '2.5'}
           h="2.5"
           p="0"

@@ -327,6 +327,10 @@ const SectionItem = memo(function SectionItem({
       badge={<ScheduleBadge section={section} now={now ?? new Date()} />}
       onClickCapture={(event) => {
         const target = event.target as HTMLElement
+        // A slider's arrows and dots are navigation, not an action that leaves
+        // the canvas: let the seller try them without the picker swallowing
+        // the click. Everything else stays a selection, as below.
+        if (target.closest('[data-slider-control]')) return
         // A block or element inside the section owns its own click: it
         // selects itself and the section on the way up, and clearing it here
         // first would unmount the very field the click was aiming at.
