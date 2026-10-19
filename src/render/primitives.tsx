@@ -35,7 +35,7 @@ import {
   type ComponentProps,
   type MouseEvent,
   type ReactNode,
-  type RefObject,
+  type RefCallback,
 } from 'react'
 import { LuHeart, LuStar } from 'react-icons/lu'
 
@@ -1097,11 +1097,12 @@ export interface CardTheme {
   flat: boolean
   hover: BoxProps
   /**
-   * Attach to the card's own root element to give it the 3D `tilt` — never a
-   * wrapper, so a tilt can never change the card's box in the layout. A no-op
-   * ref when the theme does not ask for tilt.
+   * Attach to every card's own root element to give it the 3D `tilt` — never a
+   * wrapper, so a tilt can never change the card's box in the layout. One ref
+   * may serve a whole list: each mounted card gets its own tilt. A no-op when
+   * the theme does not ask for tilt.
    */
-  tiltRef: RefObject<HTMLDivElement | null>
+  tiltRef: RefCallback<HTMLDivElement>
 }
 
 /**
@@ -1352,9 +1353,10 @@ export function ProductGrid({
 
 /**
  * A stored slides-per-view, clamped to the slider's own scale. Whole steps
- * are rows of cards; a fraction leaves the next card peeking.
+ * are rows of cards; a fraction leaves the next slide peeking. Shared by the
+ * product row and the banner slider, so one setting reads the same on both.
  */
-function slidesPerView(value: string | undefined, fallback: number, max: number): number {
+export function slidesPerView(value: string | undefined, fallback: number, max: number): number {
   const count = Number(value)
   return Number.isFinite(count) && count > 0 ? Math.min(max, count) : fallback
 }

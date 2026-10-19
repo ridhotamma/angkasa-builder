@@ -37,7 +37,7 @@ export function BannerVideo({ settings }: SectionProps) {
       bg="gray.900"
     >
       <BackgroundVideo video={video} poster={poster} objectFit={fit} objectPosition={position} />
-      <BannerCopy settings={settings} onImage />
+      <BannerCopy settings={settings} onImage withBody />
     </Box>
   )
 }

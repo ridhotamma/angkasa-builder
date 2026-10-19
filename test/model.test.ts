@@ -621,6 +621,13 @@ describe('linked sections', () => {
     expect(next[0]!.settings.heading).toBe('Asli')
   })
 
+  test('a required section cannot be removed', () => {
+    const header = createSection('catalog-header')
+    const tracking = createSection('order-tracking')
+    expect(removeSection([header], header.id)).toEqual([header])
+    expect(removeSection([tracking], tracking.id)).toEqual([tracking])
+  })
+
   test('a chain resolves through to the final original', () => {
     const master = createSection('faq', { heading: 'Ujung' })
     const middle = { ...master, id: 'mid', linkedTo: master.id }

@@ -11,7 +11,15 @@
  */
 
 import { Box, Flex, type BoxProps } from '@chakra-ui/react'
-import { useEffect, useRef, useState, type FocusEvent, type ReactNode, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type ReactNode,
+  type RefCallback,
+} from 'react'
 
 import type { EntrancePreset } from '../model/section-style'
 import { loadMotion, revealRootMargin, useMotionEffect } from './motion/engine'
@@ -100,65 +108,111 @@ export function SplitText({ text, ...props }: { text: string } & BoxProps) {
   )
 }
 
+interface TiltBinding {
+  cancelled: boolean
+  revert: () => void
+}
+
 /**
  * A card leaning toward the pointer in 3D, easing flat on leave. Returns a ref
  * to attach to the card element itself — never a wrapper — so the tilt can
  * never change the card's box in the layout. A no-op when disabled, under
  * reduced motion, or on a touch pointer (there is nothing to lean toward).
+ *
+ * It is a callback ref, not a ref object: a section draws a whole list of
+ * cards from one `useCard()` call, and a ref object would keep only the last
+ * card React attached it to. Every card mounted through the same ref gets its
+ * own listeners and tween, so a list tilts card by card.
  */
-export function useTilt(enabled: boolean, max = 7): RefObject<HTMLDivElement | null> {
-  const ref = useRef<HTMLDivElement>(null)
+export function useTilt(enabled: boolean, max = 7): RefCallback<HTMLDivElement> {
+  const nodes = useRef(new Set<HTMLDivElement>())
+  const bindings = useRef(new Map<HTMLDivElement, TiltBinding>())
+  // Read inside a binding when it fires, so a theme change reaches cards that
+  // are already on the page without tearing them down first.
+  const enabledRef = useRef(enabled)
+  enabledRef.current = enabled
+  const maxRef = useRef(max)
+  maxRef.current = max
 
-  useEffect(() => {
-    const element = ref.current
-    const view = element?.ownerDocument.defaultView
-    if (!enabled || !element || !view) return
+  const attach = useCallback((node: HTMLDivElement) => {
+    if (!enabledRef.current || bindings.current.has(node)) return
+    const view = node.ownerDocument.defaultView
+    if (!view) return
     if (view.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     if (view.matchMedia('(pointer: coarse)').matches) return
 
-    let cancelled = false
-    let revert: (() => void) | undefined
+    const binding: TiltBinding = { cancelled: false, revert: () => undefined }
+    bindings.current.set(node, binding)
     void loadMotion()
       .then(({ gsap }) => {
-        const target = ref.current
-        if (cancelled || !target) return
+        if (binding.cancelled || !enabledRef.current) return
         const context = gsap.context(() => {
           // Perspective only, never `preserve-3d`: a shared 3D space lifts the
           // card's own picture and badges onto separate planes, which fights its
           // `overflow: hidden` clipping and rounding. The lean reads the same.
-          gsap.set(target, { transformPerspective: 900 })
-          const rotateX = gsap.quickTo(target, 'rotationX', { duration: 0.45, ease: 'power3.out' })
-          const rotateY = gsap.quickTo(target, 'rotationY', { duration: 0.45, ease: 'power3.out' })
+          gsap.set(node, { transformPerspective: 900 })
+          const rotateX = gsap.quickTo(node, 'rotationX', { duration: 0.45, ease: 'power3.out' })
+          const rotateY = gsap.quickTo(node, 'rotationY', { duration: 0.45, ease: 'power3.out' })
           const onMove = (event: PointerEvent) => {
-            const rect = target.getBoundingClientRect()
+            const rect = node.getBoundingClientRect()
             if (rect.width === 0 || rect.height === 0) return
             const px = (event.clientX - rect.left) / rect.width - 0.5
             const py = (event.clientY - rect.top) / rect.height - 0.5
-            rotateY(px * max * 2)
-            rotateX(-py * max * 2)
+            rotateY(px * maxRef.current * 2)
+            rotateX(-py * maxRef.current * 2)
           }
           const onLeave = () => {
             rotateX(0)
             rotateY(0)
           }
-          target.addEventListener('pointermove', onMove)
-          target.addEventListener('pointerleave', onLeave)
+          node.addEventListener('pointermove', onMove)
+          node.addEventListener('pointerleave', onLeave)
           return () => {
-            target.removeEventListener('pointermove', onMove)
-            target.removeEventListener('pointerleave', onLeave)
+            node.removeEventListener('pointermove', onMove)
+            node.removeEventListener('pointerleave', onLeave)
           }
-        }, target)
-        revert = () => context.revert()
+        }, node)
+        binding.revert = () => context.revert()
       })
       .catch(() => undefined)
+  }, [])
 
+  const detach = useCallback((node: HTMLDivElement) => {
+    const binding = bindings.current.get(node)
+    if (!binding) return
+    // Forget it before reverting, so a second detach for the same node — a
+    // StrictMode cleanup after an effect cleanup, say — is a no-op.
+    bindings.current.delete(node)
+    binding.cancelled = true
+    binding.revert()
+  }, [])
+
+  const tiltRef = useCallback<RefCallback<HTMLDivElement>>(
+    (node) => {
+      if (!node) return
+      nodes.current.add(node)
+      attach(node)
+      return () => {
+        nodes.current.delete(node)
+        detach(node)
+      }
+    },
+    [attach, detach],
+  )
+
+  // Covers the cards already on the page when the theme edit turns tilt on,
+  // off or stronger — a ref will not fire again on its own. It also reattaches
+  // them after StrictMode's simulated unmount, since the ref cleanups emptied
+  // the bindings. `attach` is idempotent, so running it twice is harmless.
+  useEffect(() => {
+    if (!enabled) return
+    for (const node of nodes.current) attach(node)
     return () => {
-      cancelled = true
-      revert?.()
+      for (const node of Array.from(bindings.current.keys())) detach(node)
     }
-  }, [enabled, max])
+  }, [enabled, max, attach, detach])
 
-  return ref
+  return tiltRef
 }
 
 /**

@@ -4,7 +4,7 @@
  * Most sections get their background from the frame's style (a scheme band, a
  * gradient, a style-level background image), and `surfacePaint` already knows
  * it. Banner renderers are the exception: their background *is* their content
- * — a hero's photo, a video hero's poster, an editorial statement's image —
+ * — a hero's photo, a looping video's poster, an editorial statement's image —
  * and that lives in the section's own settings, which the frame cannot see.
  *
  * Without this, a divider on a banner falls back to the page colour and is
@@ -48,7 +48,7 @@ export function sectionBackground(section: SectionInstance): SectionBackground |
   switch (section.type) {
     case 'banner': {
       const media = readText(settings, 'media')
-      if (media === 'video' || media === 'background') {
+      if (media === 'video') {
         const imageId = readText(settings, 'poster')
         const video = readVideo(settings, 'video')
         return imageId || video ? { media: { imageId, video }, ...photoCrop(settings) } : null

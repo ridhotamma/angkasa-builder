@@ -48,7 +48,7 @@ import { whatsappHref } from './content-sections'
 import { useRenderEnvironment } from './context'
 import { schemeCss, useSectionLayout } from './frame'
 import { usePrefersReducedMotion } from './hooks'
-import { BackgroundVideo, VideoFrame } from './media'
+import { VideoFrame } from './media'
 import {
   ButtonRow,
   EmptyNotice,
@@ -61,7 +61,7 @@ import {
   useOverlayProps,
 } from './primitives'
 import { RichTextView } from './rich-text'
-import { alignOf, heroHeight, overlayProps, useEmptyText, type SectionProps } from './sections'
+import { alignOf, overlayProps, useEmptyText, type SectionProps } from './sections'
 
 const COLUMNS: Record<string, number> = { '2': 2, '3': 3, '4': 4, '6': 6 }
 
@@ -72,106 +72,6 @@ function readColumns(settings: FieldValues, fallback: number, fallbackKey = '3')
 /** The phone choice a columns field stores: one, or two. */
 function readMobileColumns(settings: FieldValues): number {
   return readText(settings, 'mobileColumns') === '2' ? 2 : 1
-}
-
-/* -------------------------------------------------------------------------- */
-/* Background video                                                           */
-/* -------------------------------------------------------------------------- */
-
-const BAND_POSITION: Record<string, 'flex-start' | 'center' | 'flex-end'> = {
-  top: 'flex-start',
-  middle: 'center',
-  bottom: 'flex-end',
-}
-
-export function BannerBackground({ settings }: SectionProps) {
-  const { imageUrl } = useRenderEnvironment()
-  const { width, contentWidth } = useSectionLayout()
-  const video = readVideo(settings, 'video')
-  const posterId = readText(settings, 'poster')
-  const poster = posterId ? imageUrl(posterId, { width: 1920, height: 1080 }) : null
-  const height = heroHeight(settings)
-  const align = alignOf(settings)
-  const middle = readText(settings, 'contentPosition') === 'middle'
-  const edge = width === 'edge'
-
-  const copy = (
-    <Stack
-      gap="4"
-      maxW="3xl"
-      textAlign={align}
-      align={align === 'center' ? 'center' : 'flex-start'}
-      color="white"
-    >
-      {readText(settings, 'heading') && (
-        <ThemeText
-          as="h2"
-          elementKey={textElementKey('heading')}
-          field="heading"
-          value={readText(settings, 'heading')}
-          fontSize={{ base: '3xl', md: '5xl' }}
-          letterSpacing="-0.025em"
-        />
-      )}
-      {readText(settings, 'subheading') && (
-        <ThemeText
-          as="p"
-          elementKey={textElementKey('subheading')}
-          field="subheading"
-          value={readText(settings, 'subheading')}
-          fontSize={{ base: 'md', md: 'xl' }}
-          opacity={0.92}
-        />
-      )}
-      <RichTextView
-        doc={readRichText(settings, 'body')}
-        elementKey={textElementKey('body')}
-        field="body"
-        inheritColor
-      />
-      {/* Always, as `BannerCopy` does for the other banner looks: hiding the
-          buttons under one text position left a seller's button a setting that
-          never drew. */}
-      <ButtonRow settings={settings} align={align} onImage />
-    </Stack>
-  )
-
-  return (
-    <Box
-      position="relative"
-      rounded={edge ? 'none' : 'l3'}
-      overflow="hidden"
-      minH={height}
-      bg="gray.900"
-    >
-      <BackgroundVideo
-        video={video}
-        poster={poster}
-        objectFit={readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')}
-        objectPosition={readToken(settings, 'position', PHOTO_POSITION_VALUES, 'center')}
-      />
-      <Flex
-        position="relative"
-        minH={height}
-        align={BAND_POSITION[readText(settings, 'contentPosition')] ?? 'flex-end'}
-        justify={align === 'center' ? 'center' : 'start'}
-        px={edge ? '0' : { base: '6', md: '12' }}
-        py={{ base: '6', md: '12' }}
-        {...overlayProps(readText(settings, 'overlay'))}
-      >
-        {edge ? (
-          <PageColumn maxW={contentWidth}>
-            <Flex w="full" justify={align === 'center' ? 'center' : 'start'}>
-              {copy}
-            </Flex>
-          </PageColumn>
-        ) : (
-          copy
-        )}
-        {middle && <Box />}
-      </Flex>
-    </Box>
-  )
 }
 
 /* -------------------------------------------------------------------------- */

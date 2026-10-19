@@ -70,6 +70,7 @@ import {
   Paragraphs,
   ProductList,
   SectionHeading,
+  slidesPerView,
   SmartLink,
   ThemeButton,
   useCard,
@@ -147,11 +148,21 @@ export function overlayProps(
  * A banner's words and buttons, over whatever the banner shows behind them.
  * Shared by the image, video and parallax banners so all three read alike.
  */
-export function BannerCopy({ settings, onImage }: { settings: FieldValues; onImage: boolean }) {
+export function BannerCopy({
+  settings,
+  onImage,
+  withBody = false,
+}: {
+  settings: FieldValues
+  onImage: boolean
+  /** Only the looping-video look offers the rich body field. */
+  withBody?: boolean
+}) {
   const { mode } = useRenderEnvironment()
   const { headline, width: sectionWidth, contentWidth, banded } = useSectionLayout()
   const heading = readText(settings, 'heading')
   const subheading = readText(settings, 'subheading')
+  const body = withBody ? readRichText(settings, 'body') : null
   const align = alignOf(settings)
   // Top, middle or bottom — the three the schemas offer. Anything else keeps
   // the historic bottom.
@@ -196,6 +207,15 @@ export function BannerCopy({ settings, onImage }: { settings: FieldValues; onIma
         <Text fontSize={{ base: 'md', md: 'xl' }} opacity={0.9} textWrap="pretty">
           <EditableText field="subheading" value={subheading} />
         </Text>
+      )}
+      {withBody && body && (
+        <RichTextView
+          doc={body}
+          align={align}
+          elementKey={textElementKey('body')}
+          field="body"
+          inheritColor={onImage}
+        />
       )}
       <ButtonRow settings={settings} align={align} onImage={onImage} />
     </Stack>
@@ -285,13 +305,19 @@ export function BannerImage({ settings }: SectionProps) {
  * The band is the **Banner shape** the seller picked, and its height never
  * follows the number of visible slides — switching 1 → 2 → 3 changes the
  * crop, not the page. See `slider.tsx` for the track itself.
+ *
+ * One banner in view keeps the dots over the band, the familiar photo-slider
+ * look; two or more drop them into a row under it, in the page's own ink. The
+ * view is the seller's slide count on each screen — whole or fractional, so
+ * 1.5 leaves the next banner peeking on a phone and on a desktop alike.
  */
 export function BannerSlider({ settings }: SectionProps) {
   const empty = useEmptyText()
   const { imageUrl } = useRenderEnvironment()
   const slides = readList(settings, 'slides').filter((slide) => readText(slide, 'image'))
-  const desktop = Number(readText(settings, 'perPage')) || 2
-  const perPage = Math.min(useResponsive({ base: 1, md: desktop }), slides.length)
+  const desktop = slidesPerView(readText(settings, 'perPage'), 2, 6)
+  const phone = slidesPerView(readText(settings, 'perPageMobile'), 1, 3)
+  const perPage = Math.min(useResponsive({ base: phone, md: desktop }), slides.length)
   const ratio = ratioValue(readText(settings, 'ratio'))
   const ready = useImagesSettled(
     slides.length > 1 ? slides.map((slide) => bannerImageUrl(imageUrl, slide)) : [],
@@ -308,23 +334,50 @@ export function BannerSlider({ settings }: SectionProps) {
 
   if (!ready) {
     // The skeleton is the slider's own shape, so nothing below moves when the
-    // real one swaps in. The dots live inside the band, so the band is all
-    // there is to draw.
+    // real one swaps in: the band, and the dots row too wherever more than one
+    // banner will show — inside the band it needs no row of its own.
     const columns = Math.min(Math.ceil(desktop), slides.length)
+    const phoneColumns = Math.min(Math.ceil(phone), slides.length)
+    const dotsBelowPhone = phone > 1 && slides.length > phone
+    const dotsBelowDesktop = desktop > 1 && slides.length > desktop
+    const dotsBelow = dotsBelowPhone || dotsBelowDesktop
+    const phoneDots = Math.max(1, Math.ceil(slides.length - phone) + 1)
+    const desktopDots = Math.max(1, Math.ceil(slides.length - desktop) + 1)
     return (
-      <AspectRatio as="section" ratio={ratio} aria-busy>
-        <Flex gap="12px">
-          {Array.from({ length: columns }, (_, index) => (
-            <Skeleton
-              key={index}
-              flex="1"
-              rounded="l3"
-              h="full"
-              hideBelow={index > 0 ? 'md' : undefined}
-            />
-          ))}
-        </Flex>
-      </AspectRatio>
+      <Stack as="section" gap="3" aria-busy>
+        <AspectRatio ratio={ratio}>
+          <Flex gap="12px">
+            {Array.from({ length: Math.max(columns, phoneColumns) }, (_, index) => (
+              <Skeleton
+                key={index}
+                flex="1"
+                rounded="l3"
+                h="full"
+                hideBelow={index >= phoneColumns ? 'md' : undefined}
+                hideFrom={index >= columns ? 'md' : undefined}
+              />
+            ))}
+          </Flex>
+        </AspectRatio>
+        {dotsBelow && (
+          <HStack
+            justifyContent="center"
+            gap="2"
+            // The row the settled slider draws where it draws it, at the same
+            // height, so the page under the band does not budge.
+            {...(dotsBelowPhone ? {} : { hideBelow: 'md' })}
+            {...(dotsBelowDesktop ? {} : { hideFrom: 'md' })}
+            aria-hidden
+          >
+            {Array.from(
+              { length: dotsBelowPhone ? phoneDots : desktopDots },
+              (_, index) => (
+                <Skeleton key={index} boxSize="2.5" rounded="full" />
+              ),
+            )}
+          </HStack>
+        )}
+      </Stack>
     )
   }
 
@@ -335,8 +388,13 @@ export function BannerSlider({ settings }: SectionProps) {
       count={slides.length}
       perPage={perPage}
       loop={readBoolean(settings, 'loop')}
+      // Banner slides are pictures, not editable blocks: the editor can draw
+      // the wrap, so a looped full view rotates there just as it does live.
+      wrapInEditor
       autoplay={readBoolean(settings, 'autoplay')}
-      dots="inside"
+      // One banner at a time keeps the dots over the photo; more than one
+      // moves them under the band, in the theme's own ink.
+      dots={perPage > 1 ? 'below' : 'inside'}
     >
       {slides.map((slide, position) => (
         <BannerSlide key={String(slide.id)} slide={slide} eager={position === 0} />

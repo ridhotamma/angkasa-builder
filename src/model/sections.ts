@@ -617,8 +617,8 @@ export const SECTION_SCHEMAS = [
     icon: 'image',
     name: { en: 'Banner', id: 'Banner' },
     description: {
-      en: 'A headline and buttons over an image, a video, a looping background or a parallax photo.',
-      id: 'Judul dan tombol di atas gambar, video, latar berulang, atau foto paralaks.',
+      en: 'A headline and buttons over an image, a looping video or a parallax photo.',
+      id: 'Judul dan tombol di atas gambar, video berulang, atau foto paralaks.',
     },
     defaultStyle: { width: 'edge', paddingTop: 'none', paddingBottom: 'none' },
     fields: [
@@ -627,8 +627,7 @@ export const SECTION_SCHEMAS = [
         { en: 'Background', id: 'Latar' },
         [
           { value: 'image', label: { en: 'Image', id: 'Gambar' } },
-          { value: 'video', label: { en: 'Video', id: 'Video' } },
-          { value: 'background', label: { en: 'Looping video', id: 'Video berulang' } },
+          { value: 'video', label: { en: 'Looping video', id: 'Video berulang' } },
           { value: 'parallax', label: { en: 'Parallax photo', id: 'Foto paralaks' } },
         ],
         'image',
@@ -647,22 +646,23 @@ export const SECTION_SCHEMAS = [
       },
       {
         ...videoField('video', { en: 'Video', id: 'Video' }, true),
-        showWhen: { key: 'media', is: ['video', 'background'] },
+        showWhen: { key: 'media', is: ['video'] },
       },
       {
         ...imageField('poster', { en: 'Cover image', id: 'Gambar sampul' }),
-        showWhen: { key: 'media', is: ['video', 'background'] },
+        showWhen: { key: 'media', is: ['video'] },
       },
       {
         ...photoFitField,
-        showWhen: { key: 'media', is: ['image', 'video', 'background', 'parallax'] },
+        showWhen: { key: 'media', is: ['image', 'video', 'parallax'] },
       },
       {
         ...photoPositionField,
-        showWhen: { key: 'media', is: ['image', 'video', 'background', 'parallax'] },
+        showWhen: { key: 'media', is: ['image', 'video', 'parallax'] },
       },
       heading(''),
       subheading(''),
+      { ...body(600), showWhen: { key: 'media', is: ['video'] } },
       buttonLabelText('Shop now'),
       buttonLink,
       textField('secondaryButtonLabel', { en: 'Second button label', id: 'Teks tombol kedua' }, 40),
@@ -704,7 +704,6 @@ export const SECTION_SCHEMAS = [
         ),
         showWhen: { key: 'media', is: ['parallax'] },
       },
-      { ...body(600), showWhen: { key: 'media', is: ['background'] } },
     ],
   },
   {
@@ -1328,21 +1327,18 @@ export const SECTION_SCHEMAS = [
           photoPositionField,
         ],
       },
-      {
-        kind: 'select',
-        key: 'perPage',
-        label: { en: 'Slides visible on desktop', id: 'Slide terlihat di desktop' },
-        help: {
-          en: 'A half value leaves half a slide peeking at each edge.',
-          id: 'Nilai setengah menyisakan separuh slide di tiap tepi.',
-        },
-        options: [
-          { value: '1', label: { en: '1', id: '1' } },
-          { value: '2', label: { en: '2', id: '2' } },
-          { value: '3', label: { en: '3', id: '3' } },
-        ],
-        default: '2',
-      },
+      slidesField(
+        'perPage',
+        { en: 'Slides on desktop', id: 'Slide di desktop' },
+        SLIDES_PER_VIEW,
+        '2',
+      ),
+      slidesField(
+        'perPageMobile',
+        { en: 'Slides on phones', id: 'Slide di ponsel' },
+        SLIDES_PER_VIEW_MOBILE,
+        '1',
+      ),
       {
         kind: 'select',
         key: 'ratio',
@@ -2587,6 +2583,8 @@ export const SECTION_SCHEMAS = [
     // (`/track-order`, the `orderTracking` template). Kept in the library so the
     // template's section still renders and sanitises.
     hidden: true,
+    // The form is the screen; a template cannot be left without it.
+    required: true,
     name: { en: 'Order tracking', id: 'Lacak pesanan' },
     description: {
       en: 'A form that looks an order up by its number and phone, then opens it.',
@@ -2946,6 +2944,7 @@ export const SECTION_SCHEMAS = [
     },
     scopes: CATALOG_ONLY,
     max: 1,
+    required: true,
     usesCatalogue: true,
     fields: [
       {

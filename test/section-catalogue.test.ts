@@ -54,6 +54,19 @@ describe('the section catalogue', () => {
     }
   })
 
+  test('the banner offers one looping-video look, not a duplicate video look', () => {
+    const media = sectionSchema('banner')!.fields.find((field) => field.key === 'media')
+    expect(media?.kind).toBe('select')
+    if (media?.kind !== 'select') return
+    expect(media.options.map((option) => option.value)).toEqual(['image', 'video', 'parallax'])
+    expect(media.options.find((option) => option.value === 'video')?.label.en).toBe('Looping video')
+  })
+
+  test('the catalogue header and order-tracking form are required', () => {
+    expect(sectionSchema('catalog-header')?.required).toBe(true)
+    expect(sectionSchema('order-tracking')?.required).toBe(true)
+  })
+
   test('the table preset is offered', () => {
     expect(offeredPresets(sectionSchema('table')!).map((preset) => preset.key)).toEqual([
       'size-chart',

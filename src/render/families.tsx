@@ -16,7 +16,6 @@ import { BannerParallax, BannerVideo } from './banner-sections'
 import { ProductListTabs } from './commerce-sections'
 import { CardsIcons, CardsText, StoryChapters, StoryTimeline } from './content-sections'
 import {
-  BannerBackground,
   CardsPeople,
   GalleryMasonry,
   GallerySocial,
@@ -52,7 +51,6 @@ export const Banner = family(
     image: BannerImage,
     video: BannerVideo,
     parallax: BannerParallax,
-    background: BannerBackground,
   },
   BannerImage,
 )

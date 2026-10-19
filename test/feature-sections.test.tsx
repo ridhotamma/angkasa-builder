@@ -12,8 +12,11 @@ import {
   DEFAULT_THEME_SETTINGS,
   parseVideoUrl,
   readSectionStyle,
+  richDocFromPlainText,
   sectionAnchorId,
   sectionSchema,
+  SLIDES_PER_VIEW,
+  SLIDES_PER_VIEW_MOBILE,
   type SectionInstance,
 } from '../src/index'
 import { surfacePaint } from '../src/render/dividers'
@@ -64,7 +67,7 @@ function render(node: ReactNode): string {
 }
 
 const SECTIONS: SectionInstance[] = [
-  createSection('banner', { media: 'background', heading: 'Video band', poster: 'shot' }),
+  createSection('banner', { media: 'video', heading: 'Video band', poster: 'shot' }),
   createSection('gallery', {
     layout: 'masonry',
     heading: 'Masonry',
@@ -364,6 +367,17 @@ describe('section chrome', () => {
     expect(html).toContain('object-position:left')
   })
 
+  test('a looping video banner draws its rich body', () => {
+    const section = createSection('banner', {
+      media: 'video',
+      poster: 'poster',
+      heading: 'Inside the workshop',
+      body: richDocFromPlainText('A minute from first sketch to final stitch.'),
+    })
+    const html = render(<SectionsRenderer sections={[section]} env={env()} />)
+    expect(html).toContain('A minute from first sketch to final stitch.')
+  })
+
   test('a banner slide crops its own photo', () => {
     const section = createSection('banner-slider', {
       slides: [{ image: 's1', fit: 'contain', position: 'bottom' }],
@@ -373,10 +387,18 @@ describe('section chrome', () => {
     expect(html).toContain('object-position:bottom')
   })
 
-  test('the slider offers whole slides per view', () => {
-    const perPage = sectionSchema('banner-slider')!.fields.find((field) => field.key === 'perPage')
-    const values = perPage?.kind === 'select' ? perPage.options.map((option) => option.value) : []
-    expect(values).toEqual(['1', '2', '3'])
+  test('the slider offers whole and fractional slides per view, on both screens', () => {
+    const fields = sectionSchema('banner-slider')!.fields
+    const values = (key: string) => {
+      const field = fields.find((candidate) => candidate.key === key)
+      return field?.kind === 'select' ? field.options.map((option) => option.value) : []
+    }
+    expect(values('perPage')).toEqual([...SLIDES_PER_VIEW])
+    expect(values('perPageMobile')).toEqual([...SLIDES_PER_VIEW_MOBILE])
+    // A fraction is a real choice on both screens, not just an option label.
+    const section = createSection('banner-slider', { perPage: '2.5', perPageMobile: '1.5' })
+    expect(section.settings.perPage).toBe('2.5')
+    expect(section.settings.perPageMobile).toBe('1.5')
   })
 
   test('the slider band holds one height however many slides show', () => {
@@ -393,7 +415,7 @@ describe('section chrome', () => {
           env={env()}
         />,
       )
-    for (const perPage of ['1', '2', '3']) {
+    for (const perPage of ['1', '1.5', '2', '2.5', '3']) {
       const html = slider(perPage)
       // One band, shaped once: the height is drawn as the band's own padding,
       // and the per-view choice only changes the slides inside it — never the
@@ -546,6 +568,11 @@ describe('section chrome', () => {
     expect((html.match(/padding-bottom:50%/g) ?? []).length).toBe(1)
     expect(html).not.toMatch(/aspect-ratio:\d/)
     expect(html).toContain('object-fit:cover')
+    // A lone banner is still a picture, not a carousel: no track to page, and
+    // no indicator to page with.
+    expect(html).not.toContain('data-slider-track')
+    expect(html).not.toContain('aria-label="Slide 1"')
+    expect(html).not.toContain('aria-label="Next slide"')
   })
 
   test('the consolidated banner offers and applies image size and position', () => {

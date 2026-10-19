@@ -12,13 +12,18 @@ import './happy-dom-setup'
 
 import { afterEach, describe, expect, test } from 'bun:test'
 import { Box, ChakraProvider } from '@chakra-ui/react'
-import { act, cleanup, fireEvent, render, type RenderResult } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor, type RenderResult } from '@testing-library/react'
 
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
-import { DEFAULT_THEME_SETTINGS } from '../src/index'
-import { RenderProvider, sampleStorefrontData, type RenderEnvironment } from '../src/render/index'
+import { createSection, DEFAULT_THEME_SETTINGS } from '../src/index'
+import {
+  RenderProvider,
+  sampleStorefrontData,
+  SectionsRenderer,
+  type RenderEnvironment,
+} from '../src/render/index'
 import { Slider, sliderTransform } from '../src/render/slider'
 
 afterEach(() => cleanup())
@@ -195,6 +200,153 @@ describe('a drag across several slides', () => {
     pointer(band(view), 'pointerMove', 'touch', 540) // 0.54 slides
     pointer(band(view), 'pointerUp', 'touch', 540)
     expect(shift(view)).toBe(sliderTransform(1, 1))
+  })
+})
+
+/** A window whose one breakpoint answer the test sets. */
+function windowAt(desktop: boolean): Window {
+  return {
+    matchMedia: (query: string) => ({
+      matches: desktop,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    }),
+  } as unknown as Window
+}
+
+describe('the banner slider view', () => {
+  /** The banner section itself, as the storefront draws it. */
+  function banner(
+    { slides = 3, desktop = true, editing = false, ...settings }: {
+      slides?: number
+      desktop?: boolean
+      editing?: boolean
+      loop?: boolean
+      perPage?: string
+      perPageMobile?: string
+    } = {},
+  ): RenderResult {
+    return render(
+      <ChakraProvider value={system}>
+        <I18nProvider locale="en" resources={{}}>
+          <SectionsRenderer
+            sections={[
+              createSection('banner-slider', {
+                ratio: '2/1',
+                perPage: settings.perPage ?? '2',
+                perPageMobile: settings.perPageMobile ?? '1',
+                loop: settings.loop ?? true,
+                slides: Array.from({ length: slides }, (_, index) => ({
+                  image: `s${index + 1}`,
+                  alt: `Banner ${index + 1}`,
+                })),
+              }),
+            ]}
+            env={{
+              ...env(),
+              getWindow: () => windowAt(desktop),
+              ...(editing && {
+                mode: 'preview' as const,
+                editing: { onEditText: () => undefined },
+              }),
+            }}
+          />
+        </I18nProvider>
+      </ChakraProvider>,
+    )
+  }
+
+  test('one banner in view keeps the dots over the photo', async () => {
+    const view = banner({ perPage: '1' })
+    const dot = await waitFor(() => view.getByLabelText('Slide 1'))
+    // Over the band, the indicator rides inside the slider's own frame.
+    expect(dot.closest('[data-slider-frame]')).not.toBeNull()
+  })
+
+  test('more than one banner in view moves the dots below the band', async () => {
+    const view = banner({ perPage: '2' })
+    const dot = await waitFor(() => view.getByLabelText('Slide 1'))
+    // Under the band: a row after the slider's frame, not over the photos.
+    expect(dot.closest('[data-slider-frame]')).toBeNull()
+  })
+
+  test('a looped full view still rotates, with its arrows and dots', async () => {
+    // Three slides all in view: there is no hidden slide to page to, but a
+    // looped banner cycles the set one place at a time instead of freezing.
+    const view = banner({ perPage: '3' })
+    const next = await waitFor(() => view.getByLabelText('Next slide') as HTMLButtonElement)
+    await waitFor(() => expect(view.queryAllByLabelText(/^Slide \d$/)).toHaveLength(3))
+    expect(next.disabled).toBe(false)
+    expect(view.getByLabelText('Slide 1').getAttribute('aria-current')).toBe('true')
+
+    fireEvent.click(next)
+    expect(view.getByLabelText('Slide 2').getAttribute('aria-current')).toBe('true')
+    expect(shift(view)).toBe(sliderTransform(4, 3)) // one step on from the tail's three
+    fireEvent.click(next)
+    fireEvent.click(next)
+    expect(view.getByLabelText('Slide 1').getAttribute('aria-current')).toBe('true')
+  })
+
+  test('the full view rotates in the editor preview too', async () => {
+    const view = banner({ perPage: '3', editing: true })
+    const next = await waitFor(() => view.getByLabelText('Next slide') as HTMLButtonElement)
+    fireEvent.click(next)
+    expect(view.getByLabelText('Slide 2').getAttribute('aria-current')).toBe('true')
+  })
+
+  test('a full view with loop off stays a still row', async () => {
+    const view = banner({ perPage: '3', loop: false })
+    await waitFor(() => expect(view.container.querySelector('[data-slider-track]')).not.toBeNull())
+    expect(view.queryByLabelText('Next slide')).toBeNull()
+    expect(view.queryByLabelText('Slide 1')).toBeNull()
+  })
+
+  test('a fractional view reaches the slides, on desktop and phone alike', async () => {
+    // 2.5 banners across a desktop, 1.5 across a phone: the next one peeks,
+    // so there are fewer resting positions (dots) on the desktop.
+    const desktopView = banner({ perPage: '2.5', perPageMobile: '1.5', desktop: true })
+    const desktopNext = await waitFor(
+      () => desktopView.getByLabelText('Next slide') as HTMLButtonElement,
+    )
+    await waitFor(() => expect(desktopView.queryAllByLabelText(/^Slide \d$/)).toHaveLength(2))
+    fireEvent.click(desktopNext)
+    // The last position clamps to count − perPage (0.5), so the final slide
+    // sits flush instead of half-cut.
+    expect(shift(desktopView)).toBe(sliderTransform(0.5, 2.5))
+    cleanup()
+
+    const phoneView = banner({ perPage: '2.5', perPageMobile: '1.5', desktop: false })
+    const phoneNext = await waitFor(
+      () => phoneView.getByLabelText('Next slide') as HTMLButtonElement,
+    )
+    await waitFor(() => expect(phoneView.queryAllByLabelText(/^Slide \d$/)).toHaveLength(3))
+    fireEvent.click(phoneNext)
+    expect(shift(phoneView)).toBe(sliderTransform(1, 1.5))
+  })
+
+  test('the arrows are not clipped by the band they straddle', async () => {
+    const view = banner({ perPage: '2' })
+    const next = await waitFor(() => view.getByLabelText('Next slide'))
+    // The overlays sit beside the clipped band, never inside it: a ratio band
+    // clipped its own children, which sawed this pair in half.
+    expect(next.closest('[data-slider-band]')).toBeNull()
+    expect(next.closest('[data-slider-frame]')).not.toBeNull()
+  })
+
+  test('a lone banner stays a still picture with no indicator', async () => {
+    const view = banner({ slides: 1 })
+    // Let the image-settled effect run; a lone banner never becomes a slider.
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(view.container.querySelector('[data-slider-track]')).toBeNull()
+    expect(view.container.querySelector('[aria-label^="Slide "]')).toBeNull()
+    expect(view.container.querySelector('[aria-label="Next slide"]')).toBeNull()
   })
 })
 

@@ -121,9 +121,17 @@ describe('full-bleed sections keep their words in the page column', () => {
     expect(html).toContain('Pernyataan')
   })
 
-  test('a background video aligns its copy when edge to edge', () => {
+  test('a looping video aligns its copy when edge to edge', () => {
     const html = htmlOf(
-      createSection('banner', { media: 'background', heading: 'Video' }, { width: 'edge' }),
+      createSection(
+        'banner',
+        {
+          media: 'video',
+          heading: 'Video',
+          video: { source: 'upload', id: 'clip' },
+        },
+        { width: 'edge' },
+      ),
     )
     expect(html).toContain(PAGE_COLUMN)
     expect(html).toContain('Video')

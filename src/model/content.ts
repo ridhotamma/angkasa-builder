@@ -492,9 +492,12 @@ export function detachSection(sections: SectionInstance[], id: string): SectionI
 
 /**
  * `sections` with `id` removed. Every linked copy of it is detached first —
- * deleting an original should not silently empty its copies.
+ * deleting an original should not silently empty its copies. A required
+ * section is never removed: the editor shows a lock in place of the action.
  */
 export function removeSection(sections: SectionInstance[], id: string): SectionInstance[] {
+  const target = sections.find((section) => section.id === id)
+  if (target && sectionSchema(target.type)?.required) return sections
   return sections
     .map((section) => {
       if (section.linkedTo !== id) return section

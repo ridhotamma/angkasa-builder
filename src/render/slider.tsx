@@ -15,12 +15,19 @@
  * band's bottom edge when the slides are pictures, or in a row under it when
  * they are content.
  *
+ * A ratio band is positioned and clipped by `AspectRatio`; its overlays sit
+ * beside it in a frame of the same box rather than inside it, where an arrow
+ * straddling the edge would be cut in half — which is what the banner
+ * slider's pair looked like. A card row keeps its overlays inside the band.
+ *
  * A loop wraps by doubling: one page's worth of slides is repeated before the
  * first and after the last, so a step past either end glides into the double
  * instead of rewinding across the whole run — and the jump back onto the real
  * slide is invisible, because the double is the same picture. The doubles are
- * `inert` (no tab stop, nothing read out) and the editor canvas leaves them
- * out entirely, since its drop layer and outlines count and measure slides.
+ * `inert` (no tab stop, nothing read out). The editor canvas leaves them out
+ * by default, since its drop layer and outlines count and measure slides; a
+ * caller whose slides are not editable blocks can opt back in with
+ * `wrapInEditor`.
  */
 
 import {
@@ -154,6 +161,12 @@ export interface SliderProps {
    */
   perPage: number
   loop?: boolean
+  /**
+   * Keep the loop's doubles on the editor's canvas too. Off for slides that
+   * are editable blocks — the drop layer and outlines count them — on for
+   * slides that are plain pictures, like the banner's.
+   */
+  wrapInEditor?: boolean
   autoplay?: boolean
   /** Autoplay's beat in milliseconds. */
   autoplayMs?: number
@@ -204,6 +217,7 @@ export function Slider({
   count,
   perPage,
   loop = false,
+  wrapInEditor = false,
   autoplay = false,
   autoplayMs = AUTOPLAY_MS,
   autoplayToggle = false,
@@ -231,18 +245,29 @@ export function Slider({
   const vertical = orientation === 'vertical'
   const gap = gapProp
   const perPageClamped = Math.max(1, Math.min(perPage, Math.max(1, count)))
-  const last = Math.max(0, count - perPageClamped)
+  /**
+   * A looped slider whose slides all fit still moves: each step cycles the set
+   * by one slide, so three visible banners rotate 1-2-3 → 2-3-1. Without this
+   * a full view had no resting position but the first, and the arrows and dots
+   * disappeared — the banner looked frozen at "Slides on desktop: 3".
+   */
+  const rotating =
+    loop && count > 1 && perPageClamped >= count && (wrapInEditor || !editing)
+  const last = rotating ? count - 1 : Math.max(0, count - perPageClamped)
   // A fractional view still settles on whole slides: the last position is the
   // last slide, its edge flush with the band's. A row of 2.5-a-view steps
   // 1, 2, … and ends right-aligned rather than half-cut.
   const end = Math.ceil(last)
   const paged = last > 0
   /**
-   * Whether the wrap doubles the track — never on the editor's own canvas,
-   * and only for a whole-page view: a wrap repeats whole pages, while a
-   * fractional one simply ends on its last slide.
+   * Whether the wrap doubles the track. A rotating full view always wraps;
+   * otherwise the loop wraps only for a whole-page view and never on the
+   * editor's own canvas — a wrap repeats whole pages, while a fractional one
+   * simply ends on its last slide.
    */
-  const wraps = loop && paged && !editing && Number.isInteger(perPageClamped)
+  const wraps =
+    rotating ||
+    (loop && paged && (wrapInEditor || !editing) && Number.isInteger(perPageClamped))
   /** How many slides the doubles repeat at each end: one page's worth. */
   const doubles = wraps ? perPageClamped : 0
   const [index, setIndex] = useState(Math.max(0, Math.min(start, end)))
@@ -402,13 +427,18 @@ export function Slider({
   const toggle = autoplayToggle && paged
   const slides = Children.toArray(children)
   /**
-   * The track's slides, with the wrap's doubles: the last page repeated before
-   * the first and the first repeated after the last, as the very same elements
-   * — so the picture the jump back leaves is the picture it lands on.
+   * The track's slides, with the wrap's doubles: the page before the first is
+   * repeated ahead of it and the first page after the last, as the very same
+   * elements — so the picture the jump back leaves is the picture it lands on.
+   * A rotating full view's tail starts on the last slide, so stepping back
+   * from the first lands on the whole set rotated by one, too.
    */
+  const tail = rotating
+    ? Array.from({ length: doubles }, (_, position) => slides[(count - 1 + position) % count])
+    : slides.slice(-doubles)
   const lanes = wraps
     ? [
-        ...slides.slice(-doubles).map((child, position) => ({
+        ...tail.map((child, position) => ({
           child,
           key: `tail-${position}`,
           double: true,
@@ -421,6 +451,83 @@ export function Slider({
         })),
       ]
     : slides.map((child, position) => ({ child, key: `slide-${position}`, double: false }))
+
+  /**
+   * The controls drawn over the band. They live inside the band on a plain
+   * slider; a ratio band keeps them beside it, because `AspectRatio` clips
+   * everything inside the band it shapes.
+   */
+  const overlays = (
+    <>
+      {paged && arrows && arrowPlacement === 'bottom' && (
+        <HStack
+          position="absolute"
+          insetX="0"
+          // A little above the very edge, where a thumb (and the eye) expects
+          // the pair to sit.
+          bottom="6"
+          zIndex="1"
+          justifyContent="center"
+          gap="3"
+        >
+          <IconButton
+            {...OVERLAY_ARROW}
+            position="static"
+            transform="none"
+            {...arrowProps}
+            aria-label={text('previousSlide')}
+            disabled={hold || (!loop && at === 0)}
+            onClick={() => step(-1)}
+          >
+            <LuChevronLeft />
+          </IconButton>
+          <IconButton
+            {...OVERLAY_ARROW}
+            position="static"
+            transform="none"
+            {...arrowProps}
+            aria-label={text('nextSlide')}
+            disabled={hold || (!loop && at >= end)}
+            onClick={() => step(1)}
+          >
+            <LuChevronRight />
+          </IconButton>
+        </HStack>
+      )}
+      {paged && arrows && arrowPlacement === 'edges' && (
+        <>
+          <IconButton
+            {...OVERLAY_ARROW}
+            {...(vertical
+              ? { top: '2', left: '50%', transform: 'translateX(-50%)' }
+              : { left: arrowInset })}
+            {...arrowProps}
+            aria-label={text('previousSlide')}
+            disabled={hold || (!loop && at === 0)}
+            onClick={() => step(-1)}
+          >
+            {vertical ? <LuChevronUp /> : <LuChevronLeft />}
+          </IconButton>
+          <IconButton
+            {...OVERLAY_ARROW}
+            {...(vertical
+              ? { top: 'auto', bottom: '2', left: '50%', transform: 'translateX(-50%)' }
+              : { right: arrowInset })}
+            {...arrowProps}
+            aria-label={text('nextSlide')}
+            disabled={hold || (!loop && at >= end)}
+            onClick={() => step(1)}
+          >
+            {vertical ? <LuChevronDown /> : <LuChevronRight />}
+          </IconButton>
+        </>
+      )}
+      {paged && dots === 'inside' && (
+        <SliderDots count={end + 1} at={at} onSelect={select} overBand />
+      )}
+    </>
+  )
+
   const band = (
     <Box
       data-slider-band=""
@@ -508,75 +615,7 @@ export function Slider({
           </Box>
         ))}
       </Flex>
-
-      {paged && arrows && arrowPlacement === 'bottom' && (
-        <HStack
-          position="absolute"
-          insetX="0"
-          // A little above the very edge, where a thumb (and the eye) expects
-          // the pair to sit.
-          bottom="6"
-          zIndex="1"
-          justifyContent="center"
-          gap="3"
-        >
-          <IconButton
-            {...OVERLAY_ARROW}
-            position="static"
-            transform="none"
-            {...arrowProps}
-            aria-label={text('previousSlide')}
-            disabled={hold || (!loop && at === 0)}
-            onClick={() => step(-1)}
-          >
-            <LuChevronLeft />
-          </IconButton>
-          <IconButton
-            {...OVERLAY_ARROW}
-            position="static"
-            transform="none"
-            {...arrowProps}
-            aria-label={text('nextSlide')}
-            disabled={hold || (!loop && at >= end)}
-            onClick={() => step(1)}
-          >
-            <LuChevronRight />
-          </IconButton>
-        </HStack>
-      )}
-
-      {paged && arrows && arrowPlacement === 'edges' && (
-        <>
-          <IconButton
-            {...OVERLAY_ARROW}
-            {...(vertical
-              ? { top: '2', left: '50%', transform: 'translateX(-50%)' }
-              : { left: arrowInset })}
-            {...arrowProps}
-            aria-label={text('previousSlide')}
-            disabled={hold || (!loop && at === 0)}
-            onClick={() => step(-1)}
-          >
-            {vertical ? <LuChevronUp /> : <LuChevronLeft />}
-          </IconButton>
-          <IconButton
-            {...OVERLAY_ARROW}
-            {...(vertical
-              ? { top: 'auto', bottom: '2', left: '50%', transform: 'translateX(-50%)' }
-              : { right: arrowInset })}
-            {...arrowProps}
-            aria-label={text('nextSlide')}
-            disabled={hold || (!loop && at >= end)}
-            onClick={() => step(1)}
-          >
-            {vertical ? <LuChevronDown /> : <LuChevronRight />}
-          </IconButton>
-        </>
-      )}
-
-      {paged && dots === 'inside' && (
-        <SliderDots count={end + 1} at={at} onSelect={select} overBand />
-      )}
+      {ratio === undefined && overlays}
     </Box>
   )
 
@@ -605,15 +644,26 @@ export function Slider({
     </Flex>
   )
 
-  return ratio === undefined ? (
+  // A ratio band is positioned and clipped by `AspectRatio` to crop the
+  // photos. The overlays therefore sit beside it in a frame of the band's own
+  // box — inside, an arrow straddling the edge would be cut in half.
+  if (ratio !== undefined) {
+    return (
+      <Stack as={as} gap="3" {...rootProps}>
+        <Box position="relative" data-slider-frame="">
+          <AspectRatio ratio={ratio}>{band}</AspectRatio>
+          {overlays}
+        </Box>
+        {under}
+      </Stack>
+    )
+  }
+
+  return (
     <Stack as={as} gap="3" {...rootProps}>
       {band}
       {under}
     </Stack>
-  ) : (
-    <AspectRatio as={as} ratio={ratio} {...rootProps}>
-      {band}
-    </AspectRatio>
   )
 }
 
