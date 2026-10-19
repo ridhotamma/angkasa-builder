@@ -717,7 +717,7 @@ export function defaultHomeTemplate(): SectionInstance[] {
     // button is deliberate: the banner's field starts with "Shop now", which
     // would otherwise turn a shop with no banner image into a blank coloured
     // band with a lone button above the real introduction.
-    createSection('banner', { useShopBanner: true, height: 'md', buttonLabel: '' }),
+    createSection('banner', { useShopBanner: true, height: 'wide', buttonLabel: '' }),
     createSection('shop-intro'),
     createSection('category-rail'),
     createSection('product-list', { source: 'shelves', limit: 8 }),

@@ -688,6 +688,10 @@ export const SECTION_SCHEMAS = [
           { value: 'sm', label: { en: 'Short', id: 'Pendek' } },
           { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
           { value: 'lg', label: { en: 'Tall', id: 'Tinggi' } },
+          {
+            value: 'wide',
+            label: { en: 'Wide (16:5)', id: 'Lebar (16:5)' },
+          },
           { value: 'screen', label: { en: 'Full screen', id: 'Satu layar' } },
         ],
         'md',

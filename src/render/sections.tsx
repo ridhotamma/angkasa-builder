@@ -127,6 +127,16 @@ export function heroHeight(settings: FieldValues) {
   return HERO_HEIGHT[key] ?? HERO_HEIGHT.md
 }
 
+/**
+ * How a banner frame is shaped. The ladder is a fixed height per breakpoint;
+ * the wide choice is a 16:5 band that follows the width, so a shop banner
+ * keeps exactly the shape it was uploaded at on every screen.
+ */
+export function heroFrameProps(settings: FieldValues): BoxProps {
+  if (readText(settings, 'height') === 'wide') return { aspectRatio: '16 / 5' }
+  return { minH: heroHeight(settings) }
+}
+
 /** The shade between a photo and the white text on it. */
 export function overlayProps(
   overlay: string,
@@ -167,7 +177,10 @@ export function BannerCopy({
   // the historic bottom.
   const position = readText(settings, 'contentPosition')
   const place = position === 'top' ? 'start' : position === 'middle' ? 'center' : 'end'
-  const height = heroHeight(settings)
+  // A wide banner's height comes from its ratio, not the height ladder; the
+  // copy fills that band instead of forcing a taller one over it.
+  const wide = readText(settings, 'height') === 'wide'
+  const height = wide ? undefined : heroHeight(settings)
   // The hero's words rise on the storefront; the preview keeps editable text.
   const animatedHeading = headline === 'rise' && mode === 'live'
   // An edge-to-edge banner keeps its background across the page, but its copy
@@ -224,7 +237,7 @@ export function BannerCopy({
     <Flex
       data-banner-copy=""
       position="relative"
-      minH={height}
+      {...(wide ? { h: 'full' } : { minH: height })}
       align={place}
       justify={align === 'center' ? 'center' : 'start'}
       px={pageColumn ? '0' : { base: '6', md: '12' }}
@@ -261,7 +274,6 @@ export function BannerImage({ settings }: SectionProps) {
     readText(settings, 'buttonLabel') ||
     readText(settings, 'secondaryButtonLabel'),
   )
-  const height = heroHeight(settings)
   const fit = readToken(settings, 'fit', PHOTO_FIT_VALUES, 'cover')
 
   if (!src && !hasCopy) {
@@ -273,7 +285,7 @@ export function BannerImage({ settings }: SectionProps) {
       position="relative"
       rounded={width === 'edge' ? 'none' : 'l3'}
       overflow="hidden"
-      minH={height}
+      {...heroFrameProps(settings)}
       bg="brand.subtle"
     >
       {src && (

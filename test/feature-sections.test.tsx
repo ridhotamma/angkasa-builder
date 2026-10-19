@@ -398,6 +398,20 @@ describe('section chrome', () => {
     expect(html).not.toContain('Shop now')
   })
 
+  test('the default home hero keeps a 16:5 shape on every screen', () => {
+    const base = env()
+    const html = render(
+      <SectionsRenderer
+        sections={defaultHomeTemplate()}
+        env={{
+          ...base,
+          data: { ...base.data, shop: { ...base.data.shop, bannerUrl: IMAGE } },
+        }}
+      />,
+    )
+    expect(html).toMatch(/aspect-ratio:16\s*\/\s*5/)
+  })
+
   test('a looping video banner draws its rich body', () => {
     const section = createSection('banner', {
       media: 'video',

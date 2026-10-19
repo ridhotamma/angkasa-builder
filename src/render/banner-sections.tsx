@@ -14,7 +14,7 @@ import { useSectionLayout } from './frame'
 import { BackgroundVideo } from './media'
 import { useMotionEffect } from './motion/engine'
 import { EmptyNotice } from './primitives'
-import { BannerCopy, heroHeight, type SectionProps } from './sections'
+import { BannerCopy, heroFrameProps, type SectionProps } from './sections'
 
 export function BannerVideo({ settings }: SectionProps) {
   const { imageUrl } = useRenderEnvironment()
@@ -33,7 +33,7 @@ export function BannerVideo({ settings }: SectionProps) {
       position="relative"
       rounded={width === 'edge' ? 'none' : 'l3'}
       overflow="hidden"
-      minH={heroHeight(settings)}
+      {...heroFrameProps(settings)}
       bg="gray.900"
     >
       <BackgroundVideo video={video} poster={poster} objectFit={fit} objectPosition={position} />
@@ -94,7 +94,7 @@ export function BannerParallax({ settings }: SectionProps) {
       position="relative"
       rounded={width === 'edge' ? 'none' : 'l3'}
       overflow="hidden"
-      minH={heroHeight(settings)}
+      {...heroFrameProps(settings)}
       bg="gray.800"
     >
       {src && (
