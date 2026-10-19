@@ -90,7 +90,11 @@ const DEFAULT_GAP = '12px'
 /** How long the track takes to glide one step, and its easing. */
 const SLIDE_SHIFT = '420ms cubic-bezier(0.32, 0.72, 0, 1)'
 
-/** How far a finger must travel before the swipe counts as a page. */
+/**
+ * How far a finger must travel before a swipe counts as a page when the
+ * track cannot be measured — a snapshot, a test DOM. A measured track snaps
+ * by distance instead, so a flick can cross several slides at once.
+ */
 const SLIDE_SWIPE_PX = 40
 
 /** Autoplay's beat, unless the caller sets its own. */
@@ -308,6 +312,20 @@ export function Slider({
     setDragPx(0)
   }
 
+  /**
+   * One step along the track in pixels — a slide plus the gap after it, as
+   * the browser laid it out — or 0 when there is nothing to measure (a
+   * snapshot, a test DOM). A drag then lands on the position nearest the
+   * finger, not the one next door; 0 falls back to one page a swipe.
+   */
+  const stepWidth = (bandElement: Element) => {
+    const first = bandElement.querySelector<HTMLElement>('[data-slider-slide]')
+    const rect = first?.getBoundingClientRect()
+    if (!rect) return 0
+    const size = vertical ? rect.height : rect.width
+    return size > 0 ? size + Number.parseFloat(gap) : 0
+  }
+
   // The editor's selection: hold the slide it names in view while it is set.
   useEffect(() => {
     if (active === undefined || active < 0) return
@@ -429,6 +447,16 @@ export function Slider({
         if (!from || from.pointerId !== event.pointerId) return
         const moved = (vertical ? event.clientY : event.clientX) - from.x
         endDrag()
+        // A finger can cross several slides in one gesture: land on the
+        // position nearest where it let go — `round` keeps a drag that stops
+        // between two slides snapping to the nearer one, and a whole flick
+        // reaches the card the finger travelled over, not just the next.
+        const width = stepWidth(event.currentTarget)
+        if (width > 0) {
+          const steps = Math.round(-moved / width)
+          if (steps !== 0) goTo(at + steps)
+          return
+        }
         if (moved <= -SLIDE_SWIPE_PX) step(1)
         else if (moved >= SLIDE_SWIPE_PX) step(-1)
       }}
@@ -468,6 +496,7 @@ export function Slider({
         {lanes.map((lane) => (
           <Box
             key={lane.key}
+            data-slider-slide=""
             flex={`0 0 calc(${basis})`}
             minW="0"
             minH="0"

@@ -115,6 +115,89 @@ describe('the wrap of a loop', () => {
   })
 })
 
+describe('a drag across several slides', () => {
+  /** Eight slides, one per view, so a flick has room to travel. */
+  function row(): RenderResult {
+    return render(
+      <ChakraProvider value={system}>
+        <I18nProvider locale="en" resources={{}}>
+          <RenderProvider value={env()}>
+            <Slider count={8} perPage={1} dots="below">
+              {Array.from({ length: 8 }, (_, index) => (
+                <Box key={index} bg="bg.subtle" h="full" />
+              ))}
+            </Slider>
+          </RenderProvider>
+        </I18nProvider>
+      </ChakraProvider>,
+    )
+  }
+
+  /** happy-dom has no layout: give the first slide a width to measure. */
+  function stubSlideWidth(view: RenderResult, width: number) {
+    const first = view.container.querySelector<HTMLElement>('[data-slider-slide]')!
+    Object.defineProperty(first, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({
+        width,
+        height: width,
+        top: 0,
+        left: 0,
+        right: width,
+        bottom: width,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    })
+  }
+
+  test('lands where the finger stopped, not just the next page', () => {
+    const view = row()
+    stubSlideWidth(view, 100) // a slide, plus the 12px gap, is 112px
+    pointer(band(view), 'pointerDown', 'touch', 600)
+    pointer(band(view), 'pointerMove', 'touch', 600 - 336)
+    pointer(band(view), 'pointerUp', 'touch', 600 - 336)
+    expect(shift(view)).toBe(sliderTransform(3, 1))
+  })
+
+  test('flicks backwards the same way', () => {
+    const view = row()
+    stubSlideWidth(view, 100)
+    fireEvent.click(view.getByLabelText('Slide 6'))
+    expect(shift(view)).toBe(sliderTransform(5, 1))
+    pointer(band(view), 'pointerDown', 'touch', 0)
+    pointer(band(view), 'pointerMove', 'touch', 224)
+    pointer(band(view), 'pointerUp', 'touch', 224)
+    expect(shift(view)).toBe(sliderTransform(3, 1))
+  })
+
+  test('a drag past the end stops on the last slide', () => {
+    const view = row()
+    stubSlideWidth(view, 100)
+    pointer(band(view), 'pointerDown', 'touch', 900)
+    pointer(band(view), 'pointerMove', 'touch', 0)
+    pointer(band(view), 'pointerUp', 'touch', 0)
+    // 900px over 112px steps is eight slides; the row has seven other
+    // positions, so it ends on the last.
+    expect(shift(view)).toBe(sliderTransform(7, 1))
+  })
+
+  test('a drag that stops between two slides snaps to the nearer one', () => {
+    const view = row()
+    stubSlideWidth(view, 100)
+    pointer(band(view), 'pointerDown', 'touch', 600)
+    pointer(band(view), 'pointerMove', 'touch', 550) // 0.45 slides
+    pointer(band(view), 'pointerUp', 'touch', 550)
+    expect(shift(view)).toBe(sliderTransform(0, 1))
+
+    pointer(band(view), 'pointerDown', 'touch', 600)
+    pointer(band(view), 'pointerMove', 'touch', 540) // 0.54 slides
+    pointer(band(view), 'pointerUp', 'touch', 540)
+    expect(shift(view)).toBe(sliderTransform(1, 1))
+  })
+})
+
 describe('the banner slider', () => {
   test('a dot moves the track, and the active dot is the one showing', () => {
     const view = track()
