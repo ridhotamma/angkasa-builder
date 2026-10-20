@@ -216,6 +216,20 @@ export function useTilt(enabled: boolean, max = 7): RefCallback<HTMLDivElement> 
 }
 
 /**
+ * The elements a staggered reveal animates. Renderers mark the units that
+ * should cascade — a product grid's cards, say — with `data-stagger-item`;
+ * without any, the wrapper's own children are the only units there are.
+ *
+ * This matters because a section renderer almost always returns one root
+ * element: animating the wrapper's children then animates the whole section
+ * at once, which is exactly what stagger is meant to avoid.
+ */
+export function staggerTargets(element: HTMLElement): Element[] {
+  const marked = element.querySelectorAll('[data-stagger-item]')
+  return marked.length > 0 ? Array.from(marked) : Array.from(element.children)
+}
+
+/**
  * Fades — and, when the entrance says so, lifts, zooms, blurs, settles — an
  * element as it scrolls into view, tweened by GSAP. Shared by sections and
  * blocks: a section reveals as one band, a block steps out on its own.
@@ -250,7 +264,7 @@ export function ScrollReveal({
       if (view.innerHeight === 0) return
       if (element.getBoundingClientRect().top < view.innerHeight * 0.9) return
 
-      const targets = stagger ? Array.from(element.children) : [element]
+      const targets = stagger ? staggerTargets(element) : [element]
       if (targets.length === 0) return
 
       gsap.set(targets, {

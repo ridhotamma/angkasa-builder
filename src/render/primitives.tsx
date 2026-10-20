@@ -1275,6 +1275,7 @@ export function ProductCard({
     <Card.Root
       ref={tiltRef}
       className="group"
+      data-stagger-item=""
       position="relative"
       w="full"
       h="full"
@@ -1657,6 +1658,7 @@ function ProductBento({
         return (
           <GridItem
             key={product.id}
+            data-stagger-item=""
             colSpan={{
               base: bentoPhoneColumns(index, products.length),
               md: BENTO_COLUMNS[shape],
