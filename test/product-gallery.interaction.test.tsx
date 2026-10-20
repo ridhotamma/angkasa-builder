@@ -1,5 +1,5 @@
 /**
- * The product gallery's two floating actions: share and save.
+ * The product photo's two floating actions: share and save.
  *
  * Share opens the short list a marketplace listing shows — Facebook, Twitter,
  * WhatsApp, email, copy the link, cancel — and the heart is the shop's own
@@ -11,7 +11,7 @@ import './happy-dom-setup'
 
 import { afterEach, describe, expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
-import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, within } from '@testing-library/react'
 
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
@@ -22,8 +22,8 @@ import {
   sampleStorefrontData,
   SectionsRenderer,
   type RenderEnvironment,
+  type StorefrontProductDetail,
 } from '../src/render/index'
-import { sliderTransform } from '../src/render/slider'
 
 afterEach(() => cleanup())
 
@@ -44,7 +44,7 @@ function gallery(toggled: string[]) {
       <I18nProvider locale="en" resources={{}}>
         <RenderProvider value={env}>
           <SectionsRenderer
-            sections={[createSection('product-info', { gallery: 'mosaic', stickyInfo: true })]}
+            sections={[createSection('product-info', { stickyInfo: true })]}
             env={env}
           />
         </RenderProvider>
@@ -53,8 +53,8 @@ function gallery(toggled: string[]) {
   )
 }
 
-/** A product with enough photos for the mosaic's "+N" tile to show. */
-function photoProduct(images: number) {
+/** A product with more than one photo, so a strip would have something to list. */
+function photoProduct(images: number): StorefrontProductDetail {
   return {
     id: 'product-1',
     name: 'Gallery jacket',
@@ -78,10 +78,11 @@ function photoProduct(images: number) {
   }
 }
 
-/** The gallery's page with a product carrying `images` photos. */
-function photos(images: number, settings: Record<string, unknown> = {}) {
+/** The product page with a product carrying `images` photos. */
+function photos(settings: Record<string, unknown> = {}) {
+  const data = sampleStorefrontData('Gallery Shop')
   const env: RenderEnvironment = {
-    data: { ...sampleStorefrontData('Gallery Shop'), product: photoProduct(images) },
+    data: { ...data, product: photoProduct(2) },
     settings: { ...DEFAULT_THEME_SETTINGS, splash: { ...DEFAULT_THEME_SETTINGS.splash } },
     mode: 'preview',
     imageUrl: () => null,
@@ -93,27 +94,13 @@ function photos(images: number, settings: Record<string, unknown> = {}) {
       <I18nProvider locale="en" resources={{}}>
         <RenderProvider value={env}>
           <SectionsRenderer
-            sections={[
-              createSection('product-info', { gallery: 'mosaic', stickyInfo: true, ...settings }),
-            ]}
+            sections={[createSection('product-info', { stickyInfo: true, ...settings })]}
             env={env}
           />
         </RenderProvider>
       </I18nProvider>
     </ChakraProvider>,
   )
-}
-
-/** The viewer's own track, as the slider wrote it. */
-function viewerTrack(dialog: HTMLElement): string {
-  return dialog.querySelector<HTMLElement>('[data-slider-track]')!.style.transform
-}
-
-/** Let the wrap's own frames run — the jump back takes two. */
-async function frames() {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 40))
-  })
 }
 
 describe('the product gallery actions', () => {
@@ -133,9 +120,8 @@ describe('the product gallery actions', () => {
     }
   })
 
-  test('a photo magnifies under a desktop pointer only where the theme asked', () => {
-    // The grid is the layout whose photos take the pointer directly.
-    const zoomed = photos(2, { gallery: 'grid', zoom: true })
+  test('the first photo magnifies under a desktop pointer only where the theme asked', () => {
+    const zoomed = photos({ zoom: true })
     const growing = zoomed.container.querySelector('img')!
     // The frame is the pointer's target; the photo inside is what scales.
     fireEvent.pointerMove(growing.parentElement!, {
@@ -145,7 +131,7 @@ describe('the product gallery actions', () => {
     })
     expect(growing.style.transform).toBe('scale(1.8)')
 
-    const plain = photos(2, { gallery: 'grid' })
+    const plain = photos()
     const still = plain.container.querySelector('img')!
     fireEvent.pointerMove(still.parentElement!, {
       pointerType: 'mouse',
@@ -153,61 +139,6 @@ describe('the product gallery actions', () => {
       clientY: 10,
     })
     expect(still.style.transform).toBe('')
-  })
-
-  test('a photo opens the fullscreen viewer, arrows paired at the bottom', async () => {
-    const view = photos(6)
-    fireEvent.click(view.getByLabelText('View all photos'))
-    const viewer = await view.findByRole('dialog')
-    // The photos ride the shared track, with the arrows paired at the bottom
-    // and no dots: the pair is the whole indicator in a viewer.
-    expect(viewer.querySelector('[data-slider-band]')).not.toBeNull()
-    const pair = within(viewer).getByLabelText('Previous slide').parentElement!
-    expect(within(pair).getByLabelText('Next slide')).toBeDefined()
-    expect(within(viewer).queryByLabelText('Slide 1')).toBeNull()
-    expect(within(viewer).getByLabelText('Close')).toBeDefined()
-  })
-
-  test('the viewer loops: past either end, on into the next photo', async () => {
-    const view = photos(6)
-    fireEvent.click(view.getByLabelText('View all photos'))
-    const viewer = await view.findByRole('dialog')
-    const track = viewer.querySelector<HTMLElement>('[data-slider-track]')!
-    // The "+N" tile is the fifth photo, so the viewer opens on it.
-    const next = within(viewer).getByLabelText('Next slide')
-    fireEvent.click(next)
-    expect(viewerTrack(viewer)).toBe(sliderTransform(6, 1))
-    // One more step leaves the last photo, gliding *forward* onto the double
-    // of the first — one slide on, not a rewind across the whole set.
-    fireEvent.click(next)
-    expect(viewerTrack(viewer)).toBe(sliderTransform(7, 1))
-    // The double is the first photo's own pixels, so the jump back is invisible.
-    fireEvent.transitionEnd(track, { propertyName: 'transform' })
-    expect(viewerTrack(viewer)).toBe(sliderTransform(1, 1))
-    await frames()
-    // And the other way: back from the first photo, onto the last's double.
-    fireEvent.click(within(viewer).getByLabelText('Previous slide'))
-    expect(viewerTrack(viewer)).toBe('translateX(0)')
-    fireEvent.transitionEnd(track, { propertyName: 'transform' })
-    expect(viewerTrack(viewer)).toBe(sliderTransform(6, 1))
-    await frames()
-  })
-
-  test('a step asked for mid-wrap is taken once the wrap lands', async () => {
-    const view = photos(6)
-    fireEvent.click(view.getByLabelText('View all photos'))
-    const viewer = await view.findByRole('dialog')
-    const track = viewer.querySelector<HTMLElement>('[data-slider-track]')!
-    const next = within(viewer).getByLabelText('Next slide')
-    fireEvent.click(next)
-    fireEvent.click(next)
-    // Still gliding, and asked for one more: the track must not be sent back
-    // across the set to reach it — the step waits, then glides on.
-    fireEvent.click(next)
-    fireEvent.transitionEnd(track, { propertyName: 'transform' })
-    expect(viewerTrack(viewer)).toBe(sliderTransform(1, 1))
-    await frames()
-    expect(viewerTrack(viewer)).toBe(sliderTransform(2, 1))
   })
 
   test('the heart is the host’s wishlist', () => {
@@ -232,7 +163,7 @@ describe('the product gallery actions', () => {
         <I18nProvider locale="en" resources={{}}>
           <RenderProvider value={env}>
             <SectionsRenderer
-              sections={[createSection('product-info', { gallery: 'mosaic', stickyInfo: true })]}
+              sections={[createSection('product-info', { stickyInfo: true })]}
               env={env}
             />
           </RenderProvider>
