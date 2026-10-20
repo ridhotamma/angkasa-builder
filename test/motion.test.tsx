@@ -67,13 +67,15 @@ describe('motion style options', () => {
     expect(readSectionStyle({}).stagger).toBe(false)
   })
 
-  test.skipIf(!SECTION_STAGGER_ENABLED)('marks the cards a product grid cascades', () => {
-    const html = page([
-      createSection('product-list', { source: 'latest', limit: 4 }, { stagger: true }),
-    ])
+  test.skipIf(!SECTION_STAGGER_ENABLED)('marks the cards every product layout cascades', () => {
+    for (const layout of ['grid', 'slider', 'bento'] as const) {
+      const html = page([
+        createSection('product-list', { source: 'latest', limit: 4, layout }, { stagger: true }),
+      ])
 
-    expect(html).toContain('data-stagger="true"')
-    expect(html.match(/data-stagger-item=""/g)).toHaveLength(4)
+      expect(html, layout).toContain('data-stagger="true"')
+      expect(html.match(/data-stagger-item=""/g), layout).toHaveLength(4)
+    }
   })
 
   test.skipIf(!SECTION_STAGGER_ENABLED)(

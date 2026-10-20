@@ -1275,7 +1275,6 @@ export function ProductCard({
     <Card.Root
       ref={tiltRef}
       className="group"
-      data-stagger-item=""
       position="relative"
       w="full"
       h="full"
@@ -1404,7 +1403,12 @@ export function ProductGrid({
       gap={{ base: '3', md: '5' }}
     >
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} wishlist={wishlist} />
+        // The reveal's unit is the grid cell, never the card: a card owns its
+        // hover transform (a lift), and an entrance's own inline transform on
+        // the same element would override it once the card has settled.
+        <Box key={product.id} data-stagger-item="" minW="0">
+          <ProductCard product={product} wishlist={wishlist} />
+        </Box>
       ))}
     </SimpleGrid>
   )
@@ -1450,7 +1454,7 @@ function ProductSlider({
       count={products.length}
       perPage={perView}
       rootProps={{ 'data-product-layout': 'slider' }}
-      slideProps={{ display: 'flex', alignItems: 'stretch' }}
+      slideProps={{ display: 'flex', alignItems: 'stretch', 'data-stagger-item': '' }}
     >
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
