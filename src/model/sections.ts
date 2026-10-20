@@ -1247,7 +1247,10 @@ export const SECTION_SCHEMAS = [
         'Hi! I have a question.',
       ),
       textField('email', { en: 'Email address', id: 'Alamat email' }, 120),
-      toggleField('showTop', { en: 'Back to top', id: 'Kembali ke atas' }, true),
+      toggleField('showTop', { en: 'Back to top', id: 'Kembali ke atas' }, true, {
+        en: 'Appears once the shopper scrolls into the last quarter of the page.',
+        id: 'Muncul setelah pengunjung menggulir ke seperempat terakhir halaman.',
+      }),
       selectField(
         'position',
         { en: 'Corner', id: 'Sudut' },
@@ -1256,6 +1259,20 @@ export const SECTION_SCHEMAS = [
           { value: 'left', label: { en: 'Bottom left', id: 'Kiri bawah' } },
         ],
         'right',
+      ),
+      selectField(
+        'size',
+        { en: 'Button size', id: 'Ukuran tombol' },
+        [
+          { value: 'sm', label: { en: 'Small', id: 'Kecil' } },
+          { value: 'md', label: { en: 'Medium', id: 'Sedang' } },
+          { value: 'lg', label: { en: 'Large', id: 'Besar' } },
+        ],
+        'md',
+        {
+          en: 'How big the WhatsApp, email and back-to-top buttons are.',
+          id: 'Seberapa besar tombol WhatsApp, email, dan kembali ke atas.',
+        },
       ),
     ],
     defaultStyle: { paddingTop: 'none', paddingBottom: 'none' },

@@ -677,6 +677,27 @@ export function GallerySocial({ settings }: SectionProps) {
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
+const FLOATING_CONTACT_SIZES = ['sm', 'md', 'lg'] as const
+
+/** The share of the page the shopper must scroll before "back to top" appears. */
+const BACK_TO_TOP_REVEAL = 0.75
+
+/**
+ * Whether the back-to-top control belongs on screen at this scroll position.
+ *
+ * It stays away at the top and halfway down the page — where the contact
+ * buttons are all a shopper needs — and appears for the last quarter, where
+ * climbing back up is a chore. A page with nothing to scroll never shows it.
+ */
+export function showsBackToTop(
+  scrollY: number,
+  viewportHeight: number,
+  scrollHeight: number,
+): boolean {
+  const travel = scrollHeight - viewportHeight
+  return travel > 0 && scrollY >= travel * BACK_TO_TOP_REVEAL
+}
+
 /**
  * A corner cluster that stays put while the page scrolls.
  *
@@ -691,6 +712,9 @@ export function FloatingContact({ settings: section }: SectionProps) {
   const { data, getWindow, settings } = useRenderEnvironment()
   const reduced = usePrefersReducedMotion()
   const [host, setHost] = useState<HTMLElement | null>(null)
+  // Server HTML has no scroll position to read, so the control starts hidden
+  // and the effect below reveals it once the shopper is far enough down.
+  const [nearBottom, setNearBottom] = useState(false)
   // Shop settings fill in whatever the section leaves blank.
   const wa = whatsappHref(
     readText(section, 'whatsapp') || data.shop.phone || '',
@@ -699,6 +723,7 @@ export function FloatingContact({ settings: section }: SectionProps) {
   const email = readText(section, 'email') || data.shop.email || ''
   const mail = email.includes('@') ? `mailto:${email}` : null
   const showTop = readBoolean(section, 'showTop')
+  const size = readToken(section, 'size', FLOATING_CONTACT_SIZES, 'md')
   const side = readText(section, 'position') === 'left' ? { left: '4' } : { right: '4' }
   // Portalled out of the theme's scope, the cluster must carry the theme's
   // variables itself — otherwise `brand.solid` falls back to Pesanle's orange
@@ -709,6 +734,27 @@ export function FloatingContact({ settings: section }: SectionProps) {
     const view = getWindow?.() ?? globalThis.window
     setHost(view?.document.body ?? null)
   }, [getWindow])
+
+  // Listen on the shopper's own window: in the editor that is the preview
+  // iframe, not the editor's page around it.
+  useEffect(() => {
+    const view = getWindow?.() ?? globalThis.window
+    if (!showTop || !view) {
+      setNearBottom(false)
+      return
+    }
+    const read = () =>
+      setNearBottom(
+        showsBackToTop(view.scrollY, view.innerHeight, view.document.documentElement.scrollHeight),
+      )
+    read()
+    view.addEventListener('scroll', read, { passive: true })
+    view.addEventListener('resize', read)
+    return () => {
+      view.removeEventListener('scroll', read)
+      view.removeEventListener('resize', read)
+    }
+  }, [getWindow, showTop])
 
   if (!wa && !mail && !showTop) return null
 
@@ -728,12 +774,12 @@ export function FloatingContact({ settings: section }: SectionProps) {
       {...side}
     >
       <Stack gap="2" align="flex-end">
-        {showTop && (
+        {showTop && nearBottom && (
           <IconButton
             aria-label="Back to top"
             rounded="full"
             colorPalette="brand"
-            size="sm"
+            size={size}
             shadow="md"
             onClick={toTop}
           >
@@ -745,6 +791,7 @@ export function FloatingContact({ settings: section }: SectionProps) {
             aria-label="Chat on WhatsApp"
             rounded="full"
             colorPalette="brand"
+            size={size}
             shadow="md"
             asChild
           >
@@ -758,6 +805,7 @@ export function FloatingContact({ settings: section }: SectionProps) {
             aria-label="Send an email"
             rounded="full"
             variant="surface"
+            size={size}
             shadow="md"
             asChild
           >

@@ -21,7 +21,7 @@ import {
   type SectionInstance,
 } from '../src/index'
 import { surfacePaint } from '../src/render/dividers'
-import { spinStep } from '../src/render/feature-sections'
+import { spinStep, showsBackToTop } from '../src/render/feature-sections'
 import { AmbientVideo } from '../src/render/media'
 import { Slider, sliderTransform } from '../src/render/slider'
 import { sectionBackground } from '../src/render/section-background'
@@ -154,12 +154,15 @@ describe('feature section library', () => {
     expect(html).toContain('https://i.ytimg.com/vi/-BpekQRliGE/hqdefault.jpg')
     // The floating cluster links out; it never stores anything.
     expect(html).toContain('wa.me')
-    // Every floating button carries its icon, not an empty circle.
-    for (const label of ['Back to top', 'Chat on WhatsApp', 'Send an email']) {
+    // The contact buttons carry their icons, not an empty circle.
+    for (const label of ['Chat on WhatsApp', 'Send an email']) {
       const at = html.indexOf(`aria-label="${label}"`)
       expect(at, label).toBeGreaterThan(-1)
       expect(html.slice(at, at + 900), label).toContain('<svg')
     }
+    // "Back to top" waits for the shopper to reach the last quarter of the
+    // page. The server cannot know that, so the first paint leaves it out.
+    expect(html).not.toContain('aria-label="Back to top"')
   })
 })
 
@@ -884,6 +887,34 @@ describe('floating contact theming', () => {
       />,
     )
     expect(html).toContain('--chakra-colors-brand-solid:#123456')
+  })
+})
+
+describe('the back-to-top control', () => {
+  test('appears only once the shopper is in the last quarter of the page', () => {
+    const viewport = 800
+    // 4,000px of document leaves 3,200px of travel: the reveal is at 2,400px.
+    expect(showsBackToTop(0, viewport, 4000)).toBe(false)
+    expect(showsBackToTop(1600, viewport, 4000)).toBe(false) // halfway
+    expect(showsBackToTop(2399, viewport, 4000)).toBe(false)
+    expect(showsBackToTop(2400, viewport, 4000)).toBe(true)
+    expect(showsBackToTop(3200, viewport, 4000)).toBe(true) // the bottom
+  })
+
+  test('a page with nothing to scroll never shows it', () => {
+    expect(showsBackToTop(0, 800, 800)).toBe(false)
+    expect(showsBackToTop(0, 800, 600)).toBe(false)
+  })
+
+  test('the button size is a section setting', () => {
+    const field = sectionSchema('floating-contact')?.fields.find((item) => item.key === 'size')
+    expect(field?.kind).toBe('select')
+    expect(field?.default).toBe('md')
+    expect(field?.kind === 'select' && field.options.map((option) => option.value)).toEqual([
+      'sm',
+      'md',
+      'lg',
+    ])
   })
 })
 
