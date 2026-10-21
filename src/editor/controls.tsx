@@ -25,6 +25,7 @@ import {
   Menu,
   NumberInput,
   parseColor,
+  Popover,
   Portal,
   ScrollArea,
   SegmentGroup,
@@ -35,6 +36,24 @@ import {
   Text,
   Textarea,
 } from '@chakra-ui/react'
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import {
   createContext,
   memo,
@@ -51,8 +70,10 @@ import {
   LuChevronDown,
   LuChevronRight,
   LuFolderInput,
+  LuGripVertical,
   LuImagePlus,
   LuMonitor,
+  LuPencil,
   LuPlus,
   LuSearch,
   LuSmartphone,
@@ -67,7 +88,6 @@ import {
   canMoveBlockTo,
   findBlock,
   moveBlockTo,
-  renameBlock,
   type BlockContainer,
 } from '../model/blocks'
 import { sectionLinkTargets, type SectionInstance } from '../model/content'
@@ -86,6 +106,7 @@ import {
   readPoint,
   readTable,
   readText,
+  type BlockSchema,
   type BlockValue,
   type BlocksField,
   type CoordinatesValue,
@@ -1221,7 +1242,7 @@ function FieldControl({
     case 'blocks':
       return (
         <Labeled label={label} help={help}>
-          <BlocksControl field={field} value={value} onChange={onChange} services={services} />
+          <BlocksControl field={field} value={value} onChange={onChange} />
         </Labeled>
       )
   }
@@ -1232,76 +1253,144 @@ function FieldControl({
 /* -------------------------------------------------------------------------- */
 
 /**
- * The root block tree a row belongs to. A row's own control only holds its
- * siblings list; moving or renaming a block needs the whole tree, so the
- * outermost list provides it and every nested list reads it from here.
+ * The block tree the editor is working in: the whole section's fields and
+ * settings, so a row can be moved between containers even when the list it
+ * sits in only knows its own siblings. Provided by the builder around the
+ * panel; a standalone list falls back to itself.
  */
 interface BlockTree {
   fields: readonly FieldSpec[]
   values: FieldValues
   onChange: (values: FieldValues) => void
+  /** Whether order, parents and removal may change — false on a linked copy. */
+  editable: boolean
+}
+
+/**
+ * The block whose details the panel is showing. A row asks for its own block
+ * to be opened; the panel then replaces this list with that block's settings,
+ * the way the section list opens a section.
+ */
+interface BlockSelection {
+  selectedId: string | null
+  onSelect: (blockId: string) => void
 }
 
 const BlockTreeContext = createContext<BlockTree | null>(null)
+const BlockSelectionContext = createContext<BlockSelection | null>(null)
 
 /**
- * A compact name input for the editor's own labels. Plain text, kept on the
- * block or section it names — never drawn on the storefront.
+ * Hands the block fields in a panel the section's whole tree and the block
+ * selection they act on. Without it a list still works, but can only reorder
+ * its own siblings.
  */
-export function NameField({
-  label,
-  help,
-  value,
-  fallback,
-  maxLength = MAX_BLOCK_NAME,
+export function BlockEditorProvider({
+  fields,
+  values,
   onChange,
+  editable,
+  selectedId,
+  onSelect,
+  children,
 }: {
-  label: string
-  help?: string
-  value: string
-  /** The schema's own name, used as the placeholder. */
-  fallback: string
-  maxLength?: number
-  onChange: (name: string) => void
+  fields: readonly FieldSpec[]
+  values: FieldValues
+  onChange: (values: FieldValues) => void
+  editable: boolean
+  selectedId: string | null
+  onSelect: (blockId: string) => void
+  children: ReactNode
 }) {
+  const tree = useMemo(
+    () => ({ fields, values, onChange, editable }),
+    [fields, values, onChange, editable],
+  )
+  const selection = useMemo(() => ({ selectedId, onSelect }), [selectedId, onSelect])
   return (
-    <Labeled label={label} help={help}>
-      <Input
-        size="sm"
-        value={value}
-        placeholder={fallback}
-        maxLength={maxLength}
-        onChange={(event) => onChange(event.currentTarget.value)}
-      />
-    </Labeled>
+    <BlockTreeContext.Provider value={tree}>
+      <BlockSelectionContext.Provider value={selection}>{children}</BlockSelectionContext.Provider>
+    </BlockTreeContext.Provider>
   )
 }
 
 /**
- * The seller's own name for a block, shown in the editor in place of the
- * schema's name. Stored on the block, never drawn on the storefront.
+ * A pencil beside a block's title. It opens a small popover to give the block
+ * an editor-only name, keeping the settings panel free of a permanent field.
  */
-export function BlockNameField({
+export function BlockNamePopover({
   value,
   fallback,
   onChange,
-  help = false,
 }: {
   value: string
   /** The schema's own name, used as the placeholder. */
   fallback: string
   onChange: (name: string) => void
-  help?: boolean
 }) {
   const { t } = useEditorText()
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  const save = () => {
+    onChange(draft)
+    setOpen(false)
+  }
+
   return (
-    <NameField
-      label={t('blockName')}
-      help={help ? t('blockNameHelp') : undefined}
-      value={value}
-      fallback={fallback}
-      onChange={onChange}
-    />
+    <Popover.Root
+      open={open}
+      onOpenChange={({ open: next }) => {
+        if (next) setDraft(value)
+        setOpen(next)
+      }}
+      positioning={{ placement: 'bottom-start' }}
+    >
+      <Popover.Trigger asChild>
+        <IconButton
+          aria-label={t('renameBlock')}
+          title={t('renameBlock')}
+          size="2xs"
+          variant="ghost"
+          color="fg.muted"
+          flexShrink="0"
+        >
+          <LuPencil />
+        </IconButton>
+      </Popover.Trigger>
+      <Portal>
+        <Popover.Positioner>
+          <Popover.Content w="64" maxW="calc(100vw - 2rem)">
+            <Popover.Body p="3">
+              <Stack gap="2">
+                <Input
+                  size="sm"
+                  autoFocus
+                  value={draft}
+                  maxLength={MAX_BLOCK_NAME}
+                  placeholder={fallback}
+                  aria-label={t('blockName')}
+                  onChange={(event) => setDraft(event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      save()
+                    }
+                  }}
+                />
+                <HStack justify="flex-end">
+                  <Button size="xs" variant="ghost" onClick={() => setOpen(false)}>
+                    {t('cancel')}
+                  </Button>
+                  <Button size="xs" colorPalette="brand" onClick={save}>
+                    {t('save')}
+                  </Button>
+                </HStack>
+              </Stack>
+            </Popover.Body>
+          </Popover.Content>
+        </Popover.Positioner>
+      </Portal>
+    </Popover.Root>
   )
 }
 
@@ -1410,34 +1499,160 @@ export function BlockMoveMenu({
 }
 
 /**
- * The blocks inside a section: reorderable rows, each opening its own
- * settings, and a menu of the block types that still fit.
+ * One block row: drag it to reorder, click it to open its own settings in the
+ * panel. The row never expands in place, so drilling in never stacks several
+ * levels of open forms on top of each other.
+ */
+function SortableBlockRow({
+  block,
+  schema,
+  selected,
+  onRemove,
+}: {
+  block: BlockValue
+  schema: BlockSchema
+  selected: boolean
+  onRemove: () => void
+}) {
+  const { t, l } = useEditorText()
+  const tree = useContext(BlockTreeContext)
+  const selection = useContext(BlockSelectionContext)
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: block.id,
+  })
+  const editable = tree?.editable !== false
+  const label = block.name?.trim() || l(schema.name)
+  // A block narrowed to one kind of screen is missing from the other's
+  // preview; the row says so, the way a section's row does.
+  const devices = readBlockDevices(block.style)
+  const devicesIcon =
+    devices === 'all' ? null : (
+      <Icon
+        as={devices === 'mobile' ? LuSmartphone : LuMonitor}
+        boxSize="3.5"
+        color="fg.muted"
+        flexShrink="0"
+        aria-label={t(devices === 'mobile' ? 'onlyMobile' : 'onlyDesktop')}
+      />
+    )
+
+  return (
+    <HStack
+      ref={setNodeRef}
+      data-block-row={block.id}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      gap="1"
+      px="1.5"
+      py="1"
+      rounded="md"
+      borderWidth="1px"
+      borderColor={selected ? 'brand.solid' : 'border.subtle'}
+      bg={isDragging ? 'bg.muted' : selected ? 'brand.subtle' : 'bg.panel'}
+      zIndex={isDragging ? 1 : undefined}
+    >
+      {editable && (
+        <IconButton
+          aria-label={t('dragToReorder')}
+          size="2xs"
+          variant="ghost"
+          cursor="grab"
+          {...attributes}
+          {...listeners}
+        >
+          <LuGripVertical />
+        </IconButton>
+      )}
+      <Button
+        variant="plain"
+        size="sm"
+        flex="1"
+        minW="0"
+        h="auto"
+        px="1"
+        py="1"
+        justifyContent="start"
+        gap="2"
+        onClick={() => selection?.onSelect(block.id)}
+      >
+        <IconTile
+          icon={blockGlyph(schema.type) ?? LuPlus}
+          size="md"
+          bg={selected ? 'bg.panel' : 'bg.muted'}
+          color="fg.muted"
+        />
+        <Stack gap="0" minW="0" align="start" flex="1">
+          <HStack gap="1.5" minW="0" maxW="full">
+            <Text fontSize="sm" fontWeight="medium" truncate>
+              {label}
+            </Text>
+            {devicesIcon}
+          </HStack>
+          {block.name?.trim() && (
+            <Text fontSize="xs" color="fg.muted" fontWeight="normal" truncate maxW="full">
+              {l(schema.name)}
+            </Text>
+          )}
+        </Stack>
+      </Button>
+      {editable && tree && (
+        <BlockMoveMenu
+          fields={tree.fields}
+          values={tree.values}
+          blockId={block.id}
+          onChange={tree.onChange}
+          compact
+        />
+      )}
+      {editable && (
+        <IconButton
+          aria-label={t('remove')}
+          size="2xs"
+          variant="ghost"
+          colorPalette="danger"
+          onClick={onRemove}
+        >
+          <LuTrash2 />
+        </IconButton>
+      )}
+    </HStack>
+  )
+}
+
+/**
+ * The blocks inside a section: the seller's rows, in order. A row opens the
+ * block's settings in the panel, like the section list opens a section; the
+ * handle on its left reorders it among its siblings. The menu below adds a
+ * block of any type that still fits.
  */
 function BlocksControl({
   field,
   value,
   onChange,
-  services,
 }: {
   field: BlocksField
   value: unknown
   onChange: (blocks: BlockValue[]) => void
-  services: EditorServices
 }) {
   const { t, l } = useEditorText()
   const blocks = Array.isArray(value) ? (value as BlockValue[]) : []
-  const [open, setOpen] = useState<string | null>(null)
   const [blockQuery, setBlockQuery] = useState('')
-  // A nested list inherits the outermost list's tree; the outermost wraps its
-  // rows in a provider built from the field it was given.
+  const selection = useContext(BlockSelectionContext)
+  // A nested list inherits the panel's whole tree; a standalone list can only
+  // name its own siblings.
   const inherited = useContext(BlockTreeContext)
   const tree: BlockTree = inherited ?? {
     fields: [field],
     values: { [field.key]: blocks as unknown as JsonValue },
     onChange: (next) => onChange(readBlocks(next, field.key)),
+    editable: true,
   }
 
-  // Rows slide to their new places on every reorder — see `ListControl`.
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  // Rows slide to their new places on every reorder — see `SectionList`.
   const rowsRef = useRef<HTMLDivElement>(null)
   const rowRects = useRef<SectionRects>(new Map())
   const rowIndexes = useRef<Map<string, number>>(new Map())
@@ -1451,11 +1666,12 @@ function BlocksControl({
     rowIndexes.current = new Map(ids.map((id, index) => [id, index]))
   }, [blocks])
 
-  function move(index: number, by: number) {
-    const next = [...blocks]
-    const [block] = next.splice(index, 1)
-    next.splice(index + by, 0, block!)
-    onChange(next)
+  function handleDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return
+    const from = blocks.findIndex((block) => block.id === active.id)
+    const to = blocks.findIndex((block) => block.id === over.id)
+    if (from < 0 || to < 0) return
+    onChange(arrayMove(blocks, from, to))
   }
 
   const needle = blockQuery.trim().toLowerCase()
@@ -1467,203 +1683,114 @@ function BlocksControl({
 
   return (
     <BlockTreeContext.Provider value={tree}>
-      <Stack ref={rowsRef} gap="1.5">
-        {blocks.map((block, index) => {
-          const schema = field.blocks.find((candidate) => candidate.type === block.type)
-          if (!schema) return null
-          const hasFields = schema.fields.length > 0
-          const expanded = open === block.id && hasFields
-          const label = block.name?.trim() || l(schema.name)
-          const rename = (name: string) => {
-            const next = renameBlock(tree.fields, tree.values, block.id, name)
-            if (next) tree.onChange(next)
-          }
-          // A block narrowed to one kind of screen is missing from the other's
-          // preview; the row says so, the way a section's row does.
-          const devices = readBlockDevices(block.style)
-          const devicesIcon =
-            devices === 'all' ? null : (
-              <Icon
-                as={devices === 'mobile' ? LuSmartphone : LuMonitor}
-                boxSize="3.5"
-                color="fg.muted"
-                flexShrink="0"
-                aria-label={t(devices === 'mobile' ? 'onlyMobile' : 'onlyDesktop')}
-              />
-            )
-          return (
-            <Collapsible.Root
-              key={block.id}
-              open={expanded}
-              onOpenChange={({ open: next }) => setOpen(next ? block.id : null)}
-            >
-              <Box
-                data-block-row={block.id}
-                borderWidth="1px"
-                borderColor={expanded ? 'brand.muted' : 'border.subtle'}
-                rounded="md"
-              >
-                <HStack gap="1" px="2" py="1">
-                  {hasFields ? (
-                    <Collapsible.Trigger asChild>
-                      <Button variant="ghost" size="xs" flex="1" justifyContent="start" minW="0">
-                        <Icon as={expanded ? LuChevronDown : LuChevronRight} />
-                        <Text truncate>{label}</Text>
-                        {devicesIcon}
-                      </Button>
-                    </Collapsible.Trigger>
-                  ) : (
-                    // Nothing to set: a label, not a button that opens nothing.
-                    <HStack flex="1" minW="0" gap="1.5" px="2.5">
-                      <Text truncate fontSize="xs" fontWeight="medium">
-                        {label}
-                      </Text>
-                      {devicesIcon}
-                    </HStack>
-                  )}
-                  <BlockMoveMenu
-                    fields={tree.fields}
-                    values={tree.values}
-                    blockId={block.id}
-                    onChange={tree.onChange}
-                    compact
-                  />
-                  <IconButton
-                    aria-label={t('moveUp')}
-                    size="2xs"
-                    variant="ghost"
-                    disabled={index === 0}
-                    onClick={() => move(index, -1)}
-                  >
-                    <LuArrowUp />
-                  </IconButton>
-                  <IconButton
-                    aria-label={t('moveDown')}
-                    size="2xs"
-                    variant="ghost"
-                    disabled={index === blocks.length - 1}
-                    onClick={() => move(index, 1)}
-                  >
-                    <LuArrowDown />
-                  </IconButton>
-                  <IconButton
-                    aria-label={t('remove')}
-                    size="2xs"
-                    variant="ghost"
-                    colorPalette="danger"
-                    onClick={() => onChange(blocks.filter((other) => other.id !== block.id))}
-                  >
-                    <LuTrash2 />
-                  </IconButton>
-                </HStack>
-                {hasFields && (
-                  <Collapsible.Content>
-                    <Stack gap="3" px="3" pb="3">
-                      <BlockNameField
-                        value={block.name ?? ''}
-                        fallback={l(schema.name)}
-                        onChange={rename}
-                      />
-                      <FieldsForm
-                        fields={schema.fields}
-                        values={block.settings}
-                        services={services}
-                        onChange={(settings) =>
-                          onChange(
-                            blocks.map((other) =>
-                              other.id === block.id ? { ...other, settings } : other,
-                            ),
-                          )
-                        }
-                      />
-                    </Stack>
-                  </Collapsible.Content>
-                )}
-              </Box>
-            </Collapsible.Root>
-          )
-        })}
-        <Menu.Root
-          onOpenChange={({ open: next }) => {
-            if (!next) setBlockQuery('')
-          }}
-          onSelect={({ value: type }) => {
-            const block = createBlock(field, type)
-            if (!block) return
-            onChange([...blocks, block])
-            setOpen(block.id)
-          }}
-          positioning={{ placement: 'bottom-start' }}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={blocks.map((block) => block.id)}
+          strategy={verticalListSortingStrategy}
         >
-          <Menu.Trigger asChild>
-            <Button
-              size="xs"
-              variant="outline"
-              alignSelf="start"
-              disabled={blocks.length >= field.max}
+          <Stack ref={rowsRef} gap="1.5">
+            {blocks.map((block) => {
+              const schema = field.blocks.find((candidate) => candidate.type === block.type)
+              if (!schema) return null
+              return (
+                <SortableBlockRow
+                  key={block.id}
+                  block={block}
+                  schema={schema}
+                  selected={selection?.selectedId === block.id}
+                  onRemove={() => onChange(blocks.filter((other) => other.id !== block.id))}
+                />
+              )
+            })}
+            <Menu.Root
+              onOpenChange={({ open: next }) => {
+                if (!next) setBlockQuery('')
+              }}
+              onSelect={({ value: type }) => {
+                const block = createBlock(field, type)
+                if (!block) return
+                onChange([...blocks, block])
+                // Open the new block straight away, as the old accordion did.
+                selection?.onSelect(block.id)
+              }}
+              positioning={{ placement: 'bottom-start' }}
             >
-              <Icon as={LuPlus} />
-              {t('addBlock')}
-            </Button>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content minW="64" maxH="72" overflowY="auto">
-                <Box position="sticky" top="0" zIndex="1" bg="bg.panel" px="2" pt="2" pb="1">
-                  <InputGroup startElement={<Icon as={LuSearch} color="fg.subtle" />}>
-                    <Input
-                      size="xs"
-                      autoFocus
-                      placeholder={t('searchBlocks')}
-                      value={blockQuery}
-                      onChange={(event) => setBlockQuery(event.currentTarget.value)}
-                      // The menu's own typeahead must not eat the letters;
-                      // Escape, Tab and the arrow keys still reach the menu.
-                      onKeyDown={(event) => {
-                        if (
-                          event.key !== 'Escape' &&
-                          event.key !== 'Tab' &&
-                          event.key !== 'ArrowDown' &&
-                          event.key !== 'ArrowUp'
-                        ) {
-                          event.stopPropagation()
-                        }
-                      }}
-                    />
-                  </InputGroup>
-                </Box>
-                {blockChoices.map((schema) => (
-                  <Menu.Item
-                    key={schema.type}
-                    value={schema.type}
-                    disabled={!canAddBlock(field, blocks, schema.type)}
-                  >
-                    <IconTile
-                      icon={blockGlyph(schema.type) ?? LuPlus}
-                      size="sm"
-                      bg="bg.muted"
-                      color="fg"
-                    />
-                    <Text flex="1" minW="0" truncate>
-                      {l(schema.name)}
-                    </Text>
-                    {schema.max === 1 && blocks.some((block) => block.type === schema.type) && (
-                      <Badge size="xs" ml="auto">
-                        ✓
-                      </Badge>
+              <Menu.Trigger asChild>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  alignSelf="start"
+                  disabled={!tree.editable || blocks.length >= field.max}
+                >
+                  <Icon as={LuPlus} />
+                  {t('addBlock')}
+                </Button>
+              </Menu.Trigger>
+              <Portal>
+                <Menu.Positioner>
+                  <Menu.Content minW="64" maxH="72" overflowY="auto">
+                    <Box position="sticky" top="0" zIndex="1" bg="bg.panel" px="2" pt="2" pb="1">
+                      <InputGroup startElement={<Icon as={LuSearch} color="fg.subtle" />}>
+                        <Input
+                          size="xs"
+                          autoFocus
+                          placeholder={t('searchBlocks')}
+                          value={blockQuery}
+                          onChange={(event) => setBlockQuery(event.currentTarget.value)}
+                          // The menu's own typeahead must not eat the letters;
+                          // Escape, Tab and the arrow keys still reach the menu.
+                          onKeyDown={(event) => {
+                            if (
+                              event.key !== 'Escape' &&
+                              event.key !== 'Tab' &&
+                              event.key !== 'ArrowDown' &&
+                              event.key !== 'ArrowUp'
+                            ) {
+                              event.stopPropagation()
+                            }
+                          }}
+                        />
+                      </InputGroup>
+                    </Box>
+                    {blockChoices.map((schema) => (
+                      <Menu.Item
+                        key={schema.type}
+                        value={schema.type}
+                        disabled={!canAddBlock(field, blocks, schema.type)}
+                      >
+                        <IconTile
+                          icon={blockGlyph(schema.type) ?? LuPlus}
+                          size="sm"
+                          bg="bg.muted"
+                          color="fg"
+                        />
+                        <Text flex="1" minW="0" truncate>
+                          {l(schema.name)}
+                        </Text>
+                        {schema.max === 1 && blocks.some((block) => block.type === schema.type) && (
+                          <Badge size="xs" ml="auto">
+                            ✓
+                          </Badge>
+                        )}
+                      </Menu.Item>
+                    ))}
+                    {blockChoices.length === 0 && (
+                      <Text px="2" py="3" fontSize="sm" color="fg.muted">
+                        {t('noBlocksMatch')}
+                      </Text>
                     )}
-                  </Menu.Item>
-                ))}
-                {blockChoices.length === 0 && (
-                  <Text px="2" py="3" fontSize="sm" color="fg.muted">
-                    {t('noBlocksMatch')}
-                  </Text>
-                )}
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
-      </Stack>
+                  </Menu.Content>
+                </Menu.Positioner>
+              </Portal>
+            </Menu.Root>
+          </Stack>
+        </SortableContext>
+      </DndContext>
     </BlockTreeContext.Provider>
   )
 }

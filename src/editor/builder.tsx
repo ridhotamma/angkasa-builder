@@ -104,10 +104,7 @@ import {
   createSection,
   detachSection,
   linkedMaster,
-  MAX_SECTION_NAME,
-  moveSection,
   overridableFields,
-  renameSection,
   resolveLinkedSections,
   setBlockOverrides,
   setSectionOverrides,
@@ -161,10 +158,10 @@ import { BlockStylePanel } from './block-style-panel'
 import { CatalogueProvider } from './catalogue'
 import { DropOverlay, type DropTarget } from './preview-drop'
 import {
+  BlockEditorProvider,
   BlockMoveMenu,
-  BlockNameField,
+  BlockNamePopover,
   FieldsForm,
-  NameField,
   SectionLinkProvider,
   SelectInput,
 } from './controls'
@@ -479,7 +476,6 @@ function Builder({
     resolvedSelected && schema && selectedBlockId
       ? findBlock(schema.fields, resolvedSelected.settings, selectedBlockId)
       : null
-  const sectionIndex = selected ? sections.findIndex((section) => section.id === selected.id) : -1
 
   useHistoryKeys(
     history,
@@ -679,6 +675,13 @@ function Builder({
     setTab('sections')
   }, [])
 
+  // A block row clicked in the panel: the same selection, without re-picking
+  // the section or moving it into view.
+  const onSelectBlockInPanel = useCallback((blockId: string) => {
+    setSelectedBlockId(blockId)
+    setSelectedElementId(null)
+  }, [])
+
   // A button or text element clicked on the canvas: same, through the
   // section's element map. The kind decides which panel opens.
   const onSelectElement = useCallback(
@@ -818,7 +821,8 @@ function Builder({
               const next = removeBlock(schema.fields, section.settings, selectedBlock.block.id)
               return next ? { ...section, settings: next } : section
             })
-            setSelectedBlockId(null)
+            // Removing a child returns to its parent, not all the way out.
+            setSelectedBlockId(selectedBlock.parentId)
           },
         }
       : null
@@ -861,39 +865,40 @@ function Builder({
           variant="ghost"
           alignSelf="start"
           ml="-2"
-          onClick={() => setSelectedBlockId(null)}
+          onClick={() => setSelectedBlockId(selectedBlock.parentId)}
         >
           <Icon as={LuChevronLeft} />
-          {t('back')}
+          {t('backOne')}
         </Button>
         <Stack gap="1">
-          <Text fontWeight="semibold">
-            {selectedBlock.block.name?.trim() || l(selectedBlock.schema.name)}
-          </Text>
+          <HStack gap="1.5" minW="0">
+            <Text fontWeight="semibold" truncate minW="0">
+              {selectedBlock.block.name?.trim() || l(selectedBlock.schema.name)}
+            </Text>
+            {!selected.linkedTo && (
+              <BlockNamePopover
+                value={selectedBlock.block.name ?? ''}
+                fallback={l(selectedBlock.schema.name)}
+                onChange={(name) => {
+                  updateSection(selected.id, (section) => {
+                    const settings = renameBlock(
+                      schema.fields,
+                      section.settings,
+                      selectedBlock.block.id,
+                      name,
+                    )
+                    return settings ? { ...section, settings } : section
+                  })
+                }}
+              />
+            )}
+          </HStack>
           {selectedBlock.schema.description && (
             <Text textStyle="xs" color="fg.muted">
               {l(selectedBlock.schema.description)}
             </Text>
           )}
         </Stack>
-        {!selected.linkedTo && (
-          <BlockNameField
-            value={selectedBlock.block.name ?? ''}
-            fallback={l(selectedBlock.schema.name)}
-            help
-            onChange={(name) => {
-              updateSection(selected.id, (section) => {
-                const settings = renameBlock(
-                  schema.fields,
-                  section.settings,
-                  selectedBlock.block.id,
-                  name,
-                )
-                return settings ? { ...section, settings } : section
-              })
-            }}
-          />
-        )}
         <HStack gap="1">
           <IconButton
             aria-label={t('moveUp')}
@@ -1048,19 +1053,12 @@ function Builder({
         <Stack gap="1">
           <HStack gap="2">
             <Icon as={LuLink} color="brand.solid" />
-            <Text fontWeight="semibold">{selected.name?.trim() || l(schema.name)}</Text>
+            <Text fontWeight="semibold">{l(schema.name)}</Text>
           </HStack>
           <Text textStyle="xs" color="fg.muted">
             {t('linkedHelp')}
           </Text>
         </Stack>
-        <NameField
-          label={t('sectionName')}
-          value={selected.name ?? ''}
-          fallback={l(schema.name)}
-          maxLength={MAX_SECTION_NAME}
-          onChange={(name) => onSectionsChange(renameSection(sections, selected.id, name))}
-        />
         {overridableFields(schema.fields).length > 0 && (
           <FieldsForm
             fields={overridableFields(schema.fields)}
@@ -1148,47 +1146,12 @@ function Builder({
     ) : selected && schema ? (
       <Stack gap="4">
         {back}
-        <HStack gap="2" justify="space-between" align="start">
-          <Stack gap="1" minW="0" flex="1">
-            <Text fontWeight="semibold">{selected.name?.trim() || l(schema.name)}</Text>
-            <Text textStyle="xs" color="fg.muted">
-              {l(schema.description)}
-            </Text>
-          </Stack>
-          <HStack gap="1" flexShrink="0">
-            <IconButton
-              aria-label={t('moveUp')}
-              size="2xs"
-              variant="outline"
-              disabled={sectionIndex <= 0}
-              onClick={() => {
-                onSectionsChange(moveSection(sections, selected.id, -1))
-                revealSoon(selected.id)
-              }}
-            >
-              <LuArrowUp />
-            </IconButton>
-            <IconButton
-              aria-label={t('moveDown')}
-              size="2xs"
-              variant="outline"
-              disabled={sectionIndex < 0 || sectionIndex >= sections.length - 1}
-              onClick={() => {
-                onSectionsChange(moveSection(sections, selected.id, 1))
-                revealSoon(selected.id)
-              }}
-            >
-              <LuArrowDown />
-            </IconButton>
-          </HStack>
-        </HStack>
-        <NameField
-          label={t('sectionName')}
-          value={selected.name ?? ''}
-          fallback={l(schema.name)}
-          maxLength={MAX_SECTION_NAME}
-          onChange={(name) => onSectionsChange(renameSection(sections, selected.id, name))}
-        />
+        <Stack gap="1">
+          <Text fontWeight="semibold">{l(schema.name)}</Text>
+          <Text textStyle="xs" color="fg.muted">
+            {l(schema.description)}
+          </Text>
+        </Stack>
         <Tabs.Root
           value={sectionTab}
           onValueChange={({ value }) => setSectionTab(value as typeof sectionTab)}
@@ -1745,7 +1708,19 @@ function Builder({
   // edited is named too, so no section can be offered a link to itself.
   const panelBox = (
     <SectionLinkProvider sections={sections} currentSectionId={selected?.id ?? null}>
-      {panelBody}
+      <BlockEditorProvider
+        fields={schema?.fields ?? []}
+        values={resolvedSelected?.settings ?? {}}
+        onChange={(values) => {
+          if (!selected || selected.linkedTo) return
+          updateSection(selected.id, (section) => ({ ...section, settings: values }))
+        }}
+        editable={Boolean(selected && !selected.linkedTo)}
+        selectedId={selectedBlockId}
+        onSelect={onSelectBlockInPanel}
+      >
+        {panelBody}
+      </BlockEditorProvider>
     </SectionLinkProvider>
   )
 

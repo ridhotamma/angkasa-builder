@@ -70,9 +70,6 @@ export function sanitizeRecommendedLooks(value: unknown): string[] {
 /** The ceiling the schema's string columns are sized for. */
 export const MAX_CONTENT_BYTES = 200_000
 
-/** How long a seller's own section name may be, in characters. */
-export const MAX_SECTION_NAME = 60
-
 /**
  * The field kinds a linked copy may set for itself: content, never structure.
  * A copy can say its own words, show its own photo, point its own link — it
@@ -105,12 +102,6 @@ export interface SectionInstance {
   id: string
   type: SectionType
   hidden: boolean
-  /**
-   * The seller's own name for this section — an editor label such as
-   * "Highlighted cards", never drawn on the storefront. Absent shows the
-   * schema's name.
-   */
-  name?: string
   settings: FieldValues
   /** Colour scheme, spacing, width, devices and dates — see `./section-style`. */
   style: FieldValues
@@ -214,24 +205,6 @@ export function moveSection(
   return next
 }
 
-/**
- * `sections` with one section's editor-only name replaced. Stored as typed
- * (within the limit) so spaces between words work; the sanitiser trims it at
- * rest. Clearing the name removes the key and the schema's name shows again.
- */
-export function renameSection(
-  sections: SectionInstance[],
-  id: string,
-  name: string,
-): SectionInstance[] {
-  const clean = name.slice(0, MAX_SECTION_NAME)
-  return sections.map((section) => {
-    if (section.id !== id) return section
-    const { name: _previous, ...rest } = section
-    return clean ? { ...rest, name: clean } : rest
-  })
-}
-
 /** Whether another copy of section `id` fits: room on the page, and under its type's cap. */
 export function canDuplicateSection(sections: readonly SectionInstance[], id: string): boolean {
   const section = sections.find((other) => other.id === id)
@@ -288,12 +261,10 @@ export function sanitizeSections(value: unknown, scope: SectionScope = 'home'): 
         ? raw.linkedTo
         : undefined
     const overrides = sanitizeOverrideShape(raw.overrides)
-    const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, MAX_SECTION_NAME) : ''
     out.push({
       id,
       type,
       hidden: raw.hidden === true,
-      ...(name && { name }),
       settings: sanitizeValues(schema.fields, raw.settings),
       style: sanitizeValues(SECTION_STYLE_FIELDS, raw.style),
       ...(Object.keys(elements).length > 0 && { elements }),
