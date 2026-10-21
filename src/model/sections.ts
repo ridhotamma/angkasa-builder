@@ -2663,8 +2663,8 @@ export const SECTION_SCHEMAS = [
     icon: 'bag',
     name: { en: 'Product details', id: 'Detail produk' },
     description: {
-      en: 'The first product photo, name, price and the buy buttons. Arrange what shows beside the photo with blocks.',
-      id: 'Foto produk pertama, nama, harga, dan tombol beli. Atur isi di samping foto dengan blok.',
+      en: 'Photos, name, price and the buy buttons. Arrange what shows beside the photos with blocks.',
+      id: 'Foto, nama, harga, dan tombol beli. Atur isi di samping foto dengan blok.',
     },
     scopes: PRODUCT_ONLY,
     max: 1,
@@ -2672,21 +2672,36 @@ export const SECTION_SCHEMAS = [
     usesCatalogue: true,
     fields: [
       {
+        kind: 'select',
+        key: 'gallery',
+        label: { en: 'Photo layout', id: 'Tata letak foto' },
+        options: [
+          {
+            value: 'thumbnails',
+            label: { en: 'Large photo and thumbnails', id: 'Foto besar dan thumbnail' },
+          },
+          { value: 'grid', label: { en: 'Grid of photos', id: 'Kisi foto' } },
+          { value: 'stacked', label: { en: 'Photos stacked', id: 'Foto bertumpuk' } },
+          { value: 'mosaic', label: { en: 'Photo mosaic', id: 'Mozaik foto' } },
+        ],
+        default: 'thumbnails',
+      },
+      {
         kind: 'boolean',
         key: 'stickyInfo',
         label: { en: 'Keep details in view', id: 'Detail tetap terlihat' },
         help: {
-          en: 'On a desktop, the details stay on screen while the page scrolls.',
-          id: 'Di desktop, detail tetap di layar saat halaman digulir.',
+          en: 'On a desktop, the details stay on screen while the photos scroll.',
+          id: 'Di desktop, detail tetap di layar saat foto digulir.',
         },
         default: true,
       },
       {
         kind: 'boolean',
         key: 'zoom',
-        label: { en: 'Zoom photo on hover', id: 'Perbesar foto saat disorot' },
+        label: { en: 'Zoom photos on hover', id: 'Perbesar foto saat disorot' },
         // Off unless a theme asks for it: a photo that grows under the pointer
-        // is a deliberate look, not the look the photo starts with.
+        // is a deliberate look, not the look the gallery starts with.
         default: false,
       },
       {

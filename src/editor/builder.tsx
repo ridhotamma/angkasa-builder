@@ -873,9 +873,11 @@ function Builder({
         <Stack gap="1">
           <HStack gap="1.5" minW="0">
             <Text fontWeight="semibold" truncate minW="0">
-              {selectedBlock.block.name?.trim() || l(selectedBlock.schema.name)}
+              {schema.type === 'blocks' && selectedBlock.block.name?.trim()
+                ? selectedBlock.block.name.trim()
+                : l(selectedBlock.schema.name)}
             </Text>
-            {!selected.linkedTo && (
+            {!selected.linkedTo && schema.type === 'blocks' && (
               <BlockNamePopover
                 value={selectedBlock.block.name ?? ''}
                 fallback={l(selectedBlock.schema.name)}
@@ -936,7 +938,7 @@ function Builder({
           >
             <LuTrash2 />
           </IconButton>
-          {!selected.linkedTo && (
+          {!selected.linkedTo && schema.type === 'blocks' && (
             <BlockMoveMenu
               fields={schema.fields}
               values={selected.settings}
@@ -1716,6 +1718,7 @@ function Builder({
           updateSection(selected.id, (section) => ({ ...section, settings: values }))
         }}
         editable={Boolean(selected && !selected.linkedTo)}
+        custom={schema?.type === 'blocks'}
         selectedId={selectedBlockId}
         onSelect={onSelectBlockInPanel}
       >

@@ -1,9 +1,11 @@
 /**
  * The product detail page's two-column split.
  *
- * The photo column shows the product's first photo and nothing else: there is
- * no thumbnail strip, photo grid, stack or mosaic. The details column keeps
- * the buy box's own rows, in the storefront's order.
+ * The mosaic layout wants the width: five photos in one column are
+ * thumbnails at an even split, so it takes two thirds. The details column
+ * that leaves is narrow, and the buy actions stack there, one per line, the
+ * primary first — a row of two clips "Add to cart". Every other photo layout
+ * keeps an even split and puts the two actions in a row.
  */
 
 import { describe, expect, test } from 'bun:test'
@@ -19,35 +21,11 @@ import {
   sampleStorefrontData,
   SectionsRenderer,
   type RenderEnvironment,
-  type StorefrontProductDetail,
 } from '../src/render/index'
 
-/** A product with enough photos that a gallery would have something to list. */
-function product(images: number): StorefrontProductDetail {
+function env(): RenderEnvironment {
   return {
-    id: 'product-1',
-    name: 'Topi Bucket',
-    slug: 'topi-bucket',
-    price: 70_000,
-    compareAtPrice: null,
-    images: Array.from({ length: images }, (_, index) => ({
-      url: `https://example.com/photo-${index}.jpg`,
-      thumbUrl: `https://example.com/thumb-${index}.jpg`,
-    })),
-    description: 'Bucket hat katun, melindungi dari matahari.',
-    rating: 4.8,
-    ratingCount: 126,
-    available: 4,
-    category: { name: 'Apparel', slug: 'apparel' },
-    sizeGuide: null,
-    related: [],
-  }
-}
-
-function env(withProduct?: StorefrontProductDetail): RenderEnvironment {
-  const data = sampleStorefrontData('Product Shop')
-  return {
-    data: withProduct ? { ...data, product: withProduct } : data,
+    data: sampleStorefrontData('Product Shop'),
     settings: { ...DEFAULT_THEME_SETTINGS, splash: { ...DEFAULT_THEME_SETTINGS.splash } },
     // Preview mode supplies the stand-in product and the buy-button stand-in,
     // which is what the editor shows for this section.
@@ -58,17 +36,14 @@ function env(withProduct?: StorefrontProductDetail): RenderEnvironment {
   }
 }
 
-function page(
-  settings: Record<string, unknown> = {},
-  withProduct?: StorefrontProductDetail,
-): string {
+function page(gallery = 'mosaic', settings: Record<string, unknown> = {}): string {
   return renderToString(
     <ChakraProvider value={system}>
       <I18nProvider locale="en" resources={{}}>
-        <RenderProvider value={env(withProduct)}>
+        <RenderProvider value={env()}>
           <SectionsRenderer
-            sections={[createSection('product-info', { stickyInfo: true, ...settings })]}
-            env={env(withProduct)}
+            sections={[createSection('product-info', { gallery, stickyInfo: true, ...settings })]}
+            env={env()}
           />
         </RenderProvider>
       </I18nProvider>
@@ -76,39 +51,91 @@ function page(
   )
 }
 
+/** The class of the box the two stand-in actions sit in. */
+function actionsClass(html: string): string {
+  // The nearest div before the first action is the box itself; Chakra's `Flex`
+  // wears no `chakra-*` name, so it is found by position.
+  const before = html.slice(0, html.indexOf('>Buy now<'))
+  const divs = [...before.matchAll(/<div class="([^"]+)"/g)]
+  const last = divs[divs.length - 1]?.[1] ?? ''
+  return last.split(' ').find((name) => name.startsWith('css-')) ?? ''
+}
+
 describe('the product detail page', () => {
-  test('there is no photo-layout choice any more', () => {
-    const fields = sectionSchema('product-info')!.fields
-    expect(fields.some((field) => field.key === 'gallery')).toBe(false)
+  test('the mosaic takes two thirds of the row', () => {
+    const html = page()
+    expect(html).toContain('minmax(0, 2fr) minmax(0, 1fr)')
+    expect(html).not.toContain('minmax(0, 3fr) minmax(0, 2fr)')
   })
 
-  test('only the first product photo is drawn', () => {
-    const html = page({}, product(5))
-    expect(html).toContain('https://example.com/photo-0.jpg')
-    expect(html).not.toContain('https://example.com/photo-1.jpg')
-    expect(html).not.toContain('https://example.com/thumb-1.jpg')
+  test('another photo layout keeps the even split', () => {
+    expect(page('thumbnails')).not.toContain('minmax(0, 2fr)')
   })
 
-  test('the thumbnail strip and fullscreen viewer are gone', () => {
-    const html = page({}, product(5))
-    expect(html).not.toContain('View all photos')
-    expect(html).not.toContain('data-slider-band')
+  test('the mosaic stacks the buy actions one per line, the primary first', () => {
+    const html = page()
+    // The primary comes first, and the two share one column box.
+    expect(html.indexOf('>Buy now<')).toBeGreaterThan(0)
+    expect(html.indexOf('>Buy now<')).toBeLessThan(html.indexOf('>Add to cart<'))
+
+    const cls = actionsClass(html)
+    expect(cls).toBeTruthy()
+    const rule = html.match(new RegExp(`\\.${cls}\\{[^}]*\\}`))?.[0] ?? ''
+    expect(rule).toContain('flex-direction:column')
+    // No width has the pair in a row here.
+    expect(html).not.toMatch(new RegExp(`\\.${cls}\\{[^}]*flex-direction:row`))
+  })
+
+  test('a wide details column puts the buy actions in a row', () => {
+    const html = page('thumbnails')
+    const cls = actionsClass(html)
+    expect(cls).toBeTruthy()
+    // Stacked on a phone, in a row from the first breakpoint that has the room.
+    expect(html).toMatch(new RegExp(`\\.${cls}\\{[^}]*flex-direction:column`))
+    expect(html).toMatch(new RegExp(`\\.${cls}\\{[^}]*flex-direction:row`))
+  })
+
+  test('a phone gets the photo slider for every listing layout', () => {
+    for (const layout of ['grid', 'stacked', 'mosaic']) {
+      const html = page(layout)
+      // One photo per page, swiped, dots and all — the shape a phone expects
+      // in place of a grid, a stack or the mosaic's tiles.
+      expect(html, layout).toContain('data-slider-band')
+      expect(html, layout).toContain('aria-label="Slide 2"')
+      // Both views are drawn, each behind its own media query: the slider on a
+      // phone, the layout's own shape from `md` up.
+      expect(html, layout).toMatch(
+        /@media screen and \(min-width: 48rem\)\{\.css-[a-z0-9]+\{display:none;\}\}/,
+      )
+      expect(html, layout).toMatch(
+        /@media screen and \(max-width: 47\.9975rem\)\{\.css-[a-z0-9]+\{display:none;\}\}/,
+      )
+    }
+  })
+
+  test('the cover-and-thumbnails layout keeps its own shape on a phone', () => {
+    // Its cover already fills the screen; the strip below it is the chooser.
+    expect(page('thumbnails')).not.toContain('data-slider-band')
   })
 
   test('the hover zoom is a theme’s choice, off unless it asks', () => {
-    // The setting is offered, and starts off. The pointer test in
-    // `product-gallery.interaction` is where the photo itself grows.
+    // The setting is offered, and starts off…
     const field = sectionSchema('product-info')!.fields.find(
       (candidate) => candidate.key === 'zoom',
     )
     expect(field?.kind === 'boolean' && field.default).toBe(false)
+    // …so the plain gallery wears no magnifier cursor…
+    expect(page('grid')).not.toContain('cursor:zoom-in')
+    // …while a theme that turns it on gets it — the pointer test in
+    // `product-gallery.interaction` is where the photo itself grows.
+    expect(page('grid', { zoom: true })).toContain('cursor:zoom-in')
   })
 
   test('the buy box stand-in draws the storefront’s own rows, in its order', () => {
     // The picker's stock line and size axis, the rule, then the quantity and
     // the two actions — the storefront's box, row for row, so the canvas is
     // what the seller is laying the page out over. The note is the editor's.
-    const html = page({}, product(1))
+    const html = page('thumbnails')
     const text = html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, '|')
     let at = -1
     for (const row of [

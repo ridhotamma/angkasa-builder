@@ -46,7 +46,7 @@ const services: EditorServices = {
   pages: [],
 }
 
-function view(onSelect: (blockId: string) => void) {
+function view(onSelect: (blockId: string) => void, custom = true) {
   return render(
     <ChakraProvider value={system}>
       <I18nProvider locale="en" resources={{}}>
@@ -55,6 +55,7 @@ function view(onSelect: (blockId: string) => void) {
           values={values}
           onChange={() => undefined}
           editable
+          custom={custom}
           selectedId={null}
           onSelect={onSelect}
         >
@@ -71,7 +72,7 @@ function view(onSelect: (blockId: string) => void) {
 }
 
 describe('the block list in a section', () => {
-  test('opens a block instead of expanding its fields in place', () => {
+  test('opens a custom block instead of expanding its fields in place', () => {
     const onSelect = mock((_blockId: string) => undefined)
     const { getByRole, queryByText } = view(onSelect)
 
@@ -81,10 +82,24 @@ describe('the block list in a section', () => {
     expect(queryByText('Text')).toBeNull()
   })
 
-  test('gives every row a drag handle', () => {
+  test('gives every custom block row a drag handle', () => {
     const { getAllByRole } = view(() => undefined)
 
     expect(getAllByRole('button', { name: 'Drag to reorder' })).toHaveLength(2)
+  })
+
+  test('keeps a preset block as an inline accordion', async () => {
+    const onSelect = mock((_blockId: string) => undefined)
+    const user = userEvent.setup()
+    const { queryAllByRole, getByRole, getByDisplayValue, queryByLabelText } = view(onSelect, false)
+
+    expect(queryAllByRole('button', { name: 'Drag to reorder' })).toHaveLength(0)
+
+    await user.click(getByRole('button', { name: 'Heading' }))
+
+    expect(getByDisplayValue('Hello')).toBeTruthy()
+    expect(queryByLabelText('Block name')).toBeNull()
+    expect(onSelect).not.toHaveBeenCalled()
   })
 })
 

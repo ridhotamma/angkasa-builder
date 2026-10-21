@@ -84,6 +84,7 @@ const TEXT = {
     id: 'Produk lain dari kategori yang sama tampil di sini.',
   },
   close: { en: 'Close', id: 'Tutup' },
+  viewAllPhotos: { en: 'View all photos', id: 'Lihat semua foto' },
   previousPhoto: { en: 'Previous photo', id: 'Foto sebelumnya' },
   nextPhoto: { en: 'Next photo', id: 'Foto berikutnya' },
   play: { en: 'Play', id: 'Putar' },
