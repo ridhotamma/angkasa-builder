@@ -2,21 +2,27 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   BLOCK_TYPES,
+  blockContainers,
   blockSchema,
+  canMoveBlockTo,
   duplicateBlock,
   findBlock,
   insertBlock,
   moveBlock,
+  moveBlockTo,
   removeBlock,
+  renameBlock,
   updateBlockSettings,
 } from '../src/model/blocks'
 import { buttonAppearance, contentLayout, readToken, selfLayout } from '../src/model/element-style'
 import {
   createBlock,
   isFieldShown,
+  MAX_BLOCK_NAME,
   MAX_BLOCKS_PER_SECTION,
   readBlocks,
   sanitizeValues,
+  type FieldValues,
 } from '../src/model/fields'
 import { createSection, DEFAULT_THEME_SETTINGS, sectionSchema } from '../src/index'
 
@@ -270,6 +276,147 @@ describe('block tree helpers', () => {
     expect(findBlock([field], next!, 'c')).toBeNull()
     const two = findBlock([field], next!, 'two')
     expect(readBlocks(two!.block.settings, 'blocks')).toHaveLength(1)
+  })
+})
+
+describe('naming a block', () => {
+  const { field } = blocksField()
+
+  test('a seller’s name is kept through sanitising, trimmed and capped', () => {
+    const values = sanitizeValues([field], {
+      blocks: [
+        { id: 'a', type: 'heading', name: '  Highlighted cards  ', settings: { text: 'A' } },
+        {
+          id: 'b',
+          type: 'heading',
+          name: 'x'.repeat(MAX_BLOCK_NAME + 20),
+          settings: { text: 'B' },
+        },
+      ],
+    })
+    const blocks = readBlocks(values, 'blocks')
+    expect(blocks[0]!.name).toBe('Highlighted cards')
+    expect(blocks[1]!.name).toHaveLength(MAX_BLOCK_NAME)
+  })
+
+  test('renaming updates the block and clearing it restores the schema name', () => {
+    const values = sampleValues()
+    const renamed = renameBlock([field], values, 'a', 'Highlighted cards')
+    expect(findBlock([field], renamed!, 'a')?.block.name).toBe('Highlighted cards')
+
+    const cleared = renameBlock([field], renamed!, 'a', '')
+    expect(findBlock([field], cleared!, 'a')?.block).not.toHaveProperty('name')
+  })
+
+  test('a duplicate keeps the name but gets its own id', () => {
+    const named = sanitizeValues([field], {
+      blocks: [{ id: 'a', type: 'heading', name: 'Highlighted cards', settings: { text: 'A' } }],
+    })
+    const result = duplicateBlock([field], named, 'a')!
+    expect(result.copy.id).not.toBe('a')
+    expect(result.copy.name).toBe('Highlighted cards')
+  })
+})
+
+describe('moving a block to another parent', () => {
+  const { field } = blocksField()
+
+  /** Two grids, one with a column inside, plus a loose top-level block. */
+  function tree() {
+    return sanitizeValues([field], {
+      blocks: [
+        {
+          id: 'grid',
+          type: 'grid',
+          settings: {
+            blocks: [
+              {
+                id: 'column',
+                type: 'column',
+                settings: {
+                  blocks: [{ id: 'leaf', type: 'heading', settings: { text: 'Leaf' } }],
+                },
+              },
+            ],
+          },
+        },
+        { id: 'other', type: 'grid', settings: { blocks: [] } },
+        { id: 'loose', type: 'heading', settings: { text: 'Loose' } },
+      ],
+    })
+  }
+
+  const ids = (values: FieldValues, parentId?: string) => {
+    const blocks = parentId
+      ? readBlocks(findBlock([field], values, parentId)!.block.settings, 'blocks')
+      : readBlocks(values, 'blocks')
+    return blocks.map((block) => block.id)
+  }
+
+  test('lists the top level and every container with the path to it', () => {
+    const containers = blockContainers([field], tree())
+    expect(containers.map((container) => container.parentId)).toEqual([
+      null,
+      'grid',
+      'column',
+      'other',
+    ])
+    expect(containers.map((container) => container.path.map((step) => step.block.id))).toEqual([
+      [],
+      ['grid'],
+      ['grid', 'column'],
+      ['other'],
+    ])
+  })
+
+  test('moves a top-level block into a column at the end', () => {
+    const next = moveBlockTo([field], tree(), 'loose', {
+      parentId: 'column',
+      fieldKey: 'blocks',
+    })!
+    expect(ids(next)).toEqual(['grid', 'other'])
+    expect(ids(next, 'column')).toEqual(['leaf', 'loose'])
+  })
+
+  test('moves a nested block back out to the top level', () => {
+    const next = moveBlockTo([field], tree(), 'leaf', { parentId: null, fieldKey: 'blocks' })!
+    expect(ids(next)).toEqual(['grid', 'other', 'loose', 'leaf'])
+    expect(ids(next, 'column')).toEqual([])
+  })
+
+  test('refuses the block’s own subtree and a stale container', () => {
+    expect(
+      canMoveBlockTo([field], tree(), 'grid', { parentId: 'column', fieldKey: 'blocks' }),
+    ).toBe(false)
+    expect(
+      moveBlockTo([field], tree(), 'grid', { parentId: 'column', fieldKey: 'blocks' }),
+    ).toBeNull()
+    expect(
+      moveBlockTo([field], tree(), 'loose', { parentId: 'missing', fieldKey: 'blocks' }),
+    ).toBeNull()
+  })
+
+  test('refuses a move that would nest deeper than the storage limit', () => {
+    const deep = sanitizeValues([field], {
+      blocks: [
+        {
+          id: 'host',
+          type: 'grid',
+          settings: {
+            blocks: [{ id: 'slot', type: 'column', settings: { blocks: [] } }],
+          },
+        },
+        nest(3, 'tall'),
+      ],
+    })
+    // `tall` is two container levels plus its leaf; the column sits at depth 2.
+    expect(blockContainers([field], deep).some((container) => container.parentId === 'slot')).toBe(
+      true,
+    )
+    expect(canMoveBlockTo([field], deep, 'tall', { parentId: 'slot', fieldKey: 'blocks' })).toBe(
+      false,
+    )
+    expect(moveBlockTo([field], deep, 'tall', { parentId: 'slot', fieldKey: 'blocks' })).toBeNull()
   })
 })
 

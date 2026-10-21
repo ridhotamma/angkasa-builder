@@ -94,6 +94,7 @@ import {
   insertBlock,
   moveBlock,
   removeBlock,
+  renameBlock,
   updateBlockSettings,
   updateBlockStyle,
   updateBlocksIn,
@@ -103,7 +104,10 @@ import {
   createSection,
   detachSection,
   linkedMaster,
+  MAX_SECTION_NAME,
+  moveSection,
   overridableFields,
+  renameSection,
   resolveLinkedSections,
   setBlockOverrides,
   setSectionOverrides,
@@ -156,7 +160,14 @@ import { useBuilderDialogFooter } from './builder-dialog'
 import { BlockStylePanel } from './block-style-panel'
 import { CatalogueProvider } from './catalogue'
 import { DropOverlay, type DropTarget } from './preview-drop'
-import { FieldsForm, SectionLinkProvider, SelectInput } from './controls'
+import {
+  BlockMoveMenu,
+  BlockNameField,
+  FieldsForm,
+  NameField,
+  SectionLinkProvider,
+  SelectInput,
+} from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
 import { useEditorText } from './messages'
 import { PreviewFrame, type PreviewDevice } from './preview-frame'
@@ -468,6 +479,7 @@ function Builder({
     resolvedSelected && schema && selectedBlockId
       ? findBlock(schema.fields, resolvedSelected.settings, selectedBlockId)
       : null
+  const sectionIndex = selected ? sections.findIndex((section) => section.id === selected.id) : -1
 
   useHistoryKeys(
     history,
@@ -819,7 +831,7 @@ function Builder({
         <Stack gap="1">
           <Text fontWeight="semibold">{details.label}</Text>
           {details.description && (
-            <Text fontSize="xs" color="fg.muted">
+            <Text textStyle="xs" color="fg.muted">
               {details.description}
             </Text>
           )}
@@ -831,7 +843,7 @@ function Builder({
         {back}
         <Stack gap="1">
           <Text fontWeight="semibold">{l(LAYOUT_PART_NAMES[layoutPart])}</Text>
-          <Text fontSize="xs" color="fg.muted">
+          <Text textStyle="xs" color="fg.muted">
             {l(LAYOUT_PART_DESCRIPTIONS[layoutPart])}
           </Text>
         </Stack>
@@ -855,13 +867,33 @@ function Builder({
           {t('back')}
         </Button>
         <Stack gap="1">
-          <Text fontWeight="semibold">{l(selectedBlock.schema.name)}</Text>
+          <Text fontWeight="semibold">
+            {selectedBlock.block.name?.trim() || l(selectedBlock.schema.name)}
+          </Text>
           {selectedBlock.schema.description && (
-            <Text fontSize="xs" color="fg.muted">
+            <Text textStyle="xs" color="fg.muted">
               {l(selectedBlock.schema.description)}
             </Text>
           )}
         </Stack>
+        {!selected.linkedTo && (
+          <BlockNameField
+            value={selectedBlock.block.name ?? ''}
+            fallback={l(selectedBlock.schema.name)}
+            help
+            onChange={(name) => {
+              updateSection(selected.id, (section) => {
+                const settings = renameBlock(
+                  schema.fields,
+                  section.settings,
+                  selectedBlock.block.id,
+                  name,
+                )
+                return settings ? { ...section, settings } : section
+              })
+            }}
+          />
+        )}
         <HStack gap="1">
           <IconButton
             aria-label={t('moveUp')}
@@ -899,6 +931,16 @@ function Builder({
           >
             <LuTrash2 />
           </IconButton>
+          {!selected.linkedTo && (
+            <BlockMoveMenu
+              fields={schema.fields}
+              values={selected.settings}
+              blockId={selectedBlock.block.id}
+              onChange={(settings) =>
+                updateSection(selected.id, (section) => ({ ...section, settings }))
+              }
+            />
+          )}
         </HStack>
         <FieldsForm
           fields={selectedBlock.schema.fields}
@@ -959,7 +1001,7 @@ function Builder({
           <Text fontWeight="semibold">
             {selectedElementKind === 'text' ? t('textElement') : t('buttonElement')}
           </Text>
-          <Text fontSize="xs" color="fg.muted">
+          <Text textStyle="xs" color="fg.muted">
             {selectedElementKind === 'text' ? t('textElementHelp') : t('buttonElementHelp')}
           </Text>
         </Stack>
@@ -1006,12 +1048,20 @@ function Builder({
         <Stack gap="1">
           <HStack gap="2">
             <Icon as={LuLink} color="brand.solid" />
-            <Text fontWeight="semibold">{l(schema.name)}</Text>
+            <Text fontWeight="semibold">{selected.name?.trim() || l(schema.name)}</Text>
           </HStack>
-          <Text fontSize="xs" color="fg.muted">
+          <Text textStyle="xs" color="fg.muted">
             {t('linkedHelp')}
           </Text>
         </Stack>
+        <NameField
+          label={t('sectionName')}
+          help={t('sectionNameHelp')}
+          value={selected.name ?? ''}
+          fallback={l(schema.name)}
+          maxLength={MAX_SECTION_NAME}
+          onChange={(name) => onSectionsChange(renameSection(sections, selected.id, name))}
+        />
         {overridableFields(schema.fields).length > 0 && (
           <FieldsForm
             fields={overridableFields(schema.fields)}
@@ -1052,7 +1102,7 @@ function Builder({
               return (
                 <HStack key={blockId} gap="2" justify="space-between">
                   <Text fontSize="xs" color="fg.muted" truncate>
-                    {found ? l(found.schema.name) : blockId}
+                    {found ? found.block.name?.trim() || l(found.schema.name) : blockId}
                   </Text>
                   <IconButton
                     aria-label={t('resetOverride')}
@@ -1099,12 +1149,48 @@ function Builder({
     ) : selected && schema ? (
       <Stack gap="4">
         {back}
-        <Stack gap="1">
-          <Text fontWeight="semibold">{l(schema.name)}</Text>
-          <Text fontSize="xs" color="fg.muted">
-            {l(schema.description)}
-          </Text>
-        </Stack>
+        <HStack gap="2" justify="space-between" align="start">
+          <Stack gap="1" minW="0" flex="1">
+            <Text fontWeight="semibold">{selected.name?.trim() || l(schema.name)}</Text>
+            <Text textStyle="xs" color="fg.muted">
+              {l(schema.description)}
+            </Text>
+          </Stack>
+          <HStack gap="1" flexShrink="0">
+            <IconButton
+              aria-label={t('moveUp')}
+              size="2xs"
+              variant="outline"
+              disabled={sectionIndex <= 0}
+              onClick={() => {
+                onSectionsChange(moveSection(sections, selected.id, -1))
+                revealSoon(selected.id)
+              }}
+            >
+              <LuArrowUp />
+            </IconButton>
+            <IconButton
+              aria-label={t('moveDown')}
+              size="2xs"
+              variant="outline"
+              disabled={sectionIndex < 0 || sectionIndex >= sections.length - 1}
+              onClick={() => {
+                onSectionsChange(moveSection(sections, selected.id, 1))
+                revealSoon(selected.id)
+              }}
+            >
+              <LuArrowDown />
+            </IconButton>
+          </HStack>
+        </HStack>
+        <NameField
+          label={t('sectionName')}
+          help={t('sectionNameHelp')}
+          value={selected.name ?? ''}
+          fallback={l(schema.name)}
+          maxLength={MAX_SECTION_NAME}
+          onChange={(name) => onSectionsChange(renameSection(sections, selected.id, name))}
+        />
         <Tabs.Root
           value={sectionTab}
           onValueChange={({ value }) => setSectionTab(value as typeof sectionTab)}

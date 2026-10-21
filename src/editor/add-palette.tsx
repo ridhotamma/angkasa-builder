@@ -36,31 +36,7 @@ import {
   type DragEvent,
   type ReactNode,
 } from 'react'
-import {
-  LuChevronDown,
-  LuChevronLeft,
-  LuColumns3,
-  LuGalleryHorizontal,
-  LuGrid2X2,
-  LuHeading,
-  LuImage,
-  LuListTree,
-  LuMap,
-  LuMinus,
-  LuMousePointerClick,
-  LuMoveHorizontal,
-  LuPilcrow,
-  LuPlay,
-  LuPlus,
-  LuSearch,
-  LuSparkles,
-  LuSquare,
-  LuStar,
-  LuTag,
-  LuText,
-  LuType,
-  LuX,
-} from 'react-icons/lu'
+import { LuChevronLeft, LuPlus, LuSearch, LuX } from 'react-icons/lu'
 
 import { registeredBlocks } from '../model/block-registry'
 import {
@@ -74,6 +50,7 @@ import {
   type SectionScope,
   type SectionType,
 } from '../model/sections'
+import { blockGlyph } from './block-icons'
 import { sectionIcon } from './section-icons'
 import { useEditorText } from './messages'
 
@@ -113,29 +90,6 @@ export function PaletteDragProvider({ children }: { children: ReactNode }) {
 
 export function usePaletteDrag(): PaletteDragState {
   return useContext(PaletteDragContext)
-}
-
-/** The glyph shown for each primitive block in the palette. */
-const BLOCK_GLYPHS: Record<string, typeof LuType> = {
-  heading: LuHeading,
-  text: LuPilcrow,
-  richtext: LuText,
-  button: LuMousePointerClick,
-  image: LuImage,
-  video: LuPlay,
-  map: LuMap,
-  icon: LuSparkles,
-  badge: LuTag,
-  rating: LuStar,
-  collapsible: LuChevronDown,
-  divider: LuMinus,
-  spacer: LuSquare,
-  column: LuColumns3,
-  columns: LuColumns3,
-  row: LuListTree,
-  grid: LuGrid2X2,
-  slider: LuGalleryHorizontal,
-  marquee: LuMoveHorizontal,
 }
 
 /** One draggable entry: a card that starts a drag, and adds when clicked. */
@@ -448,7 +402,7 @@ export function AddPalette({
                     }}
                     name={l(schema.name)}
                     description={schema.description ? l(schema.description) : ''}
-                    icon={<Icon as={BLOCK_GLYPHS[schema.type] ?? LuPlus} boxSize="4.5" />}
+                    icon={<Icon as={blockGlyph(schema.type) ?? LuPlus} boxSize="4.5" />}
                     onAdd={() => onAddBlocks([{ type: schema.type }], l(schema.name))}
                   />
                 ))}

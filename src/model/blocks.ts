@@ -13,7 +13,7 @@
 
 import { BLOCK_STYLE_FIELDS } from './block-style'
 import type { BlockSchema, BlockValue, BlocksField, Field, FieldValues, JsonValue } from './fields'
-import { isRecord, newId } from './fields'
+import { isRecord, MAX_BLOCK_DEPTH, MAX_BLOCK_NAME, newId } from './fields'
 import {
   alignmentField,
   buttonHoverField,
@@ -977,8 +977,8 @@ export const blocksSectionSchema = {
   type: 'blocks',
   name: { en: 'Blocks', id: 'Blok' },
   description: {
-    en: 'Every layout, built from blocks: headings, text, buttons, images, icons, badges, video, ratings, collapsibles, rows, columns and grids — each one styleable on its own.',
-    id: 'Semua tata letak, dibangun dari blok: judul, teks, tombol, gambar, ikon, lencana, video, rating, lipatan, baris, kolom, dan kisi — masing-masing bisa diatur gayanya.',
+    en: 'Build any layout from blocks — headings, text, buttons, images and more.',
+    id: 'Susun tata letak dari blok — judul, teks, tombol, gambar, dan lainnya.',
   },
   category: 'layout',
   icon: 'blocks',
@@ -1005,25 +1005,32 @@ export interface FoundBlock {
   schema: BlockSchema
   /** The blocks field the block sits in. */
   field: BlocksField
+  /** The block that owns that field, or `null` at the top level. */
+  parentId: string | null
   /** Where the block sits among its siblings. */
   index: number
   /** How many siblings the containing field holds. */
   count: number
 }
 
-function blockIn(field: BlocksField, raw: unknown, id: string): FoundBlock | null {
+function blockIn(
+  field: BlocksField,
+  raw: unknown,
+  id: string,
+  parentId: string | null,
+): FoundBlock | null {
   if (!Array.isArray(raw)) return null
   const blocks = raw as unknown as BlockValue[]
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index]!
     if (block.id !== id) continue
     const schema = field.blocks.find((candidate) => candidate.type === block.type)
-    return schema ? { block, schema, field, index, count: blocks.length } : null
+    return schema ? { block, schema, field, parentId, index, count: blocks.length } : null
   }
   for (const block of blocks) {
     const schema = field.blocks.find((candidate) => candidate.type === block.type)
     if (!schema || !isRecord(block.settings)) continue
-    const nested = findBlock(schema.fields, block.settings as FieldValues, id)
+    const nested = findBlock(schema.fields, block.settings as FieldValues, id, block.id)
     if (nested) return nested
   }
   return null
@@ -1034,11 +1041,12 @@ export function findBlock(
   fields: readonly Field[],
   values: FieldValues,
   id: string,
+  parentId: string | null = null,
 ): FoundBlock | null {
   for (const field of fields) {
     const raw = values[field.key]
     if (field.kind === 'blocks') {
-      const found = blockIn(field, raw, id)
+      const found = blockIn(field, raw, id, parentId)
       if (found) return found
     }
     if (field.kind === 'list' && Array.isArray(raw)) {
@@ -1139,7 +1147,30 @@ export function updateBlockStyle(
   })
 }
 
-/** The block removed, leaving its siblings; an empty field renders its empty state. */
+/**
+ * The seller's own name for the block, stored as typed (within the name
+ * limit) so a space can be typed between words; the sanitiser trims it when
+ * the layout is saved. Clearing the name removes the key, so the schema's
+ * name shows again. It is an editor label only — no renderer reads it.
+ */
+export function renameBlock(
+  fields: readonly Field[],
+  values: FieldValues,
+  id: string,
+  name: string,
+): FieldValues | null {
+  const clean = name.slice(0, MAX_BLOCK_NAME)
+  return updateBlocksIn(fields, values, id, (blocks, index) => {
+    const next = [...blocks]
+    const { name: _previous, ...block } = next[index]!
+    next[index] = clean ? { ...block, name: clean } : block
+    return next
+  })
+}
+
+/**
+ * The block removed, leaving its siblings; an empty field renders its empty state.
+ */
 export function removeBlock(
   fields: readonly Field[],
   values: FieldValues,
@@ -1174,6 +1205,7 @@ function cloneBlock(block: BlockValue, schema: BlockSchema): BlockValue {
   return {
     id: newId(),
     type: block.type,
+    ...(block.name && { name: block.name }),
     settings: cloneSettings(schema.fields, block.settings),
     ...(block.style && { style: { ...block.style } }),
   }
@@ -1216,6 +1248,155 @@ export function duplicateBlock(
   })
   if (!next || !created.copy) return null
   return { values: next, copy: created.copy }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Moving a block into another parent                                         */
+/* -------------------------------------------------------------------------- */
+
+/** One block on the way down to a blocks field: the owner and its schema. */
+export interface BlockContainerStep {
+  block: BlockValue
+  schema: BlockSchema
+  /** This block's 1-based place among same-type siblings, to name "Column 2". */
+  ordinal: number
+  /** How many same-type siblings there are; `1` needs no number in the name. */
+  siblings: number
+}
+
+/**
+ * A blocks field a block may be moved into — the section's own top-level list
+ * when `parentId` is `null`, or the list inside a column, row, grid or custom
+ * layout block.
+ */
+export interface BlockContainer {
+  /** The block that owns the list, or `null` for the section's own top level. */
+  parentId: string | null
+  /** The field inside that owner — `blocks` for every built-in container. */
+  fieldKey: string
+  /** The owners from the section down to this list, for a readable path. */
+  path: readonly BlockContainerStep[]
+  field: BlocksField
+  /** How many blocks the list holds now. */
+  count: number
+}
+
+function collectContainers(
+  fields: readonly Field[],
+  values: FieldValues,
+  path: readonly BlockContainerStep[],
+  out: BlockContainer[],
+): void {
+  for (const field of fields) {
+    if (field.kind !== 'blocks') continue
+    const raw = values[field.key]
+    const blocks = Array.isArray(raw) ? (raw as unknown as BlockValue[]) : []
+    const owner = path.at(-1)
+    out.push({
+      parentId: owner ? owner.block.id : null,
+      fieldKey: field.key,
+      path,
+      field,
+      count: blocks.length,
+    })
+    for (const block of blocks) {
+      const schema = field.blocks.find((candidate) => candidate.type === block.type)
+      if (!schema || !isRecord(block.settings)) continue
+      const sameType = blocks.filter((candidate) => candidate.type === block.type)
+      collectContainers(
+        schema.fields,
+        block.settings as FieldValues,
+        [
+          ...path,
+          {
+            block,
+            schema,
+            ordinal: sameType.findIndex((candidate) => candidate.id === block.id) + 1,
+            siblings: sameType.length,
+          },
+        ],
+        out,
+      )
+    }
+  }
+}
+
+/**
+ * Every blocks field in `values`, in the order a seller reads the page: the
+ * top level first, then each container's own children tree. A block's own
+ * subtree is included, so the editor can offer every valid new parent.
+ */
+export function blockContainers(fields: readonly Field[], values: FieldValues): BlockContainer[] {
+  const out: BlockContainer[] = []
+  collectContainers(fields, values, [], out)
+  return out
+}
+
+/** How many levels of children hang off `block`, at its deepest. */
+function blockTreeHeight(block: BlockValue, schema: BlockSchema): number {
+  let height = 0
+  for (const field of schema.fields) {
+    if (field.kind !== 'blocks') continue
+    const raw = block.settings[field.key]
+    if (!Array.isArray(raw)) continue
+    for (const child of raw as unknown as BlockValue[]) {
+      const childSchema = field.blocks.find((candidate) => candidate.type === child.type)
+      if (!childSchema) continue
+      height = Math.max(height, 1 + blockTreeHeight(child, childSchema))
+    }
+  }
+  return height
+}
+
+function destinationFor(
+  fields: readonly Field[],
+  values: FieldValues,
+  found: FoundBlock,
+  target: { parentId: string | null; fieldKey: string },
+): { container: BlockContainer; removed: FieldValues } | null {
+  if (target.parentId === found.block.id) return null
+  const removed = removeBlock(fields, values, found.block.id)
+  if (!removed) return null
+  const container = blockContainers(fields, removed).find(
+    (candidate) => candidate.parentId === target.parentId && candidate.fieldKey === target.fieldKey,
+  )
+  if (!container) return null
+  if (container.count >= container.field.max) return null
+  // The moved block sits at the container's depth; its own children add to it.
+  if (container.path.length + blockTreeHeight(found.block, found.schema) > MAX_BLOCK_DEPTH) {
+    return null
+  }
+  return { container, removed }
+}
+
+/** Whether `moveBlockTo` would accept this destination, for enabling a menu item. */
+export function canMoveBlockTo(
+  fields: readonly Field[],
+  values: FieldValues,
+  id: string,
+  target: { parentId: string | null; fieldKey: string },
+): boolean {
+  const found = findBlock(fields, values, id)
+  return found ? destinationFor(fields, values, found, target) !== null : false
+}
+
+/**
+ * `values` with block `id` moved to the end of the blocks field a parent menu
+ * named. The block keeps its id, its own name, its settings and its children.
+ * `null` when the destination is stale, full, the block's own subtree, or too
+ * deep for the storage limit.
+ */
+export function moveBlockTo(
+  fields: readonly Field[],
+  values: FieldValues,
+  id: string,
+  target: { parentId: string | null; fieldKey: string },
+): FieldValues | null {
+  const found = findBlock(fields, values, id)
+  if (!found) return null
+  const destination = destinationFor(fields, values, found, target)
+  if (!destination) return null
+  return insertBlock(fields, destination.removed, target, destination.container.count, found.block)
 }
 
 /* -------------------------------------------------------------------------- */

@@ -23,11 +23,13 @@ import {
   linkedMaster,
   MAX_RECOMMENDED_LOOKS,
   MAX_SECTIONS,
+  MAX_SECTION_NAME,
   menuFormSchema,
   moveSection,
   parseCoordinates,
   readBlocks,
   removeSection,
+  renameSection,
   resolveLinkedSections,
   setBlockOverrides,
   setSectionOverrides,
@@ -235,6 +237,28 @@ describe('sections', () => {
       { id: 'same', type: 'rich-text', settings: {} },
     ])
     expect(new Set(sections.map((s) => s.id)).size).toBe(2)
+  })
+
+  test('a seller’s section name is kept, trimmed and capped', () => {
+    const [section] = sanitizeSections([
+      { id: 'a', type: 'blocks', name: '  Highlighted cards  ', settings: {} },
+      { id: 'b', type: 'rich-text', name: 'x'.repeat(MAX_SECTION_NAME + 10), settings: {} },
+    ])
+    expect(section!.name).toBe('Highlighted cards')
+    const sections = sanitizeSections([
+      { id: 'c', type: 'rich-text', name: 'x'.repeat(MAX_SECTION_NAME + 10), settings: {} },
+    ])
+    expect(sections[0]!.name).toHaveLength(MAX_SECTION_NAME)
+  })
+
+  test('renaming a section is editor-only and can be cleared', () => {
+    const sections = sanitizeSections([{ id: 'a', type: 'blocks', settings: {} }])
+    const named = renameSection(sections, 'a', 'Highlighted cards')
+    expect(named[0]!.name).toBe('Highlighted cards')
+    expect(named[0]!.settings).toEqual(sections[0]!.settings)
+    const cleared = renameSection(named, 'a', '')
+    expect(cleared[0]).not.toHaveProperty('name')
+    expect(renameSection(cleared, 'missing', 'Nope')[0]).not.toHaveProperty('name')
   })
 
   test('sanitises list items, including their links', () => {

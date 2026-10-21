@@ -241,7 +241,7 @@ function Row({
         <Stack gap="0" minW="0" align="start" flex="1">
           <HStack gap="1.5" minW="0" maxW="full">
             <Text fontSize="sm" fontWeight="medium" truncate>
-              {schema ? l(schema.name) : section.type}
+              {section.name?.trim() || (schema ? l(schema.name) : section.type)}
             </Text>
             <RowBadges section={section} />
           </HStack>

@@ -207,6 +207,31 @@ describe('blocks section, in the editor preview', () => {
     // The editable field is the selected heading, not another block.
     expect(html).toContain('Made by hand')
   })
+
+  test('a seller’s own block name labels the canvas, never the storefront', () => {
+    const named = createSection('blocks', {
+      blocks: [
+        {
+          id: 'named',
+          type: 'grid',
+          name: 'Highlighted cards',
+          settings: {
+            columns: '2',
+            blocks: [{ id: 'inside', type: 'heading', settings: { text: 'Inside' } }],
+          },
+        },
+      ],
+    })
+    const preview = render(
+      <SectionsRenderer
+        sections={[named]}
+        env={env({ mode: 'preview', editing: { onSelectBlock: () => undefined } })}
+      />,
+    )
+    expect(preview).toContain('Highlighted cards')
+    const live = render(<SectionsRenderer sections={[named]} env={env()} />)
+    expect(live).not.toContain('Highlighted cards')
+  })
 })
 
 describe('blocks section, empty', () => {

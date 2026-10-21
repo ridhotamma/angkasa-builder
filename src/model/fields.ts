@@ -264,6 +264,9 @@ export interface BlockSchema {
 export const MAX_BLOCK_DEPTH = 3
 export const MAX_BLOCKS_PER_SECTION = 256
 
+/** How long a seller's own block name may be, in characters. */
+export const MAX_BLOCK_NAME = 60
+
 /**
  * An ordered list of typed blocks — Shopify's blocks inside a section. Unlike
  * a `list`, every item picks its own type, and each type has its own fields.
@@ -525,6 +528,12 @@ export function readCoordinates(values: FieldValues, key: string): CoordinatesVa
 export interface BlockValue {
   id: string
   type: string
+  /**
+   * The seller's own name for this block — an editor label such as
+   * "Highlighted cards", never drawn on the storefront. Empty means the
+   * block's schema name is shown instead.
+   */
+  name?: string
   settings: FieldValues
   /**
    * Per-block visual overrides, from the field's `styleFields`: the position,
@@ -637,9 +646,11 @@ function sanitizeBlocks(
     if (budget.ids.has(id)) id = newId()
     budget.ids.add(id)
     const style = field.styleFields ? sanitizeOverrides(field.styleFields, raw.style) : undefined
+    const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, MAX_BLOCK_NAME) : ''
     out.push({
       id,
       type: schema.type,
+      ...(name && { name }),
       settings: sanitizeValues(schema.fields, raw.settings, budget, depth + 1),
       ...(style && { style }),
     })

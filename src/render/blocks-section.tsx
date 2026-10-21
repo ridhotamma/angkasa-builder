@@ -427,7 +427,7 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
           transition="opacity 120ms"
           zIndex="1"
         >
-          {localize(schema.name, locale)}
+          {block.name?.trim() || localize(schema.name, locale)}
           {devices !== 'all' && ` · ${localize(DEVICE_CHIPS[devices], locale)}`}
         </Box>
       )}
