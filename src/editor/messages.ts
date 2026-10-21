@@ -238,10 +238,6 @@ const MESSAGES = {
     id: 'Hanya tampil di editor — beri nama blok agar mudah dibedakan, misalnya "Kartu unggulan".',
   },
   sectionName: { en: 'Section name', id: 'Nama bagian' },
-  sectionNameHelp: {
-    en: 'Only shown in the editor — name the section for yourself, for example "Highlighted cards".',
-    id: 'Hanya tampil di editor — beri nama bagian ini untuk Anda sendiri, misalnya "Kartu unggulan".',
-  },
   moveTo: { en: 'Move to', id: 'Pindahkan ke' },
   topLevel: { en: 'Top level', id: 'Tingkat atas' },
   currentParent: { en: 'Current', id: 'Saat ini' },

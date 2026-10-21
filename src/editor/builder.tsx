@@ -1056,7 +1056,6 @@ function Builder({
         </Stack>
         <NameField
           label={t('sectionName')}
-          help={t('sectionNameHelp')}
           value={selected.name ?? ''}
           fallback={l(schema.name)}
           maxLength={MAX_SECTION_NAME}
@@ -1185,7 +1184,6 @@ function Builder({
         </HStack>
         <NameField
           label={t('sectionName')}
-          help={t('sectionNameHelp')}
           value={selected.name ?? ''}
           fallback={l(schema.name)}
           maxLength={MAX_SECTION_NAME}

@@ -1386,7 +1386,7 @@ export function BlockMoveMenu({
                 value={String(index)}
                 disabled={!target.canMove}
               >
-                <IconTile icon={LuFolderInput} size="sm" />
+                <IconTile icon={LuFolderInput} size="sm" bg="bg.muted" color="fg" />
                 <Stack gap="0" flex="1" minW="0" align="stretch">
                   <Text truncate fontSize="sm">
                     {target.label}
@@ -1638,7 +1638,12 @@ function BlocksControl({
                     value={schema.type}
                     disabled={!canAddBlock(field, blocks, schema.type)}
                   >
-                    <IconTile icon={blockGlyph(schema.type) ?? LuPlus} size="sm" />
+                    <IconTile
+                      icon={blockGlyph(schema.type) ?? LuPlus}
+                      size="sm"
+                      bg="bg.muted"
+                      color="fg"
+                    />
                     <Text flex="1" minW="0" truncate>
                       {l(schema.name)}
                     </Text>
