@@ -28,7 +28,7 @@ import {
   useMarqueeStyles,
   type BoxProps,
 } from '@chakra-ui/react'
-import { useContext, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { LuStar } from 'react-icons/lu'
 
 import { StoreMap } from '@repo/geoapify/store-map'
@@ -71,6 +71,7 @@ import {
   contentLayout,
   readToken,
   selfLayout,
+  type ElementAlignment,
   type Space,
 } from '../model/element-style'
 import {
@@ -131,6 +132,19 @@ export function useDropTarget(parentId: string | null, fieldKey: string): Record
   return mode === 'preview' && sectionId
     ? { 'data-block-list': '', 'data-parent-id': parentId ?? '', 'data-field-key': fieldKey }
     : {}
+}
+
+/**
+ * The alignment of the column a block sits in. A column's own alignment moves
+ * its contents, not just its box: blocks that keep the default left follow the
+ * column, while a block set to centre or right keeps that choice.
+ */
+const ColumnAlignContext = createContext<ElementAlignment | null>(null)
+
+function useBlockAlign(block: BlockValue): ElementAlignment {
+  const inherited = useContext(ColumnAlignContext)
+  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  return inherited && align === 'left' ? inherited : align
 }
 
 function BlockList({
@@ -354,6 +368,7 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
   const sectionId = useContext(SectionIdContext)
   const { locale } = useLocale()
   const schema = blockSchema(block.type)
+  const blockAlign = useBlockAlign(block)
   // The seller's per-block overrides. On the storefront a block with none is
   // drawn exactly as its section's markup was — no wrapper, no class.
   const css = blockStyleCss(block.style)
@@ -381,11 +396,19 @@ function BlockShell({ block, children }: { block: BlockValue; children: ReactNod
   }
   const selected = editing.selectedBlockId === block.id
   const devices = readBlockDevices(block.style)
+  // The editor's outline is the block's box. A column's width and alignment
+  // have to shrink and move that box, or the settings look inert even though
+  // the content inside already follows them.
+  const columnLayout =
+    block.type === 'column'
+      ? contentLayout(readToken(block.settings, 'width', CONTENT_WIDTHS, 'full'), blockAlign)
+      : undefined
 
   return (
     <Box
       data-block-id={block.id}
       data-block-hover-group=""
+      {...columnLayout}
       // The editor's outline and label need a positioned ancestor; a style
       // override of the block's own position is applied instead.
       position={css.position === undefined ? 'relative' : undefined}
@@ -486,6 +509,7 @@ function BlockText({
 function HeadingBlock({ block }: { block: BlockValue }) {
   const { mode, editing } = useRenderEnvironment()
   const sectionId = useContext(SectionIdContext)
+  const align = useBlockAlign(block)
   const value = readText(block.settings, 'text')
   // While this block is the one being edited in the preview, the field stays
   // mounted even when emptied — swapping in the placeholder would unmount the
@@ -498,7 +522,6 @@ function HeadingBlock({ block }: { block: BlockValue }) {
   if (!value && !editingThis) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.heading} />
   const level = readToken(block.settings, 'level', HEADING_LEVELS, 'h2')
   const size = HEADING_FONT_SIZE[readToken(block.settings, 'size', HEADING_SIZES, 'lg')]
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   return (
     <Heading
@@ -515,12 +538,12 @@ function HeadingBlock({ block }: { block: BlockValue }) {
 
 function ButtonBlock({ block }: { block: BlockValue }) {
   const { settings } = useRenderEnvironment()
+  const align = useBlockAlign(block)
   const label = readText(block.settings, 'label')
   if (!label) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.button} />
   const size = readToken(block.settings, 'size', BUTTON_SIZES, 'md')
   const padding = readToken(block.settings, 'padding', BUTTON_PADDINGS, 'default')
   const width = readToken(block.settings, 'width', SELF_WIDTHS, 'auto')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const variant = readToken(block.settings, 'variant', BUTTON_VARIANTS, 'solid')
   const tone = readToken(block.settings, 'tone', BUTTON_TONES, 'brand')
   const hover = readToken(block.settings, 'hover', BUTTON_HOVERS, 'none')
@@ -555,13 +578,13 @@ function ButtonBlock({ block }: { block: BlockValue }) {
 
 function ImageBlock({ block }: { block: BlockValue }) {
   const { imageUrl } = useRenderEnvironment()
+  const align = useBlockAlign(block)
   const fileId = readText(block.settings, 'image')
   const src = fileId ? imageUrl(fileId, { width: 1200, height: 900 }) : null
   if (!src) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.image} />
   const ratio = IMAGE_RATIO[readToken(block.settings, 'ratio', IMAGE_RATIOS, '4/3')]
   const rounded = IMAGE_ROUNDED[readToken(block.settings, 'rounded', IMAGE_ROUNDING, 'md')]
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const fit = readToken(block.settings, 'fit', PHOTO_FIT_VALUES, 'cover')
   const position = readToken(block.settings, 'position', PHOTO_POSITION_VALUES, 'center')
   const alt = readText(block.settings, 'alt')
@@ -706,12 +729,12 @@ const DIVIDER_TONE_KEYS = ['subtle', 'border', 'strong', 'brand'] as const
 
 /** A gap on the spacing scale — a spacer with `line` set draws the rule. */
 function SpacerBlock({ block }: { block: BlockValue }) {
+  const align = useBlockAlign(block)
   const size = readToken(block.settings, 'size', SPACES, 'md')
   if (!readBoolean(block.settings, 'line')) return <Box h={SPACE_HEIGHT[size]} aria-hidden />
   const thickness = readToken(block.settings, 'thickness', DIVIDER_THICKNESS_KEYS, 'thin')
   const tone = readToken(block.settings, 'tone', DIVIDER_TONE_KEYS, 'border')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   return (
     <Box py={SPACE_GAP[size]} {...contentLayout(width, align)}>
       <Box h={DIVIDER_THICKNESS[thickness]} bg={DIVIDER_TONES[tone]} rounded="full" />
@@ -724,10 +747,10 @@ function SpacerBlock({ block }: { block: BlockValue }) {
 /* -------------------------------------------------------------------------- */
 
 function RichTextBlock({ block }: { block: BlockValue }) {
+  const align = useBlockAlign(block)
   const doc = readRichText(block.settings, 'body')
   if (isRichDocEmpty(doc)) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.richtext} />
   const size = TEXT_FONT_SIZE[readToken(block.settings, 'size', TEXT_SIZES, 'md')]
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   return (
     <Box {...contentLayout(width, align)}>
@@ -755,7 +778,7 @@ const ICON_TONES: Record<string, string> = {
 const ICON_TONE_KEYS = ['brand', 'accent', 'muted', 'dark', 'inherit'] as const
 
 function IconBlock({ block }: { block: BlockValue }) {
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const align = useBlockAlign(block)
   const size = readToken(block.settings, 'size', ICON_SIZE_KEYS, 'md')
   const tone = readToken(block.settings, 'tone', ICON_TONE_KEYS, 'brand')
   const color = blockTextOverrides(block).color
@@ -783,13 +806,13 @@ const VIDEO_RATIO_KEYS = ['16/9', '4/3', '1/1', '9/16'] as const
 
 function VideoBlock({ block }: { block: BlockValue }) {
   const { imageUrl } = useRenderEnvironment()
+  const align = useBlockAlign(block)
   const video = readVideo(block.settings, 'video')
   if (!video) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.video} />
   const posterId = readText(block.settings, 'poster')
   const poster = posterId ? imageUrl(posterId, { width: 1600, height: 900 }) : null
   const ratio = VIDEO_RATIOS[readToken(block.settings, 'ratio', VIDEO_RATIO_KEYS, '16/9')] ?? 16 / 9
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   return (
     <Box {...contentLayout(width, align)}>
       <VideoFrame
@@ -806,7 +829,7 @@ function VideoBlock({ block }: { block: BlockValue }) {
 /** One pin on a map at the block's coordinates. */
 function MapBlock({ block }: { block: BlockValue }) {
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const align = useBlockAlign(block)
   const zoom = Number(readText(block.settings, 'zoom'))
   const coordinates = readCoordinates(block.settings, 'coordinates')
   return (
@@ -837,11 +860,11 @@ const BADGE_TONES = {
 const BADGE_TONE_KEYS = ['brand', 'dark', 'subtle', 'outline'] as const
 
 function BadgeBlock({ block }: { block: BlockValue }) {
+  const align = useBlockAlign(block)
   const label = readText(block.settings, 'text')
   if (!label) return <BlockPlaceholder label={BLOCK_PLACEHOLDERS.badge} />
   const tone = readToken(block.settings, 'tone', BADGE_TONE_KEYS, 'brand')
   const size = readToken(block.settings, 'size', ['sm', 'md'] as const, 'md')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
   return (
     <Flex justify={ALIGN_JUSTIFY[align]}>
       <Box
@@ -912,7 +935,7 @@ function RatingBlock({ block }: { block: BlockValue }) {
   const count = Math.max(0, readNumber(block.settings, 'count', 0))
   const size = readToken(block.settings, 'size', RATING_SIZES, 'md')
   const tone = readToken(block.settings, 'tone', RATING_TONES, 'yellow')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const align = useBlockAlign(block)
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
   const label = readText(block.settings, 'label')
   return (
@@ -988,10 +1011,12 @@ function ColumnBlock({ block }: { block: BlockValue }) {
   const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'md')]
   const paddingY = SPACE_PADDING_Y[readToken(block.settings, 'padding', SPACES, 'none')]
   const width = readToken(block.settings, 'width', CONTENT_WIDTHS, 'full')
-  const align = readToken(block.settings, 'align', ELEMENT_ALIGNMENTS, 'left')
+  const align = useBlockAlign(block)
   return (
     <Box py={paddingY} data-block-hover-group="" {...contentLayout(width, align)}>
-      <BlockList blocks={readBlocks(block.settings, 'blocks')} gap={gap} parentId={block.id} />
+      <ColumnAlignContext.Provider value={align}>
+        <BlockList blocks={readBlocks(block.settings, 'blocks')} gap={gap} parentId={block.id} />
+      </ColumnAlignContext.Provider>
     </Box>
   )
 }

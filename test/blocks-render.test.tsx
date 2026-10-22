@@ -147,6 +147,44 @@ describe('blocks section, on the storefront', () => {
     expect(out).toContain('Sticky side')
   })
 
+  test('a column carries its width and alignment into its blocks', () => {
+    const column = createSection('blocks', {
+      blocks: [
+        {
+          id: 'col',
+          type: 'column',
+          settings: {
+            width: 'narrow',
+            align: 'center',
+            blocks: [
+              { id: 'h', type: 'heading', settings: { text: 'Centred by the column' } },
+              { id: 'right', type: 'heading', settings: { text: 'Own alignment', align: 'right' } },
+            ],
+          },
+        },
+      ],
+    })
+    const out = render(<SectionsRenderer sections={[column]} env={env()} />)
+    expect(out).toContain('max-width:var(--chakra-sizes-2xl)')
+    expect(out).toContain('margin-inline:auto')
+    // The column's centre reaches a child that kept the default left, while a
+    // child that chose its own alignment still wins.
+    expect((out.match(/text-align:center/g) ?? []).length).toBeGreaterThanOrEqual(2)
+    expect(out).toContain('text-align:right')
+
+    // In the editor the outline is the block's box, so it has to shrink too.
+    const preview = render(
+      <SectionsRenderer
+        sections={[column]}
+        env={env({
+          mode: 'preview',
+          editing: { onSelectBlock: () => undefined, selectedBlockId: 'col' },
+        })}
+      />,
+    )
+    expect((preview.match(/max-width:var\(--chakra-sizes-2xl\)/g) ?? []).length).toBeGreaterThan(1)
+  })
+
   test('a button can use a custom colour', () => {
     const custom = createSection('blocks', {
       blocks: [
