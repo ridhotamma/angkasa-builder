@@ -174,11 +174,18 @@ export const IMAGE_RATIO: Record<ImageRatio, number | undefined> = {
   '3/4': 3 / 4,
 }
 
+/**
+ * The per-block image corners are deliberately larger than the theme's
+ * `l1/l2/l3` tokens. Those tokens top out at 8px on the default theme, which
+ * is almost invisible on a full-width photo card. This scale gives the
+ * Small / Medium / Large choices a visible step at card size while `Round`
+ * still works for avatars and pill-shaped crops.
+ */
 export const IMAGE_ROUNDED: Record<ImageRounding, string> = {
   none: '0',
-  sm: 'l1',
-  md: 'l2',
-  lg: 'l3',
+  sm: '8px',
+  md: '16px',
+  lg: '24px',
   full: 'full',
 }
 

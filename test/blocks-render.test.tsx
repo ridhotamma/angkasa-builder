@@ -377,6 +377,32 @@ describe('the photo card block', () => {
     expect(html).toMatch(/linear-gradient/)
   })
 
+  test('corner choices make a visible difference on a card', () => {
+    const htmlFor = (rounded: string) =>
+      render(
+        <SectionsRenderer
+          sections={[
+            createSection('blocks', {
+              blocks: [
+                {
+                  id: 'card',
+                  type: 'media-card',
+                  settings: { image: 'file-photo_1', rounded },
+                },
+              ],
+            }),
+          ]}
+          env={env({ imageUrl: () => 'https://cdn.example/photo.jpg' })}
+        />,
+      )
+
+    expect(htmlFor('none')).toContain('border-radius:0')
+    expect(htmlFor('sm')).toContain('border-radius:8px')
+    expect(htmlFor('md')).toContain('border-radius:16px')
+    expect(htmlFor('lg')).toContain('border-radius:24px')
+    expect(htmlFor('full')).toContain('border-radius:var(--chakra-radii-full)')
+  })
+
   test('an empty card shows a placeholder in the preview and nothing live', () => {
     const empty = createSection('blocks', {
       blocks: [{ id: 'mc', type: 'media-card', settings: {} }],
