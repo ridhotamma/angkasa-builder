@@ -70,15 +70,17 @@ import {
   LuFolderInput,
   LuGripVertical,
   LuImagePlus,
+  LuInfo,
   LuMonitor,
   LuPencil,
   LuPlus,
+  LuRotateCcw,
   LuSearch,
   LuSmartphone,
   LuTrash2,
 } from 'react-icons/lu'
 
-import { IconTile } from '@repo/theme'
+import { IconTile, Tooltip } from '@repo/theme'
 
 import { readBlockDevices } from '../model/block-style'
 import {
@@ -140,31 +142,156 @@ import { RichTextControl } from './rich-text-control'
 import { useEditorText, type EditorMessage } from './messages'
 import type { EditorServices } from './services'
 
+/**
+ * A field's label line: the name, an ⓘ that holds the help, and — once the
+ * value differs from the default — a dot that says so and a button that puts
+ * it back. The help sits in a tooltip so a panel of a dozen settings reads as
+ * a dozen names, not a dozen paragraphs.
+ */
+function FieldHeading({
+  label,
+  help,
+  onReset,
+}: {
+  label: string
+  help?: string
+  /** Present only while the value differs from the default. */
+  onReset?: () => void
+}) {
+  const { t } = useEditorText()
+  return (
+    <HStack gap="1" minW="0" minH="6">
+      {onReset && (
+        <Box
+          as="span"
+          flexShrink="0"
+          boxSize="1.5"
+          rounded="full"
+          bg="brand.solid"
+          aria-label={t('fieldChanged')}
+          title={t('fieldChanged')}
+        />
+      )}
+      <Field.Label fontSize="sm" m="0" minW="0">
+        {label}
+      </Field.Label>
+      {help && (
+        <Tooltip content={help}>
+          <Box
+            as="span"
+            tabIndex={0}
+            aria-label={t('fieldHelp')}
+            display="inline-flex"
+            flexShrink="0"
+            color="fg.subtle"
+            cursor="help"
+            rounded="full"
+            _hover={{ color: 'fg.muted' }}
+            _focusVisible={{ outline: '2px solid', outlineColor: 'colorPalette.focusRing' }}
+          >
+            <Icon as={LuInfo} boxSize="3.5" />
+          </Box>
+        </Tooltip>
+      )}
+      {onReset && (
+        <Tooltip content={t('fieldReset')}>
+          <IconButton
+            aria-label={t('fieldReset')}
+            size="2xs"
+            variant="ghost"
+            ml="auto"
+            flexShrink="0"
+            color="fg.muted"
+            onClick={onReset}
+            // Out of the way until the field is pointed at; always there on
+            // touch screens, which have no hover to reveal it.
+            opacity="0"
+            _groupHover={{ opacity: 1 }}
+            _groupFocusWithin={{ opacity: 1 }}
+            css={{ '@media (hover: none)': { opacity: 1 } }}
+          >
+            <LuRotateCcw />
+          </IconButton>
+        </Tooltip>
+      )}
+    </HStack>
+  )
+}
+
+/**
+ * A field: its label line above the control or, `inline`, beside it.
+ *
+ * Inline is for controls that are short whatever their value — a dropdown, a
+ * number, a switch-sized segment — so a setting takes one row instead of two.
+ * The row only forms when the field is wide enough for both halves; a narrow
+ * panel stacks them again.
+ */
 export function Labeled({
   label,
   help,
   error,
+  inline = false,
+  onReset,
   children,
 }: {
   label: string
   help?: string
   error?: string | null
+  inline?: boolean
+  /** Shows the changed dot and the reset button; omit while at the default. */
+  onReset?: () => void
   children: ReactNode
 }) {
   return (
     // `stretch`, not Chakra's default `flex-start`: a control inside a field —
     // a select, a link picker, a list — should be as wide as the panel, not
     // as wide as its current value.
-    <Field.Root invalid={Boolean(error)} alignItems="stretch">
-      <Field.Label fontSize="sm">{label}</Field.Label>
-      {children}
-      {error ? (
-        <Field.ErrorText>{error}</Field.ErrorText>
-      ) : (
-        help && <Field.HelperText>{help}</Field.HelperText>
-      )}
+    <Field.Root
+      invalid={Boolean(error)}
+      alignItems="stretch"
+      className="group"
+      // The field measures itself for the inline row, so the row follows the
+      // panel's width rather than the window's. Only inline fields: a size
+      // container cannot shrink-wrap its content, which a stacked field
+      // inside a toolbar or a popover may need to.
+      css={inline ? { containerType: 'inline-size' } : undefined}
+    >
+      <Box
+        display="grid"
+        gap="1.5"
+        css={
+          inline
+            ? {
+                '@container (min-width: 17rem)': {
+                  gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 3fr)',
+                  alignItems: 'center',
+                  columnGap: '0.75rem',
+                },
+              }
+            : undefined
+        }
+      >
+        <FieldHeading label={label} help={help} onReset={onReset} />
+        <Box minW="0">{children}</Box>
+      </Box>
+      {error && <Field.ErrorText>{error}</Field.ErrorText>}
     </Field.Root>
   )
+}
+
+/**
+ * How a select's options are best drawn. A handful of short answers become a
+ * segmented row, so every answer is visible without opening anything: beside
+ * the label when they are numbers or a couple of short words (the columns 2
+ * to 6), on a row of their own when they are words (a grid or a slider). Any
+ * more, or any longer, and a dropdown reads better.
+ */
+function selectShape(labels: readonly string[]): 'segment-inline' | 'segment' | 'dropdown' {
+  if (labels.length < 2 || labels.length > 6) return 'dropdown'
+  const total = labels.reduce((sum, label) => sum + label.length, 0)
+  if (total <= 12 && labels.every((label) => label.length <= 6)) return 'segment-inline'
+  if (total <= 24 && labels.every((label) => label.length <= 10)) return 'segment'
+  return 'dropdown'
 }
 
 /**
@@ -265,8 +392,8 @@ export function SegmentInput({
     >
       <SegmentGroup.Indicator />
       {options.map((option) => (
-        <SegmentGroup.Item key={option.value} value={option.value} flex="1">
-          <SegmentGroup.ItemText>{option.label}</SegmentGroup.ItemText>
+        <SegmentGroup.Item key={option.value} value={option.value} flex="1" minW="0" px="1.5">
+          <SegmentGroup.ItemText truncate>{option.label}</SegmentGroup.ItemText>
           <SegmentGroup.ItemHiddenInput />
         </SegmentGroup.Item>
       ))}
@@ -985,6 +1112,9 @@ function FieldControl({
   const { t, l, locale } = useEditorText()
   const help = field.help ? l(field.help) : undefined
   const label = l(field.label)
+  /** The reset for a value that has left its default; nothing while it is there. */
+  const resetFor = <T,>(current: T, fallback: T) =>
+    current === fallback ? undefined : () => onChange(fallback)
 
   switch (field.kind) {
     case 'text':
@@ -1026,7 +1156,12 @@ function FieldControl({
       )
     case 'number':
       return (
-        <Labeled label={label} help={help}>
+        <Labeled
+          label={label}
+          help={help}
+          inline
+          onReset={resetFor(typeof value === 'number' ? value : field.default, field.default)}
+        >
           <NumberControl
             value={typeof value === 'number' ? value : field.default}
             min={field.min}
@@ -1046,37 +1181,38 @@ function FieldControl({
           onChange={onChange}
         />
       )
-    case 'select':
+    case 'select': {
+      const current = typeof value === 'string' ? value : field.default
+      const options = field.options.map((option) => ({
+        value: option.value,
+        label: l(option.label),
+      }))
+      // A schema's own `segment` is a wide two-way choice and keeps the whole
+      // row, whatever its labels.
+      const shape = field.segment ? 'segment' : selectShape(options.map((option) => option.label))
+      const segment = shape !== 'dropdown'
       return (
-        <Labeled label={label} help={help}>
-          {field.segment ? (
-            <SegmentInput
-              value={typeof value === 'string' ? value : field.default}
-              onChange={onChange}
-              options={field.options.map((option) => ({
-                value: option.value,
-                label: l(option.label),
-              }))}
-            />
+        <Labeled
+          label={label}
+          help={help}
+          inline={shape !== 'segment'}
+          onReset={resetFor(current, field.default)}
+        >
+          {segment ? (
+            <SegmentInput value={current} onChange={onChange} options={options} />
           ) : (
-            <SelectInput
-              value={typeof value === 'string' ? value : field.default}
-              onChange={onChange}
-              options={field.options.map((option) => ({
-                value: option.value,
-                label: l(option.label),
-              }))}
-            />
+            <SelectInput value={current} onChange={onChange} options={options} />
           )}
         </Labeled>
       )
-    case 'boolean':
+    }
+    case 'boolean': {
+      const reset = resetFor(value === true, field.default)
       return (
-        <Field.Root>
-          <HStack justify="space-between" w="full" align="flex-start" gap="4">
-            <Box>
-              <Field.Label fontSize="sm">{label}</Field.Label>
-              {help && <Field.HelperText>{help}</Field.HelperText>}
+        <Field.Root className="group">
+          <HStack justify="space-between" w="full" gap="3">
+            <Box flex="1" minW="0">
+              <FieldHeading label={label} help={help} onReset={reset} />
             </Box>
             <Switch.Root
               size="sm"
@@ -1090,6 +1226,7 @@ function FieldControl({
           </HStack>
         </Field.Root>
       )
+    }
     case 'icon':
       return (
         <Labeled label={label} help={help}>
@@ -1101,7 +1238,12 @@ function FieldControl({
       )
     case 'color':
       return (
-        <Labeled label={label} help={help}>
+        <Labeled
+          label={label}
+          help={help}
+          inline
+          onReset={resetFor(typeof value === 'string' ? value : field.default, field.default)}
+        >
           <ColorInput
             value={typeof value === 'string' ? value : field.default}
             onChange={onChange}

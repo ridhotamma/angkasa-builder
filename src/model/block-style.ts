@@ -454,6 +454,11 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
   key: string
   label: Localized
   fields: readonly Field[]
+  /**
+   * CSS-shaped properties most sellers never need — positioning, blend
+   * modes. The editor keeps these behind "Advanced" until one is set.
+   */
+  advanced?: boolean
 }> = [
   {
     key: 'devices',
@@ -478,25 +483,16 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
     ],
   },
   {
-    key: 'layout',
-    label: { en: 'Layout', id: 'Tata letak' },
+    key: 'size',
+    label: { en: 'Size', id: 'Ukuran' },
     fields: [
-      select('position', { en: 'Position', id: 'Posisi' }, POSITIONS),
-      select('zIndex', { en: 'Stack order (z-index)', id: 'Urutan tumpuk (z-index)' }, Z_INDEXES),
-      select('inset', { en: 'Offset (all sides)', id: 'Geser (semua sisi)' }, INSET_VALUES),
-      select('top', { en: 'Top', id: 'Atas' }, INSET_VALUES),
-      select('right', { en: 'Right', id: 'Kanan' }, INSET_VALUES),
-      select('bottom', { en: 'Bottom', id: 'Bawah' }, INSET_VALUES),
-      select('left', { en: 'Left', id: 'Kiri' }, INSET_VALUES),
       select('width', { en: 'Width', id: 'Lebar' }, WIDTHS),
       select('height', { en: 'Height', id: 'Tinggi' }, HEIGHTS),
       select('minHeight', { en: 'Minimum height', id: 'Tinggi minimum' }, MIN_HEIGHTS),
       select('maxWidth', { en: 'Maximum width', id: 'Lebar maksimum' }, MAX_WIDTHS),
       select('maxHeight', { en: 'Maximum height', id: 'Tinggi maksimum' }, MAX_HEIGHTS),
       select('bleed', { en: 'Full bleed', id: 'Penuh tepi ke tepi' }, BLEEDS),
-      select('display', { en: 'Display', id: 'Tampilan' }, DISPLAYS),
       select('aspectRatio', { en: 'Aspect ratio', id: 'Rasio' }, ASPECTS),
-      select('overflow', { en: 'Overflow', id: 'Luapan' }, OVERFLOWS),
     ],
   },
   {
@@ -595,13 +591,7 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
         default: 100,
       },
       select('boxShadow', { en: 'Shadow', id: 'Bayangan' }, SHADOWS),
-      select('transform', { en: 'Transform', id: 'Transformasi' }, TRANSFORMS),
-      select('transformOrigin', { en: 'Transform origin', id: 'Titik transformasi' }, ORIGINS),
       select('filter', { en: 'Filter', id: 'Filter' }, FILTERS),
-      select('mixBlendMode', { en: 'Blend mode', id: 'Mode campur' }, BLEND_MODES),
-      select('isolation', { en: 'Blend isolation', id: 'Isolasi campur' }, ISOLATION_VALUES),
-      select('pointerEvents', { en: 'Pointer events', id: 'Interaksi klik' }, POINTER_EVENTS),
-      select('visibility', { en: 'Visibility', id: 'Visibilitas' }, VISIBILITIES),
     ],
   },
   {
@@ -684,6 +674,35 @@ export const BLOCK_STYLE_GROUPS: ReadonlyArray<{
         },
         default: '',
       },
+    ],
+  },
+  {
+    key: 'position',
+    label: { en: 'Position', id: 'Posisi' },
+    advanced: true,
+    fields: [
+      select('position', { en: 'Position', id: 'Posisi' }, POSITIONS),
+      select('zIndex', { en: 'Stack order (z-index)', id: 'Urutan tumpuk (z-index)' }, Z_INDEXES),
+      select('inset', { en: 'Offset (all sides)', id: 'Geser (semua sisi)' }, INSET_VALUES),
+      select('top', { en: 'Top', id: 'Atas' }, INSET_VALUES),
+      select('right', { en: 'Right', id: 'Kanan' }, INSET_VALUES),
+      select('bottom', { en: 'Bottom', id: 'Bawah' }, INSET_VALUES),
+      select('left', { en: 'Left', id: 'Kiri' }, INSET_VALUES),
+      select('display', { en: 'Display', id: 'Tampilan' }, DISPLAYS),
+      select('overflow', { en: 'Overflow', id: 'Luapan' }, OVERFLOWS),
+    ],
+  },
+  {
+    key: 'effectsAdvanced',
+    label: { en: 'Blending and transforms', id: 'Campuran & transformasi' },
+    advanced: true,
+    fields: [
+      select('transform', { en: 'Transform', id: 'Transformasi' }, TRANSFORMS),
+      select('transformOrigin', { en: 'Transform origin', id: 'Titik transformasi' }, ORIGINS),
+      select('mixBlendMode', { en: 'Blend mode', id: 'Mode campur' }, BLEND_MODES),
+      select('isolation', { en: 'Blend isolation', id: 'Isolasi campur' }, ISOLATION_VALUES),
+      select('pointerEvents', { en: 'Pointer events', id: 'Interaksi klik' }, POINTER_EVENTS),
+      select('visibility', { en: 'Visibility', id: 'Visibilitas' }, VISIBILITIES),
     ],
   },
 ]

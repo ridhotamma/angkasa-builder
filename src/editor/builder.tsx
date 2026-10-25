@@ -132,6 +132,7 @@ import {
 import type { MenuItem } from '../model/menus'
 import {
   SECTION_STYLE_FIELDS,
+  SECTION_STYLE_GROUPS,
   SWITCHED_OFF_STYLE_KEYS,
   VISIBILITY_STYLE_KEYS,
 } from '../model/section-style'
@@ -167,6 +168,7 @@ import {
 } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
 import { useEditorText } from './messages'
+import { FieldGroups, type FieldGroup } from './field-groups'
 import { PanelSlide } from './panel-slide'
 import { PreviewFrame, type PreviewDevice } from './preview-frame'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
@@ -182,6 +184,12 @@ const STYLE_FIELDS = SECTION_STYLE_FIELDS.filter(
     // renderer keep reading a stored value. See `SWITCHED_OFF_STYLE_KEYS`.
     !SWITCHED_OFF_STYLE_KEYS.includes(field.key),
 )
+/** The Style tab's folds, each holding the offered fields it names. */
+const STYLE_GROUPS: FieldGroup[] = SECTION_STYLE_GROUPS.map((group) => ({
+  key: group.key,
+  label: group.label,
+  fields: STYLE_FIELDS.filter((field) => group.keys.includes(field.key)),
+}))
 const VISIBILITY_FIELDS = SECTION_STYLE_FIELDS.filter((field) =>
   (VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key),
 )
@@ -1238,16 +1246,15 @@ function Builder({
             </Stack>
           </Tabs.Content>
           <Tabs.Content value="style" p="0">
-            <Stack gap="4">
-              <FieldsForm
-                fields={STYLE_FIELDS}
-                values={selected.style}
-                services={services}
-                onChange={(style) =>
-                  updateSection(selected.id, (section) => ({ ...section, style }))
-                }
-              />
-            </Stack>
+            <FieldGroups
+              groups={STYLE_GROUPS}
+              values={selected.style}
+              services={services}
+              defaultOpen={['surface']}
+              onChange={(style) =>
+                updateSection(selected.id, (section) => ({ ...section, style }))
+              }
+            />
           </Tabs.Content>
           <Tabs.Content value="visibility" p="0">
             <Stack gap="4">

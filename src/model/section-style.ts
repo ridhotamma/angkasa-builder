@@ -574,6 +574,50 @@ export const SECTION_STYLE_FIELDS: readonly Field[] = [
   },
 ]
 
+/**
+ * How the Style tab folds `SECTION_STYLE_FIELDS`: a few named groups, each
+ * closed to a one-line summary, so the tab opens as four rows instead of a
+ * column of twenty dropdowns. Every style field outside "Visibility" sits in
+ * exactly one group.
+ */
+export const SECTION_STYLE_GROUPS: ReadonlyArray<{
+  key: string
+  label: Localized
+  keys: readonly string[]
+}> = [
+  {
+    key: 'surface',
+    label: { en: 'Colour and background', id: 'Warna & latar' },
+    keys: [
+      'colorScheme',
+      'backgroundType',
+      'backgroundGradient',
+      'backgroundPattern',
+      'backgroundImage',
+      'backgroundSize',
+      'backgroundPosition',
+      'backgroundVideo',
+      'backgroundOverlay',
+      'textShadow',
+    ],
+  },
+  {
+    key: 'size',
+    label: { en: 'Width and spacing', id: 'Lebar & jarak' },
+    keys: ['width', 'contentWidth', 'paddingTop', 'paddingBottom', 'sticky'],
+  },
+  {
+    key: 'dividers',
+    label: { en: 'Dividers', id: 'Pembatas' },
+    keys: ['dividerTop', 'dividerBottom', 'dividerTone'],
+  },
+  {
+    key: 'motion',
+    label: { en: 'Motion', id: 'Animasi' },
+    keys: ['motion', 'motionDuration', 'motionDistance', 'motionDelay', 'headline', 'stagger'],
+  },
+]
+
 /** The keys of the style fields shown under "Visibility" rather than "Style". */
 export const VISIBILITY_STYLE_KEYS = ['visibility', 'showFrom', 'showUntil'] as const
 
