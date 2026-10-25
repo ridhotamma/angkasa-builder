@@ -189,8 +189,15 @@ export const IMAGE_ROUNDED: Record<ImageRounding, string> = {
   full: 'full',
 }
 
-/** The placement props a content block's measure asks for. */
+/**
+ * The placement props a content block's measure asks for.
+ *
+ * Always the full width, capped by `maxW`: a photo or a column has no width
+ * of its own, so in a row (a flex line) or under an auto margin it would
+ * shrink to its content — and an aspect-ratio photo's content is nothing.
+ */
 export interface ContentLayout {
+  w: 'full'
   maxW?: string
   mx?: 'auto'
   ml?: 'auto'
@@ -200,6 +207,7 @@ export interface ContentLayout {
 export function contentLayout(width: ContentWidth, align: ElementAlignment): ContentLayout {
   const maxW = CONTENT_MAX_WIDTH[width]
   return {
+    w: 'full',
     ...(maxW && { maxW }),
     ...(maxW && align === 'center' && { mx: 'auto' as const }),
     ...(maxW && align === 'right' && { ml: 'auto' as const }),

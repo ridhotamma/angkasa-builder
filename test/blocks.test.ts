@@ -462,7 +462,7 @@ describe('inserting a dragged block', () => {
 
 describe('the shared element scale', () => {
   test('content layout caps the measure and places it by alignment', () => {
-    expect(contentLayout('full', 'left')).toMatchObject({ textAlign: 'left' })
+    expect(contentLayout('full', 'left')).toMatchObject({ w: 'full', textAlign: 'left' })
     expect(contentLayout('narrow', 'center')).toMatchObject({ maxW: '2xl', mx: 'auto' })
     expect(contentLayout('medium', 'right')).toMatchObject({ maxW: '3xl', ml: 'auto' })
   })

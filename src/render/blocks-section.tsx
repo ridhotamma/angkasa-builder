@@ -219,6 +219,36 @@ function blockItems(blocks: readonly BlockValue[]) {
   return blocks.map((block) => <BlockView key={block.id} block={block} />)
 }
 
+/**
+ * Blocks that size to their own content in a row: a button, a badge, an icon.
+ * Everything else — a photo, a column, a nested grid — has no width of its
+ * own and shares the row's width instead.
+ */
+const SELF_SIZED_BLOCKS = new Set(['button', 'badge', 'icon', 'rating', 'spacer'])
+
+/**
+ * A row's children. Each one that has no width of its own gets an equal share
+ * of the line (`flex: 1 1 0`); on a phone, when the row stacks, it takes the
+ * full width instead. A block given its own width in Style keeps it.
+ */
+function rowItems(blocks: readonly BlockValue[], stack: boolean) {
+  return blocks.map((block) => {
+    const view = <BlockView key={block.id} block={block} />
+    const sized = block.style?.width !== undefined && block.style.width !== 'default'
+    if (SELF_SIZED_BLOCKS.has(block.type) || sized) return view
+    return (
+      <Box
+        key={block.id}
+        minW="0"
+        flex={{ base: stack ? 'none' : '1 1 0', md: '1 1 0' }}
+        w={stack ? { base: 'full', md: 'auto' } : undefined}
+      >
+        {view}
+      </Box>
+    )
+  })
+}
+
 function BlockView({ block }: { block: BlockValue }) {
   const content = blockContent(block)
   if (content === null) return null
@@ -1087,7 +1117,7 @@ function RowBlock({ block }: { block: BlockValue }) {
       data-block-hover-group=""
       {...drop}
     >
-      {blockItems(readBlocks(block.settings, 'blocks'))}
+      {rowItems(children, stack)}
     </Flex>
   )
 }
