@@ -1667,6 +1667,16 @@ export const SECTION_SCHEMAS = [
         ],
         default: 'left',
       },
+      {
+        kind: 'boolean',
+        key: 'showThumbnails',
+        label: { en: 'Show photo thumbnails', id: 'Tampilkan foto mini' },
+        help: {
+          en: 'The small photos under the main image.',
+          id: 'Foto-foto kecil di bawah gambar utama.',
+        },
+        default: true,
+      },
     ],
   },
 

@@ -50,6 +50,7 @@ export function FeaturedProduct({ settings }: SectionProps) {
   const cover = images[Math.min(active, images.length - 1)] ?? null
   const imageRight = readText(settings, 'imagePosition') === 'right'
   const eyebrow = readText(settings, 'eyebrow')
+  const showThumbnails = readBoolean(settings, 'showThumbnails')
   const saving =
     product.compareAtPrice && product.compareAtPrice > product.price
       ? Math.round((1 - product.price / product.compareAtPrice) * 100)
@@ -69,7 +70,7 @@ export function FeaturedProduct({ settings }: SectionProps) {
           </AspectRatio>
           <WishlistButton product={product} position="absolute" top="2" right="2" zIndex="1" />
         </Box>
-        {images.length > 1 && (
+        {showThumbnails && images.length > 1 && (
           <HStack gap="2">
             {images.slice(0, 6).map((url, index) => (
               <Box
