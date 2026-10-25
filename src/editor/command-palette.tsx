@@ -57,6 +57,7 @@ export function CommandPalette({
   onAddSection,
   onAddBlocks,
   addOnly = false,
+  blocksOnly = false,
 }: {
   open: boolean
   onClose: () => void
@@ -68,6 +69,8 @@ export function CommandPalette({
   onAddBlocks: (blocks: readonly PaletteBlock[], label: string) => void
   /** Opened by a "+" between sections: only what can be added, not the page's own. */
   addOnly?: boolean
+  /** Opened by "+ Add block" in the tree: blocks only, for that section. */
+  blocksOnly?: boolean
 }) {
   const { t, l } = useEditorText()
   const [query, setQuery] = useState('')
@@ -96,7 +99,7 @@ export function CommandPalette({
         run: () => onOpenSection(section.id),
       })
     }
-    for (const schema of SECTION_SCHEMAS as readonly SectionSchema[]) {
+    for (const schema of blocksOnly ? [] : (SECTION_SCHEMAS as readonly SectionSchema[])) {
       if (schema.category === 'layout' || !isSectionOffered(schema, scope)) continue
       if (schema.max !== undefined && (counts.get(schema.type) ?? 0) >= schema.max) continue
       const entries: Array<SectionPreset | null> = [null, ...offeredPresets(schema)]
@@ -142,7 +145,19 @@ export function CommandPalette({
       })
     }
     return out
-  }, [sections, scope, counts, saved, l, t, onOpenSection, onAddSection, onAddBlocks, addOnly])
+  }, [
+    sections,
+    scope,
+    counts,
+    saved,
+    l,
+    t,
+    onOpenSection,
+    onAddSection,
+    onAddBlocks,
+    addOnly,
+    blocksOnly,
+  ])
 
   const needle = query.trim().toLowerCase()
   const results = commands.filter((command) =>
@@ -192,7 +207,13 @@ export function CommandPalette({
                 size="md"
                 px="0"
                 _focusVisible={{ outline: 'none', boxShadow: 'none' }}
-                placeholder={addOnly ? t('commandPlaceholderAdd') : t('commandPlaceholder')}
+                placeholder={
+                  blocksOnly
+                    ? t('commandPlaceholderBlock')
+                    : addOnly
+                      ? t('commandPlaceholderAdd')
+                      : t('commandPlaceholder')
+                }
                 value={query}
                 onChange={(event) => {
                   setQuery(event.currentTarget.value)

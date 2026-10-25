@@ -9,7 +9,18 @@
  * there, never moved or removed, but picked like any section to edit them.
  */
 
-import { Badge, Box, Button, HStack, Icon, IconButton, Stack, Text } from '@chakra-ui/react'
+import {
+  Badge,
+  Box,
+  Button,
+  HStack,
+  Icon,
+  IconButton,
+  Menu,
+  Portal,
+  Stack,
+  Text,
+} from '@chakra-ui/react'
 import {
   closestCenter,
   DndContext,
@@ -28,23 +39,25 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from 'react'
 import {
+  LuChevronRight,
+  LuCirclePlus,
   LuClipboardCopy,
   LuCopy,
+  LuEllipsis,
   LuEye,
   LuEyeOff,
   LuGripVertical,
   LuLink,
   LuLock,
   LuMonitor,
-  LuPlus,
   LuSmartphone,
+  LuSquare,
   LuTrash2,
 } from 'react-icons/lu'
 
 import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
-import { Tooltip } from '@repo/theme'
 
 import {
   canDuplicateSection,
@@ -57,11 +70,19 @@ import {
   type SectionInstance,
 } from '../model/content'
 import { createStarterSection } from '../model/section-starters'
-import { newId, readText } from '../model/fields'
+import {
+  newId,
+  readBlocks,
+  type BlockSchema,
+  type BlockValue,
+  type Field,
+  type FieldValues,
+} from '../model/fields'
 import { localize } from '../model/localized'
 import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/section-style'
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { AddPalette, type PaletteBlock } from './add-palette'
+import { blockGlyph } from './block-icons'
 import { useEditorText } from './messages'
 import { PanelSlide } from './panel-slide'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
@@ -107,32 +128,9 @@ function writeClipboard(section: SectionInstance): boolean {
   }
 }
 
-/** A section's icon on a small tile, as in the add-section dialog. */
-function IconTile({ icon, selected }: { icon: string; selected: boolean }) {
-  return (
-    <Box
-      boxSize="8"
-      rounded="md"
-      bg={selected ? 'bg.panel' : 'bg.muted'}
-      color="fg.muted"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      flexShrink="0"
-    >
-      <Icon as={sectionIcon(icon)} boxSize="4" />
-    </Box>
-  )
-}
-
 /* -------------------------------------------------------------------------- */
 /* Rows                                                                       */
 /* -------------------------------------------------------------------------- */
-
-/** What the row says under the section's name: its heading, when it has one. */
-function rowDetail(section: SectionInstance): string {
-  return readText(section.settings, 'heading') || readText(section.settings, 'text')
-}
 
 function RowBadges({ section }: { section: SectionInstance }) {
   const { t, locale } = useEditorText()
@@ -141,20 +139,13 @@ function RowBadges({ section }: { section: SectionInstance }) {
   return (
     <>
       {SECTION_LINKING_ENABLED && section.linkedTo && (
-        <Badge size="xs" variant="subtle" colorPalette="brand">
-          {t('linkedBadge')}
-        </Badge>
-      )}
-      {section.hidden && (
-        <Badge size="xs" variant="subtle">
-          {t('hidden')}
-        </Badge>
+        <Icon as={LuLink} boxSize="3" color="brand.fg" aria-label={t('linkedBadge')} />
       )}
       {style.visibility !== 'all' && (
         <Icon
           as={style.visibility === 'mobile' ? LuSmartphone : LuMonitor}
-          boxSize="3.5"
-          color="fg.muted"
+          boxSize="3"
+          color="fg.subtle"
           aria-label={t(style.visibility === 'mobile' ? 'onlyMobile' : 'onlyDesktop')}
         />
       )}
@@ -171,10 +162,225 @@ function RowBadges({ section }: { section: SectionInstance }) {
   )
 }
 
+/**
+ * One line of the tree: a chevron when it holds children, its glyph and name,
+ * and — on hover, focus, or always on a touch screen — its actions. The look
+ * of a file tree, so the page reads as a structure rather than a deck of cards.
+ */
+function TreeLine({
+  depth = 0,
+  icon,
+  label,
+  selected,
+  dimmed = false,
+  expanded,
+  onToggle,
+  onSelect,
+  badges,
+  actions,
+  lineRef,
+  lineProps,
+}: {
+  depth?: number
+  icon: ElementType
+  label: string
+  selected: boolean
+  dimmed?: boolean
+  /** `undefined` when the line has nothing to expand. */
+  expanded?: boolean
+  onToggle?: () => void
+  onSelect: () => void
+  badges?: ReactNode
+  actions?: ReactNode
+  lineRef?: (node: HTMLElement | null) => void
+  lineProps?: Record<string, unknown>
+}) {
+  const { t } = useEditorText()
+  return (
+    <HStack
+      ref={lineRef}
+      gap="0.5"
+      h="8"
+      pe="1"
+      ps={`calc(${depth} * 0.875rem)`}
+      rounded="md"
+      bg={selected ? 'bg.emphasized' : undefined}
+      _hover={{ bg: selected ? 'bg.emphasized' : 'bg.muted' }}
+      opacity={dimmed ? 0.55 : 1}
+      className="group"
+      {...lineProps}
+    >
+      {expanded === undefined ? (
+        <Box w="5" flexShrink="0" />
+      ) : (
+        <IconButton
+          aria-label={expanded ? t('collapse') : t('expand')}
+          aria-expanded={expanded}
+          size="2xs"
+          variant="ghost"
+          minW="5"
+          w="5"
+          color="fg.muted"
+          onClick={onToggle}
+        >
+          <Icon
+            as={LuChevronRight}
+            transition="transform 120ms"
+            transform={expanded ? 'rotate(90deg)' : undefined}
+          />
+        </IconButton>
+      )}
+      <Button
+        variant="plain"
+        size="sm"
+        flex="1"
+        minW="0"
+        h="full"
+        px="1"
+        justifyContent="start"
+        gap="2"
+        fontWeight={selected ? 'semibold' : 'normal'}
+        onClick={onSelect}
+      >
+        <Icon as={icon} boxSize="4" color="fg.muted" flexShrink="0" />
+        <Text fontSize="sm" truncate>
+          {label}
+        </Text>
+        {badges}
+      </Button>
+      {actions && (
+        <HStack
+          gap="0"
+          flexShrink="0"
+          opacity="0"
+          _groupHover={{ opacity: 1 }}
+          _groupFocusWithin={{ opacity: 1 }}
+          css={{ '@media (hover: none)': { opacity: 1 } }}
+        >
+          {actions}
+        </HStack>
+      )}
+    </HStack>
+  )
+}
+
+/** A section's blocks, as indented lines under it — nested ones under their parent. */
+function BlockLines({
+  fields,
+  values,
+  depth,
+  sectionId,
+  selectedBlockId,
+  onSelectBlock,
+}: {
+  fields: readonly Field[]
+  values: FieldValues
+  depth: number
+  sectionId: string
+  selectedBlockId: string | null
+  onSelectBlock: (sectionId: string, blockId: string) => void
+}) {
+  return (
+    <>
+      {fields.map((field) =>
+        field.kind !== 'blocks'
+          ? null
+          : readBlocks(values, field.key).map((block) => {
+              const schema = field.blocks.find((candidate) => candidate.type === block.type)
+              if (!schema) return null
+              return (
+                <BlockLine
+                  key={block.id}
+                  block={block}
+                  schema={schema}
+                  depth={depth}
+                  sectionId={sectionId}
+                  selectedBlockId={selectedBlockId}
+                  onSelectBlock={onSelectBlock}
+                />
+              )
+            }),
+      )}
+    </>
+  )
+}
+
+/** Whether `id` is `block` or sits anywhere inside it. */
+function holds(fields: readonly Field[], values: FieldValues, id: string): boolean {
+  return fields.some(
+    (field) =>
+      field.kind === 'blocks' &&
+      readBlocks(values, field.key).some((block) => {
+        if (block.id === id) return true
+        const schema = field.blocks.find((candidate) => candidate.type === block.type)
+        return schema ? holds(schema.fields, block.settings, id) : false
+      }),
+  )
+}
+
+function hasBlocks(fields: readonly Field[], values: FieldValues): boolean {
+  return fields.some((field) => field.kind === 'blocks' && readBlocks(values, field.key).length > 0)
+}
+
+function BlockLine({
+  block,
+  schema,
+  depth,
+  sectionId,
+  selectedBlockId,
+  onSelectBlock,
+}: {
+  block: BlockValue
+  schema: BlockSchema
+  depth: number
+  sectionId: string
+  selectedBlockId: string | null
+  onSelectBlock: (sectionId: string, blockId: string) => void
+}) {
+  const { l } = useEditorText()
+  const nested = hasBlocks(schema.fields, block.settings)
+  const [open, setOpen] = useState(true)
+  // A selection deeper inside always shows: picking a block on the canvas
+  // opens the branch it sits in.
+  const forced =
+    selectedBlockId !== null &&
+    selectedBlockId !== block.id &&
+    holds(schema.fields, block.settings, selectedBlockId)
+  const expanded = nested ? open || forced : undefined
+  return (
+    <>
+      <TreeLine
+        depth={depth}
+        icon={blockGlyph(block.type) ?? LuSquare}
+        label={block.name?.trim() || l(schema.name)}
+        selected={selectedBlockId === block.id}
+        expanded={expanded}
+        onToggle={() => setOpen(!expanded)}
+        onSelect={() => onSelectBlock(sectionId, block.id)}
+      />
+      {expanded && (
+        <BlockLines
+          fields={schema.fields}
+          values={block.settings}
+          depth={depth + 1}
+          sectionId={sectionId}
+          selectedBlockId={selectedBlockId}
+          onSelectBlock={onSelectBlock}
+        />
+      )}
+    </>
+  )
+}
+
 function Row({
   section,
   selected,
+  selectedBlockId,
+  expanded,
+  onToggle,
   onSelect,
+  onSelectBlock,
+  onAddBlock,
   onToggleHidden,
   onDuplicate,
   onLinkedCopy,
@@ -184,7 +390,13 @@ function Row({
 }: {
   section: SectionInstance
   selected: boolean
+  selectedBlockId: string | null
+  expanded: boolean
+  onToggle: () => void
   onSelect: () => void
+  onSelectBlock: (sectionId: string, blockId: string) => void
+  /** Present for a Custom blocks section: "+ Add block" under its blocks. */
+  onAddBlock?: () => void
   onToggleHidden: () => void
   onDuplicate: () => void
   onLinkedCopy: () => void
@@ -197,164 +409,183 @@ function Row({
     id: section.id,
   })
   const schema = sectionSchema(section.type)
-  const detail = rowDetail(section)
   const required = schema?.required === true
+  const expandable = Boolean(schema && (hasBlocks(schema.fields, section.settings) || onAddBlock))
+  const open = expandable && expanded
 
   return (
-    <HStack
+    <Box
       ref={setNodeRef}
       data-section-row={section.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      gap="1"
-      px="1.5"
-      py="1"
-      rounded="md"
-      borderWidth="1px"
-      borderColor={selected ? 'brand.solid' : 'border.subtle'}
-      bg={isDragging ? 'bg.muted' : selected ? 'brand.subtle' : 'bg.panel'}
       zIndex={isDragging ? 1 : undefined}
-      opacity={section.hidden ? 0.6 : 1}
-      className="group"
+      bg={isDragging ? 'bg.panel' : undefined}
+      shadow={isDragging ? 'md' : undefined}
+      rounded="md"
     >
-      <IconButton
-        aria-label={t('dragToReorder')}
-        size="2xs"
-        variant="ghost"
-        cursor="grab"
-        {...attributes}
-        {...listeners}
-      >
-        <LuGripVertical />
-      </IconButton>
-      <Button
-        variant="plain"
-        size="sm"
-        flex="1"
-        minW="0"
-        h="auto"
-        px="1"
-        py="1"
-        justifyContent="start"
-        gap="2"
-        onClick={onSelect}
-      >
-        <IconTile icon={schema?.icon ?? ''} selected={selected} />
-        <Stack gap="0" minW="0" align="start" flex="1">
-          <HStack gap="1.5" minW="0" maxW="full">
-            <Text fontSize="sm" fontWeight="medium" truncate>
-              {schema ? l(schema.name) : section.type}
-            </Text>
-            <RowBadges section={section} />
-          </HStack>
-          {detail && (
-            <Text fontSize="xs" color="fg.muted" fontWeight="normal" truncate maxW="full">
-              {detail}
-            </Text>
-          )}
-        </Stack>
-      </Button>
-      <IconButton
-        aria-label={section.hidden ? t('show') : t('hide')}
-        size="2xs"
-        variant="ghost"
-        onClick={onToggleHidden}
-      >
-        {section.hidden ? <LuEyeOff /> : <LuEye />}
-      </IconButton>
-      {/* The rarer actions appear on hover or focus, so the list stays calm. */}
-      <HStack
-        gap="0"
-        opacity={{ base: 1, lg: 0 }}
-        _groupHover={{ opacity: 1 }}
-        _groupFocusWithin={{ opacity: 1 }}
-      >
-        <IconButton aria-label={t('copySection')} size="2xs" variant="ghost" onClick={onCopy}>
-          <LuClipboardCopy />
-        </IconButton>
-        {SECTION_LINKING_ENABLED && (
-          <IconButton
-            aria-label={t('linkedCopy')}
-            size="2xs"
-            variant="ghost"
-            disabled={!canDuplicate}
-            onClick={onLinkedCopy}
-          >
-            <LuLink />
-          </IconButton>
-        )}
-        <IconButton
-          aria-label={t('duplicate')}
-          size="2xs"
-          variant="ghost"
-          disabled={!canDuplicate}
-          onClick={onDuplicate}
-        >
-          <LuCopy />
-        </IconButton>
-        {required ? (
-          <Tooltip content={t('required')} wrap>
-            <IconButton aria-label={t('required')} size="2xs" variant="ghost" disabled>
-              <LuLock />
+      <TreeLine
+        icon={sectionIcon(schema?.icon ?? '')}
+        label={schema ? l(schema.name) : section.type}
+        selected={selected && selectedBlockId === null}
+        dimmed={section.hidden}
+        expanded={expandable ? open : undefined}
+        onToggle={onToggle}
+        onSelect={onSelect}
+        badges={<RowBadges section={section} />}
+        actions={
+          <>
+            <IconButton
+              aria-label={section.hidden ? t('show') : t('hide')}
+              title={section.hidden ? t('show') : t('hide')}
+              size="2xs"
+              variant="ghost"
+              color="fg.muted"
+              onClick={onToggleHidden}
+            >
+              {section.hidden ? <LuEyeOff /> : <LuEye />}
             </IconButton>
-          </Tooltip>
-        ) : (
-          <IconButton
-            aria-label={t('remove')}
-            size="2xs"
-            variant="ghost"
-            colorPalette="danger"
-            onClick={onRemove}
-          >
-            <LuTrash2 />
-          </IconButton>
-        )}
-      </HStack>
-    </HStack>
+            <Menu.Root positioning={{ placement: 'bottom-end' }}>
+              <Menu.Trigger asChild>
+                <IconButton
+                  aria-label={t('moreActions')}
+                  title={t('moreActions')}
+                  size="2xs"
+                  variant="ghost"
+                  color="fg.muted"
+                >
+                  <LuEllipsis />
+                </IconButton>
+              </Menu.Trigger>
+              <Portal>
+                <Menu.Positioner>
+                  <Menu.Content minW="44">
+                    <Menu.Item value="duplicate" disabled={!canDuplicate} onClick={onDuplicate}>
+                      <LuCopy />
+                      {t('duplicate')}
+                    </Menu.Item>
+                    {SECTION_LINKING_ENABLED && (
+                      <Menu.Item value="linked" disabled={!canDuplicate} onClick={onLinkedCopy}>
+                        <LuLink />
+                        {t('linkedCopy')}
+                      </Menu.Item>
+                    )}
+                    <Menu.Item value="copy" onClick={onCopy}>
+                      <LuClipboardCopy />
+                      {t('copySection')}
+                    </Menu.Item>
+                    <Menu.Separator />
+                    {required ? (
+                      <Menu.Item value="required" disabled>
+                        <LuLock />
+                        {t('required')}
+                      </Menu.Item>
+                    ) : (
+                      <Menu.Item
+                        value="remove"
+                        color="fg.error"
+                        _hover={{ bg: 'bg.error', color: 'fg.error' }}
+                        onClick={onRemove}
+                      >
+                        <LuTrash2 />
+                        {t('remove')}
+                      </Menu.Item>
+                    )}
+                  </Menu.Content>
+                </Menu.Positioner>
+              </Portal>
+            </Menu.Root>
+            <IconButton
+              aria-label={t('dragToReorder')}
+              title={t('dragToReorder')}
+              size="2xs"
+              variant="ghost"
+              color="fg.muted"
+              cursor="grab"
+              {...attributes}
+              {...listeners}
+            >
+              <LuGripVertical />
+            </IconButton>
+          </>
+        }
+      />
+      {open && schema && (
+        <>
+          <BlockLines
+            fields={schema.fields}
+            values={section.settings}
+            depth={1}
+            sectionId={section.id}
+            selectedBlockId={selected ? selectedBlockId : null}
+            onSelectBlock={onSelectBlock}
+          />
+          {onAddBlock && <AddLine depth={1} label={t('addBlock')} onClick={onAddBlock} />}
+        </>
+      )}
+    </Box>
   )
 }
 
-/** The header or footer: in the list, not of it. */
+/** "+ Add section" / "+ Add block": a quiet link at the end of its group. */
+function AddLine({
+  depth = 0,
+  label,
+  disabled,
+  onClick,
+}: {
+  depth?: number
+  label: string
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <Button
+      variant="plain"
+      size="sm"
+      h="8"
+      justifyContent="start"
+      gap="2"
+      ps={`calc(${depth} * 0.875rem + 1.5rem)`}
+      color="brand.fg"
+      fontWeight="medium"
+      disabled={disabled}
+      _hover={{ bg: 'bg.muted' }}
+      rounded="md"
+      onClick={onClick}
+    >
+      <Icon as={LuCirclePlus} boxSize="4" />
+      {label}
+    </Button>
+  )
+}
+
+/** A named part of the page — Header, Template, Footer — and its lines. */
+function TreeGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Stack gap="0.5">
+      <Text px="1" pb="1" fontSize="xs" fontWeight="semibold" color="fg.muted">
+        {label}
+      </Text>
+      {children}
+    </Stack>
+  )
+}
+
+/** The header or footer: in the tree, but never moved or removed. */
 export function PinnedRow({
   icon,
   label,
-  detail,
   selected,
   onSelect,
 }: {
   icon: string
   label: string
+  /** Kept for callers; the tree shows names only. */
   detail?: string
   selected: boolean
   onSelect: () => void
 }) {
-  return (
-    <Button
-      variant="plain"
-      h="auto"
-      px="3"
-      py="2"
-      rounded="md"
-      borderWidth="1px"
-      borderStyle="dashed"
-      borderColor={selected ? 'brand.solid' : 'border'}
-      bg={selected ? 'brand.subtle' : 'bg.subtle'}
-      justifyContent="start"
-      gap="2"
-      onClick={onSelect}
-    >
-      <IconTile icon={icon} selected={selected} />
-      <Stack gap="0" align="start" minW="0">
-        <Text fontSize="sm" fontWeight="medium">
-          {label}
-        </Text>
-        {detail && (
-          <Text fontSize="xs" color="fg.muted" fontWeight="normal" truncate maxW="full">
-            {detail}
-          </Text>
-        )}
-      </Stack>
-    </Button>
-  )
+  return <TreeLine icon={sectionIcon(icon)} label={label} selected={selected} onSelect={onSelect} />
 }
 
 /* -------------------------------------------------------------------------- */
@@ -370,6 +601,11 @@ export function SectionList({
   before,
   after,
   onNotice,
+  selectedBlockId = null,
+  onSelectBlock,
+  onAddBlock,
+  expanded: expandedProp,
+  onExpandedChange,
 }: {
   sections: SectionInstance[]
   onChange: (sections: SectionInstance[]) => void
@@ -383,6 +619,19 @@ export function SectionList({
   after?: ReactNode
   /** Says something short to the seller, e.g. that a section was copied. */
   onNotice?: (message: string) => void
+  /** The block picked inside the selected section, highlighted in its branch. */
+  selectedBlockId?: string | null
+  /** A block line clicked: open that block's settings. */
+  onSelectBlock?: (sectionId: string, blockId: string) => void
+  /** "+ Add block" under a Custom blocks section. */
+  onAddBlock?: (sectionId: string) => void
+  /**
+   * Which sections show their blocks, when the caller keeps it: the list is
+   * unmounted while a section's settings are open, and coming back should
+   * find the tree as it was left.
+   */
+  expanded?: ReadonlySet<string>
+  onExpandedChange?: (expanded: ReadonlySet<string>) => void
 }) {
   const { t, l } = useEditorText()
   const [adding, setAdding] = useState(false)
@@ -392,6 +641,21 @@ export function SectionList({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const full = sections.length >= MAX_SECTIONS
+  // Which sections show their blocks. The selected one always does, so a
+  // block picked on the canvas is visible in the tree.
+  const [ownExpanded, setOwnExpanded] = useState<ReadonlySet<string>>(() => new Set())
+  const expanded = expandedProp ?? ownExpanded
+  const toggle = (id: string, open: boolean) => {
+    const next = new Set(expanded)
+    if (open) next.add(id)
+    else next.delete(id)
+    if (onExpandedChange) onExpandedChange(next)
+    else setOwnExpanded(next)
+  }
+  const openPalette = () => {
+    setCopied(readClipboard(scope))
+    setAdding(true)
+  }
   const counts = useMemo(() => {
     const map = new Map<string, number>()
     for (const section of sections) map.set(section.type, (map.get(section.type) ?? 0) + 1)
@@ -463,70 +727,82 @@ export function SectionList({
           onClose={() => setAdding(false)}
         />
       ) : (
-        <Stack gap="3">
-          <Button
-            size="sm"
-            variant="outline"
-            w="full"
-            disabled={full}
-            onClick={() => {
-              setCopied(readClipboard(scope))
-              setAdding(true)
-            }}
-          >
-            <Icon as={LuPlus} />
-            {t('addSection')}
-          </Button>
-          {before}
-          {sections.length === 0 ? (
-            <Text fontSize="sm" color="fg.muted">
-              {t('noSections')}
-            </Text>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={sections.map((section) => section.id)}
-                strategy={verticalListSortingStrategy}
+        <Stack gap="5">
+          {before && <TreeGroup label={t('groupHeader')}>{before}</TreeGroup>}
+          <TreeGroup label={t('groupTemplate')}>
+            {sections.length === 0 && (
+              <Text px="1" py="2" fontSize="sm" color="fg.muted">
+                {t('noSections')}
+              </Text>
+            )}
+            {sections.length > 0 && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+                onDragEnd={handleDragEnd}
               >
-                <Stack ref={rowsRef} gap="1.5">
-                  {sections.map((section) => (
-                    <Row
-                      key={section.id}
-                      section={section}
-                      selected={section.id === selectedId}
-                      canDuplicate={canDuplicateSection(sections, section.id)}
-                      onSelect={() => onSelect(section.id)}
-                      onToggleHidden={() =>
-                        onChange(
-                          sections.map((other) =>
-                            other.id === section.id ? { ...other, hidden: !other.hidden } : other,
-                          ),
-                        )
-                      }
-                      onDuplicate={() => {
-                        const result = duplicateSection(sections, section.id)
-                        if (result) onChange(result.sections)
-                      }}
-                      onLinkedCopy={() => {
-                        const result = duplicateLinkedSection(sections, section.id)
-                        if (result) onChange(result.sections)
-                      }}
-                      onCopy={() => {
-                        if (writeClipboard(section)) onNotice?.(t('sectionCopied'))
-                      }}
-                      onRemove={() => onChange(removeSection(sections, section.id))}
-                    />
-                  ))}
-                </Stack>
-              </SortableContext>
-            </DndContext>
-          )}
-          {after}
+                <SortableContext
+                  items={sections.map((section) => section.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <Stack ref={rowsRef} gap="0.5">
+                    {sections.map((section) => {
+                      const selected = section.id === selectedId
+                      const open =
+                        expanded.has(section.id) || (selected && selectedBlockId !== null)
+                      return (
+                        <Row
+                          key={section.id}
+                          section={section}
+                          selected={selected}
+                          selectedBlockId={selected ? selectedBlockId : null}
+                          expanded={open}
+                          onToggle={() => toggle(section.id, !open)}
+                          canDuplicate={canDuplicateSection(sections, section.id)}
+                          onSelect={() => onSelect(section.id)}
+                          onSelectBlock={(sectionId, blockId) =>
+                            onSelectBlock?.(sectionId, blockId)
+                          }
+                          onAddBlock={
+                            onAddBlock && section.type === 'blocks' && !section.linkedTo
+                              ? () => {
+                                  toggle(section.id, true)
+                                  onAddBlock(section.id)
+                                }
+                              : undefined
+                          }
+                          onToggleHidden={() =>
+                            onChange(
+                              sections.map((other) =>
+                                other.id === section.id
+                                  ? { ...other, hidden: !other.hidden }
+                                  : other,
+                              ),
+                            )
+                          }
+                          onDuplicate={() => {
+                            const result = duplicateSection(sections, section.id)
+                            if (result) onChange(result.sections)
+                          }}
+                          onLinkedCopy={() => {
+                            const result = duplicateLinkedSection(sections, section.id)
+                            if (result) onChange(result.sections)
+                          }}
+                          onCopy={() => {
+                            if (writeClipboard(section)) onNotice?.(t('sectionCopied'))
+                          }}
+                          onRemove={() => onChange(removeSection(sections, section.id))}
+                        />
+                      )
+                    })}
+                  </Stack>
+                </SortableContext>
+              </DndContext>
+            )}
+            <AddLine label={t('addSection')} disabled={full} onClick={openPalette} />
+          </TreeGroup>
+          {after && <TreeGroup label={t('groupFooter')}>{after}</TreeGroup>}
         </Stack>
       )}
     </PanelSlide>

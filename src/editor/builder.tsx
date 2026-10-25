@@ -72,8 +72,9 @@ import {
   LuEye,
   LuLink,
   LuMonitor,
+  LuLayers,
   LuMoon,
-  LuMousePointerClick,
+  LuPalette,
   LuRedo2,
   LuShoppingBag,
   LuSmartphone,
@@ -88,7 +89,7 @@ import {
 } from 'react-icons/lu'
 
 import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
-import { IconTile, Tooltip } from '@repo/theme'
+import { Tooltip } from '@repo/theme'
 
 import {
   duplicateBlock,
@@ -500,24 +501,20 @@ function Builder({
   // Below `lg` the panel takes the whole width, and the preview opens as a
   // full-screen sheet from a button pinned to the bottom instead.
   const compact = useBreakpointValue({ base: true, lg: false }, { ssr: false }) ?? false
-  // From `xl` the editor has room for three columns: the page's structure on
-  // the left, the preview, and the selection's settings on the right. Below
-  // it the structure and the settings share one drill-down panel.
-  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false
-  const threePane = !compact && wide
-  const { splitter, root: splitterRoot, reset: resetPanel } = usePanelSplitter('start')
-  const {
-    splitter: inspectorSplitter,
-    root: inspectorRoot,
-    reset: resetInspector,
-  } = usePanelSplitter('end')
+  const { splitter, root: splitterRoot, reset: resetPanel } = usePanelSplitter()
   const [commandOpen, setCommandOpen] = useState(false)
+  // The tree's open sections, kept here: the list unmounts while a section's
+  // settings are open, and the way back should find it as it was.
+  const [treeExpanded, setTreeExpanded] = useState<ReadonlySet<string>>(() => new Set())
   // Where Ctrl+K adds, when the preview's "+" opened it for one spot; `null`
   // adds after the selection, as Ctrl+K itself does.
   const [commandInsertAt, setCommandInsertAt] = useState<number | null>(null)
+  // "+ Add block" under a section in the tree: Ctrl+K with only blocks.
+  const [commandBlocksOnly, setCommandBlocksOnly] = useState(false)
   const closeCommand = useCallback(() => {
     setCommandOpen(false)
     setCommandInsertAt(null)
+    setCommandBlocksOnly(false)
   }, [])
   const [previewOpen, setPreviewOpen] = useState(false)
   const footerSlot = useBuilderDialogFooter()
@@ -731,6 +728,10 @@ function Builder({
   const onSelectBlock = useCallback((sectionId: string, blockId: string) => {
     setSelectedId(sectionId)
     setSelectedBlockId(blockId)
+    // The way back to the tree shows the branch the block sits in.
+    setTreeExpanded((current) =>
+      current.has(sectionId) ? current : new Set([...current, sectionId]),
+    )
     setSelectedElementId(null)
     setTab('sections')
   }, [])
@@ -1490,60 +1491,30 @@ function Builder({
 
   const listView = (
     <Stack gap="4">
-      {template && (
-        <HStack gap="2">
-          <Text fontSize="xs" color="fg.muted" flexShrink="0">
-            {t('editingTemplate')}
-          </Text>
-          <SelectInput
-            value={template.value}
-            onChange={(value) => value && template.onChange(value as TemplateKey)}
-            options={TEMPLATE_KEYS.map((key) => ({
-              value: key,
-              label: t(TEMPLATE_LABELS[key]),
-            }))}
-          />
-        </HStack>
-      )}
       {notice && (
         <Alert.Root status="success" size="sm">
           <Alert.Indicator />
           <Alert.Description>{notice}</Alert.Description>
         </Alert.Root>
       )}
-      {onSettingsChange ? (
-        <Tabs.Root
-          value={tab}
-          onValueChange={({ value }) => setTab(value as 'sections' | 'theme')}
-          size="sm"
-          variant="line"
-          fitted
-        >
-          <Tabs.List mb="4">
-            <Tabs.Trigger value="sections">{t('sections')}</Tabs.Trigger>
-            <Tabs.Trigger value="theme">{t('theme')}</Tabs.Trigger>
-          </Tabs.List>
-          <Tabs.Content value="sections" p="0">
-            {list()}
-          </Tabs.Content>
-          <Tabs.Content value="theme" p="0">
-            <ThemeSettingsPanel
-              settings={settings}
-              onChange={onSettingsChange}
-              shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
-              priorityLookKeys={startWithLooks?.priorityKeys}
-              sections={sections}
-              onSectionsChange={onSectionsChange}
-              onTranslate={services.translate}
-            />
-          </Tabs.Content>
-        </Tabs.Root>
+      {onSettingsChange && tab === 'theme' ? (
+        <ThemeSettingsPanel
+          settings={settings}
+          onChange={onSettingsChange}
+          shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
+          priorityLookKeys={startWithLooks?.priorityKeys}
+          sections={sections}
+          onSectionsChange={onSectionsChange}
+          onTranslate={services.translate}
+        />
       ) : (
         list()
       )}
     </Stack>
   )
-  const panel = inspector ?? listView
+  // The theme's settings are a place of their own on the rail; a selection
+  // made on the canvas switches back to the page (see `select`).
+  const panel = tab === 'theme' && onSettingsChange ? listView : (inspector ?? listView)
 
   function list() {
     return (
@@ -1554,26 +1525,37 @@ function Builder({
         onSelect={(id) => select(id)}
         scope={scope}
         onNotice={setNotice}
+        selectedBlockId={selectedBlockId}
+        onSelectBlock={onSelectBlock}
+        expanded={treeExpanded}
+        onExpandedChange={setTreeExpanded}
+        onAddBlock={(sectionId) => {
+          select(sectionId)
+          setCommandBlocksOnly(true)
+          setCommandOpen(true)
+        }}
         before={
-          <>
-            {details && (
-              <PinnedRow
-                icon="header"
-                label={details.label}
-                detail={details.detail}
-                selected={selectedId === DETAILS_ID}
-                onSelect={() => select(DETAILS_ID)}
-              />
-            )}
-            {editableLayout && (
-              <PinnedRow
-                icon="header"
-                label={l(LAYOUT_PART_NAMES.header)}
-                selected={selectedId === HEADER_ID}
-                onSelect={() => select(HEADER_ID)}
-              />
-            )}
-          </>
+          details || editableLayout ? (
+            <>
+              {details && (
+                <PinnedRow
+                  icon="header"
+                  label={details.label}
+                  detail={details.detail}
+                  selected={selectedId === DETAILS_ID}
+                  onSelect={() => select(DETAILS_ID)}
+                />
+              )}
+              {editableLayout && (
+                <PinnedRow
+                  icon="header"
+                  label={l(LAYOUT_PART_NAMES.header)}
+                  selected={selectedId === HEADER_ID}
+                  onSelect={() => select(HEADER_ID)}
+                />
+              )}
+            </>
+          ) : null
         }
         after={
           editableLayout ? (
@@ -1879,6 +1861,21 @@ function Builder({
     () => (
       <Flex justify="space-between" align="center" gap="3" wrap="wrap">
         <HStack gap="2" wrap="wrap">
+          {/* Which template is open, as Shopify's top bar has it: beside the
+              preview it changes, not above the section list. */}
+          {template && (
+            <Box w="44" aria-label={t('editingTemplate')}>
+              <SelectInput
+                size="xs"
+                value={template.value}
+                onChange={(value) => value && template.onChange(value as TemplateKey)}
+                options={TEMPLATE_KEYS.map((key) => ({
+                  value: key,
+                  label: t(TEMPLATE_LABELS[key]),
+                }))}
+              />
+            </Box>
+          )}
           <SegmentGroup.Root
             size="xs"
             value={device}
@@ -1959,7 +1956,7 @@ function Builder({
         {toolbar}
       </Flex>
     ),
-    [device, history, previewNote, toolbar, t, previewColorMode],
+    [device, history, previewNote, toolbar, t, previewColorMode, template],
   )
 
   const previewButton = (
@@ -2052,7 +2049,8 @@ function Builder({
         <CommandPalette
           open={commandOpen}
           onClose={closeCommand}
-          addOnly={commandInsertAt !== null}
+          addOnly={commandInsertAt !== null || commandBlocksOnly}
+          blocksOnly={commandBlocksOnly}
           sections={sections}
           scope={scope}
           counts={commandCounts}
@@ -2063,7 +2061,63 @@ function Builder({
       </BlockEditorProvider>
     </SectionLinkProvider>
   )
-  const panelBox = withProviders(panelBody)
+  // The rail: the page's sections, or the theme's settings — Shopify's left
+  // edge. Only when there is a theme to set; a page with sections alone has
+  // nothing to switch to.
+  const rail = onSettingsChange ? (
+    <Stack
+      gap="1"
+      py="2"
+      px="1"
+      flexShrink="0"
+      borderWidth="1px"
+      borderColor="border.subtle"
+      rounded="lg"
+      bg="bg.panel"
+      align="center"
+    >
+      {(
+        [
+          ['sections', LuLayers, 'railSections'],
+          ['theme', LuPalette, 'railTheme'],
+        ] as const
+      ).map(([value, glyph, label]) => {
+        const active = tab === value && (value === 'theme' || panelView.depth === 0)
+        return (
+          <Tooltip key={value} content={t(label)} placement="right">
+            <IconButton
+              aria-label={t(label)}
+              aria-pressed={tab === value}
+              size="sm"
+              variant={tab === value ? 'subtle' : 'ghost'}
+              colorPalette={tab === value ? 'brand' : undefined}
+              color={tab === value ? undefined : 'fg.muted'}
+              data-active={active || undefined}
+              onClick={() => {
+                clearSelection()
+                setTab(value)
+              }}
+            >
+              <Icon as={glyph} boxSize="4.5" />
+            </IconButton>
+          </Tooltip>
+        )
+      })}
+    </Stack>
+  ) : null
+
+  const panelBox = withProviders(
+    rail ? (
+      <HStack align="stretch" gap="2" h={{ lg: 'full' }} minH="0" minW="0">
+        {rail}
+        <Box flex="1" minW="0" minH="0" display="flex" flexDirection="column">
+          {panelBody}
+        </Box>
+      </HStack>
+    ) : (
+      panelBody
+    ),
+  )
 
   // The preview with its bar above it, as it sits beside the panels.
   const canvas = (
@@ -2089,56 +2143,6 @@ function Builder({
       </Box>
     </Flex>
   )
-
-  if (threePane) {
-    // Structure | preview | settings. The settings column is draggable and
-    // remembered like the two-column panel (see `usePanelSplitter`); the
-    // structure column keeps a fixed width, as a list of names needs no more.
-    const inspectorBody =
-      overrideBox ??
-      scrollPanel(
-        <PanelSlide view={panelView.view} depth={panelView.depth}>
-          {inspector ?? (
-            <Stack gap="3" align="center" textAlign="center" py="14" px="2">
-              <IconTile icon={LuMousePointerClick} size="md" bg="bg.muted" color="fg.muted" />
-              <Text fontWeight="semibold" fontSize="sm">
-                {t('inspectorEmptyTitle')}
-              </Text>
-              <Text fontSize="xs" color="fg.muted" maxW="64">
-                {t('inspectorEmptyHelp')}
-              </Text>
-            </Stack>
-          )}
-        </PanelSlide>,
-      )
-    return withProviders(
-      <Flex h={height} minH="0" gap="3">
-        <Flex w={{ base: '18rem', '2xl': '20rem' }} flexShrink="0" minH="0" direction="column">
-          {scrollPanel(<Box pt="4">{listView}</Box>)}
-        </Flex>
-        <Box flex="1" minW="0" minH="0">
-          <Splitter.RootProvider ref={inspectorRoot} value={inspectorSplitter}>
-            <Splitter.Panel id="preview" pe="2" minW="0" display="flex">
-              {canvas}
-            </Splitter.Panel>
-            <Splitter.ResizeTrigger
-              id="preview:panel"
-              colorPalette="brand"
-              aria-label={t('resizeInspector')}
-              title={t('resizeInspector')}
-              onDoubleClick={resetInspector}
-            >
-              <Splitter.ResizeTriggerSeparator />
-              <Splitter.ResizeTriggerIndicator />
-            </Splitter.ResizeTrigger>
-            <Splitter.Panel id="panel" ps="2" minW="0">
-              {inspectorBody}
-            </Splitter.Panel>
-          </Splitter.RootProvider>
-        </Box>
-      </Flex>,
-    )
-  }
 
   if (!compact) {
     // Side by side, with the line between them draggable (see `usePanelSplitter`).
@@ -2235,9 +2239,8 @@ function Builder({
   )
 }
 
-/** Where the seller's panel widths are kept: this browser only, a matter of taste. */
+/** Where the seller's panel width is kept: this browser only, a matter of taste. */
 const PANEL_WIDTH_KEY = 'pesanle:page-builder:panel-width'
-const INSPECTOR_WIDTH_KEY = 'pesanle:page-builder:inspector-width'
 
 /** One step of the panel's trail back to the section list. */
 interface Crumb {
@@ -2277,23 +2280,19 @@ function PanelTrail({ crumbs }: { crumbs: readonly Crumb[] }) {
 }
 
 /**
- * A draggable line beside a panel (Chakra's `Splitter`): `start` puts the
- * panel left of the preview, as the two-column editor has it; `end` puts it
- * on the right, as the three-column editor's settings column.
+ * The line between the panel and the preview, draggable (Chakra's `Splitter`).
  *
  * The panel keeps its width in pixels when the window changes, and is held
  * between 18rem — what its controls need — and 40rem; the preview never gets
- * less than its share of the editor, so it stays a preview. The width a seller
- * drags to is remembered in this browser; a double-click puts back the default.
+ * less than half the editor, so it stays a preview. The width a seller drags
+ * to is remembered in this browser; a double-click puts back the default.
  */
-function usePanelSplitter(side: 'start' | 'end') {
+function usePanelSplitter() {
   const fallback = useBreakpointValue({ base: '20rem', '2xl': '24rem' }, { ssr: false }) ?? '20rem'
-  const key = side === 'start' ? PANEL_WIDTH_KEY : INSPECTOR_WIDTH_KEY
-  const at = side === 'start' ? 0 : 1
 
   const rootRef = useRef<HTMLDivElement | null>(null)
-  // The root mounts only while its layout is on screen, so the stored width
-  // is applied when it appears rather than once on the builder's mount.
+  // The root mounts only while the side-by-side layout is on screen, so the
+  // stored width is applied when it appears rather than on the first render.
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null)
   const root = useCallback((element: HTMLDivElement | null) => {
     rootRef.current = element
@@ -2301,52 +2300,32 @@ function usePanelSplitter(side: 'start' | 'end') {
   }, [])
   // A reset resizes too; that resize is the default, not a width to remember.
   const resetting = useRef(false)
-  const panel = {
-    id: 'panel',
-    minSize: '18rem',
-    maxSize: '40rem',
-    resizeBehavior: 'preserve-pixel-size' as const,
-  }
-  const preview = { id: 'preview', minSize: side === 'start' ? '50%' : '40%' }
   const splitter = useSplitter({
-    panels: side === 'start' ? [panel, preview] : [preview, panel],
+    panels: [
+      { id: 'panel', minSize: '18rem', maxSize: '40rem', resizeBehavior: 'preserve-pixel-size' },
+      { id: 'preview', minSize: '50%' },
+    ],
     // Initial only: the persisted width is applied once the root is on screen
-    // (see below), since storage cannot be read on the first render. The
-    // preview's entry is left empty and takes the remainder. A css length
-    // (`rem`/`px`) is a valid `PanelSize`; `onResizeEnd` reports `%`,
-    // converted back to px for storage.
-    defaultSize: (side === 'start' ? [fallback] : [undefined, fallback]) as string[],
+    // (see below), since storage cannot be read on the first render. One entry
+    // is enough — the preview takes the remainder. A css length (`rem`/`px`)
+    // is a valid `PanelSize`; `onResizeEnd` reports `%`, converted back to px
+    // for storage.
+    defaultSize: [fallback],
     onResizeEnd: ({ size }) => {
       if (resetting.current) {
         resetting.current = false
         return
       }
       const width = rootRef.current?.getBoundingClientRect().width
-      const share = size[at]
+      const share = size[0]
       if (!width || share == null) return
       try {
-        globalThis.localStorage?.setItem(key, String(Math.round((share / 100) * width)))
+        globalThis.localStorage?.setItem(PANEL_WIDTH_KEY, String(Math.round((share / 100) * width)))
       } catch {
         // As above: the width just is not remembered.
       }
     },
   })
-
-  /**
-   * The sizes that give the panel `px` pixels. The start panel takes a css
-   * length as it is; the end panel's sizes are written as shares, since the
-   * preview before it has no length of its own to give.
-   */
-  const sizesFor = useCallback(
-    (px: number): Array<string | number> | null => {
-      if (side === 'start') return [`${px}px`]
-      const width = rootRef.current?.getBoundingClientRect().width
-      if (!width) return null
-      const share = Math.min(60, (px / width) * 100)
-      return [100 - share, share]
-    },
-    [side],
-  )
 
   // The persisted width cannot drive `defaultSize`: storage is read after
   // mount, and zag only takes `defaultSize` on init. Apply it via `setSizes`
@@ -2357,45 +2336,36 @@ function usePanelSplitter(side: 'start' | 'end') {
     if (!rootElement) return
     let stored: number | null = null
     try {
-      const value = Number(globalThis.localStorage?.getItem(key))
+      const value = Number(globalThis.localStorage?.getItem(PANEL_WIDTH_KEY))
       if (Number.isFinite(value) && value > 0) stored = value
     } catch {
       // Storage refused (a private window, blocked site data): the default it is.
     }
     if (stored == null) return
-    const width = stored
-    const frame = requestAnimationFrame(() => {
-      const sizes = sizesFor(width)
-      if (sizes) splitter.setSizes(sizes as string[])
-    })
+    const size = `${stored}px`
+    const frame = requestAnimationFrame(() => splitter.setSizes([size]))
     return () => cancelAnimationFrame(frame)
     // `splitter` is a new object every render; the element is what matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rootElement, key, sizesFor])
+  }, [rootElement])
 
   const reset = useCallback(() => {
     try {
-      globalThis.localStorage?.removeItem(key)
+      globalThis.localStorage?.removeItem(PANEL_WIDTH_KEY)
     } catch {
       // Nothing was stored to clear.
     }
     resetting.current = true
-    if (side === 'start') {
-      // Same units as `defaultSize`: a css length is valid here, and the
-      // preview again takes the remainder.
-      splitter.setSizes([fallback])
-    } else {
-      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      const sizes = sizesFor(Number.parseFloat(fallback) * rem)
-      if (sizes) splitter.setSizes(sizes as string[])
-    }
+    // Same units as `defaultSize`: a css length is valid here, and the preview
+    // again takes the remainder.
+    splitter.setSizes([fallback])
     // A programmatic set fires `onResizeEnd` (swallowed above) — unless the
     // size is already the default, in which case nothing fires. Clear anyway
     // so the next drag is still remembered.
     queueMicrotask(() => {
       resetting.current = false
     })
-  }, [splitter, fallback, key, side, sizesFor])
+  }, [splitter, fallback])
 
   return { splitter, root, reset }
 }
