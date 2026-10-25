@@ -63,6 +63,7 @@ import { readSectionStyle, SCHEDULE_LABELS, scheduleState } from '../model/secti
 import { sectionSchema, type SectionScope } from '../model/sections'
 import { AddPalette, type PaletteBlock } from './add-palette'
 import { useEditorText } from './messages'
+import { PanelSlide } from './panel-slide'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import { sectionIcon } from './section-icons'
 
@@ -434,97 +435,98 @@ export function SectionList({
   }
 
   // The palette takes over the panel while it is open, so dragging from it
-  // into the preview never has to share space with the section list.
-  if (adding) {
-    return (
-      <AddPalette
-        scope={scope}
-        counts={counts}
-        copiedLabel={copied ? l(sectionSchema(copied.type)!.name) : null}
-        onClearCopied={() => {
-          clearClipboard()
-          setCopied(null)
-        }}
-        onAddSection={(type, preset) => insert(createStarterSection(type, preset))}
-        onAddBlocks={(blocks: readonly PaletteBlock[]) =>
-          insert(createSection('blocks', { blocks }))
-        }
-        onPaste={() => {
-          if (!copied) return
-          const schema = sectionSchema(copied.type)
-          if (schema?.max !== undefined && (counts.get(copied.type) ?? 0) >= schema.max) return
-          insert({ ...copied, id: newId() })
-        }}
-        onClose={() => setAdding(false)}
-      />
-    )
-  }
-
+  // into the preview never has to share space with the section list. The swap
+  // slides, so opening it reads as a step deeper into the list.
   return (
-    <Stack gap="3">
-      <Button
-        size="sm"
-        variant="outline"
-        w="full"
-        disabled={full}
-        onClick={() => {
-          setCopied(readClipboard(scope))
-          setAdding(true)
-        }}
-      >
-        <Icon as={LuPlus} />
-        {t('addSection')}
-      </Button>
-      {before}
-      {sections.length === 0 ? (
-        <Text fontSize="sm" color="fg.muted">
-          {t('noSections')}
-        </Text>
+    <PanelSlide view={adding ? 'palette' : 'list'} depth={adding ? 1 : 0}>
+      {adding ? (
+        <AddPalette
+          scope={scope}
+          counts={counts}
+          copiedLabel={copied ? l(sectionSchema(copied.type)!.name) : null}
+          onClearCopied={() => {
+            clearClipboard()
+            setCopied(null)
+          }}
+          onAddSection={(type, preset) => insert(createStarterSection(type, preset))}
+          onAddBlocks={(blocks: readonly PaletteBlock[]) =>
+            insert(createSection('blocks', { blocks }))
+          }
+          onPaste={() => {
+            if (!copied) return
+            const schema = sectionSchema(copied.type)
+            if (schema?.max !== undefined && (counts.get(copied.type) ?? 0) >= schema.max) return
+            insert({ ...copied, id: newId() })
+          }}
+          onClose={() => setAdding(false)}
+        />
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={sections.map((section) => section.id)}
-            strategy={verticalListSortingStrategy}
+        <Stack gap="3">
+          <Button
+            size="sm"
+            variant="outline"
+            w="full"
+            disabled={full}
+            onClick={() => {
+              setCopied(readClipboard(scope))
+              setAdding(true)
+            }}
           >
-            <Stack ref={rowsRef} gap="1.5">
-              {sections.map((section) => (
-                <Row
-                  key={section.id}
-                  section={section}
-                  selected={section.id === selectedId}
-                  canDuplicate={canDuplicateSection(sections, section.id)}
-                  onSelect={() => onSelect(section.id)}
-                  onToggleHidden={() =>
-                    onChange(
-                      sections.map((other) =>
-                        other.id === section.id ? { ...other, hidden: !other.hidden } : other,
-                      ),
-                    )
-                  }
-                  onDuplicate={() => {
-                    const result = duplicateSection(sections, section.id)
-                    if (result) onChange(result.sections)
-                  }}
-                  onLinkedCopy={() => {
-                    const result = duplicateLinkedSection(sections, section.id)
-                    if (result) onChange(result.sections)
-                  }}
-                  onCopy={() => {
-                    if (writeClipboard(section)) onNotice?.(t('sectionCopied'))
-                  }}
-                  onRemove={() => onChange(removeSection(sections, section.id))}
-                />
-              ))}
-            </Stack>
-          </SortableContext>
-        </DndContext>
+            <Icon as={LuPlus} />
+            {t('addSection')}
+          </Button>
+          {before}
+          {sections.length === 0 ? (
+            <Text fontSize="sm" color="fg.muted">
+              {t('noSections')}
+            </Text>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={sections.map((section) => section.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <Stack ref={rowsRef} gap="1.5">
+                  {sections.map((section) => (
+                    <Row
+                      key={section.id}
+                      section={section}
+                      selected={section.id === selectedId}
+                      canDuplicate={canDuplicateSection(sections, section.id)}
+                      onSelect={() => onSelect(section.id)}
+                      onToggleHidden={() =>
+                        onChange(
+                          sections.map((other) =>
+                            other.id === section.id ? { ...other, hidden: !other.hidden } : other,
+                          ),
+                        )
+                      }
+                      onDuplicate={() => {
+                        const result = duplicateSection(sections, section.id)
+                        if (result) onChange(result.sections)
+                      }}
+                      onLinkedCopy={() => {
+                        const result = duplicateLinkedSection(sections, section.id)
+                        if (result) onChange(result.sections)
+                      }}
+                      onCopy={() => {
+                        if (writeClipboard(section)) onNotice?.(t('sectionCopied'))
+                      }}
+                      onRemove={() => onChange(removeSection(sections, section.id))}
+                    />
+                  ))}
+                </Stack>
+              </SortableContext>
+            </DndContext>
+          )}
+          {after}
+        </Stack>
       )}
-      {after}
-    </Stack>
+    </PanelSlide>
   )
 }

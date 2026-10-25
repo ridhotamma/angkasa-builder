@@ -119,7 +119,7 @@ import {
   TEXT_ELEMENT_FIELDS,
   type ElementKind,
 } from '../model/element-style'
-import { readBlocks, type FieldValues } from '../model/fields'
+import { readBlocks, type Field, type FieldValues } from '../model/fields'
 import { isLocalizedText, withLocalizedEntry } from '../model/localized'
 import { createStarterSection, reseedSectionVariant } from '../model/section-starters'
 import {
@@ -167,6 +167,7 @@ import {
 } from './controls'
 import { useHistoryKeys, type EditorHistory } from './history'
 import { useEditorText } from './messages'
+import { PanelSlide } from './panel-slide'
 import { PreviewFrame, type PreviewDevice } from './preview-frame'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import { PinnedRow, SectionList } from './section-list'
@@ -204,6 +205,26 @@ const HEADER_ID = 'layout:header'
 /** The frame's details (`frame.details`), picked like a section. */
 const DETAILS_ID = 'frame:details'
 const FOOTER_ID = 'layout:footer'
+
+/**
+ * How deep a selected block sits in the panel stack: a block directly in a
+ * section is one step in from the section's settings, and every container
+ * around it is another. Takes the block's parent, so the common top-level case
+ * costs no tree walk; used only to tell a forward step from a back one.
+ */
+function blockPanelDepth(
+  fields: readonly Field[],
+  values: FieldValues,
+  parentId: string | null,
+): number {
+  let depth = 2
+  let parent = parentId
+  while (parent) {
+    depth += 1
+    parent = findBlock(fields, values, parent)?.parentId ?? null
+  }
+  return depth
+}
 
 export interface PageBuilderProps {
   sections: SectionInstance[]
@@ -828,6 +849,31 @@ function Builder({
       : null
 
   const details = frame?.details
+  // Which screen the panel shows, and how deep it sits in the stack. The
+  // slide between screens reads the depth: deeper is forward, shallower back.
+  // Picking another section at the same depth is lateral, and slides forward.
+  let panelView: { view: string; depth: number }
+  if (selectedId === DETAILS_ID && details) {
+    panelView = { view: 'details', depth: 1 }
+  } else if (layoutPart && layout && onLayoutChange) {
+    panelView = { view: `layout:${layoutPart}`, depth: 1 }
+  } else if (selected && schema && selectedBlock && blockActions) {
+    panelView = {
+      view: `block:${selected.id}:${selectedBlock.block.id}`,
+      depth: blockPanelDepth(
+        schema.fields,
+        resolvedSelected?.settings ?? selected.settings,
+        selectedBlock.parentId,
+      ),
+    }
+  } else if (selected && selectedElementId) {
+    panelView = { view: `element:${selected.id}:${selectedElementId}`, depth: 2 }
+  } else if (selected && schema) {
+    panelView = { view: `section:${selected.id}`, depth: 1 }
+  } else {
+    panelView = { view: 'list', depth: 0 }
+  }
+
   const panel =
     selectedId === DETAILS_ID && details ? (
       <Stack gap="4">
@@ -1697,7 +1743,9 @@ function Builder({
             input — push the whole panel wider than its column and clip the
             controls. The panel only ever scrolls vertically. */}
         <ScrollArea.Content px="4" pb="4" style={{ minWidth: 0 }}>
-          {panel}
+          <PanelSlide view={panelView.view} depth={panelView.depth}>
+            {panel}
+          </PanelSlide>
         </ScrollArea.Content>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar />
