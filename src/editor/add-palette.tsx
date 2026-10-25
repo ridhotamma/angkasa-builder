@@ -41,6 +41,7 @@ import { LuChevronLeft, LuPlus, LuSearch, LuX } from 'react-icons/lu'
 import { Tooltip } from '@repo/theme'
 
 import { registeredBlocks } from '../model/block-registry'
+import { BLOCK_PRESETS } from '../model/block-presets'
 import { blockSchema } from '../model/blocks'
 import {
   isSectionOffered,
@@ -56,6 +57,7 @@ import {
 import { blockGlyph } from './block-icons'
 import { sectionIcon } from './section-icons'
 import { useEditorText } from './messages'
+import { PresetThumb } from './preset-thumb'
 import { paletteBlockOf, removeSavedBlock, useSavedBlocks } from './saved-blocks'
 
 /** A block as the palette hands it over: settings are filled in by the sanitiser. */
@@ -116,6 +118,7 @@ function PaletteCard({
   onAdd,
   onRemove,
   removeLabel,
+  thumb,
 }: {
   item: PaletteItem | (() => PaletteItem)
   name: string
@@ -127,6 +130,8 @@ function PaletteCard({
   /** A remove button in the tile's corner — a saved block. */
   onRemove?: () => void
   removeLabel?: string
+  /** A picture of the layout in place of the glyph — a preset's wireframe. */
+  thumb?: ReactNode
 }) {
   const drag = usePaletteDrag()
   const item = () => (typeof itemOrMake === 'function' ? itemOrMake() : itemOrMake)
@@ -165,20 +170,22 @@ function PaletteCard({
               if (!disabled) onAdd()
             }}
           >
-            <Box
-              w="full"
-              h="10"
-              rounded="md"
-              bg="bg.muted"
-              color="fg.muted"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              _groupHover={{ bg: 'brand.subtle', color: 'brand.fg' }}
-              transition="background 120ms, color 120ms"
-            >
-              {icon}
-            </Box>
+            {thumb ?? (
+              <Box
+                w="full"
+                h="10"
+                rounded="md"
+                bg="bg.muted"
+                color="fg.muted"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                _groupHover={{ bg: 'brand.subtle', color: 'brand.fg' }}
+                transition="background 120ms, color 120ms"
+              >
+                {icon}
+              </Box>
+            )}
             <Text fontSize="xs" fontWeight="medium" lineClamp="2" w="full">
               {name}
             </Text>
@@ -345,10 +352,15 @@ export function AddPalette({
     blocks:
       blockSchemas.filter((schema) =>
         match(l(schema.name), schema.description ? l(schema.description) : ''),
-      ).length + saved.filter((entry) => match(entry.name, '')).length,
+      ).length +
+      saved.filter((entry) => match(entry.name, '')).length +
+      BLOCK_PRESETS.filter((preset) => match(l(preset.name), l(preset.description))).length,
   }
   const nothing = matching[mode] === 0
   const savedMatching = saved.filter((entry) => match(entry.name, ''))
+  const presetsMatching = BLOCK_PRESETS.filter((preset) =>
+    match(l(preset.name), l(preset.description)),
+  )
 
   return (
     <Stack gap="3">
@@ -473,6 +485,25 @@ export function AddPalette({
         </Stack>
       ) : (
         <Stack gap="5">
+          {presetsMatching.length > 0 && (
+            <Stack gap="2">
+              <GroupHeading>{t('paletteLayouts')}</GroupHeading>
+              <SimpleGrid columns={2} gap="2">
+                {presetsMatching.map((preset) => (
+                  <PaletteCard
+                    key={preset.key}
+                    tile
+                    item={{ kind: 'blocks', blocks: preset.blocks, label: l(preset.name) }}
+                    name={l(preset.name)}
+                    description={l(preset.description)}
+                    icon={null}
+                    thumb={<PresetThumb blocks={preset.blocks} />}
+                    onAdd={() => onAddBlocks(preset.blocks, l(preset.name))}
+                  />
+                ))}
+              </SimpleGrid>
+            </Stack>
+          )}
           {savedMatching.length > 0 && (
             <Stack gap="2">
               <GroupHeading>{t('paletteSaved')}</GroupHeading>

@@ -12,6 +12,7 @@ import { Box, Dialog, HStack, Icon, Input, Portal, Stack, Text } from '@chakra-u
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { LuCornerDownLeft, LuPlus, LuSearch } from 'react-icons/lu'
 
+import { BLOCK_PRESETS } from '../model/block-presets'
 import { registeredBlocks } from '../model/block-registry'
 import type { SectionInstance } from '../model/content'
 import {
@@ -109,6 +110,16 @@ export function CommandPalette({
           run: () => onAddSection(schema.type as SectionType, preset),
         })
       }
+    }
+    for (const preset of BLOCK_PRESETS) {
+      out.push({
+        key: `preset:${preset.key}`,
+        group: 'block',
+        label: l(preset.name),
+        detail: l(preset.description),
+        icon: <Icon as={blockGlyph(preset.glyph) ?? LuPlus} />,
+        run: () => onAddBlocks(preset.blocks, l(preset.name)),
+      })
     }
     for (const entry of saved) {
       out.push({
