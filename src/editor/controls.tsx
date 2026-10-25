@@ -74,7 +74,6 @@ import {
   LuMonitor,
   LuPencil,
   LuPlus,
-  LuRotateCcw,
   LuSearch,
   LuSmartphone,
   LuTrash2,
@@ -143,38 +142,16 @@ import { useEditorText, type EditorMessage } from './messages'
 import type { EditorServices } from './services'
 
 /**
- * A field's label line: the name, an ⓘ that holds the help, and — once the
- * value differs from the default — a dot that says so and a button that puts
- * it back. The help sits in a tooltip so a panel of a dozen settings reads as
- * a dozen names, not a dozen paragraphs.
+ * A field's label line: the name, then an ⓘ that holds the help. The help sits
+ * in a tooltip so a panel of a dozen settings reads as a dozen names, not a
+ * dozen paragraphs. The ⓘ flows with the text, so a label that wraps keeps it
+ * at the end of its last line rather than in a column of its own.
  */
-function FieldHeading({
-  label,
-  help,
-  onReset,
-}: {
-  label: string
-  help?: string
-  /** Present only while the value differs from the default. */
-  onReset?: () => void
-}) {
+function FieldHeading({ label, help }: { label: string; help?: string }) {
   const { t } = useEditorText()
   return (
-    <HStack gap="1" minW="0" minH="6">
-      {onReset && (
-        <Box
-          as="span"
-          flexShrink="0"
-          boxSize="1.5"
-          rounded="full"
-          bg="brand.solid"
-          aria-label={t('fieldChanged')}
-          title={t('fieldChanged')}
-        />
-      )}
-      <Field.Label fontSize="sm" m="0" minW="0">
-        {label}
-      </Field.Label>
+    <Field.Label fontSize="sm" m="0" minW="0" display="block" lineHeight="short">
+      {label}
       {help && (
         <Tooltip content={help}>
           <Box
@@ -182,39 +159,21 @@ function FieldHeading({
             tabIndex={0}
             aria-label={t('fieldHelp')}
             display="inline-flex"
-            flexShrink="0"
+            verticalAlign="-0.15em"
+            ms="1"
             color="fg.subtle"
             cursor="help"
             rounded="full"
             _hover={{ color: 'fg.muted' }}
             _focusVisible={{ outline: '2px solid', outlineColor: 'colorPalette.focusRing' }}
+            // A click on the hint opens the hint, not the control the label names.
+            onClick={(event) => event.preventDefault()}
           >
             <Icon as={LuInfo} boxSize="3.5" />
           </Box>
         </Tooltip>
       )}
-      {onReset && (
-        <Tooltip content={t('fieldReset')}>
-          <IconButton
-            aria-label={t('fieldReset')}
-            size="2xs"
-            variant="ghost"
-            ml="auto"
-            flexShrink="0"
-            color="fg.muted"
-            onClick={onReset}
-            // Out of the way until the field is pointed at; always there on
-            // touch screens, which have no hover to reveal it.
-            opacity="0"
-            _groupHover={{ opacity: 1 }}
-            _groupFocusWithin={{ opacity: 1 }}
-            css={{ '@media (hover: none)': { opacity: 1 } }}
-          >
-            <LuRotateCcw />
-          </IconButton>
-        </Tooltip>
-      )}
-    </HStack>
+    </Field.Label>
   )
 }
 
@@ -231,15 +190,12 @@ export function Labeled({
   help,
   error,
   inline = false,
-  onReset,
   children,
 }: {
   label: string
   help?: string
   error?: string | null
   inline?: boolean
-  /** Shows the changed dot and the reset button; omit while at the default. */
-  onReset?: () => void
   children: ReactNode
 }) {
   return (
@@ -249,7 +205,6 @@ export function Labeled({
     <Field.Root
       invalid={Boolean(error)}
       alignItems="stretch"
-      className="group"
       // The field measures itself for the inline row, so the row follows the
       // panel's width rather than the window's. Only inline fields: a size
       // container cannot shrink-wrap its content, which a stacked field
@@ -263,7 +218,7 @@ export function Labeled({
           inline
             ? {
                 '@container (min-width: 17rem)': {
-                  gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 3fr)',
+                  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.4fr)',
                   alignItems: 'center',
                   columnGap: '0.75rem',
                 },
@@ -271,7 +226,7 @@ export function Labeled({
             : undefined
         }
       >
-        <FieldHeading label={label} help={help} onReset={onReset} />
+        <FieldHeading label={label} help={help} />
         <Box minW="0">{children}</Box>
       </Box>
       {error && <Field.ErrorText>{error}</Field.ErrorText>}
@@ -1112,9 +1067,6 @@ function FieldControl({
   const { t, l, locale } = useEditorText()
   const help = field.help ? l(field.help) : undefined
   const label = l(field.label)
-  /** The reset for a value that has left its default; nothing while it is there. */
-  const resetFor = <T,>(current: T, fallback: T) =>
-    current === fallback ? undefined : () => onChange(fallback)
 
   switch (field.kind) {
     case 'text':
@@ -1160,7 +1112,6 @@ function FieldControl({
           label={label}
           help={help}
           inline
-          onReset={resetFor(typeof value === 'number' ? value : field.default, field.default)}
         >
           <NumberControl
             value={typeof value === 'number' ? value : field.default}
@@ -1196,7 +1147,6 @@ function FieldControl({
           label={label}
           help={help}
           inline={shape !== 'segment'}
-          onReset={resetFor(current, field.default)}
         >
           {segment ? (
             <SegmentInput value={current} onChange={onChange} options={options} />
@@ -1207,12 +1157,11 @@ function FieldControl({
       )
     }
     case 'boolean': {
-      const reset = resetFor(value === true, field.default)
       return (
-        <Field.Root className="group">
+        <Field.Root>
           <HStack justify="space-between" w="full" gap="3">
             <Box flex="1" minW="0">
-              <FieldHeading label={label} help={help} onReset={reset} />
+              <FieldHeading label={label} help={help} />
             </Box>
             <Switch.Root
               size="sm"
@@ -1242,7 +1191,6 @@ function FieldControl({
           label={label}
           help={help}
           inline
-          onReset={resetFor(typeof value === 'string' ? value : field.default, field.default)}
         >
           <ColorInput
             value={typeof value === 'string' ? value : field.default}

@@ -10,7 +10,7 @@
 
 import { Accordion, Badge, Button, Icon, Stack, Text } from '@chakra-ui/react'
 import { useState, type ReactNode } from 'react'
-import { LuChevronsDown, LuChevronsUp } from 'react-icons/lu'
+import { LuChevronsDown, LuChevronsUp, LuRotateCcw } from 'react-icons/lu'
 
 import {
   defaultValues,
@@ -43,6 +43,18 @@ export function changedFields(group: FieldGroup, values: FieldValues): Field[] {
   return group.fields.filter(
     (field) => isFieldShown(field, values) && isChanged(values[field.key], defaults[field.key]),
   )
+}
+
+/** `values` with a group's changed settings put back to their defaults. */
+export function resetGroup(group: FieldGroup, values: FieldValues): FieldValues {
+  const defaults = defaultValues(group.fields)
+  const next = { ...values }
+  for (const field of changedFields(group, values)) {
+    const fallback = defaults[field.key]
+    if (fallback === undefined) delete next[field.key]
+    else next[field.key] = fallback
+  }
+  return next
 }
 
 /** One changed setting, in a word or two: the picked option, or the field's own name. */
@@ -141,6 +153,21 @@ export function FieldGroups({
                         services={services}
                         onChange={onChange}
                       />
+                    )}
+                    {/* One way back per group, where the badge says something
+                        changed — not a marker and a button on every row. */}
+                    {changed.length > 0 && (
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        alignSelf="start"
+                        ml="-2"
+                        color="fg.muted"
+                        onClick={() => onChange(resetGroup(group, values))}
+                      >
+                        <Icon as={LuRotateCcw} />
+                        {t('groupReset')}
+                      </Button>
                     )}
                   </Stack>
                 </Accordion.ItemBody>

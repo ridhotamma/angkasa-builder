@@ -7,7 +7,7 @@ import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
 import { ColorInput, FieldsForm } from '../src/editor/controls'
-import { FieldGroups } from '../src/editor/field-groups'
+import { FieldGroups, resetGroup } from '../src/editor/field-groups'
 import type { EditorServices } from '../src/editor/services'
 import type { Field as FieldSpec, FieldValues } from '../src/model/fields'
 import {
@@ -123,10 +123,9 @@ describe('FieldsForm controls', () => {
     expect(html).not.toContain('Pick one')
   })
 
-  test('only a value off its default offers a reset', () => {
-    const field = select(['Grid', 'Slider'])
-    expect(form([field], { choice: '0' })).not.toMatch(/Reset to default/)
-    expect(form([field], { choice: '1' })).toMatch(/Reset to default/)
+  test('a changed value carries no per-row marker or reset', () => {
+    const html = form([select(['Grid', 'Slider'])], { choice: '1' })
+    expect(html).not.toMatch(/Reset to default/)
   })
 })
 
@@ -172,6 +171,14 @@ describe('FieldGroups', () => {
   test('a closed group summarises what it is set to', () => {
     expect(draw({ width: 'edge' })).toContain('Edge to edge')
     expect(draw({ width: 'contained' })).toContain('Default')
+  })
+
+  test('a group resets only its own changed settings', () => {
+    const [group] = groups()
+    expect(resetGroup(group!, { width: 'edge', other: 'kept' })).toEqual({
+      width: 'contained',
+      other: 'kept',
+    })
   })
 
   test('an advanced group waits behind the toggle until it is set', () => {
