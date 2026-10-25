@@ -71,6 +71,7 @@ import {
   LuChevronRight,
   LuFolderInput,
   LuGripVertical,
+  LuImage,
   LuImagePlus,
   LuMonitor,
   LuPencil,
@@ -137,6 +138,7 @@ import {
   VideoControl,
 } from './media-controls'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
+import { MediaPickerDialog } from './media-picker'
 import { RichTextControl } from './rich-text-control'
 import { useEditorText, type EditorMessage } from './messages'
 import type { EditorServices } from './services'
@@ -383,10 +385,12 @@ function ImageControl({
   const { t } = useEditorText()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   // Bumped after every upload so the picker forgets the file it just took and
   // accepts the next one, rather than refusing it as one file too many.
   const [attempt, setAttempt] = useState(0)
   const src = value ? services.imageUrl(value, { width: 480, height: 320 }) : null
+  const browseImages = services.browseImages
 
   async function upload(file: File) {
     setBusy(true)
@@ -424,7 +428,7 @@ function ImageControl({
           </Text>
         )}
       </Box>
-      <HStack gap="2">
+      <HStack gap="2" wrap="wrap">
         <FileUpload.Root
           key={attempt}
           accept="image/*"
@@ -444,6 +448,12 @@ function ImageControl({
             </Button>
           </FileUpload.Trigger>
         </FileUpload.Root>
+        {browseImages && (
+          <Button size="xs" variant="outline" onClick={() => setLibraryOpen(true)}>
+            <Icon as={LuImage} />
+            {t('chooseImage')}
+          </Button>
+        )}
         {value && (
           <Button size="xs" variant="ghost" colorPalette="danger" onClick={() => onChange('')}>
             {t('remove')}
@@ -454,6 +464,15 @@ function ImageControl({
         <Text fontSize="xs" color="danger.fg">
           {error}
         </Text>
+      )}
+      {browseImages && (
+        <MediaPickerDialog
+          open={libraryOpen}
+          onClose={() => setLibraryOpen(false)}
+          onSelect={onChange}
+          selectedId={value}
+          services={{ ...services, browseImages }}
+        />
       )}
     </Stack>
   )

@@ -26,10 +26,29 @@ export interface ArticleOption extends CatalogueOption {
   blogHandle: string
 }
 
+/** One picture already stored in the workspace's media library. */
+export interface EditorMediaItem {
+  /** The library row's own id, for React keys and selection. */
+  id: string
+  /** The reference an image field stores. */
+  fileId: string
+  name: string
+  /** A large rendition, for the detail view. */
+  url: string
+  /** A grid-sized rendition, for the picker. */
+  thumbUrl: string
+}
+
 export interface EditorServices {
   /** Store an image and return its media file id. Throw with a message to show. */
   uploadImage: (file: File) => Promise<string>
   imageUrl: (fileId: string, size: { width: number; height: number }) => string | null
+  /**
+   * Search the workspace's media library, for the image control's "choose from
+   * library" dialog. Omitted where the app has no library (the developer
+   * console's sample data); the control then offers upload only.
+   */
+  browseImages?: (query: string) => Promise<EditorMediaItem[]>
   /**
    * Store a video and return its file id, reporting progress from 0 to 1.
    * Omitted where videos cannot be uploaded; the video control then offers

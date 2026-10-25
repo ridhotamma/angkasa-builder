@@ -9,7 +9,14 @@ export { IconPicker } from './icon-picker'
 export { useHistoryKeys, useUndoableState, type EditorHistory } from './history'
 export { TableControl } from './media-controls'
 export { MenuEditor, type MenuPath } from './menu-editor'
+export { MediaPickerDialog } from './media-picker'
 export { useEditorText } from './messages'
 export { LookPickerDialog } from './look-picker-dialog'
 export { PaletteDots, PaletteStrip } from './palette-swatch'
-export type { ArticleOption, CatalogueOption, EditorOption, EditorServices } from './services'
+export type {
+  ArticleOption,
+  CatalogueOption,
+  EditorMediaItem,
+  EditorOption,
+  EditorServices,
+} from './services'
