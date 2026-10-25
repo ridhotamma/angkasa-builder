@@ -142,10 +142,14 @@ export function MediaPickerDialog({
                 variant="line"
                 size="sm"
               >
-                <Tabs.List>
-                  <Tabs.Trigger value="upload">{t('mediaUploadTab')}</Tabs.Trigger>
+                <Tabs.List mb="4">
+                  <Tabs.Trigger value="upload" _focusVisible={{ outline: 'none' }}>
+                    {t('mediaUploadTab')}
+                  </Tabs.Trigger>
                   {browseImages && (
-                    <Tabs.Trigger value="library">{t('mediaLibraryTab')}</Tabs.Trigger>
+                    <Tabs.Trigger value="library" _focusVisible={{ outline: 'none' }}>
+                      {t('mediaLibraryTab')}
+                    </Tabs.Trigger>
                   )}
                 </Tabs.List>
 
@@ -155,7 +159,7 @@ export function MediaPickerDialog({
                   </Text>
                 )}
 
-                <Tabs.Content value="upload" pt="4">
+                <Tabs.Content value="upload" p="0">
                   <FileUpload.Root
                     key={attempt}
                     accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.heic,.heif"
@@ -168,6 +172,7 @@ export function MediaPickerDialog({
                   >
                     <FileUpload.HiddenInput />
                     <FileUpload.Dropzone
+                      minH="56"
                       rounded="lg"
                       borderWidth="2px"
                       borderStyle="dashed"
@@ -176,7 +181,7 @@ export function MediaPickerDialog({
                       _hover={{ borderColor: 'brand.solid', bg: 'brand.subtle/30' }}
                       _dragging={{ borderColor: 'brand.solid', bg: 'brand.subtle' }}
                     >
-                      <Stack align="center" gap="2" px="6" py="12" textAlign="center">
+                      <Stack align="center" gap="2" px="6" py="8" textAlign="center">
                         {uploading ? (
                           <Spinner size="sm" color="brand.fg" />
                         ) : (
@@ -196,7 +201,7 @@ export function MediaPickerDialog({
                 </Tabs.Content>
 
                 {browseImages && (
-                  <Tabs.Content value="library" pt="4">
+                  <Tabs.Content value="library" p="0">
                     <Stack gap="4">
                       <InputGroup startElement={<Icon as={LuSearch} boxSize="4" />}>
                         <Input
