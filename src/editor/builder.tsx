@@ -105,6 +105,9 @@ import {
   clearOverrides,
   createSection,
   detachSection,
+  duplicateSection,
+  moveSection,
+  removeSection,
   linkedMaster,
   overridableFields,
   resolveLinkedSections,
@@ -138,7 +141,12 @@ import {
   SWITCHED_OFF_STYLE_KEYS,
   VISIBILITY_STYLE_KEYS,
 } from '../model/section-style'
-import { sectionSchema, type SectionScope } from '../model/sections'
+import {
+  sectionSchema,
+  type SectionPreset,
+  type SectionScope,
+  type SectionType,
+} from '../model/sections'
 import { googleFontsHref, themeDesignedForDark, type ThemeSettings } from '../model/settings'
 import {
   hasTabBar,
@@ -155,10 +163,11 @@ import {
 } from '../render/context'
 import { PAGE_WIDTH_CONTAINER } from '../render/primitives'
 import { drawnSections, pageEdges, SectionsRenderer, ThemeScope } from '../render/renderer'
-import { PaletteDragProvider, usePaletteDrag } from './add-palette'
+import { PaletteDragProvider, usePaletteDrag, type PaletteBlock } from './add-palette'
 import { useBuilderDialogFooter } from './builder-dialog'
 import { BlockStylePanel } from './block-style-panel'
 import { CatalogueProvider } from './catalogue'
+import { CommandPalette } from './command-palette'
 import { DropOverlay, type DropTarget } from './preview-drop'
 import {
   BlockEditorProvider,
@@ -172,6 +181,8 @@ import { useHistoryKeys, type EditorHistory } from './history'
 import { useEditorText } from './messages'
 import { FieldGroups, type FieldGroup } from './field-groups'
 import { PanelSlide } from './panel-slide'
+import { SaveBlockPopover } from './save-block-popover'
+import { canSaveBlock } from './saved-blocks'
 import { PreviewFrame, type PreviewDevice } from './preview-frame'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import { PinnedRow, SectionList } from './section-list'
@@ -503,6 +514,7 @@ function Builder({
   // The preview's "+" asks the section list to open its palette at a place.
   const [addRequest, setAddRequest] = useState<{ index: number } | null>(null)
   const clearAddRequest = useCallback(() => setAddRequest(null), [])
+  const [commandOpen, setCommandOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const footerSlot = useBuilderDialogFooter()
 
@@ -896,6 +908,167 @@ function Builder({
     panelView = { view: 'list', depth: 0 }
   }
 
+  /**
+   * A section added from Ctrl+K: after the selected section, or at the end —
+   * the add palette's own rule — and opened, ready to fill in.
+   */
+  const addSectionFromCommand = (type: SectionType, preset: SectionPreset | null) => {
+    const section = createStarterSection(type, preset)
+    const after = selected ? sections.findIndex((other) => other.id === selected.id) + 1 : 0
+    const next = [...sections]
+    next.splice(after > 0 ? after : sections.length, 0, section)
+    onSectionsChange(next)
+    select(section.id)
+  }
+
+  /**
+   * Blocks added from Ctrl+K go into the open Custom blocks section, after the
+   * selected block when there is one; anywhere else they start a new one.
+   */
+  const addBlocksFromCommand = (blocks: readonly PaletteBlock[]) => {
+    const donor = createSection('blocks', { blocks: blocks as never })
+    const created = readBlocks(donor.settings, 'blocks')
+    if (selected && schema?.type === 'blocks' && !selected.linkedTo && created.length > 0) {
+      const container = selectedBlock
+        ? { parentId: selectedBlock.parentId, fieldKey: selectedBlock.field.key }
+        : { parentId: null, fieldKey: 'blocks' }
+      let values = selected.settings
+      let index = selectedBlock
+        ? selectedBlock.index + 1
+        : readBlocks(selected.settings, 'blocks').length
+      for (const block of created) {
+        const inserted = insertBlock(schema.fields, values, container, index, block)
+        if (!inserted) break
+        values = inserted
+        index += 1
+      }
+      if (values !== selected.settings) {
+        updateSection(selected.id, (section) => ({ ...section, settings: values }))
+        setSelectedBlockId(created[0]!.id)
+        return
+      }
+    }
+    const after = selected ? sections.findIndex((other) => other.id === selected.id) + 1 : 0
+    const next = [...sections]
+    next.splice(after > 0 ? after : sections.length, 0, donor)
+    onSectionsChange(next)
+    select(donor.id)
+  }
+
+  /**
+   * The editor's keys, read through a ref so the listener is attached once:
+   * Delete removes the selection, Ctrl/⌘+D duplicates it, Alt+↑/↓ moves it,
+   * and — in the preview — Escape steps out to its parent. Ctrl/⌘+K opens the
+   * command palette from anywhere, a text field included.
+   */
+  const shortcuts = useRef<{
+    remove: () => boolean
+    duplicate: () => boolean
+    move: (by: -1 | 1) => boolean
+    escape: () => boolean
+  }>({
+    remove: () => false,
+    duplicate: () => false,
+    move: () => false,
+    escape: () => false,
+  })
+  shortcuts.current = {
+    remove: () => {
+      if (blockActions) {
+        blockActions.remove()
+        return true
+      }
+      if (!selected) return false
+      const next = removeSection(sections, selected.id)
+      if (next === sections) return false
+      onSectionsChange(next)
+      clearSelection()
+      return true
+    },
+    duplicate: () => {
+      if (blockActions && selectedBlock && selectedBlock.count < selectedBlock.field.max) {
+        blockActions.duplicate()
+        return true
+      }
+      if (!selected || blockActions) return false
+      const result = duplicateSection(sections, selected.id)
+      if (!result) return false
+      onSectionsChange(result.sections)
+      select(result.copy.id, true)
+      revealSoon(result.copy.id)
+      return true
+    },
+    move: (by) => {
+      if (blockActions) {
+        if (by < 0) blockActions.up()
+        else blockActions.down()
+        return true
+      }
+      if (!selected) return false
+      onSectionsChange(moveSection(sections, selected.id, by))
+      revealSoon(selected.id)
+      return true
+    },
+    escape: () => {
+      if (selectedBlock) setSelectedBlockId(selectedBlock.parentId)
+      else if (selectedElementId) setSelectedElementId(null)
+      else if (selectedId) clearSelection()
+      else return false
+      return true
+    },
+  }
+
+  useEffect(() => {
+    const docs = [globalThis.document ?? null, previewDoc].filter(
+      (doc): doc is Document => doc !== null,
+    )
+    const listeners = docs.map((doc) => {
+      const inPreview = doc === previewDoc
+      const onKey = (event: KeyboardEvent) => {
+        const mod = event.ctrlKey || event.metaKey
+        const key = event.key.toLowerCase()
+        if (mod && !event.shiftKey && !event.altKey && key === 'k') {
+          event.preventDefault()
+          setCommandOpen((current) => !current)
+          return
+        }
+        if (event.defaultPrevented) return
+        const target = event.target as HTMLElement | null
+        // Typing, a menu or a listbox own their keys.
+        if (
+          typeof target?.closest === 'function' &&
+          target.closest(
+            'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="menu"], [role="listbox"], [role="option"]',
+          )
+        )
+          return
+        const run = (action: () => boolean) => {
+          if (action()) event.preventDefault()
+        }
+        if ((key === 'delete' || key === 'backspace') && !mod && !event.altKey) {
+          run(shortcuts.current.remove)
+        } else if (mod && key === 'd') {
+          run(shortcuts.current.duplicate)
+        } else if (event.altKey && (key === 'arrowup' || key === 'arrowdown')) {
+          run(() => shortcuts.current.move(key === 'arrowup' ? -1 : 1))
+        } else if (key === 'escape' && inPreview) {
+          // Only in the preview: on the page, Escape belongs to the dialog the
+          // editor may be open in.
+          run(shortcuts.current.escape)
+        }
+      }
+      doc.addEventListener('keydown', onKey)
+      return () => doc.removeEventListener('keydown', onKey)
+    })
+    return () => listeners.forEach((remove) => remove())
+  }, [previewDoc])
+
+  const commandCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const section of sections) map.set(section.type, (map.get(section.type) ?? 0) + 1)
+    return map
+  }, [sections])
+
   // The way back from the open screen, as a trail of its parents: all
   // sections, the section, then each block the selection sits in. Every step
   // is a link, so a nested block is one click from any level above it.
@@ -1023,6 +1196,12 @@ function Builder({
           >
             <LuTrash2 />
           </IconButton>
+          {!selected.linkedTo && canSaveBlock(selectedBlock.block) && (
+            <SaveBlockPopover
+              block={selectedBlock.block}
+              fallbackName={l(selectedBlock.schema.name)}
+            />
+          )}
           {!selected.linkedTo && schema.type === 'blocks' && (
             <BlockMoveMenu
               fields={schema.fields}
@@ -1747,6 +1926,16 @@ function Builder({
               <Icon as={previewColorMode === 'dark' ? LuSun : LuMoon} />
             </IconButton>
           </Tooltip>
+          <Tooltip content={t('commandButton')} wrap>
+            <IconButton
+              aria-label={t('commandButton')}
+              size="xs"
+              variant="ghost"
+              onClick={() => setCommandOpen(true)}
+            >
+              <LuSearch />
+            </IconButton>
+          </Tooltip>
           <Text fontSize="xs" color="fg.muted" hideBelow="xl">
             {previewNote ? `${previewNote} ` : ''}
             {t('inlineHint')}
@@ -1845,6 +2034,16 @@ function Builder({
         onSelect={onSelectBlockInPanel}
       >
         {children}
+        <CommandPalette
+          open={commandOpen}
+          onClose={() => setCommandOpen(false)}
+          sections={sections}
+          scope={scope}
+          counts={commandCounts}
+          onOpenSection={(id) => select(id)}
+          onAddSection={addSectionFromCommand}
+          onAddBlocks={addBlocksFromCommand}
+        />
       </BlockEditorProvider>
     </SectionLinkProvider>
   )

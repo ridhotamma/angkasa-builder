@@ -1201,7 +1201,7 @@ export function moveBlock(
  * not share its children's ids with the original, or selecting one child
  * would edit the other.
  */
-function cloneBlock(block: BlockValue, schema: BlockSchema): BlockValue {
+export function cloneBlock(block: BlockValue, schema: BlockSchema): BlockValue {
   return {
     id: newId(),
     type: block.type,

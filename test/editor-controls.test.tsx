@@ -173,6 +173,23 @@ describe('FieldGroups', () => {
     expect(draw({ width: 'contained' })).toContain('Default')
   })
 
+  test('an open group with changes offers one reset; an unchanged one none', () => {
+    const open = (values: FieldValues) =>
+      render(
+        <I18nProvider locale="en" resources={{}}>
+          <FieldGroups
+            groups={groups()}
+            values={values}
+            services={services}
+            defaultOpen={['size']}
+            onChange={() => {}}
+          />
+        </I18nProvider>,
+      )
+    expect(open({ width: 'edge' }).match(/Reset to default/g)).toHaveLength(1)
+    expect(open({ width: 'contained' })).not.toContain('Reset to default')
+  })
+
   test('a group resets only its own changed settings', () => {
     const [group] = groups()
     expect(resetGroup(group!, { width: 'edge', other: 'kept' })).toEqual({

@@ -38,7 +38,10 @@ import {
 } from 'react'
 import { LuChevronLeft, LuPlus, LuSearch, LuX } from 'react-icons/lu'
 
+import { Tooltip } from '@repo/theme'
+
 import { registeredBlocks } from '../model/block-registry'
+import { blockSchema } from '../model/blocks'
 import {
   isSectionOffered,
   offeredPresets,
@@ -53,12 +56,15 @@ import {
 import { blockGlyph } from './block-icons'
 import { sectionIcon } from './section-icons'
 import { useEditorText } from './messages'
+import { paletteBlockOf, removeSavedBlock, useSavedBlocks } from './saved-blocks'
 
 /** A block as the palette hands it over: settings are filled in by the sanitiser. */
 export interface PaletteBlock {
   type: string
   settings?: Record<string, unknown>
   style?: Record<string, unknown>
+  /** A saved block keeps the name the seller gave it. */
+  name?: string
 }
 
 /** What a palette item adds, once dropped or clicked. */
@@ -92,23 +98,38 @@ export function usePaletteDrag(): PaletteDragState {
   return useContext(PaletteDragContext)
 }
 
-/** One draggable entry: a card that starts a drag, and adds when clicked. */
+/**
+ * One draggable entry: a card that starts a drag, and adds when clicked.
+ *
+ * `tile` draws it as a square in a two-column grid — the blocks, whose names
+ * are a word and whose glyph says the rest — with the description moved into
+ * a tooltip. `item` may be a function, read when the drag starts, so an entry
+ * that must be fresh each time (a saved block's ids) is built per drag.
+ */
 function PaletteCard({
-  item,
+  item: itemOrMake,
   name,
   description,
   icon,
   disabled = false,
+  tile = false,
   onAdd,
+  onRemove,
+  removeLabel,
 }: {
-  item: PaletteItem
+  item: PaletteItem | (() => PaletteItem)
   name: string
   description: string
   icon: ReactNode
   disabled?: boolean
+  tile?: boolean
   onAdd: () => void
+  /** A remove button in the tile's corner — a saved block. */
+  onRemove?: () => void
+  removeLabel?: string
 }) {
   const drag = usePaletteDrag()
+  const item = () => (typeof itemOrMake === 'function' ? itemOrMake() : itemOrMake)
 
   const onDragStart = (event: DragEvent) => {
     if (disabled) {
@@ -118,7 +139,71 @@ function PaletteCard({
     // Firefox needs data on the transfer or no drag starts at all.
     event.dataTransfer.effectAllowed = 'copy'
     event.dataTransfer.setData('text/plain', name)
-    drag.start(item)
+    drag.start(item())
+  }
+
+  if (tile) {
+    return (
+      <Box position="relative" className="group">
+        <Tooltip content={description} disabled={!description}>
+          <Button
+            variant="outline"
+            w="full"
+            h="auto"
+            minH="20"
+            p="2.5"
+            flexDirection="column"
+            gap="2"
+            whiteSpace="normal"
+            textAlign="center"
+            cursor={disabled ? 'not-allowed' : 'grab'}
+            disabled={disabled}
+            draggable={!disabled}
+            onDragStart={onDragStart}
+            onDragEnd={drag.end}
+            onClick={() => {
+              if (!disabled) onAdd()
+            }}
+          >
+            <Box
+              w="full"
+              h="10"
+              rounded="md"
+              bg="bg.muted"
+              color="fg.muted"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              _groupHover={{ bg: 'brand.subtle', color: 'brand.fg' }}
+              transition="background 120ms, color 120ms"
+            >
+              {icon}
+            </Box>
+            <Text fontSize="xs" fontWeight="medium" lineClamp="2" w="full">
+              {name}
+            </Text>
+          </Button>
+        </Tooltip>
+        {onRemove && (
+          <IconButton
+            aria-label={removeLabel ?? ''}
+            title={removeLabel}
+            size="2xs"
+            variant="subtle"
+            position="absolute"
+            top="1"
+            right="1"
+            opacity="0"
+            _groupHover={{ opacity: 1 }}
+            _focusVisible={{ opacity: 1 }}
+            css={{ '@media (hover: none)': { opacity: 1 } }}
+            onClick={onRemove}
+          >
+            <LuX />
+          </IconButton>
+        )}
+      </Box>
+    )
   }
 
   return (
@@ -244,6 +329,7 @@ export function AddPalette({
   }, [scope])
 
   const blockSchemas = useMemo(() => registeredBlocks(), [])
+  const saved = useSavedBlocks()
 
   const needle = query.trim().toLowerCase()
   const match = (name: string, description: string) =>
@@ -256,11 +342,13 @@ export function AddPalette({
     sections: sectionEntries.filter((entry) =>
       match(l(entry.preset?.name ?? entry.schema.name), ''),
     ).length,
-    blocks: blockSchemas.filter((schema) =>
-      match(l(schema.name), schema.description ? l(schema.description) : ''),
-    ).length,
+    blocks:
+      blockSchemas.filter((schema) =>
+        match(l(schema.name), schema.description ? l(schema.description) : ''),
+      ).length + saved.filter((entry) => match(entry.name, '')).length,
   }
   const nothing = matching[mode] === 0
+  const savedMatching = saved.filter((entry) => match(entry.name, ''))
 
   return (
     <Stack gap="3">
@@ -385,9 +473,33 @@ export function AddPalette({
         </Stack>
       ) : (
         <Stack gap="5">
+          {savedMatching.length > 0 && (
+            <Stack gap="2">
+              <GroupHeading>{t('paletteSaved')}</GroupHeading>
+              <SimpleGrid columns={2} gap="2">
+                {savedMatching.map((saved) => (
+                  <PaletteCard
+                    key={saved.id}
+                    tile
+                    item={() => ({
+                      kind: 'blocks',
+                      blocks: [paletteBlockOf(saved)],
+                      label: saved.name,
+                    })}
+                    name={saved.name}
+                    description={l(blockSchema(saved.block.type)?.name ?? { en: '', id: '' })}
+                    icon={<Icon as={blockGlyph(saved.block.type) ?? LuPlus} boxSize="5" />}
+                    onAdd={() => onAddBlocks([paletteBlockOf(saved)], saved.name)}
+                    onRemove={() => removeSavedBlock(saved.id)}
+                    removeLabel={t('removeSavedBlock')}
+                  />
+                ))}
+              </SimpleGrid>
+            </Stack>
+          )}
           <Stack gap="2">
             <GroupHeading>{t('palettePrimitives')}</GroupHeading>
-            <SimpleGrid columns={1} gap="2">
+            <SimpleGrid columns={2} gap="2">
               {blockSchemas
                 .filter((schema) =>
                   match(l(schema.name), schema.description ? l(schema.description) : ''),
@@ -395,6 +507,7 @@ export function AddPalette({
                 .map((schema) => (
                   <PaletteCard
                     key={schema.type}
+                    tile
                     item={{
                       kind: 'blocks',
                       blocks: [{ type: schema.type }],
@@ -402,7 +515,7 @@ export function AddPalette({
                     }}
                     name={l(schema.name)}
                     description={schema.description ? l(schema.description) : ''}
-                    icon={<Icon as={blockGlyph(schema.type) ?? LuPlus} boxSize="4.5" />}
+                    icon={<Icon as={blockGlyph(schema.type) ?? LuPlus} boxSize="5" />}
                     onAdd={() => onAddBlocks([{ type: schema.type }], l(schema.name))}
                   />
                 ))}
