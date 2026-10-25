@@ -172,6 +172,7 @@ export function MediaPickerDialog({
                   >
                     <FileUpload.HiddenInput />
                     <FileUpload.Dropzone
+                      w="full"
                       minH="56"
                       rounded="lg"
                       borderWidth="2px"
