@@ -294,6 +294,10 @@ const MESSAGES = {
     en: 'Search sections, blocks, or the page…',
     id: 'Cari bagian, blok, atau isi halaman…',
   },
+  commandPlaceholderAdd: {
+    en: 'Add a section or block here…',
+    id: 'Tambah bagian atau blok di sini…',
+  },
   commandOpen: { en: 'On this page', id: 'Di halaman ini' },
   commandAddSection: { en: 'Add a section', id: 'Tambah bagian' },
   commandAddBlock: { en: 'Add a block', id: 'Tambah blok' },

@@ -55,6 +55,7 @@ export function CommandPalette({
   onOpenSection,
   onAddSection,
   onAddBlocks,
+  addOnly = false,
 }: {
   open: boolean
   onClose: () => void
@@ -64,6 +65,8 @@ export function CommandPalette({
   onOpenSection: (id: string) => void
   onAddSection: (type: SectionType, preset: SectionPreset | null) => void
   onAddBlocks: (blocks: readonly PaletteBlock[], label: string) => void
+  /** Opened by a "+" between sections: only what can be added, not the page's own. */
+  addOnly?: boolean
 }) {
   const { t, l } = useEditorText()
   const [query, setQuery] = useState('')
@@ -79,7 +82,7 @@ export function CommandPalette({
 
   const commands = useMemo<Command[]>(() => {
     const out: Command[] = []
-    for (const section of sections) {
+    for (const section of addOnly ? [] : sections) {
       const schema = sectionSchema(section.type)
       if (!schema) continue
       const heading = typeof section.settings.heading === 'string' ? section.settings.heading : ''
@@ -128,7 +131,7 @@ export function CommandPalette({
       })
     }
     return out
-  }, [sections, scope, counts, saved, l, t, onOpenSection, onAddSection, onAddBlocks])
+  }, [sections, scope, counts, saved, l, t, onOpenSection, onAddSection, onAddBlocks, addOnly])
 
   const needle = query.trim().toLowerCase()
   const results = commands.filter((command) =>
@@ -178,7 +181,7 @@ export function CommandPalette({
                 size="md"
                 px="0"
                 _focusVisible={{ outline: 'none', boxShadow: 'none' }}
-                placeholder={t('commandPlaceholder')}
+                placeholder={addOnly ? t('commandPlaceholderAdd') : t('commandPlaceholder')}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.currentTarget.value)

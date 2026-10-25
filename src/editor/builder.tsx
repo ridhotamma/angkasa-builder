@@ -511,10 +511,14 @@ function Builder({
     root: inspectorRoot,
     reset: resetInspector,
   } = usePanelSplitter('end')
-  // The preview's "+" asks the section list to open its palette at a place.
-  const [addRequest, setAddRequest] = useState<{ index: number } | null>(null)
-  const clearAddRequest = useCallback(() => setAddRequest(null), [])
   const [commandOpen, setCommandOpen] = useState(false)
+  // Where Ctrl+K adds, when the preview's "+" opened it for one spot; `null`
+  // adds after the selection, as Ctrl+K itself does.
+  const [commandInsertAt, setCommandInsertAt] = useState<number | null>(null)
+  const closeCommand = useCallback(() => {
+    setCommandOpen(false)
+    setCommandInsertAt(null)
+  }, [])
   const [previewOpen, setPreviewOpen] = useState(false)
   const footerSlot = useBuilderDialogFooter()
 
@@ -912,11 +916,17 @@ function Builder({
    * A section added from Ctrl+K: after the selected section, or at the end —
    * the add palette's own rule — and opened, ready to fill in.
    */
+  /** Where a section from Ctrl+K goes: the "+" it came from, else after the selection. */
+  const commandIndex = () => {
+    if (commandInsertAt !== null) return Math.max(0, Math.min(sections.length, commandInsertAt))
+    const after = selected ? sections.findIndex((other) => other.id === selected.id) + 1 : 0
+    return after > 0 ? after : sections.length
+  }
+
   const addSectionFromCommand = (type: SectionType, preset: SectionPreset | null) => {
     const section = createStarterSection(type, preset)
-    const after = selected ? sections.findIndex((other) => other.id === selected.id) + 1 : 0
     const next = [...sections]
-    next.splice(after > 0 ? after : sections.length, 0, section)
+    next.splice(commandIndex(), 0, section)
     onSectionsChange(next)
     select(section.id)
   }
@@ -928,7 +938,14 @@ function Builder({
   const addBlocksFromCommand = (blocks: readonly PaletteBlock[]) => {
     const donor = createSection('blocks', { blocks: blocks as never })
     const created = readBlocks(donor.settings, 'blocks')
-    if (selected && schema?.type === 'blocks' && !selected.linkedTo && created.length > 0) {
+    // From a "+" between sections: always a new section, in that spot.
+    if (
+      commandInsertAt === null &&
+      selected &&
+      schema?.type === 'blocks' &&
+      !selected.linkedTo &&
+      created.length > 0
+    ) {
       const container = selectedBlock
         ? { parentId: selectedBlock.parentId, fieldKey: selectedBlock.field.key }
         : { parentId: null, fieldKey: 'blocks' }
@@ -948,9 +965,8 @@ function Builder({
         return
       }
     }
-    const after = selected ? sections.findIndex((other) => other.id === selected.id) + 1 : 0
     const next = [...sections]
-    next.splice(after > 0 ? after : sections.length, 0, donor)
+    next.splice(commandIndex(), 0, donor)
     onSectionsChange(next)
     select(donor.id)
   }
@@ -1029,6 +1045,7 @@ function Builder({
         const key = event.key.toLowerCase()
         if (mod && !event.shiftKey && !event.altKey && key === 'k') {
           event.preventDefault()
+          setCommandInsertAt(null)
           setCommandOpen((current) => !current)
           return
         }
@@ -1537,8 +1554,6 @@ function Builder({
         onSelect={(id) => select(id)}
         scope={scope}
         onNotice={setNotice}
-        addRequest={addRequest}
-        onAddRequestHandled={clearAddRequest}
         before={
           <>
             {details && (
@@ -1721,14 +1736,14 @@ function Builder({
 
   // The preview's "+": open the add palette in the list, aimed between two
   // sections. The selection is dropped so the list is on screen to take it.
+  // The preview's "+": the add search opens over the preview, where the
+  // seller is looking, aimed at that spot — not in the list off to one side,
+  // which a narrow screen or the AI panel may not even show.
   const onInsert = useCallback((sectionId: string, place: 'before' | 'after') => {
-    const index = latest.current.sections.findIndex((section) => section.id === sectionId)
-    if (index < 0) return
-    setSelectedId(null)
-    setSelectedBlockId(null)
-    setSelectedElementId(null)
-    setTab('sections')
-    setAddRequest({ index: place === 'before' ? index : index + 1 })
+    const found = latest.current.sections.findIndex((section) => section.id === sectionId)
+    if (found < 0) return
+    setCommandInsertAt(place === 'before' ? found : found + 1)
+    setCommandOpen(true)
   }, [])
   const sectionLabel = useCallback(
     (section: SectionInstance) => {
@@ -2036,7 +2051,8 @@ function Builder({
         {children}
         <CommandPalette
           open={commandOpen}
-          onClose={() => setCommandOpen(false)}
+          onClose={closeCommand}
+          addOnly={commandInsertAt !== null}
           sections={sections}
           scope={scope}
           counts={commandCounts}
