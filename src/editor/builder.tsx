@@ -67,11 +67,13 @@ import {
   LuArrowDown,
   LuArrowUp,
   LuChevronLeft,
+  LuChevronRight,
   LuCopy,
   LuEye,
   LuLink,
   LuMonitor,
   LuMoon,
+  LuMousePointerClick,
   LuRedo2,
   LuShoppingBag,
   LuSmartphone,
@@ -86,7 +88,7 @@ import {
 } from 'react-icons/lu'
 
 import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
-import { Tooltip } from '@repo/theme'
+import { IconTile, Tooltip } from '@repo/theme'
 
 import {
   duplicateBlock,
@@ -487,7 +489,20 @@ function Builder({
   // Below `lg` the panel takes the whole width, and the preview opens as a
   // full-screen sheet from a button pinned to the bottom instead.
   const compact = useBreakpointValue({ base: true, lg: false }, { ssr: false }) ?? false
-  const { splitter, root: splitterRoot, reset: resetPanel } = usePanelSplitter()
+  // From `xl` the editor has room for three columns: the page's structure on
+  // the left, the preview, and the selection's settings on the right. Below
+  // it the structure and the settings share one drill-down panel.
+  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false
+  const threePane = !compact && wide
+  const { splitter, root: splitterRoot, reset: resetPanel } = usePanelSplitter('start')
+  const {
+    splitter: inspectorSplitter,
+    root: inspectorRoot,
+    reset: resetInspector,
+  } = usePanelSplitter('end')
+  // The preview's "+" asks the section list to open its palette at a place.
+  const [addRequest, setAddRequest] = useState<{ index: number } | null>(null)
+  const clearAddRequest = useCallback(() => setAddRequest(null), [])
   const [previewOpen, setPreviewOpen] = useState(false)
   const footerSlot = useBuilderDialogFooter()
 
@@ -810,12 +825,11 @@ function Builder({
     [previewDoc],
   )
 
-  const back = (
-    <Button size="xs" variant="ghost" alignSelf="start" ml="-2" onClick={() => setSelectedId(null)}>
-      <Icon as={LuChevronLeft} />
-      {t('back')}
-    </Button>
-  )
+  const clearSelection = () => {
+    setSelectedId(null)
+    setSelectedBlockId(null)
+    setSelectedElementId(null)
+  }
 
   const layoutPart =
     selectedId === HEADER_ID ? 'header' : selectedId === FOOTER_ID ? 'footer' : null
@@ -882,10 +896,36 @@ function Builder({
     panelView = { view: 'list', depth: 0 }
   }
 
-  const panel =
+  // The way back from the open screen, as a trail of its parents: all
+  // sections, the section, then each block the selection sits in. Every step
+  // is a link, so a nested block is one click from any level above it.
+  const sectionName = schema ? l(schema.name) : ''
+  const crumbs: Crumb[] = [{ label: t('back'), onClick: clearSelection }]
+  if (panelView.view.startsWith('block:') && selectedBlock && schema) {
+    crumbs.push({ label: sectionName, onClick: () => setSelectedBlockId(null) })
+    const values = resolvedSelected?.settings ?? selected?.settings ?? {}
+    const parents: Crumb[] = []
+    let parentId = selectedBlock.parentId
+    while (parentId) {
+      const parent = findBlock(schema.fields, values, parentId)
+      if (!parent) break
+      const id = parent.block.id
+      parents.unshift({
+        label: parent.block.name?.trim() || l(parent.schema.name),
+        onClick: () => setSelectedBlockId(id),
+      })
+      parentId = parent.parentId
+    }
+    crumbs.push(...parents)
+  } else if (panelView.view.startsWith('element:')) {
+    crumbs.push({ label: sectionName, onClick: () => setSelectedElementId(null) })
+  }
+  const trail = <PanelTrail crumbs={crumbs} />
+
+  const inspector =
     selectedId === DETAILS_ID && details ? (
       <Stack gap="4">
-        {back}
+        {trail}
         <Stack gap="1">
           <Text fontWeight="semibold">{details.label}</Text>
           {details.description && (
@@ -898,7 +938,7 @@ function Builder({
       </Stack>
     ) : layoutPart && layout && onLayoutChange ? (
       <Stack gap="4">
-        {back}
+        {trail}
         <Stack gap="1">
           <Text fontWeight="semibold">{l(LAYOUT_PART_NAMES[layoutPart])}</Text>
           <Text textStyle="xs" color="fg.muted">
@@ -914,16 +954,7 @@ function Builder({
       </Stack>
     ) : selected && schema && selectedBlock && blockActions ? (
       <Stack gap="4">
-        <Button
-          size="xs"
-          variant="ghost"
-          alignSelf="start"
-          ml="-2"
-          onClick={() => setSelectedBlockId(selectedBlock.parentId)}
-        >
-          <Icon as={LuChevronLeft} />
-          {t('backOne')}
-        </Button>
+        {trail}
         <Stack gap="1">
           <HStack gap="1.5" minW="0">
             <Text fontWeight="semibold" truncate minW="0">
@@ -1048,16 +1079,7 @@ function Builder({
       </Stack>
     ) : selected && selectedElementId ? (
       <Stack gap="4">
-        <Button
-          size="xs"
-          variant="ghost"
-          alignSelf="start"
-          ml="-2"
-          onClick={() => setSelectedElementId(null)}
-        >
-          <Icon as={LuChevronLeft} />
-          {t('back')}
-        </Button>
+        {trail}
         <Stack gap="1">
           <Text fontWeight="semibold">
             {selectedElementKind === 'text' ? t('textElement') : t('buttonElement')}
@@ -1105,7 +1127,7 @@ function Builder({
       </Stack>
     ) : selected && schema && SECTION_LINKING_ENABLED && selected.linkedTo ? (
       <Stack gap="4">
-        {back}
+        {trail}
         <Stack gap="1">
           <HStack gap="2">
             <Icon as={LuLink} color="brand.solid" />
@@ -1201,7 +1223,7 @@ function Builder({
       </Stack>
     ) : selected && schema ? (
       <Stack gap="4">
-        {back}
+        {trail}
         <Stack gap="1">
           <Text fontWeight="semibold">{l(schema.name)}</Text>
           <Text textStyle="xs" color="fg.muted">
@@ -1251,9 +1273,7 @@ function Builder({
               values={selected.style}
               services={services}
               defaultOpen={['surface']}
-              onChange={(style) =>
-                updateSection(selected.id, (section) => ({ ...section, style }))
-              }
+              onChange={(style) => updateSection(selected.id, (section) => ({ ...section, style }))}
             />
           </Tabs.Content>
           <Tabs.Content value="visibility" p="0">
@@ -1270,61 +1290,64 @@ function Builder({
           </Tabs.Content>
         </Tabs.Root>
       </Stack>
-    ) : (
-      <Stack gap="4">
-        {template && (
-          <HStack gap="2">
-            <Text fontSize="xs" color="fg.muted" flexShrink="0">
-              {t('editingTemplate')}
-            </Text>
-            <SelectInput
-              value={template.value}
-              onChange={(value) => value && template.onChange(value as TemplateKey)}
-              options={TEMPLATE_KEYS.map((key) => ({
-                value: key,
-                label: t(TEMPLATE_LABELS[key]),
-              }))}
+    ) : null
+
+  const listView = (
+    <Stack gap="4">
+      {template && (
+        <HStack gap="2">
+          <Text fontSize="xs" color="fg.muted" flexShrink="0">
+            {t('editingTemplate')}
+          </Text>
+          <SelectInput
+            value={template.value}
+            onChange={(value) => value && template.onChange(value as TemplateKey)}
+            options={TEMPLATE_KEYS.map((key) => ({
+              value: key,
+              label: t(TEMPLATE_LABELS[key]),
+            }))}
+          />
+        </HStack>
+      )}
+      {notice && (
+        <Alert.Root status="success" size="sm">
+          <Alert.Indicator />
+          <Alert.Description>{notice}</Alert.Description>
+        </Alert.Root>
+      )}
+      {onSettingsChange ? (
+        <Tabs.Root
+          value={tab}
+          onValueChange={({ value }) => setTab(value as 'sections' | 'theme')}
+          size="sm"
+          variant="line"
+          fitted
+        >
+          <Tabs.List mb="4">
+            <Tabs.Trigger value="sections">{t('sections')}</Tabs.Trigger>
+            <Tabs.Trigger value="theme">{t('theme')}</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="sections" p="0">
+            {list()}
+          </Tabs.Content>
+          <Tabs.Content value="theme" p="0">
+            <ThemeSettingsPanel
+              settings={settings}
+              onChange={onSettingsChange}
+              shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
+              priorityLookKeys={startWithLooks?.priorityKeys}
+              sections={sections}
+              onSectionsChange={onSectionsChange}
+              onTranslate={services.translate}
             />
-          </HStack>
-        )}
-        {notice && (
-          <Alert.Root status="success" size="sm">
-            <Alert.Indicator />
-            <Alert.Description>{notice}</Alert.Description>
-          </Alert.Root>
-        )}
-        {onSettingsChange ? (
-          <Tabs.Root
-            value={tab}
-            onValueChange={({ value }) => setTab(value as 'sections' | 'theme')}
-            size="sm"
-            variant="line"
-            fitted
-          >
-            <Tabs.List mb="4">
-              <Tabs.Trigger value="sections">{t('sections')}</Tabs.Trigger>
-              <Tabs.Trigger value="theme">{t('theme')}</Tabs.Trigger>
-            </Tabs.List>
-            <Tabs.Content value="sections" p="0">
-              {list()}
-            </Tabs.Content>
-            <Tabs.Content value="theme" p="0">
-              <ThemeSettingsPanel
-                settings={settings}
-                onChange={onSettingsChange}
-                shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
-                priorityLookKeys={startWithLooks?.priorityKeys}
-                sections={sections}
-                onSectionsChange={onSectionsChange}
-                onTranslate={services.translate}
-              />
-            </Tabs.Content>
-          </Tabs.Root>
-        ) : (
-          list()
-        )}
-      </Stack>
-    )
+          </Tabs.Content>
+        </Tabs.Root>
+      ) : (
+        list()
+      )}
+    </Stack>
+  )
+  const panel = inspector ?? listView
 
   function list() {
     return (
@@ -1335,6 +1358,8 @@ function Builder({
         onSelect={(id) => select(id)}
         scope={scope}
         onNotice={setNotice}
+        addRequest={addRequest}
+        onAddRequestHandled={clearAddRequest}
         before={
           <>
             {details && (
@@ -1515,6 +1540,26 @@ function Builder({
     )
   }, [layout, scope, pickable, t])
 
+  // The preview's "+": open the add palette in the list, aimed between two
+  // sections. The selection is dropped so the list is on screen to take it.
+  const onInsert = useCallback((sectionId: string, place: 'before' | 'after') => {
+    const index = latest.current.sections.findIndex((section) => section.id === sectionId)
+    if (index < 0) return
+    setSelectedId(null)
+    setSelectedBlockId(null)
+    setSelectedElementId(null)
+    setTab('sections')
+    setAddRequest({ index: place === 'before' ? index : index + 1 })
+  }, [])
+  const sectionLabel = useCallback(
+    (section: SectionInstance) => {
+      const shape = sectionSchema(section.type)
+      return shape ? l(shape.name) : section.type
+    },
+    [l],
+  )
+  const insertLabel = t('addSectionHere')
+
   const edited = useMemo(
     () => (
       <SectionsRenderer
@@ -1522,6 +1567,9 @@ function Builder({
         env={env}
         selectedId={selectedId}
         onSelect={(id) => select(id, true)}
+        label={sectionLabel}
+        onInsert={onInsert}
+        insertLabel={insertLabel}
         toolbar={(section) => (
           <SectionToolbar
             section={section}
@@ -1537,7 +1585,17 @@ function Builder({
         )}
       />
     ),
-    [previewSections, env, selectedId, select, revealSoon, onSectionsChange],
+    [
+      previewSections,
+      env,
+      selectedId,
+      select,
+      revealSoon,
+      onSectionsChange,
+      sectionLabel,
+      onInsert,
+      insertLabel,
+    ],
   )
 
   // The frame gets no `editing` — its headings are the theme's, and typing
@@ -1718,22 +1776,8 @@ function Builder({
     </PreviewFrame>
   )
 
-  const panelBody = panelOverride ? (
-    // The host panel fills the same frame the section list gets, but without
-    // the scroll area: a chat pins its composer and scrolls its own messages.
-    <Box
-      h={{ lg: 'full' }}
-      minH="0"
-      minW="0"
-      borderWidth="1px"
-      borderColor="border.subtle"
-      rounded="lg"
-      bg="bg.panel"
-      overflow="hidden"
-    >
-      {panelOverride}
-    </Box>
-  ) : (
+  /** A column of the editor: bordered, scrolling on its own. */
+  const scrollPanel = (children: ReactNode) => (
     <ScrollArea.Root
       size="xs"
       h={{ lg: 'full' }}
@@ -1750,20 +1794,43 @@ function Builder({
             input — push the whole panel wider than its column and clip the
             controls. The panel only ever scrolls vertically. */}
         <ScrollArea.Content px="4" pb="4" style={{ minWidth: 0 }}>
-          <PanelSlide view={panelView.view} depth={panelView.depth}>
-            {panel}
-          </PanelSlide>
+          {children}
         </ScrollArea.Content>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar />
     </ScrollArea.Root>
   )
 
+  // The host panel fills the same frame the section list gets, but without
+  // the scroll area: a chat pins its composer and scrolls its own messages.
+  const overrideBox = panelOverride ? (
+    <Box
+      h={{ lg: 'full' }}
+      minH="0"
+      minW="0"
+      borderWidth="1px"
+      borderColor="border.subtle"
+      rounded="lg"
+      bg="bg.panel"
+      overflow="hidden"
+    >
+      {panelOverride}
+    </Box>
+  ) : null
+
+  const panelBody =
+    overrideBox ??
+    scrollPanel(
+      <PanelSlide view={panelView.view} depth={panelView.depth}>
+        {panel}
+      </PanelSlide>,
+    )
+
   // The panel's link controls can point at any section on the page being
   // edited, so the list is offered to them here rather than through the host's
   // services (which know the catalogue, not the layout). The section being
   // edited is named too, so no section can be offered a link to itself.
-  const panelBox = (
+  const withProviders = (children: ReactNode) => (
     <SectionLinkProvider sections={sections} currentSectionId={selected?.id ?? null}>
       <BlockEditorProvider
         fields={schema?.fields ?? []}
@@ -1777,10 +1844,86 @@ function Builder({
         selectedId={selectedBlockId}
         onSelect={onSelectBlockInPanel}
       >
-        {panelBody}
+        {children}
       </BlockEditorProvider>
     </SectionLinkProvider>
   )
+  const panelBox = withProviders(panelBody)
+
+  // The preview with its bar above it, as it sits beside the panels.
+  const canvas = (
+    <Flex direction="column" gap="3" minH="0" minW="0" flex="1">
+      {previewBar}
+      <Box
+        flex="1"
+        minH="0"
+        rounded="lg"
+        borderWidth="1px"
+        borderColor="border.subtle"
+        overflow="hidden"
+        position="relative"
+      >
+        {previewFrame}
+        <DropOverlay
+          doc={previewDoc}
+          active={Boolean(paletteDrag.item)}
+          blocks={paletteDrag.item?.kind === 'blocks'}
+          sections={sections}
+          onDrop={onPaletteDrop}
+        />
+      </Box>
+    </Flex>
+  )
+
+  if (threePane) {
+    // Structure | preview | settings. The settings column is draggable and
+    // remembered like the two-column panel (see `usePanelSplitter`); the
+    // structure column keeps a fixed width, as a list of names needs no more.
+    const inspectorBody =
+      overrideBox ??
+      scrollPanel(
+        <PanelSlide view={panelView.view} depth={panelView.depth}>
+          {inspector ?? (
+            <Stack gap="3" align="center" textAlign="center" py="14" px="2">
+              <IconTile icon={LuMousePointerClick} size="md" bg="bg.muted" color="fg.muted" />
+              <Text fontWeight="semibold" fontSize="sm">
+                {t('inspectorEmptyTitle')}
+              </Text>
+              <Text fontSize="xs" color="fg.muted" maxW="64">
+                {t('inspectorEmptyHelp')}
+              </Text>
+            </Stack>
+          )}
+        </PanelSlide>,
+      )
+    return withProviders(
+      <Flex h={height} minH="0" gap="3">
+        <Flex w={{ base: '18rem', '2xl': '20rem' }} flexShrink="0" minH="0" direction="column">
+          {scrollPanel(<Box pt="4">{listView}</Box>)}
+        </Flex>
+        <Box flex="1" minW="0" minH="0">
+          <Splitter.RootProvider ref={inspectorRoot} value={inspectorSplitter}>
+            <Splitter.Panel id="preview" pe="2" minW="0" display="flex">
+              {canvas}
+            </Splitter.Panel>
+            <Splitter.ResizeTrigger
+              id="preview:panel"
+              colorPalette="brand"
+              aria-label={t('resizeInspector')}
+              title={t('resizeInspector')}
+              onDoubleClick={resetInspector}
+            >
+              <Splitter.ResizeTriggerSeparator />
+              <Splitter.ResizeTriggerIndicator />
+            </Splitter.ResizeTrigger>
+            <Splitter.Panel id="panel" ps="2" minW="0">
+              {inspectorBody}
+            </Splitter.Panel>
+          </Splitter.RootProvider>
+        </Box>
+      </Flex>,
+    )
+  }
 
   if (!compact) {
     // Side by side, with the line between them draggable (see `usePanelSplitter`).
@@ -1805,27 +1948,7 @@ function Builder({
             <Splitter.ResizeTriggerIndicator />
           </Splitter.ResizeTrigger>
           <Splitter.Panel id="preview" ps="2" minW="0" display="flex">
-            <Flex direction="column" gap="3" minH="0" minW="0" flex="1">
-              {previewBar}
-              <Box
-                flex="1"
-                minH="0"
-                rounded="lg"
-                borderWidth="1px"
-                borderColor="border.subtle"
-                overflow="hidden"
-                position="relative"
-              >
-                {previewFrame}
-                <DropOverlay
-                  doc={previewDoc}
-                  active={Boolean(paletteDrag.item)}
-                  blocks={paletteDrag.item?.kind === 'blocks'}
-                  sections={sections}
-                  onDrop={onPaletteDrop}
-                />
-              </Box>
-            </Flex>
+            {canvas}
           </Splitter.Panel>
         </Splitter.RootProvider>
       </Box>
@@ -1897,87 +2020,167 @@ function Builder({
   )
 }
 
-/** Where the seller's panel width is kept: this browser only, a matter of taste. */
+/** Where the seller's panel widths are kept: this browser only, a matter of taste. */
 const PANEL_WIDTH_KEY = 'pesanle:page-builder:panel-width'
+const INSPECTOR_WIDTH_KEY = 'pesanle:page-builder:inspector-width'
+
+/** One step of the panel's trail back to the section list. */
+interface Crumb {
+  label: string
+  onClick: () => void
+}
 
 /**
- * The line between the panel and the preview, draggable (Chakra's `Splitter`).
+ * The open screen's parents, each a link: "All sections › Product list ›
+ * Card". It replaces a single back button, which could only ever go up one
+ * level and never said where it went.
+ */
+function PanelTrail({ crumbs }: { crumbs: readonly Crumb[] }) {
+  return (
+    <Flex as="nav" align="center" gap="0.5" wrap="wrap" ml="-2" minW="0">
+      {crumbs.map((crumb, index) => (
+        <HStack key={`${index}:${crumb.label}`} gap="0.5" minW="0">
+          {index > 0 && <Icon as={LuChevronRight} boxSize="3" color="fg.subtle" flexShrink="0" />}
+          <Button
+            size="xs"
+            variant="ghost"
+            px="2"
+            minW="0"
+            maxW="44"
+            color={index === crumbs.length - 1 ? 'fg' : 'fg.muted'}
+            onClick={crumb.onClick}
+          >
+            {index === 0 && <Icon as={LuChevronLeft} />}
+            <Text as="span" truncate>
+              {crumb.label}
+            </Text>
+          </Button>
+        </HStack>
+      ))}
+    </Flex>
+  )
+}
+
+/**
+ * A draggable line beside a panel (Chakra's `Splitter`): `start` puts the
+ * panel left of the preview, as the two-column editor has it; `end` puts it
+ * on the right, as the three-column editor's settings column.
  *
  * The panel keeps its width in pixels when the window changes, and is held
  * between 18rem — what its controls need — and 40rem; the preview never gets
- * less than half the editor, so it stays a preview. The width a seller drags
- * to is remembered in this browser; a double-click puts back the default.
+ * less than its share of the editor, so it stays a preview. The width a seller
+ * drags to is remembered in this browser; a double-click puts back the default.
  */
-function usePanelSplitter() {
+function usePanelSplitter(side: 'start' | 'end') {
   const fallback = useBreakpointValue({ base: '20rem', '2xl': '24rem' }, { ssr: false }) ?? '20rem'
+  const key = side === 'start' ? PANEL_WIDTH_KEY : INSPECTOR_WIDTH_KEY
+  const at = side === 'start' ? 0 : 1
 
-  const root = useRef<HTMLDivElement | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  // The root mounts only while its layout is on screen, so the stored width
+  // is applied when it appears rather than once on the builder's mount.
+  const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null)
+  const root = useCallback((element: HTMLDivElement | null) => {
+    rootRef.current = element
+    setRootElement(element)
+  }, [])
   // A reset resizes too; that resize is the default, not a width to remember.
   const resetting = useRef(false)
+  const panel = {
+    id: 'panel',
+    minSize: '18rem',
+    maxSize: '40rem',
+    resizeBehavior: 'preserve-pixel-size' as const,
+  }
+  const preview = { id: 'preview', minSize: side === 'start' ? '50%' : '40%' }
   const splitter = useSplitter({
-    panels: [
-      { id: 'panel', minSize: '18rem', maxSize: '40rem', resizeBehavior: 'preserve-pixel-size' },
-      { id: 'preview', minSize: '50%' },
-    ],
-    // Initial only: the persisted width is applied after mount (see below),
-    // since storage cannot be read on the first render. One entry is enough —
-    // the preview takes the remainder. A css length (`rem`/`px`) is a valid
-    // `PanelSize`; `onResizeEnd` reports `%`, converted back to px for storage.
-    defaultSize: [fallback],
+    panels: side === 'start' ? [panel, preview] : [preview, panel],
+    // Initial only: the persisted width is applied once the root is on screen
+    // (see below), since storage cannot be read on the first render. The
+    // preview's entry is left empty and takes the remainder. A css length
+    // (`rem`/`px`) is a valid `PanelSize`; `onResizeEnd` reports `%`,
+    // converted back to px for storage.
+    defaultSize: (side === 'start' ? [fallback] : [undefined, fallback]) as string[],
     onResizeEnd: ({ size }) => {
       if (resetting.current) {
         resetting.current = false
         return
       }
-      const width = root.current?.getBoundingClientRect().width
-      const share = size[0]
+      const width = rootRef.current?.getBoundingClientRect().width
+      const share = size[at]
       if (!width || share == null) return
       try {
-        globalThis.localStorage?.setItem(PANEL_WIDTH_KEY, String(Math.round((share / 100) * width)))
+        globalThis.localStorage?.setItem(key, String(Math.round((share / 100) * width)))
       } catch {
         // As above: the width just is not remembered.
       }
     },
   })
 
+  /**
+   * The sizes that give the panel `px` pixels. The start panel takes a css
+   * length as it is; the end panel's sizes are written as shares, since the
+   * preview before it has no length of its own to give.
+   */
+  const sizesFor = useCallback(
+    (px: number): Array<string | number> | null => {
+      if (side === 'start') return [`${px}px`]
+      const width = rootRef.current?.getBoundingClientRect().width
+      if (!width) return null
+      const share = Math.min(60, (px / width) * 100)
+      return [100 - share, share]
+    },
+    [side],
+  )
+
   // The persisted width cannot drive `defaultSize`: storage is read after
-  // mount, and zag only takes `defaultSize` on init. Apply it once via
-  // `setSizes`, which takes the same `PanelSize` strings. In a frame so the
-  // splitter root has a width — `px` resolves against it, and a 0-width root
-  // would drop the size. Re-saving the same value in `onResizeEnd` is harmless.
-  const applied = useRef(false)
+  // mount, and zag only takes `defaultSize` on init. Apply it via `setSizes`
+  // in a frame, so the splitter root has a width — `px` resolves against it,
+  // and a 0-width root would drop the size. Re-saving the same value in
+  // `onResizeEnd` is harmless.
   useEffect(() => {
-    if (applied.current) return
-    applied.current = true
+    if (!rootElement) return
     let stored: number | null = null
     try {
-      const value = Number(globalThis.localStorage?.getItem(PANEL_WIDTH_KEY))
+      const value = Number(globalThis.localStorage?.getItem(key))
       if (Number.isFinite(value) && value > 0) stored = value
     } catch {
       // Storage refused (a private window, blocked site data): the default it is.
     }
     if (stored == null) return
-    const size = `${stored}px`
-    requestAnimationFrame(() => splitter.setSizes([size]))
-  }, [splitter])
+    const width = stored
+    const frame = requestAnimationFrame(() => {
+      const sizes = sizesFor(width)
+      if (sizes) splitter.setSizes(sizes as string[])
+    })
+    return () => cancelAnimationFrame(frame)
+    // `splitter` is a new object every render; the element is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rootElement, key, sizesFor])
 
   const reset = useCallback(() => {
     try {
-      globalThis.localStorage?.removeItem(PANEL_WIDTH_KEY)
+      globalThis.localStorage?.removeItem(key)
     } catch {
       // Nothing was stored to clear.
     }
     resetting.current = true
-    // Same units as `defaultSize`: a css length is valid here, and the preview
-    // again takes the remainder.
-    splitter.setSizes([fallback])
+    if (side === 'start') {
+      // Same units as `defaultSize`: a css length is valid here, and the
+      // preview again takes the remainder.
+      splitter.setSizes([fallback])
+    } else {
+      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const sizes = sizesFor(Number.parseFloat(fallback) * rem)
+      if (sizes) splitter.setSizes(sizes as string[])
+    }
     // A programmatic set fires `onResizeEnd` (swallowed above) — unless the
     // size is already the default, in which case nothing fires. Clear anyway
     // so the next drag is still remembered.
     queueMicrotask(() => {
       resetting.current = false
     })
-  }, [splitter, fallback])
+  }, [splitter, fallback, key, side, sizesFor])
 
   return { splitter, root, reset }
 }

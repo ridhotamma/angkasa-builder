@@ -7,7 +7,7 @@
  * and hands each one to its renderer, inside the frame its style asks for.
  */
 
-import { Badge, Box, Stack, type BoxProps } from '@chakra-ui/react'
+import { Badge, Box, chakra, Stack, type BoxProps } from '@chakra-ui/react'
 import {
   memo,
   useCallback,
@@ -90,6 +90,15 @@ export interface SectionsRendererProps {
    * omitted. A frame around an article makes only its header pickable.
    */
   pickable?: (section: SectionInstance) => boolean
+  /** Editor only: the name a hovered or selected section shows on its outline. */
+  label?: (section: SectionInstance) => string
+  /**
+   * Editor only: a "+" on the hovered section's outline asks for a new section
+   * next to it — after it, or before the first one.
+   */
+  onInsert?: (sectionId: string, place: 'before' | 'after') => void
+  /** The "+" button's accessible name. */
+  insertLabel?: string
 }
 
 /**
@@ -185,6 +194,9 @@ export function SectionsRenderer({
   onSelect,
   toolbar,
   pickable,
+  label,
+  onInsert,
+  insertLabel,
 }: SectionsRendererProps) {
   const now = env.now ?? new Date()
   const visible = drawnSections(sections, env.mode, now)
@@ -194,6 +206,12 @@ export function SectionsRenderer({
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
   const pick = useCallback((id: string) => onSelectRef.current?.(id), [])
+  const onInsertRef = useRef(onInsert)
+  onInsertRef.current = onInsert
+  const insert = useCallback(
+    (id: string, place: 'before' | 'after') => onInsertRef.current?.(id, place),
+    [],
+  )
 
   // The editor redraws on every edit; a ScrollTrigger measured against the
   // old layout is re-measured once the new one has painted.
@@ -226,6 +244,9 @@ export function SectionsRenderer({
               first={index === 0}
               toolbar={selected && toolbar ? toolbar(section) : null}
               onSelect={pick}
+              label={label?.(section)}
+              onInsert={onInsert ? insert : undefined}
+              insertLabel={insertLabel}
             />
           )
         })}
@@ -249,6 +270,9 @@ const SectionItem = memo(function SectionItem({
   first,
   toolbar,
   onSelect,
+  label,
+  onInsert,
+  insertLabel,
 }: {
   section: SectionInstance
   flush: boolean
@@ -258,6 +282,9 @@ const SectionItem = memo(function SectionItem({
   first: boolean
   toolbar: ReactNode
   onSelect: (id: string) => void
+  label?: string
+  onInsert?: (sectionId: string, place: 'before' | 'after') => void
+  insertLabel?: string
 }) {
   const { now } = useRenderEnvironment()
   const Section = SECTION_RENDERERS[section.type]
@@ -324,6 +351,9 @@ const SectionItem = memo(function SectionItem({
       selected={selected}
       first={first}
       toolbar={toolbar}
+      label={label}
+      onInsert={onInsert && ((place) => onInsert(section.id, place))}
+      insertLabel={insertLabel}
       badge={<ScheduleBadge section={section} now={now ?? new Date()} />}
       onClickCapture={(event) => {
         const target = event.target as HTMLElement
@@ -432,6 +462,9 @@ function PickableSection({
   first,
   toolbar,
   badge,
+  label,
+  onInsert,
+  insertLabel,
   children,
   ...props
 }: {
@@ -443,6 +476,10 @@ function PickableSection({
   first: boolean
   toolbar: ReactNode
   badge: ReactNode
+  /** The section's name, tagged on the outline's corner while hovered or selected. */
+  label?: string
+  onInsert?: (place: 'before' | 'after') => void
+  insertLabel?: string
   children: ReactNode
 } & BoxProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -484,6 +521,9 @@ function PickableSection({
         '&:hover > [data-section-outline]': {
           borderColor: selected ? 'brand.solid' : 'brand.muted',
         },
+        // The name tag and the "+" show with the outline; the selected
+        // section keeps its tag.
+        '&:hover > [data-section-outline] [data-outline-extra]': { opacity: 1 },
       }}
       {...props}
     >
@@ -504,6 +544,39 @@ function PickableSection({
           transition="border-color 120ms"
           style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
         >
+          {label && (
+            <Box
+              data-outline-extra=""
+              position="absolute"
+              left={inside ? '2' : '-2px'}
+              top={inside ? '2' : '-2px'}
+              transform={inside ? undefined : 'translateY(-100%)'}
+              opacity={selected ? 1 : 0}
+              transition="opacity 120ms"
+              px="1.5"
+              py="0.5"
+              roundedTop={inside ? 'sm' : 'md'}
+              roundedBottom={inside ? 'sm' : '0'}
+              bg={selected ? 'brand.solid' : 'brand.muted'}
+              color={selected ? 'brand.contrast' : 'brand.fg'}
+              fontSize="11px"
+              fontWeight="semibold"
+              lineHeight="1.4"
+              whiteSpace="nowrap"
+              maxW="60%"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              fontFamily="system-ui, sans-serif"
+            >
+              {label}
+            </Box>
+          )}
+          {onInsert && first && (
+            <InsertButton place="top" label={insertLabel} onClick={() => onInsert('before')} />
+          )}
+          {onInsert && (
+            <InsertButton place="bottom" label={insertLabel} onClick={() => onInsert('after')} />
+          )}
           {toolbar && (
             <Box
               position="absolute"
@@ -519,6 +592,64 @@ function PickableSection({
         </Box>
       )}
     </Box>
+  )
+}
+
+/**
+ * The "+" on a hovered section's top or bottom edge: a new section goes in
+ * right there, instead of at the end of the page.
+ */
+function InsertButton({
+  place,
+  label,
+  onClick,
+}: {
+  place: 'top' | 'bottom'
+  label?: string
+  onClick: () => void
+}) {
+  return (
+    <chakra.button
+      type="button"
+      data-outline-extra=""
+      aria-label={label}
+      title={label}
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick()
+      }}
+      position="absolute"
+      left="50%"
+      {...(place === 'top' ? { top: '0' } : { bottom: '0' })}
+      transform={`translate(-50%, ${place === 'top' ? '-50%' : '50%'})`}
+      pointerEvents="auto"
+      opacity={0}
+      transition="opacity 120ms, transform 120ms"
+      boxSize="7"
+      rounded="full"
+      bg="brand.solid"
+      color="brand.contrast"
+      shadow="md"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      cursor="pointer"
+      _hover={{ bg: 'brand.emphasized' }}
+      _focusVisible={{ opacity: 1, outline: '2px solid', outlineColor: 'brand.focusRing' }}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        aria-hidden="true"
+      >
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+    </chakra.button>
   )
 }
 

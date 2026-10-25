@@ -28,7 +28,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   LuClipboardCopy,
   LuCopy,
@@ -370,6 +370,8 @@ export function SectionList({
   before,
   after,
   onNotice,
+  addRequest,
+  onAddRequestHandled,
 }: {
   sections: SectionInstance[]
   onChange: (sections: SectionInstance[]) => void
@@ -383,6 +385,13 @@ export function SectionList({
   after?: ReactNode
   /** Says something short to the seller, e.g. that a section was copied. */
   onNotice?: (message: string) => void
+  /**
+   * Opens the add palette from outside — the preview's "+" between sections —
+   * aimed at one index of `sections`. The list says when it has taken the
+   * request, so remounting it later does not open the palette again.
+   */
+  addRequest?: { index: number } | null
+  onAddRequestHandled?: () => void
 }) {
   const { t, l } = useEditorText()
   const [adding, setAdding] = useState(false)
@@ -392,6 +401,16 @@ export function SectionList({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const full = sections.length >= MAX_SECTIONS
+  // Where the next click-added section goes, when a request named a place.
+  const [insertAt, setInsertAt] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!addRequest) return
+    setCopied(readClipboard(scope))
+    setInsertAt(addRequest.index)
+    setAdding(!full)
+    onAddRequestHandled?.()
+  }, [addRequest, onAddRequestHandled, scope, full])
   const counts = useMemo(() => {
     const map = new Map<string, number>()
     for (const section of sections) map.set(section.type, (map.get(section.type) ?? 0) + 1)
@@ -422,16 +441,23 @@ export function SectionList({
   }
 
   function insert(section: SectionInstance) {
-    const at = selectedId
-      ? sections.findIndex((other) => other.id === selectedId) + 1
-      : sections.length
+    const after = selectedId ? sections.findIndex((other) => other.id === selectedId) + 1 : 0
+    const at =
+      insertAt !== null
+        ? Math.max(0, Math.min(sections.length, insertAt))
+        : after > 0
+          ? after
+          : sections.length
+    setInsertAt(null)
     const next = [...sections]
-    next.splice(at > 0 ? at : sections.length, 0, section)
+    next.splice(at, 0, section)
     // Added by click: open its settings straight away so they can be filled
-    // in. A drop from the palette only adds it (see `onPaletteDrop`), so the
-    // palette stays open for the next item.
+    // in, and return to the list, where the new row now sits. A drop from the
+    // palette only adds it (see `onPaletteDrop`), so the palette stays open
+    // for the next item.
     onChange(next)
     onSelect(section.id)
+    setAdding(false)
   }
 
   // The palette takes over the panel while it is open, so dragging from it
@@ -458,7 +484,10 @@ export function SectionList({
             if (schema?.max !== undefined && (counts.get(copied.type) ?? 0) >= schema.max) return
             insert({ ...copied, id: newId() })
           }}
-          onClose={() => setAdding(false)}
+          onClose={() => {
+            setAdding(false)
+            setInsertAt(null)
+          }}
         />
       ) : (
         <Stack gap="3">

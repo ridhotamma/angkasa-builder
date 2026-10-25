@@ -21,7 +21,6 @@ const MESSAGES = {
     id: 'Belum ada bagian. Tambahkan satu untuk mulai menyusun halaman ini.',
   },
   back: { en: 'All sections', id: 'Semua bagian' },
-  backOne: { en: 'Back', id: 'Kembali' },
   hide: { en: 'Hide', id: 'Sembunyikan' },
   show: { en: 'Show', id: 'Tampilkan' },
   duplicate: { en: 'Duplicate', id: 'Duplikat' },
@@ -280,6 +279,13 @@ const MESSAGES = {
   sidesOutside: { en: 'Outside', id: 'Luar' },
   sidesInside: { en: 'Padding', id: 'Dalam' },
   sidesOffset: { en: 'Offset', id: 'Geser' },
+  addSectionHere: { en: 'Add a section here', id: 'Tambah bagian di sini' },
+  inspectorEmptyTitle: { en: 'Nothing selected', id: 'Belum ada yang dipilih' },
+  inspectorEmptyHelp: {
+    en: 'Click a section in the preview or the list to edit it. Hover a section and press + to add one below it.',
+    id: 'Klik bagian di pratinjau atau di daftar untuk mengeditnya. Arahkan ke bagian lalu tekan + untuk menambah bagian di bawahnya.',
+  },
+  resizeInspector: { en: 'Resize the settings panel', id: 'Ubah lebar panel pengaturan' },
   buttonElement: { en: 'Button', id: 'Tombol' },
   buttonElementHelp: {
     en: 'Click the button in the preview to restyle just that one. Every other button keeps the theme.',
