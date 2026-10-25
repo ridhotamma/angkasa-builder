@@ -2,22 +2,18 @@
  * "Choose from library": the image control's reusable alternative to uploading.
  *
  * The list comes from the app through `EditorServices.browseImages`, so the
- * editor never imports a server function. Uploads still go through
- * `uploadImage`; a fresh upload is selected immediately, which is what makes
- * the library grow as sellers pick. The dialog is searchable and closes the
- * moment a picture is chosen.
+ * editor never imports a server function. Uploading stays on the control
+ * outside — the dialog is only for picking a picture that already exists. It
+ * is searchable and closes the moment a picture is chosen.
  */
 
 import {
   AspectRatio,
   Box,
-  Button,
   Center,
   CloseButton,
   Dialog,
-  FileUpload,
   Grid,
-  HStack,
   Icon,
   Image,
   Input,
@@ -28,7 +24,7 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useEffect, useRef, useState } from 'react'
-import { LuCheck, LuImage, LuSearch, LuUpload } from 'react-icons/lu'
+import { LuCheck, LuImage, LuSearch } from 'react-icons/lu'
 
 import { useEditorText } from './messages'
 import type { EditorMediaItem, EditorServices } from './services'
@@ -50,7 +46,6 @@ export function MediaPickerDialog({
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<EditorMediaItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const request = useRef(0)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -94,20 +89,6 @@ export function MediaPickerDialog({
     timer.current = setTimeout(() => void load(term), 250)
   }
 
-  async function upload(file: File) {
-    setUploading(true)
-    setError(null)
-    try {
-      const fileId = await services.uploadImage(file)
-      onSelect(fileId)
-      onClose()
-    } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : String(thrown))
-    } finally {
-      setUploading(false)
-    }
-  }
-
   return (
     <Dialog.Root
       open={open}
@@ -131,33 +112,14 @@ export function MediaPickerDialog({
 
             <Dialog.Body>
               <Stack gap="4">
-                <HStack gap="2" wrap="wrap">
-                  <InputGroup startElement={<Icon as={LuSearch} boxSize="4" />} flex="1 1 14rem">
-                    <Input
-                      size="sm"
-                      value={query}
-                      placeholder={t('searchMedia')}
-                      onChange={(event) => search(event.currentTarget.value)}
-                    />
-                  </InputGroup>
-                  <FileUpload.Root
-                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.heic,.heif"
-                    maxFiles={1}
-                    disabled={uploading}
-                    onFileAccept={({ files }) => {
-                      const [file] = files
-                      if (file) void upload(file)
-                    }}
-                  >
-                    <FileUpload.HiddenInput />
-                    <FileUpload.Trigger asChild>
-                      <Button size="sm" variant="outline" loading={uploading}>
-                        <Icon as={LuUpload} />
-                        {t('upload')}
-                      </Button>
-                    </FileUpload.Trigger>
-                  </FileUpload.Root>
-                </HStack>
+                <InputGroup startElement={<Icon as={LuSearch} boxSize="4" />}>
+                  <Input
+                    size="sm"
+                    value={query}
+                    placeholder={t('searchMedia')}
+                    onChange={(event) => search(event.currentTarget.value)}
+                  />
+                </InputGroup>
 
                 {error && (
                   <Text fontSize="sm" color="danger.fg">
