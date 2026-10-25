@@ -15,7 +15,6 @@ import {
   ColorPicker,
   createListCollection,
   Field,
-  FileUpload,
   HStack,
   Icon,
   IconButton,
@@ -30,7 +29,6 @@ import {
   ScrollArea,
   SegmentGroup,
   Select,
-  Spinner,
   Stack,
   Switch,
   Text,
@@ -71,7 +69,6 @@ import {
   LuChevronRight,
   LuFolderInput,
   LuGripVertical,
-  LuImage,
   LuImagePlus,
   LuMonitor,
   LuPencil,
@@ -383,27 +380,8 @@ function ImageControl({
   services: EditorServices
 }) {
   const { t } = useEditorText()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [libraryOpen, setLibraryOpen] = useState(false)
-  // Bumped after every upload so the picker forgets the file it just took and
-  // accepts the next one, rather than refusing it as one file too many.
-  const [attempt, setAttempt] = useState(0)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const src = value ? services.imageUrl(value, { width: 480, height: 320 }) : null
-  const browseImages = services.browseImages
-
-  async function upload(file: File) {
-    setBusy(true)
-    setError(null)
-    try {
-      onChange(await services.uploadImage(file))
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
-    } finally {
-      setBusy(false)
-      setAttempt((n) => n + 1)
-    }
-  }
 
   return (
     <Stack gap="2">
@@ -418,9 +396,7 @@ function ImageControl({
         alignItems="center"
         justifyContent="center"
       >
-        {busy ? (
-          <Spinner size="sm" />
-        ) : src ? (
+        {src ? (
           <Image src={src} alt="" w="full" h="full" objectFit="cover" />
         ) : (
           <Text fontSize="xs" color="fg.muted">
@@ -429,51 +405,23 @@ function ImageControl({
         )}
       </Box>
       <HStack gap="2" wrap="wrap">
-        <FileUpload.Root
-          key={attempt}
-          accept="image/*"
-          maxFiles={1}
-          disabled={busy}
-          w="auto"
-          onFileAccept={({ files }) => {
-            const [file] = files
-            if (file) void upload(file)
-          }}
-        >
-          <FileUpload.HiddenInput />
-          <FileUpload.Trigger asChild>
-            <Button size="xs" variant="outline" loading={busy} loadingText={t('uploading')}>
-              <Icon as={LuImagePlus} />
-              {value ? t('replace') : t('upload')}
-            </Button>
-          </FileUpload.Trigger>
-        </FileUpload.Root>
-        {browseImages && (
-          <Button size="xs" variant="outline" onClick={() => setLibraryOpen(true)}>
-            <Icon as={LuImage} />
-            {t('chooseImage')}
-          </Button>
-        )}
+        <Button size="xs" variant="outline" onClick={() => setPickerOpen(true)}>
+          <Icon as={LuImagePlus} />
+          {value ? t('replace') : t('upload')}
+        </Button>
         {value && (
           <Button size="xs" variant="ghost" colorPalette="danger" onClick={() => onChange('')}>
             {t('remove')}
           </Button>
         )}
       </HStack>
-      {error && (
-        <Text fontSize="xs" color="danger.fg">
-          {error}
-        </Text>
-      )}
-      {browseImages && (
-        <MediaPickerDialog
-          open={libraryOpen}
-          onClose={() => setLibraryOpen(false)}
-          onSelect={onChange}
-          selectedId={value}
-          services={{ ...services, browseImages }}
-        />
-      )}
+      <MediaPickerDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={onChange}
+        selectedId={value}
+        services={services}
+      />
     </Stack>
   )
 }

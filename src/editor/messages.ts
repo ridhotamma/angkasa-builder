@@ -49,13 +49,22 @@ const MESSAGES = {
   uploading: { en: 'Uploading…', id: 'Mengunggah…' },
   noImage: { en: 'No image', id: 'Tidak ada gambar' },
   mediaLibrary: { en: 'Media library', id: 'Pustaka media' },
-  chooseImage: { en: 'Choose from library', id: 'Pilih dari pustaka' },
-  searchMedia: { en: 'Search your images…', id: 'Cari gambar Anda…' },
-  noMedia: {
-    en: 'No images match. Upload one to get started.',
-    id: 'Tidak ada gambar yang cocok. Unggah satu untuk memulai.',
+  mediaUploadTab: { en: 'Upload from device', id: 'Unggah dari perangkat' },
+  mediaLibraryTab: { en: 'Use from library', id: 'Gunakan dari pustaka' },
+  mediaDropHint: {
+    en: 'Drop an image here, or click to choose',
+    id: 'Jatuhkan gambar di sini, atau klik untuk memilih',
   },
-  mediaSearching: { en: 'Searching…', id: 'Mencari…' },
+  mediaDropHelp: {
+    en: 'JPG, PNG, WebP, GIF or AVIF · up to 10 MB',
+    id: 'JPG, PNG, WebP, GIF, atau AVIF · maksimal 10 MB',
+  },
+  searchMedia: { en: 'Search your images…', id: 'Cari gambar Anda…' },
+  noMedia: { en: 'No images found.', id: 'Gambar tidak ditemukan.' },
+  noMediaHint: {
+    en: 'Try another search, or switch to Upload.',
+    id: 'Coba kata lain, atau pindah ke Unggah.',
+  },
   none: { en: 'None', id: 'Tidak ada' },
   colors: { en: 'Colours', id: 'Warna' },
   brandColor: { en: 'Brand', id: 'Brand' },
