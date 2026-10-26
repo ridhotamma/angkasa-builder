@@ -254,6 +254,11 @@ export interface BlockSchema {
   /** A line the editor shows under the block's name, when it has one. */
   description?: Localized
   fields: readonly Field[]
+  /**
+   * Rewrites settings stored by an older release into today's shape before
+   * they are sanitised — a setting that was renamed or replaced.
+   */
+  upgrade?: (settings: unknown) => unknown
 }
 
 /**
@@ -651,7 +656,12 @@ function sanitizeBlocks(
       id,
       type: schema.type,
       ...(name && { name }),
-      settings: sanitizeValues(schema.fields, raw.settings, budget, depth + 1),
+      settings: sanitizeValues(
+        schema.fields,
+        schema.upgrade ? schema.upgrade(raw.settings) : raw.settings,
+        budget,
+        depth + 1,
+      ),
       ...(style && { style }),
     })
   }

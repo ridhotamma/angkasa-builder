@@ -143,7 +143,7 @@ export const BLOCK_PRESETS: readonly BlockPreset[] = [
           image(SAMPLE_PHOTOS.watch, '1/1'),
           image(SAMPLE_PHOTOS.jewellery, '1/1'),
         ],
-        { gap: 'sm', stackOnMobile: false },
+        { gap: 'sm', mobileColumns: '2' },
       ),
     ],
   },

@@ -320,6 +320,24 @@ const row: BlockSchema = {
   ],
 }
 
+/** How many columns a grid may keep on a phone. */
+export const GRID_MOBILE_COLUMNS = ['1', '2', '3', '4'] as const
+
+/**
+ * A grid saved before it had "Columns on phones" said only whether it stacked
+ * (`stackOnMobile`): stacking is one column, not stacking kept the desktop
+ * count — capped at what a phone is offered. A grid that already names its
+ * phone columns is left as it is.
+ */
+export function upgradeGridSettings(settings: unknown): unknown {
+  if (typeof settings !== 'object' || settings === null || Array.isArray(settings)) return settings
+  const raw = settings as Record<string, unknown>
+  if (raw.mobileColumns !== undefined || raw.stackOnMobile === undefined) return settings
+  const { stackOnMobile, ...rest } = raw
+  const desktop = Math.min(4, Math.max(1, Number(raw.columns) || 2))
+  return { ...rest, mobileColumns: stackOnMobile === false ? String(desktop) : '1' }
+}
+
 const grid: BlockSchema = {
   type: 'grid',
   name: { en: 'Grid', id: 'Kisi' },
@@ -338,6 +356,16 @@ const grid: BlockSchema = {
         label: { en: String(n), id: String(n) },
       })),
       default: '2',
+    },
+    {
+      kind: 'select',
+      key: 'mobileColumns',
+      label: { en: 'Columns on phones', id: 'Kolom di ponsel' },
+      options: GRID_MOBILE_COLUMNS.map((n) => ({
+        value: n,
+        label: { en: n, id: n },
+      })),
+      default: '1',
     },
     {
       kind: 'select',
@@ -364,14 +392,9 @@ const grid: BlockSchema = {
       ],
       default: 'stretch',
     },
-    {
-      kind: 'boolean',
-      key: 'stackOnMobile',
-      label: { en: 'One column on phones', id: 'Satu kolom di ponsel' },
-      default: true,
-    },
     spaceField('padding', { en: 'Padding', id: 'Jarak dalam' }, 'none'),
   ],
+  upgrade: upgradeGridSettings,
 }
 
 const richText: BlockSchema = {

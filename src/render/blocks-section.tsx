@@ -35,7 +35,7 @@ import { StoreMap } from '@repo/geoapify/store-map'
 import { useLocale } from '@repo/i18n'
 import { ImageWithFallback } from '@repo/theme'
 
-import { blockSchema, findBlock } from '../model/blocks'
+import { blockSchema, findBlock, GRID_MOBILE_COLUMNS } from '../model/blocks'
 import {
   blockStyleCss,
   readBlockBleed,
@@ -1137,7 +1137,13 @@ function GridBlock({ block }: { block: BlockValue }) {
       : `repeat(${columns}, minmax(0, 1fr))`
   const gap = SPACE_GAP[readToken(block.settings, 'gap', SPACES, 'md')]
   const align = readToken(block.settings, 'align', ROW_ALIGNS, 'stretch')
-  const stack = readBoolean(block.settings, 'stackOnMobile')
+  // On a phone: its own count, never more than the desktop's. The same count
+  // keeps the desktop's tracks, an unequal split included.
+  const mobile = Math.min(
+    columns,
+    Number(readToken(block.settings, 'mobileColumns', GRID_MOBILE_COLUMNS, '1')),
+  )
+  const mobileTrack = mobile === columns ? track : `repeat(${mobile}, minmax(0, 1fr))`
   const padding = SPACE_GAP[readToken(block.settings, 'padding', SPACES, 'none')]
   const children = readBlocks(block.settings, 'blocks')
   if (children.length === 0) {
@@ -1149,7 +1155,7 @@ function GridBlock({ block }: { block: BlockValue }) {
   }
   return (
     <Grid
-      templateColumns={{ base: stack ? '1fr' : track, md: track }}
+      templateColumns={{ base: mobileTrack, md: track }}
       gap={gap}
       alignItems={ROW_ALIGN[align]}
       p={padding}

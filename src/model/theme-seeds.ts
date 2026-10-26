@@ -183,7 +183,9 @@ const bGrid = (blocks: RawBlock[], o: GridOptions = {}): RawBlock => ({
     columns: o.columns ?? '3',
     gap: o.gap ?? 'lg',
     align: o.align ?? 'stretch',
-    stackOnMobile: o.stackOnMobile ?? true,
+    // A seed's "keep the columns on a phone" keeps the desktop count, up to
+    // the four a phone is offered — what the grid's upgrade would make of it.
+    mobileColumns: o.stackOnMobile === false ? String(Math.min(4, Number(o.columns ?? '3'))) : '1',
     padding: o.padding ?? 'none',
   },
 })

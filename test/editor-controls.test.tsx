@@ -9,6 +9,9 @@ import { system } from '@repo/theme'
 import { ChoiceCards, ToggleCards } from '../src/editor/choice-cards'
 import { ColorInput, FieldsForm } from '../src/editor/controls'
 import { FieldGroups, resetGroup } from '../src/editor/field-groups'
+import { optionPictures } from '../src/editor/option-pictures'
+import { BLOCK_STYLE_GROUPS } from '../src/model/block-style'
+import { sectionSchema } from '../src/model/sections'
 import type { EditorServices } from '../src/editor/services'
 import type { Field as FieldSpec, FieldValues } from '../src/model/fields'
 import {
@@ -227,5 +230,41 @@ describe('ChoiceCards', () => {
     )
     expect(html.match(/role="checkbox"/g)).toHaveLength(2)
     expect(html.match(/aria-checked="true"/g)).toHaveLength(2)
+  })
+})
+
+describe('option pictures', () => {
+  const field = (type: string, key: string) => {
+    const schema = sectionSchema(type)!
+    return schema.fields.find((candidate) => candidate.key === key) as never
+  }
+
+  test('layouts, ratios and alignments are drawn', () => {
+    expect(optionPictures(field('product-list', 'layout'))).toHaveLength(3)
+    expect(optionPictures(field('gallery', 'layout'))).toHaveLength(3)
+    expect(optionPictures(field('cards', 'imageRatio'))).toHaveLength(3)
+    expect(optionPictures(field('cards', 'align'))).toHaveLength(2)
+  })
+
+  test('a select with an option nothing draws keeps its usual control', () => {
+    const custom = {
+      kind: 'select',
+      key: 'layout',
+      label: { en: 'Layout', id: 'Tata letak' },
+      options: [
+        { value: 'grid', label: { en: 'Grid', id: 'Kisi' } },
+        { value: 'spiral', label: { en: 'Spiral', id: 'Spiral' } },
+      ],
+      default: 'grid',
+    } as const
+    expect(optionPictures(custom)).toBeNull()
+  })
+
+  test('block style overrides, which start at "Default", are never pictures', () => {
+    for (const group of BLOCK_STYLE_GROUPS) {
+      for (const styleField of group.fields) {
+        if (styleField.kind === 'select') expect(optionPictures(styleField), styleField.key).toBeNull()
+      }
+    }
   })
 })

@@ -519,3 +519,31 @@ describe('button block settings', () => {
     }
   })
 })
+
+/**
+ * A grid saved with the old "One column on phones" switch reads back with the
+ * phone column count that switch meant.
+ */
+describe('grid phone columns', () => {
+  const stored = (settings: Record<string, unknown>) => {
+    const section = createSection('blocks', {
+      blocks: [{ type: 'grid', settings: { blocks: [], ...settings } }],
+    } as never)
+    return readBlocks(section.settings, 'blocks')[0]!.settings
+  }
+
+  test('a stacked grid becomes one column on phones', () => {
+    expect(stored({ columns: '3', stackOnMobile: true }).mobileColumns).toBe('1')
+  })
+
+  test('an unstacked grid keeps its desktop count, up to four', () => {
+    expect(stored({ columns: '3', stackOnMobile: false }).mobileColumns).toBe('3')
+    expect(stored({ columns: '6', stackOnMobile: false }).mobileColumns).toBe('4')
+  })
+
+  test('a grid that names its phone columns keeps them, and drops the old switch', () => {
+    const settings = stored({ columns: '4', mobileColumns: '2', stackOnMobile: true })
+    expect(settings.mobileColumns).toBe('2')
+    expect(settings.stackOnMobile).toBeUndefined()
+  })
+})

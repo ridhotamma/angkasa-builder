@@ -127,6 +127,7 @@ import {
 } from '../model/localized'
 import { EMPTY_RICH_DOC, type RichDoc } from '../model/rich-text'
 import { blockGlyph } from './block-icons'
+import { ChoiceCards } from './choice-cards'
 import { IconPicker } from './icon-picker'
 import {
   DateTimeControl,
@@ -137,6 +138,7 @@ import {
 } from './media-controls'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
 import { MediaPickerDialog } from './media-picker'
+import { cardLabel, optionPictures } from './option-pictures'
 import { RichTextControl } from './rich-text-control'
 import { useEditorText, type EditorMessage } from './messages'
 import type { EditorServices } from './services'
@@ -1108,11 +1110,7 @@ function FieldControl({
       )
     case 'number':
       return (
-        <Labeled
-          label={label}
-          help={help}
-          inline
-        >
+        <Labeled label={label} help={help} inline>
           <NumberControl
             value={typeof value === 'number' ? value : field.default}
             min={field.min}
@@ -1138,16 +1136,33 @@ function FieldControl({
         value: option.value,
         label: l(option.label),
       }))
+      // A choice that reads better as a picture — a layout, an alignment, a
+      // shape — is a row of picture cards (see `option-pictures`).
+      const pictures = optionPictures(field)
+      if (pictures) {
+        return (
+          <Labeled label={label} help={help}>
+            <ChoiceCards
+              label={label}
+              columns={options.length <= 4 ? options.length : 3}
+              value={current}
+              onChange={onChange}
+              choices={options.map((option, index) => ({
+                value: option.value,
+                label: cardLabel(option.label),
+                hint: cardLabel(option.label) === option.label ? undefined : option.label,
+                preview: pictures[index],
+              }))}
+            />
+          </Labeled>
+        )
+      }
       // A schema's own `segment` is a wide two-way choice and keeps the whole
       // row, whatever its labels.
       const shape = field.segment ? 'segment' : selectShape(options.map((option) => option.label))
       const segment = shape !== 'dropdown'
       return (
-        <Labeled
-          label={label}
-          help={help}
-          inline={shape !== 'segment'}
-        >
+        <Labeled label={label} help={help} inline={shape !== 'segment'}>
           {segment ? (
             <SegmentInput value={current} onChange={onChange} options={options} />
           ) : (
@@ -1187,11 +1202,7 @@ function FieldControl({
       )
     case 'color':
       return (
-        <Labeled
-          label={label}
-          help={help}
-          inline
-        >
+        <Labeled label={label} help={help} inline>
           <ColorInput
             value={typeof value === 'string' ? value : field.default}
             onChange={onChange}
