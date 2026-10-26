@@ -1,12 +1,12 @@
 /**
- * Screenshotting the snapshot document with a real browser engine.
+ * Screenshotting the snapshot document with the deployed render service.
  *
  * Two places this runs, routed by environment:
  *  - **A deployed environment** (`RENDER_FUNCTION_URL` + `RENDER_FUNCTION_KEY`
- *    set): the HTML is POSTed to the `render` Appwrite Function, which owns
- *    the only Chromium in the system. No browser is ever launched here, so
- *    `@sparticuz/chromium` is not a dependency and no Chromium ships in any
- *    app's deployed output.
+ *    set): the HTML is POSTed to the `render` Appwrite Function, which renders
+ *    it with WeasyPrint and rasterises the result. No browser is ever launched
+ *    here, so `@sparticuz/chromium` is not a dependency and no Chromium ships
+ *    in any app's deployed output.
  *  - **Everywhere else** (local dev): full `puppeteer`, managing its own
  *    matching local browser. Imported through a non-literal specifier so a
  *    bundler never sees a static `import('puppeteer')` to trace into a deploy
@@ -130,8 +130,8 @@ export async function screenshotHtml(
   html: string,
   viewport: { width: number; height: number } = { ...SNAPSHOT_VIEWPORT },
 ): Promise<Uint8Array<ArrayBuffer>> {
-  // Deployed environments render in the `render` Function (which owns the
-  // only Chromium); local dev launches below. Callers are unchanged.
+  // Deployed environments render in the `render` Function (WeasyPrint);
+  // local dev launches below. Callers are unchanged.
   if (renderFunctionConfig()) {
     const rendered = await renderViaFunction({ action: 'png', html, viewport: { ...viewport } })
     if (rendered.mime !== 'image/png') {

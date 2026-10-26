@@ -3,7 +3,8 @@
  *
  * Server-only. `renderTemplateSnapshotHtml` draws the page to a standalone
  * document (same component the dashboard's live preview draws);
- * `screenshotHtml` captures its above-the-fold viewport with headless Chrome.
+ * `screenshotHtml` captures its above-the-fold viewport with the render
+ * service (or local Chrome in development).
  * The apps call both on a template write and store the bytes as the row's
  * `previewFileId`, so the library shows a picture instead of rendering every
  * template live. See docs/PAGE-BUILDER.md ("Template snapshots").

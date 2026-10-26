@@ -1,6 +1,6 @@
 /**
- * A template's home page as a standalone HTML document, for headless-Chrome
- * capture.
+ * A template's home page as a standalone HTML document, for the render
+ * service.
  *
  * Server-only: `react-dom/server` and `@emotion/server` have no place in a
  * client bundle, which is why this lives in `@repo/page-builder/snapshot`

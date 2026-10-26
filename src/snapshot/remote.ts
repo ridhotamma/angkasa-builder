@@ -81,8 +81,8 @@ export async function renderViaFunction(
         'x-render-key': config.key,
       },
       body: JSON.stringify(request),
-      // Chromium cold start + render stays far below the function's own
-      // 180 s timeout; this only bounds a hung network call.
+      // Renderer cold start + render stays far below the function's own
+      // 300 s timeout; this only bounds a hung network call.
       signal: AbortSignal.timeout(150_000),
     })
   } catch (error) {
