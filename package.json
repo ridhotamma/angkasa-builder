@@ -10,6 +10,7 @@
     "./editor": "./src/editor/index.ts",
     "./snapshot": "./src/snapshot/index.ts",
     "./quick-checkout": "./src/quick-checkout/index.ts",
+    "./server": "./src/server/content.ts",
     "./package.json": "./package.json"
   },
   "scripts": {

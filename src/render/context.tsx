@@ -13,9 +13,12 @@ import { createContext, useContext, type ReactNode } from 'react'
 
 import { CATEGORY_PREVIEW_PRODUCTS } from '../model/content'
 import type { ElementKind } from '../model/element-style'
-import type { FieldValues, TableValue } from '../model/fields'
+import type { FieldValues } from '../model/fields'
 import { storefrontHref, type Link } from '../model/links'
 import type { ThemeSettings } from '../model/settings'
+import type { StorefrontBranchData, StorefrontSizeGuide } from '../model/storefront-data'
+
+export type { StorefrontBranchData, StorefrontSizeGuide }
 
 export interface StorefrontProductCard {
   id: string
@@ -51,12 +54,6 @@ export interface StorefrontGalleryImage {
   url: string | null
   /** A small square for the thumbnails. */
   thumbUrl: string | null
-}
-
-export interface StorefrontSizeGuide {
-  name: string
-  table: TableValue
-  note: string
 }
 
 /**
@@ -163,24 +160,6 @@ export interface StorefrontListingData {
   collections?: Array<{ id: string; name: string; slug: string }>
   /** The category or collection the page is showing, when it is one. */
   current: { kind: 'category' | 'collection'; name: string; slug: string } | null
-}
-
-/**
- * One physical shop the storefront can show: a branch with its address, or
- * the shop's own single address when it has no branches. Read-only, and only
- * what a shopper may see — never a branch's internal fields.
- */
-export interface StorefrontBranchData {
-  id: string
-  name: string
-  /** The address as one line, already composed. `''` when unknown. */
-  address: string
-  phone: string | null
-  /** Where to pin it; `null` when the address was never geocoded. */
-  latitude: number | null
-  longitude: number | null
-  /** The branch the shop calls its headquarters, when there is one. */
-  isHeadquarters?: boolean
 }
 
 export interface StorefrontRenderData {

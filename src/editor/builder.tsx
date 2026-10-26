@@ -110,9 +110,11 @@ import {
   duplicateSection,
   moveSection,
   removeSection,
+  renameSection,
   linkedMaster,
   overridableFields,
   resolveLinkedSections,
+  sectionDisplayName,
   setBlockOverrides,
   setSectionOverrides,
   TEMPLATE_KEYS,
@@ -1096,7 +1098,9 @@ function Builder({
   // The way back from the open screen, as a trail of its parents: all
   // sections, the section, then each block the selection sits in. Every step
   // is a link, so a nested block is one click from any level above it.
-  const sectionName = schema ? l(schema.name) : ''
+  // The section wears the seller's own name when it has one, like its blocks.
+  const sectionName =
+    schema && selected ? sectionDisplayName(selected, sections, l(schema.name)) : ''
   const crumbs: Crumb[] = [{ label: t('back'), onClick: clearSelection }]
   if (panelView.view.startsWith('block:') && selectedBlock && schema) {
     crumbs.push({ label: sectionName, onClick: () => setSelectedBlockId(null) })
@@ -1334,7 +1338,9 @@ function Builder({
         <Stack gap="1">
           <HStack gap="2">
             <Icon as={LuLink} color="brand.solid" />
-            <Text fontWeight="semibold">{l(schema.name)}</Text>
+            <Text fontWeight="semibold">
+              {sectionDisplayName(selected, sections, l(schema.name))}
+            </Text>
           </HStack>
           <Text textStyle="xs" color="fg.muted">
             {t('linkedHelp')}
@@ -1428,7 +1434,20 @@ function Builder({
       <Stack gap="4">
         {trail}
         <Stack gap="1">
-          <Text fontWeight="semibold">{l(schema.name)}</Text>
+          <HStack gap="1.5" minW="0">
+            <Text fontWeight="semibold" truncate minW="0">
+              {sectionDisplayName(selected, sections, l(schema.name))}
+            </Text>
+            {!selected.linkedTo && schema.type === 'blocks' && (
+              <BlockNamePopover
+                value={selected.name ?? ''}
+                fallback={l(schema.name)}
+                renameMessage="renameSection"
+                nameMessage="sectionName"
+                onChange={(name) => onSectionsChange(renameSection(sections, selected.id, name))}
+              />
+            )}
+          </HStack>
           <Text textStyle="xs" color="fg.muted">
             {l(schema.description)}
           </Text>
@@ -1757,7 +1776,11 @@ function Builder({
   const sectionLabel = useCallback(
     (section: SectionInstance) => {
       const shape = sectionSchema(section.type)
-      return shape ? l(shape.name) : section.type
+      // The sections through a ref: the label must not change identity on
+      // every keystroke, or the memoized preview would draw again for each.
+      return shape
+        ? sectionDisplayName(section, latest.current.sections, l(shape.name))
+        : section.type
     },
     [l],
   )
@@ -2069,22 +2092,29 @@ function Builder({
         onSelect={onSelectBlockInPanel}
       >
         {children}
-        <CommandPalette
-          open={commandOpen}
-          onClose={closeCommand}
-          addOnly={commandInsertAt !== null || commandBlocksOnly}
-          blocksOnly={commandBlocksOnly}
-          sections={sections}
-          scope={scope}
-          counts={commandCounts}
-          onOpenSection={(id) => select(id)}
-          onAddSection={addSectionFromCommand}
-          onAddBlocks={addBlocksFromCommand}
-        />
       </BlockEditorProvider>
     </SectionLinkProvider>
   )
   const panelBox = withProviders(panelBody)
+
+  // The add search floats over the preview, where the seller is looking — so
+  // it lives beside the panel, not inside it. On a narrow screen the panel is
+  // a closed sheet most of the time, and a palette mounted only in the sheet
+  // never opens until the sheet does (the Tambah button's own bug).
+  const palette = (
+    <CommandPalette
+      open={commandOpen}
+      onClose={closeCommand}
+      addOnly={commandInsertAt !== null || commandBlocksOnly}
+      blocksOnly={commandBlocksOnly}
+      sections={sections}
+      scope={scope}
+      counts={commandCounts}
+      onOpenSection={(id) => select(id)}
+      onAddSection={addSectionFromCommand}
+      onAddBlocks={addBlocksFromCommand}
+    />
+  )
 
   // The preview with its bar above it, as it sits beside the panels.
   const canvas = (
@@ -2137,6 +2167,7 @@ function Builder({
             {canvas}
           </Splitter.Panel>
         </Splitter.RootProvider>
+        {palette}
       </Box>
     )
   }
@@ -2149,7 +2180,7 @@ function Builder({
     selectedBlock && schema
       ? selectedBlock.block.name?.trim() || l(selectedBlock.schema.name)
       : selected && schema
-        ? l(schema.name)
+        ? sectionDisplayName(selected, sections, l(schema.name))
         : layoutPart
           ? l(LAYOUT_PART_NAMES[layoutPart])
           : null
@@ -2251,6 +2282,10 @@ function Builder({
       {/* In the dialog's footer strip when there is one, so it sits at the
           very bottom of the screen; under the preview otherwise. */}
       {footerSlot ? createPortal(bottomBar, footerSlot) : bottomBar}
+
+      {/* Beside the sheet, not in it: the sheet unmounts while closed, and
+          the palette must open from the Tambah button with it closed. */}
+      {palette}
 
       <Drawer.Root
         open={sheetOpen}

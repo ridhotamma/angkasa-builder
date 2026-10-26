@@ -21,6 +21,7 @@ import {
   isMediaFileId,
   isRecord,
   mapFieldValues,
+  MAX_BLOCK_NAME,
   newId,
   sanitizeValues,
   type Field,
@@ -28,7 +29,7 @@ import {
   type JsonValue,
 } from './fields'
 import { sanitizeElements } from './element-style'
-import { sanitizeLayout, type ThemeLayout } from './layout'
+import { FOOTER_FIELDS, HEADER_FIELDS, sanitizeLayout, type ThemeLayout } from './layout'
 import { SECTION_STYLE_FIELDS } from './section-style'
 import {
   isSectionAllowed,
@@ -105,6 +106,12 @@ export interface SectionInstance {
   settings: FieldValues
   /** Colour scheme, spacing, width, devices and dates — see `./section-style`. */
   style: FieldValues
+  /**
+   * The seller's own name for the section — a Custom blocks section renamed
+   * with the pencil beside its title, like a block's name. An editor label
+   * only; no renderer reads it. Absent until renamed.
+   */
+  name?: string
   /**
    * Per-element overrides, keyed by the element's own id — a button the
    * seller clicked in the preview and restyled. Absent until one is set, so
@@ -190,6 +197,35 @@ export function sectionLinkTargets(
   return sections.filter((section) => section.id !== currentSectionId)
 }
 
+/**
+ * The seller's name for a section, trimmed — or `''` when it keeps its
+ * schema's name. Stored as typed (within the name limit) so a space can be
+ * typed between words; the sanitiser trims it when the layout is saved.
+ */
+export function customSectionName(section: SectionInstance): string {
+  return typeof section.name === 'string' ? section.name.trim().slice(0, MAX_BLOCK_NAME) : ''
+}
+
+/**
+ * What the editor calls a section: the seller's own name when it has one —
+ * a linked copy falls back to its original's — else `fallback` (the schema's
+ * name). Renderers never call this; the name is editor chrome only.
+ */
+export function sectionDisplayName(
+  section: SectionInstance,
+  sections: readonly SectionInstance[],
+  fallback: string,
+): string {
+  const own = customSectionName(section)
+  if (own) return own
+  const master = linkedMaster(section, sections)
+  if (master && master.id !== section.id) {
+    const masterName = customSectionName(master)
+    if (masterName) return masterName
+  }
+  return fallback
+}
+
 /** `sections` with the one `id` moved `by` places; unchanged when it would leave the list. */
 export function moveSection(
   sections: SectionInstance[],
@@ -211,6 +247,28 @@ export function canDuplicateSection(sections: readonly SectionInstance[], id: st
   if (!section || sections.length >= MAX_SECTIONS) return false
   const max = sectionSchema(section.type)?.max
   return max === undefined || sections.filter((other) => other.type === section.type).length < max
+}
+
+/**
+ * The seller's own name for the section, stored as typed (within the name
+ * limit) so a space can be typed between words; the sanitiser trims it when
+ * the layout is saved. Clearing the name removes the key, so the schema's
+ * name shows again. It is an editor label only — no renderer reads it.
+ */
+export function renameSection(
+  sections: SectionInstance[],
+  id: string,
+  name: string,
+): SectionInstance[] {
+  const clean = name.slice(0, MAX_BLOCK_NAME)
+  return sections.map((section) => {
+    if (section.id !== id) return section
+    if (!clean) {
+      const { name: _removed, ...rest } = section
+      return rest
+    }
+    return { ...section, name: clean }
+  })
 }
 
 /** `sections` with a copy of `id` right after it, and the copy — or `null` when it does not fit. */
@@ -261,12 +319,14 @@ export function sanitizeSections(value: unknown, scope: SectionScope = 'home'): 
         ? raw.linkedTo
         : undefined
     const overrides = sanitizeOverrideShape(raw.overrides)
+    const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, MAX_BLOCK_NAME) : ''
     out.push({
       id,
       type,
       hidden: raw.hidden === true,
       settings: sanitizeValues(schema.fields, raw.settings),
       style: sanitizeValues(SECTION_STYLE_FIELDS, raw.style),
+      ...(name && { name }),
       ...(Object.keys(elements).length > 0 && { elements }),
       ...(linkedTo && { linkedTo }),
       ...(overrides && { overrides }),
@@ -412,6 +472,8 @@ export function resolveLinkedSections(sections: readonly SectionInstance[]): Sec
       id: section.id,
       hidden: section.hidden,
       linkedTo: section.linkedTo,
+      // The copy's own name wins over the original's, when it has one.
+      ...(section.name !== undefined && { name: section.name }),
       settings: mergeOverrides(master, section.overrides),
       ...(section.overrides && { overrides: structuredClone(section.overrides) }),
     }
@@ -460,8 +522,10 @@ export function duplicateLinkedSection(
   if (!canDuplicateSection(sections, id)) return null
   const index = sections.findIndex((section) => section.id === id)
   const source = sections[index]!
+  // A linked copy follows its original's name until it is renamed on its own.
+  const { name: _dropped, ...cloned } = structuredClone(source)
   const copy: SectionInstance = {
-    ...structuredClone(source),
+    ...cloned,
     id: newId(),
     linkedTo: source.linkedTo ?? source.id,
   }
@@ -940,6 +1004,49 @@ export function imageFileIds(sections: readonly SectionInstance[]): string[] {
     if (isMediaFileId(value)) ids.add(value)
   }
   return [...ids]
+}
+
+/** The images and uploaded videos a layout draws, for a client that resolves them itself. */
+export interface LayoutMedia {
+  /** Image values as stored: media file ids, and hotlinked stock photos. */
+  images: string[]
+  /** Uploaded videos' file ids. */
+  videos: string[]
+}
+
+/**
+ * Every image and uploaded video a layout draws — in section settings, list
+ * items and blocks, a section's own background, and the header and footer
+ * when `layout` is given. The headless API answers a URL for each, so a client
+ * never has to know the bucket or the stock-photo format.
+ */
+export function layoutMedia(
+  sections: readonly SectionInstance[],
+  layout?: ThemeLayout,
+): LayoutMedia {
+  const images = new Set<string>()
+  const videos = new Set<string>()
+  const take = (values: JsonValue[]) => {
+    for (const value of values) {
+      if (typeof value === 'string') {
+        if (isMediaFileId(value) || isStockPhoto(value)) images.add(value)
+      } else if (isRecord(value) && value.source === 'upload' && typeof value.id === 'string') {
+        videos.add(value.id)
+      }
+    }
+  }
+  for (const section of sections) {
+    const schema = sectionSchema(section.type)
+    if (schema) take(collectFieldValues(schema.fields, section.settings, ['image', 'video']))
+    if (isRecord(section.style)) {
+      take(collectFieldValues(SECTION_STYLE_FIELDS, section.style as FieldValues, ['image']))
+    }
+  }
+  if (layout) {
+    take(collectFieldValues(HEADER_FIELDS, layout.header, ['image', 'video']))
+    take(collectFieldValues(FOOTER_FIELDS, layout.footer, ['image', 'video']))
+  }
+  return { images: [...images], videos: [...videos] }
 }
 
 /** Every uploaded video's file id — they live in their own bucket, so they are copied apart. */

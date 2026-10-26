@@ -89,7 +89,7 @@ import {
   moveBlockTo,
   type BlockContainer,
 } from '../model/blocks'
-import { sectionLinkTargets, type SectionInstance } from '../model/content'
+import { sectionDisplayName, sectionLinkTargets, type SectionInstance } from '../model/content'
 import { sectionSchema } from '../model/sections'
 
 import {
@@ -624,7 +624,9 @@ export function LinkControl({
         (section, index) => {
           const schema = sectionSchema(section.type)
           const detail = readText(section.settings, 'heading') || readText(section.settings, 'text')
-          const name = schema ? l(schema.name) : section.type
+          const name = schema
+            ? sectionDisplayName(section, sectionLinks?.sections ?? [], l(schema.name))
+            : section.type
           return {
             value: section.id,
             label: detail ? `${name} — ${detail.slice(0, 40)}` : `${name} ${index + 1}`,
@@ -1391,16 +1393,23 @@ export function BlockEditorProvider({
 /**
  * A pencil beside a block's title. It opens a small popover to give the block
  * an editor-only name, keeping the settings panel free of a permanent field.
+ * Sections reuse it for the same — a Custom blocks section renamed like the
+ * blocks inside it.
  */
 export function BlockNamePopover({
   value,
   fallback,
   onChange,
+  renameMessage = 'renameBlock',
+  nameMessage = 'blockName',
 }: {
   value: string
   /** The schema's own name, used as the placeholder. */
   fallback: string
   onChange: (name: string) => void
+  /** Message keys for the trigger and the field, so sections reuse the popover. */
+  renameMessage?: EditorMessage
+  nameMessage?: EditorMessage
 }) {
   const { t } = useEditorText()
   const [open, setOpen] = useState(false)
@@ -1422,8 +1431,8 @@ export function BlockNamePopover({
     >
       <Popover.Trigger asChild>
         <IconButton
-          aria-label={t('renameBlock')}
-          title={t('renameBlock')}
+          aria-label={t(renameMessage)}
+          title={t(renameMessage)}
           size="2xs"
           variant="ghost"
           color="fg.muted"
@@ -1443,7 +1452,7 @@ export function BlockNamePopover({
                   value={draft}
                   maxLength={MAX_BLOCK_NAME}
                   placeholder={fallback}
-                  aria-label={t('blockName')}
+                  aria-label={t(nameMessage)}
                   onChange={(event) => setDraft(event.currentTarget.value)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') {
@@ -1487,6 +1496,11 @@ function containerLabel(container: BlockContainer, l: (text: Localized) => strin
  * top level, then each column, row, grid or custom layout — with the current
  * parent marked and full or too-deep destinations disabled. The block moves
  * to the end of the chosen container; up/down then place it precisely.
+ *
+ * The trigger is an icon button in both places — a ghost one in a list row,
+ * an outlined one beside the block's other actions — and stays, disabled,
+ * when the block has nowhere else to go, so rows keep their shape instead of
+ * shifting as the menu comes and goes.
  */
 export function BlockMoveMenu({
   fields,
@@ -1499,7 +1513,7 @@ export function BlockMoveMenu({
   values: FieldValues
   blockId: string
   onChange: (values: FieldValues) => void
-  /** An icon button for a list row, instead of the labelled panel button. */
+  /** A ghost button for a list row, instead of the outlined panel one. */
   compact?: boolean
 }) {
   const { t, l } = useEditorText()
@@ -1517,8 +1531,6 @@ export function BlockMoveMenu({
     }
   })
   const disabled = targets.every((target) => !target.canMove)
-  // Nowhere else to go: no menu rather than a permanently disabled button.
-  if (disabled) return null
 
   return (
     <Menu.Root
@@ -1531,14 +1543,25 @@ export function BlockMoveMenu({
     >
       <Menu.Trigger asChild>
         {compact ? (
-          <IconButton aria-label={t('moveTo')} title={t('moveTo')} size="2xs" variant="ghost">
+          <IconButton
+            aria-label={t('moveTo')}
+            title={t('moveTo')}
+            size="2xs"
+            variant="ghost"
+            disabled={disabled}
+          >
             <LuFolderInput />
           </IconButton>
         ) : (
-          <Button size="xs" variant="outline">
-            <Icon as={LuFolderInput} />
-            {t('moveTo')}
-          </Button>
+          <IconButton
+            aria-label={t('moveTo')}
+            title={t('moveTo')}
+            size="xs"
+            variant="outline"
+            disabled={disabled}
+          >
+            <LuFolderInput />
+          </IconButton>
         )}
       </Menu.Trigger>
       <Portal>

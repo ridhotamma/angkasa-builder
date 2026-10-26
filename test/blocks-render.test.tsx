@@ -185,6 +185,34 @@ describe('blocks section, on the storefront', () => {
     expect((preview.match(/max-width:var\(--chakra-sizes-2xl\)/g) ?? []).length).toBeGreaterThan(1)
   })
 
+  test('a column carries right alignment into a rich text, and the block’s own wins', () => {
+    const column = createSection('blocks', {
+      blocks: [
+        {
+          id: 'col',
+          type: 'column',
+          settings: {
+            align: 'right',
+            blocks: [
+              { id: 't', type: 'richtext', settings: { body: 'Aligned by the column' } },
+              {
+                id: 'own',
+                type: 'richtext',
+                settings: { body: 'Centred on its own', align: 'center' },
+              },
+            ],
+          },
+        },
+      ],
+    })
+    const out = render(<SectionsRenderer sections={[column]} env={env()} />)
+    // The text element itself follows the column right — not only its wrapper
+    // while the words pin left, as the old center-or-left mapping did.
+    expect(out).toMatch(/flex-direction:column;[^}]*text-align:right/)
+    // And a block that chose its own alignment still wins over the column.
+    expect(out).toContain('text-align:center')
+  })
+
   test('a button can use a custom colour', () => {
     const custom = createSection('blocks', {
       blocks: [

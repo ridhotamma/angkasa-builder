@@ -34,7 +34,7 @@ export function RichTextView({
   style,
 }: {
   doc: RichDoc
-  align?: 'left' | 'center'
+  align?: 'left' | 'center' | 'right'
   elementKey?: string
   field?: string
   /** Take the surrounding colour (a white-on-photo band) instead of the muted page ink. */

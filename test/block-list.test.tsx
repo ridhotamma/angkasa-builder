@@ -18,7 +18,12 @@ import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
 import { blockSchema, type BlocksField } from '../src/index'
-import { BlockEditorProvider, BlockNamePopover, FieldsForm } from '../src/editor/controls'
+import {
+  BlockEditorProvider,
+  BlockMoveMenu,
+  BlockNamePopover,
+  FieldsForm,
+} from '../src/editor/controls'
 import type { EditorServices } from '../src/editor/services'
 
 afterEach(() => cleanup())
@@ -121,5 +126,69 @@ describe('the block name popover', () => {
     await user.keyboard('{Enter}')
 
     expect(onChange).toHaveBeenCalledWith('Highlighted cards')
+  })
+
+  test('a section reuses the popover with its own labels', async () => {
+    const onChange = mock((_name: string) => undefined)
+    const user = userEvent.setup()
+    const { getByRole, getByLabelText } = render(
+      <ChakraProvider value={system}>
+        <I18nProvider locale="en" resources={{}}>
+          <BlockNamePopover
+            value=""
+            fallback="Blocks"
+            renameMessage="renameSection"
+            nameMessage="sectionName"
+            onChange={onChange}
+          />
+        </I18nProvider>
+      </ChakraProvider>,
+    )
+
+    await user.click(getByRole('button', { name: 'Rename section' }))
+    const input = getByLabelText('Section name')
+    await user.type(input, 'Promo')
+    await user.keyboard('{Enter}')
+
+    expect(onChange).toHaveBeenCalledWith('Promo')
+  })
+})
+
+describe('the move-to menu', () => {
+  function menu(blockId: string, blocks: typeof values.blocks, compact = false) {
+    return render(
+      <ChakraProvider value={system}>
+        <I18nProvider locale="en" resources={{}}>
+          <BlockMoveMenu
+            fields={[field]}
+            values={{ blocks }}
+            blockId={blockId}
+            onChange={() => undefined}
+            compact={compact}
+          />
+        </I18nProvider>
+      </ChakraProvider>,
+    )
+  }
+
+  test('the panel trigger is an icon button, like the actions beside it', () => {
+    // The heading can move into the column's own blocks, so the menu is live.
+    const { getByRole, queryByText } = menu('heading-1', values.blocks)
+
+    const trigger = getByRole('button', { name: 'Move to' })
+    expect((trigger as HTMLButtonElement).disabled).toBe(false)
+    // Icon-only: the label lives in the accessible name, not in visible text.
+    expect(queryByText('Move to')).toBeNull()
+  })
+
+  test('the row trigger stays, disabled, when the block has nowhere else to go', () => {
+    // A lone heading sits in the only container, so nothing is a valid target.
+    const { getByRole } = menu(
+      'h',
+      [{ id: 'h', type: 'heading', settings: { text: 'Hello' } }],
+      true,
+    )
+
+    expect((getByRole('button', { name: 'Move to' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })

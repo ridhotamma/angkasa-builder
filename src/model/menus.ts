@@ -371,3 +371,19 @@ export function resolveShopMenus(
   if (!custom) return { main: [], footer: [] }
   return { main: parseMenuItems(stored.main), footer: parseMenuItems(stored.footer) }
 }
+
+/** What the storefront's header and footer draw from: the menus, and what they may link to. */
+export interface StorefrontMenus {
+  main: MenuItem[]
+  footer: MenuItem[]
+  categories: Array<{ id: string; name: string; slug: string }>
+  collections: Array<{ id: string; name: string; slug: string }>
+}
+
+/** No menus at all — before a shop is known, or when they could not be read. */
+export const EMPTY_STOREFRONT_MENUS: StorefrontMenus = {
+  main: [],
+  footer: [],
+  categories: [],
+  collections: [],
+}

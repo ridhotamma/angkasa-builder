@@ -15,6 +15,7 @@ import {
   themeStylesheet,
   canDuplicateSection,
   createSection,
+  customSectionName,
   detachSection,
   duplicateLinkedSection,
   duplicateSection,
@@ -28,6 +29,7 @@ import {
   parseCoordinates,
   readBlocks,
   removeSection,
+  renameSection,
   resolveLinkedSections,
   setBlockOverrides,
   setSectionOverrides,
@@ -41,6 +43,7 @@ import {
   sanitizeLink,
   sanitizeRecommendedLooks,
   sanitizeSections,
+  sectionDisplayName,
   sectionSchema,
   sanitizeThemeContent,
   sanitizeThemeSettings,
@@ -650,6 +653,47 @@ describe('linked sections', () => {
     expect(linkedMaster(end, [master, middle, end])?.id).toBe(master.id)
     const resolved = resolveLinkedSections([master, middle, end])
     expect(resolved[2]!.settings.heading).toBe('Ujung')
+  })
+})
+
+describe('section names', () => {
+  test('sanitising keeps a trimmed name and drops a blank one', () => {
+    const [named, blank, long] = sanitizeSections([
+      { id: 'a', type: 'blocks', settings: {}, name: '  Promo  ' },
+      { id: 'b', type: 'blocks', settings: {}, name: '   ' },
+      { id: 'c', type: 'blocks', settings: {}, name: 'x'.repeat(100) },
+    ])
+    expect(named!.name).toBe('Promo')
+    expect(blank!).not.toHaveProperty('name')
+    expect(long!.name).toHaveLength(60)
+  })
+
+  test('renaming stores the name as typed; clearing removes the key', () => {
+    const section = createSection('blocks', {})
+    const named = renameSection([section], section.id, 'Promo grid')
+    expect(named[0]!.name).toBe('Promo grid')
+    // The original is untouched, and clearing shows the schema name again.
+    expect(section).not.toHaveProperty('name')
+    expect(renameSection(named, section.id, '')[0]!).not.toHaveProperty('name')
+    expect(customSectionName({ ...section, name: '  Hi  ' })).toBe('Hi')
+  })
+
+  test('a duplicate keeps the name; a linked copy follows its original', () => {
+    const section = { ...createSection('blocks', {}), name: 'Promo' }
+    const copy = duplicateSection([section], section.id)!
+    expect(copy.copy.name).toBe('Promo')
+    const linked = duplicateLinkedSection([section], section.id)!
+    expect(linked.copy).not.toHaveProperty('name')
+    expect(sectionDisplayName(linked.copy, linked.sections, 'Blocks')).toBe('Promo')
+  })
+
+  test('the display name prefers the copy’s own name, then the schema’s', () => {
+    const master = { ...createSection('blocks', {}), name: 'Master' }
+    const copy = { ...master, id: 'copy', linkedTo: master.id }
+    expect(sectionDisplayName(copy, [master, copy], 'Blocks')).toBe('Master')
+    const renamed = { ...copy, name: 'Own' }
+    expect(sectionDisplayName(renamed, [master, renamed], 'Blocks')).toBe('Own')
+    expect(sectionDisplayName(createSection('blocks', {}), [], 'Blocks')).toBe('Blocks')
   })
 })
 

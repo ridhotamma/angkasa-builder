@@ -789,7 +789,7 @@ function RichTextBlock({ block }: { block: BlockValue }) {
           included — would never reach the words. */}
       <RichTextView
         doc={doc}
-        align={align === 'center' ? 'center' : 'left'}
+        align={align}
         style={{ fontSize: size, ...blockTextOverrides(block) }}
       />
     </Box>

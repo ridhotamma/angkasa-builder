@@ -251,6 +251,8 @@ const MESSAGES = {
   noBlocksMatch: { en: 'No blocks match.', id: 'Tidak ada blok yang cocok.' },
   blockName: { en: 'Block name', id: 'Nama blok' },
   renameBlock: { en: 'Rename block', id: 'Ganti nama blok' },
+  sectionName: { en: 'Section name', id: 'Nama bagian' },
+  renameSection: { en: 'Rename section', id: 'Ganti nama bagian' },
   cancel: { en: 'Cancel', id: 'Batal' },
   save: { en: 'Save', id: 'Simpan' },
   moveTo: { en: 'Move to', id: 'Pindahkan ke' },

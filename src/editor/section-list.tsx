@@ -67,6 +67,7 @@ import {
   MAX_SECTIONS,
   removeSection,
   sanitizeSections,
+  sectionDisplayName,
   type SectionInstance,
 } from '../model/content'
 import { createStarterSection } from '../model/section-starters'
@@ -374,6 +375,7 @@ function BlockLine({
 
 function Row({
   section,
+  sections,
   selected,
   selectedBlockId,
   expanded,
@@ -389,6 +391,8 @@ function Row({
   canDuplicate,
 }: {
   section: SectionInstance
+  /** The whole list, so a linked copy can wear its original's name. */
+  sections: readonly SectionInstance[]
   selected: boolean
   selectedBlockId: string | null
   expanded: boolean
@@ -425,7 +429,7 @@ function Row({
     >
       <TreeLine
         icon={sectionIcon(schema?.icon ?? '')}
-        label={schema ? l(schema.name) : section.type}
+        label={schema ? sectionDisplayName(section, sections, l(schema.name)) : section.type}
         selected={selected && selectedBlockId === null}
         dimmed={section.hidden}
         expanded={expandable ? open : undefined}
@@ -755,6 +759,7 @@ export function SectionList({
                         <Row
                           key={section.id}
                           section={section}
+                          sections={sections}
                           selected={selected}
                           selectedBlockId={selected ? selectedBlockId : null}
                           expanded={open}

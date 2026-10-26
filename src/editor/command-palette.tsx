@@ -14,7 +14,7 @@ import { LuCornerDownLeft, LuPlus, LuSearch } from 'react-icons/lu'
 
 import { BLOCK_PRESETS } from '../model/block-presets'
 import { registeredBlocks } from '../model/block-registry'
-import type { SectionInstance } from '../model/content'
+import { sectionDisplayName, type SectionInstance } from '../model/content'
 import {
   isSectionOffered,
   offeredPresets,
@@ -93,7 +93,7 @@ export function CommandPalette({
       out.push({
         key: `open:${section.id}`,
         group: 'open',
-        label: l(schema.name),
+        label: sectionDisplayName(section, sections, l(schema.name)),
         detail: heading,
         icon: <Icon as={sectionIcon(schema.icon)} />,
         run: () => onOpenSection(section.id),
