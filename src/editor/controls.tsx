@@ -15,6 +15,7 @@ import {
   ColorPicker,
   createListCollection,
   Field,
+  Flex,
   HStack,
   Icon,
   IconButton,
@@ -29,6 +30,7 @@ import {
   ScrollArea,
   SegmentGroup,
   Select,
+  Slider,
   Stack,
   Switch,
   Text,
@@ -331,21 +333,24 @@ export function SelectInput({
  * A two-way field as a segmented control: both answers stay visible, so the
  * seller sees what the other choice is — cards or custom blocks.
  */
-export function SegmentInput({
+export function SegmentInput<T extends string>({
   value,
   onChange,
   options,
+  disabled = false,
 }: {
-  value: string
-  onChange: (value: string) => void
-  options: ReadonlyArray<{ value: string; label: string }>
+  value: T
+  onChange: (value: T) => void
+  options: ReadonlyArray<{ value: T; label: string }>
+  disabled?: boolean
 }) {
   return (
     <SegmentGroup.Root
       size="sm"
       w="full"
       value={value}
-      onValueChange={({ value: next }) => next && onChange(next)}
+      disabled={disabled}
+      onValueChange={({ value: next }) => next && onChange(next as T)}
     >
       <SegmentGroup.Indicator />
       {options.map((option) => (
@@ -355,6 +360,99 @@ export function SegmentInput({
         </SegmentGroup.Item>
       ))}
     </SegmentGroup.Root>
+  )
+}
+
+/**
+ * A slider with its value at the end of the label line — the print designers'
+ * size controls, drawn with the same label and help affordances as the rest of
+ * the builder's fields.
+ */
+export function RangeInput({
+  label,
+  help,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  disabled = false,
+  onChange,
+}: {
+  label: string
+  help?: string
+  value: number
+  min: number
+  max: number
+  step: number
+  unit: string
+  disabled?: boolean
+  onChange: (value: number) => void
+}) {
+  const shown = Number.isInteger(value) ? value : value.toFixed(1)
+
+  return (
+    <Field.Root>
+      <Stack gap="1.5" w="full">
+        <Flex justify="space-between" align="baseline" gap="3">
+          <FieldHeading label={label} help={help} />
+          <Text fontSize="sm" fontWeight="semibold" fontVariantNumeric="tabular-nums">
+            {shown} {unit}
+          </Text>
+        </Flex>
+        <Slider.Root
+          size="sm"
+          min={min}
+          max={max}
+          step={step}
+          value={[value]}
+          disabled={disabled}
+          onValueChange={({ value: next }) => onChange(next[0] ?? value)}
+        >
+          <Slider.Control>
+            <Slider.Track>
+              <Slider.Range />
+            </Slider.Track>
+            <Slider.Thumb index={0} aria-label={label} />
+          </Slider.Control>
+        </Slider.Root>
+      </Stack>
+    </Field.Root>
+  )
+}
+
+/** A labelled switch, the same row the builder's boolean fields use. */
+export function ToggleField({
+  label,
+  help,
+  checked,
+  disabled = false,
+  onChange,
+}: {
+  label: string
+  help?: string
+  checked: boolean
+  disabled?: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <Field.Root>
+      <HStack justify="space-between" w="full" gap="3">
+        <Box flex="1" minW="0">
+          <FieldHeading label={label} help={help} />
+        </Box>
+        <Switch.Root
+          size="sm"
+          colorPalette="brand"
+          checked={checked}
+          disabled={disabled}
+          onCheckedChange={({ checked: next }) => onChange(next)}
+        >
+          <Switch.HiddenInput aria-label={label} />
+          <Switch.Control />
+        </Switch.Root>
+      </HStack>
+    </Field.Root>
   )
 }
 
@@ -1174,24 +1272,7 @@ function FieldControl({
       )
     }
     case 'boolean': {
-      return (
-        <Field.Root>
-          <HStack justify="space-between" w="full" gap="3">
-            <Box flex="1" minW="0">
-              <FieldHeading label={label} help={help} />
-            </Box>
-            <Switch.Root
-              size="sm"
-              colorPalette="brand"
-              checked={value === true}
-              onCheckedChange={({ checked }) => onChange(checked)}
-            >
-              <Switch.HiddenInput />
-              <Switch.Control />
-            </Switch.Root>
-          </HStack>
-        </Field.Root>
-      )
+      return <ToggleField label={label} help={help} checked={value === true} onChange={onChange} />
     }
     case 'icon':
       return (

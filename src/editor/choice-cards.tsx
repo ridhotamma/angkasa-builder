@@ -27,6 +27,7 @@ function ChoiceCard({
   checked,
   role,
   tabbable,
+  disabled = false,
   onPick,
   onKeyDown,
   cardRef,
@@ -37,6 +38,7 @@ function ChoiceCard({
   checked: boolean
   role: 'radio' | 'checkbox'
   tabbable: boolean
+  disabled?: boolean
   onPick: () => void
   onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void
   cardRef?: (node: HTMLButtonElement | null) => void
@@ -50,6 +52,7 @@ function ChoiceCard({
       aria-label={hint ?? label}
       title={hint}
       tabIndex={tabbable ? 0 : -1}
+      disabled={disabled}
       onClick={onPick}
       onKeyDown={onKeyDown}
       display="flex"
@@ -64,9 +67,10 @@ function ChoiceCard({
       borderColor={checked ? 'brand.solid' : 'border'}
       bg={checked ? 'brand.subtle' : 'bg.panel'}
       color={checked ? 'brand.fg' : 'fg.muted'}
-      cursor="pointer"
+      cursor={disabled ? 'default' : 'pointer'}
+      opacity={disabled ? 0.55 : 1}
       transition="border-color 120ms, background 120ms"
-      _hover={{ borderColor: checked ? 'brand.solid' : 'border.emphasized' }}
+      _hover={disabled ? undefined : { borderColor: checked ? 'brand.solid' : 'border.emphasized' }}
       _focusVisible={{
         outline: '2px solid',
         outlineColor: 'brand.focusRing',
@@ -104,6 +108,7 @@ export function ChoiceCards<T extends string>({
   onChange,
   choices,
   columns = 2,
+  disabled = false,
 }: {
   /** Names the group for assistive tech; the visible label is the caller's. */
   label: string
@@ -111,6 +116,7 @@ export function ChoiceCards<T extends string>({
   onChange: (value: T) => void
   choices: readonly Choice<T>[]
   columns?: number
+  disabled?: boolean
 }) {
   const refs = useRef<Array<HTMLButtonElement | null>>([])
   const current = Math.max(
@@ -120,6 +126,7 @@ export function ChoiceCards<T extends string>({
 
   // A radio group's keys: the arrows move the choice along, wrapping.
   const onKeyDown = (index: number) => (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return
     const step =
       event.key === 'ArrowRight' || event.key === 'ArrowDown'
         ? 1
@@ -144,6 +151,7 @@ export function ChoiceCards<T extends string>({
           checked={choice.value === value}
           role="radio"
           tabbable={index === current}
+          disabled={disabled}
           onPick={() => onChange(choice.value)}
           onKeyDown={onKeyDown(index)}
           cardRef={(node) => {
@@ -162,6 +170,7 @@ export function ToggleCards<T extends string>({
   onChange,
   choices,
   columns = 3,
+  disabled = false,
 }: {
   label: string
   values: readonly T[]
@@ -169,6 +178,7 @@ export function ToggleCards<T extends string>({
   onChange: (values: T[]) => void
   choices: readonly Choice<T>[]
   columns?: number
+  disabled?: boolean
 }) {
   return (
     <SimpleGrid columns={columns} gap="2" role="group" aria-label={label}>
@@ -182,7 +192,8 @@ export function ToggleCards<T extends string>({
             preview={choice.preview}
             checked={checked}
             role="checkbox"
-            tabbable
+            tabbable={!disabled}
+            disabled={disabled}
             onPick={() =>
               onChange(
                 choices

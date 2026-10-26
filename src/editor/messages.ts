@@ -320,25 +320,12 @@ const MESSAGES = {
   commandOpen: { en: 'On this page', id: 'Di halaman ini' },
   commandAddSection: { en: 'Add a section', id: 'Tambah bagian' },
   commandAddBlock: { en: 'Add a block', id: 'Tambah blok' },
-  commandAddHere: { en: 'Add here', id: 'Tambah di sini' },
   commandNoResults: { en: 'Nothing matches.', id: 'Tidak ada yang cocok.' },
   commandHint: {
     en: '↑↓ to move · Enter to pick · Esc to close',
     id: '↑↓ untuk memilih · Enter untuk memakai · Esc untuk menutup',
   },
   commandTitle: { en: 'Quick actions', id: 'Aksi cepat' },
-  commandHelp: {
-    en: 'Search the page, or add a section or block.',
-    id: 'Cari di halaman, atau tambah bagian atau blok.',
-  },
-  commandAddSectionHelp: {
-    en: 'Add a section or block at this spot.',
-    id: 'Tambah bagian atau blok di titik ini.',
-  },
-  commandAddBlockHelp: {
-    en: 'Pick a block or layout for this section.',
-    id: 'Pilih blok atau tata letak untuk bagian ini.',
-  },
   commandButton: { en: 'Search and add (Ctrl+K)', id: 'Cari dan tambah (Ctrl+K)' },
   buttonElement: { en: 'Button', id: 'Tombol' },
   buttonElementHelp: {

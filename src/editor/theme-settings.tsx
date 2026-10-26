@@ -74,6 +74,7 @@ import { LookPickerDialog } from './look-picker-dialog'
 import { TranslationManagerDialog } from './translation-manager-dialog'
 import { useEditorText, type EditorMessage } from './messages'
 import { PaletteStrip } from './palette-swatch'
+import { PropertyGroup } from './property-group'
 
 function Heading({ children }: { children: string }) {
   return (
@@ -258,26 +259,9 @@ function ThemeSection({
   children: ReactNode
 }) {
   return (
-    <Accordion.Item value={value}>
-      <Accordion.ItemTrigger py="3" cursor="pointer">
-        <Text flex="1" fontSize="sm" fontWeight="medium">
-          {title}
-        </Text>
-        <Accordion.ItemIndicator />
-      </Accordion.ItemTrigger>
-      <Accordion.ItemContent>
-        <Accordion.ItemBody pt="0" pb="5">
-          <Stack gap="4">
-            {helper && (
-              <Text fontSize="xs" color="fg.muted">
-                {helper}
-              </Text>
-            )}
-            {children}
-          </Stack>
-        </Accordion.ItemBody>
-      </Accordion.ItemContent>
-    </Accordion.Item>
+    <PropertyGroup value={value} title={title} helper={helper}>
+      {children}
+    </PropertyGroup>
   )
 }
 
