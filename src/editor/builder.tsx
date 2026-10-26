@@ -35,7 +35,7 @@ import {
   Button,
   CloseButton,
   Container,
-  Dialog,
+  Drawer,
   Flex,
   HStack,
   Icon,
@@ -69,7 +69,8 @@ import {
   LuChevronLeft,
   LuChevronRight,
   LuCopy,
-  LuEye,
+  LuPencil,
+  LuPlus,
   LuLink,
   LuMonitor,
   LuLayers,
@@ -516,7 +517,8 @@ function Builder({
     setCommandInsertAt(null)
     setCommandBlocksOnly(false)
   }, [])
-  const [previewOpen, setPreviewOpen] = useState(false)
+  // The phone's sheet: the sections, the theme or the selection's settings.
+  const [sheetOpen, setSheetOpen] = useState(false)
   const footerSlot = useBuilderDialogFooter()
 
   const editableLayout = Boolean(layout && onLayoutChange)
@@ -1497,24 +1499,45 @@ function Builder({
           <Alert.Description>{notice}</Alert.Description>
         </Alert.Root>
       )}
-      {onSettingsChange && tab === 'theme' ? (
-        <ThemeSettingsPanel
-          settings={settings}
-          onChange={onSettingsChange}
-          shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
-          priorityLookKeys={startWithLooks?.priorityKeys}
-          sections={sections}
-          onSectionsChange={onSectionsChange}
-          onTranslate={services.translate}
-        />
+      {onSettingsChange ? (
+        <Tabs.Root
+          value={tab}
+          onValueChange={({ value }) => setTab(value as 'sections' | 'theme')}
+          size="sm"
+          variant="line"
+          fitted
+        >
+          <Tabs.List mb="4">
+            <Tabs.Trigger value="sections">
+              <Icon as={LuLayers} />
+              {t('sections')}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="theme">
+              <Icon as={LuPalette} />
+              {t('theme')}
+            </Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="sections" p="0">
+            {list()}
+          </Tabs.Content>
+          <Tabs.Content value="theme" p="0">
+            <ThemeSettingsPanel
+              settings={settings}
+              onChange={onSettingsChange}
+              shop={{ name: data.shop.name, logoUrl: data.shop.logoUrl }}
+              priorityLookKeys={startWithLooks?.priorityKeys}
+              sections={sections}
+              onSectionsChange={onSectionsChange}
+              onTranslate={services.translate}
+            />
+          </Tabs.Content>
+        </Tabs.Root>
       ) : (
         list()
       )}
     </Stack>
   )
-  // The theme's settings are a place of their own on the rail; a selection
-  // made on the canvas switches back to the page (see `select`).
-  const panel = tab === 'theme' && onSettingsChange ? listView : (inspector ?? listView)
+  const panel = inspector ?? listView
 
   function list() {
     return (
@@ -1876,29 +1899,32 @@ function Builder({
               />
             </Box>
           )}
-          <SegmentGroup.Root
-            size="xs"
-            value={device}
-            onValueChange={({ value }) => value && setDevice(value as PreviewDevice)}
-          >
-            <SegmentGroup.Indicator />
-            {(
-              [
-                ['desktop', LuMonitor, 'deviceDesktop'],
-                ['tablet', LuTablet, 'deviceTablet'],
-                ['mobile', LuSmartphone, 'deviceMobile'],
-              ] as const
-            ).map(([value, glyph, label]) => (
-              <Tooltip key={value} content={t(label)}>
-                <SegmentGroup.Item value={value} aria-label={t(label)}>
-                  <SegmentGroup.ItemText>
-                    <Icon as={glyph} boxSize="3.5" />
-                  </SegmentGroup.ItemText>
-                  <SegmentGroup.ItemHiddenInput />
-                </SegmentGroup.Item>
-              </Tooltip>
-            ))}
-          </SegmentGroup.Root>
+          {/* A phone previews as a phone: there is no room to show a desktop. */}
+          {!compact && (
+            <SegmentGroup.Root
+              size="xs"
+              value={device}
+              onValueChange={({ value }) => value && setDevice(value as PreviewDevice)}
+            >
+              <SegmentGroup.Indicator />
+              {(
+                [
+                  ['desktop', LuMonitor, 'deviceDesktop'],
+                  ['tablet', LuTablet, 'deviceTablet'],
+                  ['mobile', LuSmartphone, 'deviceMobile'],
+                ] as const
+              ).map(([value, glyph, label]) => (
+                <Tooltip key={value} content={t(label)}>
+                  <SegmentGroup.Item value={value} aria-label={t(label)}>
+                    <SegmentGroup.ItemText>
+                      <Icon as={glyph} boxSize="3.5" />
+                    </SegmentGroup.ItemText>
+                    <SegmentGroup.ItemHiddenInput />
+                  </SegmentGroup.Item>
+                </Tooltip>
+              ))}
+            </SegmentGroup.Root>
+          )}
           {history && (
             <HStack gap="0.5">
               <Tooltip content={`${t('undo')} (Ctrl+Z)`} wrap>
@@ -1956,14 +1982,7 @@ function Builder({
         {toolbar}
       </Flex>
     ),
-    [device, history, previewNote, toolbar, t, previewColorMode, template],
-  )
-
-  const previewButton = (
-    <Button w="full" size="lg" colorPalette="brand" onClick={() => setPreviewOpen(true)}>
-      <LuEye />
-      {t('showPreview')}
-    </Button>
+    [device, history, previewNote, toolbar, t, previewColorMode, template, compact],
   )
 
   const previewFrame = (
@@ -2061,63 +2080,7 @@ function Builder({
       </BlockEditorProvider>
     </SectionLinkProvider>
   )
-  // The rail: the page's sections, or the theme's settings — Shopify's left
-  // edge. Only when there is a theme to set; a page with sections alone has
-  // nothing to switch to.
-  const rail = onSettingsChange ? (
-    <Stack
-      gap="1"
-      py="2"
-      px="1"
-      flexShrink="0"
-      borderWidth="1px"
-      borderColor="border.subtle"
-      rounded="lg"
-      bg="bg.panel"
-      align="center"
-    >
-      {(
-        [
-          ['sections', LuLayers, 'railSections'],
-          ['theme', LuPalette, 'railTheme'],
-        ] as const
-      ).map(([value, glyph, label]) => {
-        const active = tab === value && (value === 'theme' || panelView.depth === 0)
-        return (
-          <Tooltip key={value} content={t(label)} placement="right">
-            <IconButton
-              aria-label={t(label)}
-              aria-pressed={tab === value}
-              size="sm"
-              variant={tab === value ? 'subtle' : 'ghost'}
-              colorPalette={tab === value ? 'brand' : undefined}
-              color={tab === value ? undefined : 'fg.muted'}
-              data-active={active || undefined}
-              onClick={() => {
-                clearSelection()
-                setTab(value)
-              }}
-            >
-              <Icon as={glyph} boxSize="4.5" />
-            </IconButton>
-          </Tooltip>
-        )
-      })}
-    </Stack>
-  ) : null
-
-  const panelBox = withProviders(
-    rail ? (
-      <HStack align="stretch" gap="2" h={{ lg: 'full' }} minH="0" minW="0">
-        {rail}
-        <Box flex="1" minW="0" minH="0" display="flex" flexDirection="column">
-          {panelBody}
-        </Box>
-      </HStack>
-    ) : (
-      panelBody
-    ),
-  )
+  const panelBox = withProviders(panelBody)
 
   // The preview with its bar above it, as it sits beside the panels.
   const canvas = (
@@ -2174,68 +2137,156 @@ function Builder({
     )
   }
 
+  // A phone: the preview is the page, and everything else is a tap away on
+  // the bar under it — the sections, adding one, the theme, and the open
+  // selection's settings. Those open in a sheet over the lower part of the
+  // preview, so an edit and its effect are on screen together.
+  const selectionName =
+    selectedBlock && schema
+      ? selectedBlock.block.name?.trim() || l(selectedBlock.schema.name)
+      : selected && schema
+        ? l(schema.name)
+        : layoutPart
+          ? l(LAYOUT_PART_NAMES[layoutPart])
+          : null
+  const openSheet = (view: 'sections' | 'theme' | 'selection') => {
+    if (view !== 'selection') {
+      clearSelection()
+      setTab(view)
+    }
+    setSheetOpen(true)
+  }
+  const bottomBar = (
+    <HStack
+      gap="1"
+      justify="space-around"
+      px="2"
+      pt="1.5"
+      pb="calc(0.375rem + env(safe-area-inset-bottom))"
+      borderTopWidth="1px"
+      borderColor="border.subtle"
+      bg="bg.panel"
+      w="full"
+    >
+      {(
+        [
+          ['sections', LuLayers, t('sections'), () => openSheet('sections')],
+          [
+            'add',
+            LuPlus,
+            t('mobileAdd'),
+            () => {
+              const after = selected ? sections.findIndex((other) => other.id === selected.id) : -1
+              setCommandInsertAt(after >= 0 ? after + 1 : sections.length)
+              setCommandOpen(true)
+            },
+          ],
+          ...(onSettingsChange
+            ? ([['theme', LuPalette, t('theme'), () => openSheet('theme')]] as const)
+            : []),
+          ['edit', LuPencil, selectionName ?? t('mobileEdit'), () => openSheet('selection')],
+        ] as const
+      ).map(([key, glyph, label, onClick]) => {
+        const disabled = key === 'edit' && !selectionName
+        const prominent = key === 'add'
+        return (
+          <Button
+            key={key}
+            variant="ghost"
+            size="xs"
+            h="auto"
+            py="1"
+            px="1"
+            flex="1"
+            minW="0"
+            flexDirection="column"
+            gap="0.5"
+            fontWeight="medium"
+            disabled={disabled}
+            color={prominent ? 'brand.fg' : key === 'edit' && selectionName ? 'fg' : 'fg.muted'}
+            onClick={onClick}
+          >
+            <Box
+              boxSize="8"
+              rounded="full"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              bg={prominent ? 'brand.solid' : undefined}
+              color={prominent ? 'brand.contrast' : undefined}
+            >
+              <Icon as={glyph} boxSize="4.5" />
+            </Box>
+            <Text as="span" fontSize="2xs" truncate maxW="full">
+              {label}
+            </Text>
+          </Button>
+        )
+      })}
+    </HStack>
+  )
+
   return (
-    <Stack gap="4" minH="0">
-      {panelBox}
-
-      {/* In the dialog's footer strip, outside the scroll area, when there is
-          one; stuck to the bottom of the scrolling body otherwise. */}
-      {footerSlot ? (
-        createPortal(previewButton, footerSlot)
-      ) : (
-        <Box position="sticky" bottom="0" zIndex="1" pt="2" pb="3" mt="-4" bg="bg.panel">
-          {previewButton}
-        </Box>
-      )}
-
+    <Flex direction="column" h={height} minH="0" gap="2">
+      {previewBar}
       {/* Only one preview is ever mounted: the frame is a portal into its own
           iframe, and a second one would fight the first over `previewDoc`. */}
-      <Dialog.Root
-        open={previewOpen}
-        size="full"
-        motionPreset="slide-in-bottom"
-        onOpenChange={({ open }) => setPreviewOpen(open)}
+      <Box
+        flex="1"
+        minH="0"
+        rounded="lg"
+        borderWidth="1px"
+        borderColor="border.subtle"
+        overflow="hidden"
+        position="relative"
+      >
+        {previewFrame}
+      </Box>
+
+      {/* In the dialog's footer strip when there is one, so it sits at the
+          very bottom of the screen; under the preview otherwise. */}
+      {footerSlot ? createPortal(bottomBar, footerSlot) : bottomBar}
+
+      <Drawer.Root
+        open={sheetOpen}
+        placement="bottom"
+        // Not modal: the preview above the sheet stays live and tappable, so
+        // picking another section there swaps what the sheet shows.
+        modal={false}
+        closeOnInteractOutside={false}
+        onOpenChange={({ open }) => setSheetOpen(open)}
       >
         <Portal>
-          <Dialog.Backdrop />
-          <Dialog.Positioner>
-            <Dialog.Content rounded="none" display="flex" flexDirection="column" h="100dvh">
-              <Dialog.Header px="3" py="2.5" gap="3" borderBottomWidth="1px">
-                <Dialog.Title fontSize="md" flex="1">
-                  {t('preview')}
-                </Dialog.Title>
-                <Dialog.CloseTrigger asChild position="static">
-                  <CloseButton size="sm" aria-label={t('closePreview')} />
-                </Dialog.CloseTrigger>
-              </Dialog.Header>
-              <Dialog.Body flex="1" minH="0" p="3" display="flex" flexDirection="column" gap="3">
-                {previewBar}
+          <Drawer.Positioner pointerEvents="none">
+            <Drawer.Content
+              pointerEvents="auto"
+              roundedTop="xl"
+              maxH="62dvh"
+              shadow="0 -8px 24px rgba(0,0,0,0.12)"
+            >
+              <HStack px="3" pt="2" pb="1" position="relative" justify="flex-end">
                 <Box
-                  flex="1"
-                  minH="0"
-                  rounded="lg"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                  overflow="hidden"
-                  position="relative"
-                >
-                  {previewOpen && previewFrame}
-                  {previewOpen && (
-                    <DropOverlay
-                      doc={previewDoc}
-                      active={Boolean(paletteDrag.item)}
-                      blocks={paletteDrag.item?.kind === 'blocks'}
-                      sections={sections}
-                      onDrop={onPaletteDrop}
-                    />
-                  )}
-                </Box>
-              </Dialog.Body>
-            </Dialog.Content>
-          </Dialog.Positioner>
+                  position="absolute"
+                  left="50%"
+                  top="2"
+                  transform="translateX(-50%)"
+                  h="1"
+                  w="10"
+                  rounded="full"
+                  bg="border.emphasized"
+                />
+                <Drawer.CloseTrigger asChild position="static">
+                  <CloseButton size="sm" aria-label={t('closeSheet')} />
+                </Drawer.CloseTrigger>
+              </HStack>
+              <Drawer.Body px="0" pt="0" pb="4" minH="0" overflowY="auto">
+                {panelBox}
+              </Drawer.Body>
+            </Drawer.Content>
+          </Drawer.Positioner>
         </Portal>
-      </Dialog.Root>
-    </Stack>
+      </Drawer.Root>
+    </Flex>
   )
 }
 

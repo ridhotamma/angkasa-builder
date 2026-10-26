@@ -6,19 +6,29 @@ import {
   Badge,
   Box,
   Button,
-  Fieldset,
   Flex,
   HStack,
   Icon,
   Input,
   Portal,
+  SimpleGrid,
   Stack,
   Switch,
   Text,
   Textarea,
 } from '@chakra-ui/react'
 import { useState, type ReactNode } from 'react'
-import { LuSparkles } from 'react-icons/lu'
+import {
+  LuArrowUpFromLine,
+  LuCircleSlash,
+  LuLayers,
+  LuRotate3D,
+  LuSparkle,
+  LuSparkles,
+  LuSquare,
+  LuWandSparkles,
+  LuZoomIn,
+} from 'react-icons/lu'
 
 import {
   ANIMATION_LABELS,
@@ -57,6 +67,7 @@ import type { SectionInstance } from '../model/content'
 import type { StorefrontLocale } from '../model/localized'
 import { SitePopup } from '../render/popup'
 import { SplashScreen, type SplashShop } from '../render/splash'
+import { ChoiceCards, ToggleCards } from './choice-cards'
 import { ColorInput, Labeled, SelectInput } from './controls'
 import { FontSelect } from './font-select'
 import { LookPickerDialog } from './look-picker-dialog'
@@ -78,6 +89,157 @@ function Heading({ children }: { children: string }) {
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Previews: each option drawn as what it does                                */
+/* -------------------------------------------------------------------------- */
+
+const RADIUS_PX: Record<ThemeSettings['radius'], string> = {
+  none: '0',
+  sm: '4px',
+  md: '8px',
+  lg: '14px',
+}
+
+function RadiusPreview({ radius }: { radius: ThemeSettings['radius'] }) {
+  return (
+    <Box
+      w="9"
+      h="7"
+      borderTopWidth="2.5px"
+      borderLeftWidth="2.5px"
+      borderColor="currentColor"
+      style={{
+        borderTopLeftRadius: RADIUS_PX[radius] === '0' ? 0 : `calc(${RADIUS_PX[radius]} * 1.6)`,
+      }}
+      ms="3"
+      mt="3"
+    />
+  )
+}
+
+function ButtonPreview({ style }: { style: ThemeSettings['buttonStyle'] }) {
+  const filled = style !== 'outline'
+  return (
+    <Box
+      px="3"
+      h="6"
+      display="flex"
+      alignItems="center"
+      fontSize="10px"
+      fontWeight="semibold"
+      rounded={style === 'pill' ? 'full' : 'sm'}
+      bg={filled ? 'currentColor' : 'transparent'}
+      borderWidth={style === 'hard' ? '2px' : style === 'outline' ? '1.5px' : '0'}
+      borderColor={style === 'hard' ? 'fg' : 'currentColor'}
+      boxShadow={style === 'hard' ? '2px 2px 0 var(--chakra-colors-fg)' : undefined}
+    >
+      <Box as="span" color={filled ? 'bg.panel' : 'currentColor'}>
+        Beli
+      </Box>
+    </Box>
+  )
+}
+
+function CardPreview({ style }: { style: ThemeSettings['cardStyle'] }) {
+  return (
+    <Box
+      w="12"
+      h="10"
+      p="1"
+      rounded="sm"
+      bg={style === 'flat' ? 'bg.muted' : 'bg.panel'}
+      borderWidth={style === 'border' ? '1px' : style === 'hard' ? '2px' : '0'}
+      borderColor={style === 'hard' ? 'fg' : 'border.emphasized'}
+      boxShadow={
+        style === 'shadow'
+          ? 'md'
+          : style === 'hard'
+            ? '3px 3px 0 var(--chakra-colors-fg)'
+            : undefined
+      }
+    >
+      <Box h="4" rounded="2px" bg="currentColor" opacity="0.3" />
+      <Box h="1" w="70%" mt="1" rounded="full" bg="currentColor" opacity="0.6" />
+    </Box>
+  )
+}
+
+const TYPE_SIZE: Record<ThemeSettings['typeScale'], string> = {
+  compact: 'sm',
+  default: 'lg',
+  large: '2xl',
+}
+
+const DENSITY_GAP: Record<ThemeSettings['density'], string> = {
+  tight: '0.5',
+  cozy: '1.5',
+  airy: '2.5',
+}
+
+const PAGE_FILL: Record<ThemeSettings['pageWidth'], string> = {
+  narrow: '45%',
+  default: '70%',
+  wide: '92%',
+}
+
+function DensityPreview({ density }: { density: ThemeSettings['density'] }) {
+  return (
+    <Stack gap={DENSITY_GAP[density]} w="10">
+      {[0, 1, 2].map((index) => (
+        <Box key={index} h="1.5" rounded="full" bg="currentColor" opacity="0.6" />
+      ))}
+    </Stack>
+  )
+}
+
+function PageWidthPreview({ width }: { width: ThemeSettings['pageWidth'] }) {
+  return (
+    <Box
+      w="14"
+      h="9"
+      rounded="sm"
+      borderWidth="1.5px"
+      borderColor="currentColor"
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      gap="1"
+      opacity="0.85"
+    >
+      {[0, 1].map((index) => (
+        <Box
+          key={index}
+          h="1.5"
+          rounded="full"
+          bg="currentColor"
+          style={{ width: PAGE_FILL[width] }}
+        />
+      ))}
+    </Box>
+  )
+}
+
+const ANIMATION_GLYPHS: Record<ThemeSettings['animation'], typeof LuSparkles> = {
+  none: LuCircleSlash,
+  subtle: LuSparkle,
+  expressive: LuWandSparkles,
+}
+
+const HOVER_GLYPHS: Record<(typeof CARD_HOVER_EFFECTS)[number], typeof LuSparkles> = {
+  outline: LuSquare,
+  zoom: LuZoomIn,
+  lift: LuArrowUpFromLine,
+  shadow: LuLayers,
+  tilt: LuRotate3D,
+  shine: LuSparkles,
+}
+
+/** "Subtle — fade in" → "Subtle": the card names it, the tooltip explains. */
+function shortLabel(label: string): string {
+  return label.split(' — ')[0]!.split(' (')[0]!
+}
+
 /**
  * One collapsible group in the Theme tab, the same accordion the block-style
  * overrides use: the whole settings list reads as a short set of headings and
@@ -97,22 +259,15 @@ function ThemeSection({
 }) {
   return (
     <Accordion.Item value={value}>
-      <Accordion.ItemTrigger py="2">
-        <Text
-          flex="1"
-          fontSize="xs"
-          fontWeight="semibold"
-          textTransform="uppercase"
-          letterSpacing="wide"
-          color="fg.muted"
-        >
+      <Accordion.ItemTrigger py="3" cursor="pointer">
+        <Text flex="1" fontSize="sm" fontWeight="medium">
           {title}
         </Text>
         <Accordion.ItemIndicator />
       </Accordion.ItemTrigger>
       <Accordion.ItemContent>
-        <Accordion.ItemBody pb="4">
-          <Stack gap="3">
+        <Accordion.ItemBody pt="0" pb="5">
+          <Stack gap="4">
             {helper && (
               <Text fontSize="xs" color="fg.muted">
                 {helper}
@@ -243,10 +398,12 @@ export function ThemeSettingsPanel({
 
       <Accordion.Root multiple defaultValue={['colors']}>
         <ThemeSection value="colors" title={t('colors')}>
-          {color('brand', 'brandColor')}
-          {color('background', 'backgroundColor')}
-          {color('text', 'textColor')}
-          {color('accent', 'accentColor')}
+          <SimpleGrid columns={2} gap="3">
+            {color('brand', 'brandColor')}
+            {color('background', 'backgroundColor')}
+            {color('text', 'textColor')}
+            {color('accent', 'accentColor')}
+          </SimpleGrid>
           {issues.map((issue) => (
             <Alert.Root key={issue} status="warning" size="sm">
               <Alert.Indicator />
@@ -341,22 +498,24 @@ export function ThemeSettingsPanel({
 
         <ThemeSection value="motion" title={t('motion')}>
           <Labeled label={t('animation')} help={t('animationHelp')}>
-            <SelectInput
+            <ChoiceCards
+              label={t('animation')}
+              columns={3}
               value={settings.animation}
-              options={ANIMATION_STYLES.map((value) => ({
+              onChange={(animation) => onChange({ ...settings, animation })}
+              choices={ANIMATION_STYLES.map((value) => ({
                 value,
-                label: l(ANIMATION_LABELS[value]),
+                label: shortLabel(l(ANIMATION_LABELS[value])),
+                hint: l(ANIMATION_LABELS[value]),
+                preview: <Icon as={ANIMATION_GLYPHS[value]} boxSize="6" />,
               }))}
-              onChange={(animation) =>
-                onChange({ ...settings, animation: animation as ThemeSettings['animation'] })
-              }
             />
           </Labeled>
         </ThemeSection>
 
         <ThemeSection value="splash" title={t('splash')} helper={t('splashHelp')}>
           {splashToggle(t('splashEnable'), 'enabled')}
-          <Labeled label={t('splashStyle')}>
+          <Labeled label={t('splashStyle')} inline>
             <SelectInput
               value={settings.splash.style}
               options={SPLASH_STYLES.map((value) => ({
@@ -372,15 +531,33 @@ export function ThemeSettingsPanel({
             />
           </Labeled>
           <Labeled label={t('splashTone')}>
-            <SelectInput
+            <ChoiceCards
+              label={t('splashTone')}
+              columns={3}
               value={settings.splash.tone}
-              options={SPLASH_TONES.map((value) => ({
+              onChange={(tone: SplashTone) =>
+                onChange({ ...settings, splash: { ...settings.splash, tone } })
+              }
+              choices={SPLASH_TONES.map((value) => ({
                 value,
                 label: l(SPLASH_TONE_LABELS[value]),
+                preview: (
+                  <Box
+                    boxSize="8"
+                    rounded="full"
+                    borderWidth="1px"
+                    borderColor="border.emphasized"
+                    style={{
+                      background:
+                        value === 'page'
+                          ? settings.colors.background
+                          : value === 'brand'
+                            ? settings.colors.brand
+                            : '#1c1917',
+                    }}
+                  />
+                ),
               }))}
-              onChange={(tone) =>
-                onChange({ ...settings, splash: { ...settings.splash, tone: tone as SplashTone } })
-              }
             />
           </Labeled>
           {splashToggle(t('splashShowLogo'), 'showLogo')}
@@ -399,7 +576,7 @@ export function ThemeSettingsPanel({
         </ThemeSection>
 
         <ThemeSection value="popup" title={t('popup')} helper={t('popupHelp')}>
-          <Labeled label={t('popupKind')}>
+          <Labeled label={t('popupKind')} inline>
             <SelectInput
               value={settings.popup.kind}
               options={POPUP_KINDS.map((value) => ({
@@ -526,65 +703,58 @@ export function ThemeSettingsPanel({
 
         <ThemeSection value="shape" title={t('shape')}>
           <Labeled label={t('radius')}>
-            <SelectInput
+            <ChoiceCards
+              label={t('radius')}
+              columns={4}
               value={settings.radius}
-              options={RADIUS_OPTIONS.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
-              onChange={(radius) =>
-                onChange({ ...settings, radius: radius as ThemeSettings['radius'] })
-              }
+              onChange={(radius) => onChange({ ...settings, radius })}
+              choices={RADIUS_OPTIONS.map((value) => ({
+                value,
+                label: l(OPTION_LABELS[value]),
+                preview: <RadiusPreview radius={value} />,
+              }))}
             />
           </Labeled>
           <Labeled label={t('buttonStyle')}>
-            <SelectInput
+            <ChoiceCards
+              label={t('buttonStyle')}
+              columns={4}
               value={settings.buttonStyle}
-              options={BUTTON_STYLES.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
-              onChange={(buttonStyle) =>
-                onChange({ ...settings, buttonStyle: buttonStyle as ThemeSettings['buttonStyle'] })
-              }
+              onChange={(buttonStyle) => onChange({ ...settings, buttonStyle })}
+              choices={BUTTON_STYLES.map((value) => ({
+                value,
+                label: l(OPTION_LABELS[value]),
+                preview: <ButtonPreview style={value} />,
+              }))}
             />
           </Labeled>
           <Labeled label={t('cardStyle')}>
-            <SelectInput
+            <ChoiceCards
+              label={t('cardStyle')}
+              columns={4}
               value={settings.cardStyle}
-              options={CARD_STYLES.map((value) => ({ value, label: l(OPTION_LABELS[value]) }))}
-              onChange={(cardStyle) =>
-                onChange({ ...settings, cardStyle: cardStyle as ThemeSettings['cardStyle'] })
-              }
+              onChange={(cardStyle) => onChange({ ...settings, cardStyle })}
+              choices={CARD_STYLES.map((value) => ({
+                value,
+                label: l(OPTION_LABELS[value]),
+                preview: <CardPreview style={value} />,
+              }))}
             />
           </Labeled>
-          {/* A fieldset, not a `Labeled` field: each switch names itself, and
-              a field would hand its one label to all four. */}
-          <Fieldset.Root gap="2">
-            <Fieldset.Legend fontSize="sm">{t('cardHover')}</Fieldset.Legend>
-            <Stack gap="3">
-              {CARD_HOVER_EFFECTS.map((effect) => (
-                <Switch.Root
-                  key={effect}
-                  size="sm"
-                  colorPalette="brand"
-                  w="full"
-                  justifyContent="space-between"
-                  checked={settings.cardHover.includes(effect)}
-                  onCheckedChange={({ checked }) =>
-                    onChange({
-                      ...settings,
-                      // Kept in the list's order, whichever was switched last.
-                      cardHover: CARD_HOVER_EFFECTS.filter((candidate) =>
-                        candidate === effect ? checked : settings.cardHover.includes(candidate),
-                      ),
-                    })
-                  }
-                >
-                  <Switch.HiddenInput />
-                  <Switch.Label fontSize="sm" fontWeight="normal">
-                    {l(CARD_HOVER_LABELS[effect])}
-                  </Switch.Label>
-                  <Switch.Control />
-                </Switch.Root>
-              ))}
-            </Stack>
-            <Fieldset.HelperText>{t('cardHoverHelp')}</Fieldset.HelperText>
-          </Fieldset.Root>
+          <Labeled label={t('cardHover')} help={t('cardHoverHelp')}>
+            <ToggleCards
+              label={t('cardHover')}
+              columns={3}
+              values={settings.cardHover}
+              onChange={(cardHover) => onChange({ ...settings, cardHover })}
+              choices={CARD_HOVER_EFFECTS.map((effect) => ({
+                value: effect,
+                label: shortLabel(l(CARD_HOVER_LABELS[effect])),
+                hint: l(CARD_HOVER_LABELS[effect]),
+                preview: <Icon as={HOVER_GLYPHS[effect]} boxSize="5" />,
+              }))}
+            />
+          </Labeled>
 
           <Stack gap="1" pt="1">
             <Switch.Root
@@ -611,30 +781,46 @@ export function ThemeSettingsPanel({
 
         <ThemeSection value="size" title={t('size')}>
           <Labeled label={t('typeScale')} help={t('typeScaleHelp')}>
-            <SelectInput
+            <ChoiceCards
+              label={t('typeScale')}
+              columns={3}
               value={settings.typeScale}
-              options={TYPE_SCALES.map((value) => ({ value, label: l(TYPE_SCALE_LABELS[value]) }))}
-              onChange={(typeScale) =>
-                onChange({ ...settings, typeScale: typeScale as ThemeSettings['typeScale'] })
-              }
+              onChange={(typeScale) => onChange({ ...settings, typeScale })}
+              choices={TYPE_SCALES.map((value) => ({
+                value,
+                label: l(TYPE_SCALE_LABELS[value]),
+                preview: (
+                  <Text as="span" fontSize={TYPE_SIZE[value]} fontWeight="semibold" lineHeight="1">
+                    Aa
+                  </Text>
+                ),
+              }))}
             />
           </Labeled>
           <Labeled label={t('density')} help={t('densityHelp')}>
-            <SelectInput
+            <ChoiceCards
+              label={t('density')}
+              columns={3}
               value={settings.density}
-              options={DENSITIES.map((value) => ({ value, label: l(DENSITY_LABELS[value]) }))}
-              onChange={(density) =>
-                onChange({ ...settings, density: density as ThemeSettings['density'] })
-              }
+              onChange={(density) => onChange({ ...settings, density })}
+              choices={DENSITIES.map((value) => ({
+                value,
+                label: l(DENSITY_LABELS[value]),
+                preview: <DensityPreview density={value} />,
+              }))}
             />
           </Labeled>
           <Labeled label={t('pageWidth')} help={t('pageWidthHelp')}>
-            <SelectInput
+            <ChoiceCards
+              label={t('pageWidth')}
+              columns={3}
               value={settings.pageWidth}
-              options={PAGE_WIDTHS.map((value) => ({ value, label: l(PAGE_WIDTH_LABELS[value]) }))}
-              onChange={(pageWidth) =>
-                onChange({ ...settings, pageWidth: pageWidth as ThemeSettings['pageWidth'] })
-              }
+              onChange={(pageWidth) => onChange({ ...settings, pageWidth })}
+              choices={PAGE_WIDTHS.map((value) => ({
+                value,
+                label: l(PAGE_WIDTH_LABELS[value]),
+                preview: <PageWidthPreview width={value} />,
+              }))}
             />
           </Labeled>
         </ThemeSection>

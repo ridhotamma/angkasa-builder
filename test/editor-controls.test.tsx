@@ -6,6 +6,7 @@ import { renderToString } from 'react-dom/server'
 import { I18nProvider } from '@repo/i18n'
 import { system } from '@repo/theme'
 
+import { ChoiceCards, ToggleCards } from '../src/editor/choice-cards'
 import { ColorInput, FieldsForm } from '../src/editor/controls'
 import { FieldGroups, resetGroup } from '../src/editor/field-groups'
 import type { EditorServices } from '../src/editor/services'
@@ -202,5 +203,29 @@ describe('FieldGroups', () => {
     expect(draw({}, true)).not.toContain('Size')
     expect(draw({}, true)).toContain('Show advanced settings')
     expect(draw({ width: 'edge' }, true)).toContain('Size')
+  })
+})
+
+describe('ChoiceCards', () => {
+  const choices = [
+    { value: 'sm', label: 'Small', preview: null },
+    { value: 'lg', label: 'Large', preview: null, hint: 'Large — roomy' },
+  ] as const
+
+  test('is a radio group with the current answer checked', () => {
+    const html = render(
+      <ChoiceCards label="Corners" value="lg" onChange={() => {}} choices={choices} />,
+    )
+    expect(html).toContain('role="radiogroup"')
+    expect(html).toMatch(/aria-checked="true"[^>]*aria-label="Large — roomy"/)
+    expect(html).toMatch(/aria-checked="false"[^>]*aria-label="Small"/)
+  })
+
+  test('toggle cards check every picked answer', () => {
+    const html = render(
+      <ToggleCards label="Hover" values={['sm', 'lg']} onChange={() => {}} choices={choices} />,
+    )
+    expect(html.match(/role="checkbox"/g)).toHaveLength(2)
+    expect(html.match(/aria-checked="true"/g)).toHaveLength(2)
   })
 })
