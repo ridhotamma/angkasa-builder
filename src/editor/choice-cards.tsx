@@ -63,14 +63,21 @@ function ChoiceCard({
       p="2"
       pb="1.5"
       rounded="lg"
+      // The pick is a ring, not a fill: a tinted card with tinted text reads
+      // as a warning. A second px of ring is drawn as a shadow, so the card
+      // does not shift when it is picked.
       borderWidth="1px"
       borderColor={checked ? 'brand.solid' : 'border'}
-      bg={checked ? 'brand.subtle' : 'bg.panel'}
-      color={checked ? 'brand.fg' : 'fg.muted'}
+      boxShadow={checked ? '0 0 0 1px var(--chakra-colors-brand-solid)' : undefined}
+      bg="bg.panel"
+      // The drawing follows `currentColor`: the brand when picked, quiet otherwise.
+      color={checked ? 'brand.solid' : 'fg.subtle'}
       cursor={disabled ? 'default' : 'pointer'}
       opacity={disabled ? 0.55 : 1}
-      transition="border-color 120ms, background 120ms"
-      _hover={disabled ? undefined : { borderColor: checked ? 'brand.solid' : 'border.emphasized' }}
+      transition="border-color 120ms, box-shadow 120ms, background 120ms"
+      _hover={
+        disabled || checked ? undefined : { borderColor: 'border.emphasized', bg: 'bg.subtle' }
+      }
       _focusVisible={{
         outline: '2px solid',
         outlineColor: 'brand.focusRing',
@@ -89,11 +96,11 @@ function ChoiceCard({
       </Box>
       <Text
         fontSize="xs"
-        fontWeight="medium"
+        fontWeight={checked ? 'semibold' : 'medium'}
         lineClamp="2"
         lineHeight="short"
         textAlign="center"
-        color={checked ? 'brand.fg' : 'fg'}
+        color={checked ? 'fg' : 'fg.muted'}
       >
         {label}
       </Text>
