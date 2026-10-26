@@ -304,8 +304,7 @@ export function Slider({
    * a full view had no resting position but the first, and the arrows and dots
    * disappeared — the banner looked frozen at "Slides on desktop: 3".
    */
-  const rotating =
-    loop && count > 1 && perPageClamped >= count && (wrapInEditor || !editing)
+  const rotating = loop && count > 1 && perPageClamped >= count && (wrapInEditor || !editing)
   const last = rotating ? count - 1 : Math.max(0, count - perPageClamped)
   // A fractional view still settles on whole slides: the last position is the
   // last slide, its edge flush with the band's. A row of 2.5-a-view steps
@@ -319,8 +318,7 @@ export function Slider({
    * simply ends on its last slide.
    */
   const wraps =
-    rotating ||
-    (loop && paged && (wrapInEditor || !editing) && Number.isInteger(perPageClamped))
+    rotating || (loop && paged && (wrapInEditor || !editing) && Number.isInteger(perPageClamped))
   /** How many slides the doubles repeat at each end: one page's worth. */
   const doubles = wraps ? perPageClamped : 0
   const [index, setIndex] = useState(Math.max(0, Math.min(start, end)))
@@ -600,6 +598,11 @@ export function Slider({
   const band = (
     <Box
       data-slider-band=""
+      // Card rows draw their arrows inside the band, so the band must be the
+      // arrows' containing block. Without this they anchored to the section
+      // (or page) behind several shelves — a pair floating between rows at
+      // the page edges instead of on the row they belong to.
+      position="relative"
       // A finger slides the track, so the browser must leave the sideways
       // touches to us and keep the page's own scrolling for itself.
       touchAction={vertical ? 'pan-x' : 'pan-y'}
@@ -625,9 +628,7 @@ export function Slider({
         // Keep the tail of the gesture: a finger that stops before lifting
         // should not still fling on stale speed from a second ago.
         const last = from.samples[from.samples.length - 1]!
-        from.samples = from.samples.filter(
-          (sample) => sample.time >= last.time - FLING_SAMPLE_MS,
-        )
+        from.samples = from.samples.filter((sample) => sample.time >= last.time - FLING_SAMPLE_MS)
       }}
       onPointerUp={(event) => {
         const from = dragFrom.current

@@ -168,6 +168,16 @@ describe('product list layouts', () => {
     expect(html).not.toContain('data-product-layout="grid"')
   })
 
+  test('slider arrows are anchored to their own row, not the section', () => {
+    // "One shelf per collection" renders several sliders in one section; an
+    // unpositioned band left the pair anchored to the section behind them, so
+    // the buttons floated between rows at the page edges.
+    const html = renderLatest({ source: 'shelves', layout: 'slider', limit: 8 })
+    const bandClass = /data-slider-band="" class="([^"]+)"/.exec(html)?.[1]
+    expect(typeof bandClass).toBe('string')
+    expect(html).toMatch(new RegExp(`\\.${bandClass}\\{[^}]*position:relative`))
+  })
+
   test('a slider short enough for one page draws no arrows', () => {
     const html = renderLatest({ heading: 'New in', limit: 2, layout: 'slider' })
     expect(html).toContain('data-product-layout="slider"')
