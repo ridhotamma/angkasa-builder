@@ -8,7 +8,15 @@
  *
  * Run: `bun run generate:fonts` from `packages/page-builder`. The output is
  * committed; re-run when the library should grow or refresh.
+ *
+ * The library is append-only. Popularity reshuffles every month, and a family
+ * that falls out of the top `LIMIT` is still the face some saved theme or
+ * studio design names — dropping it would quietly turn that shop into Poppins.
+ * So every family already in the library is kept, in its place, with fresh
+ * metadata; only the room left under `LIMIT` is filled by popularity.
  */
+
+import { FONT_OPTIONS as CURRENT } from '../src/model/font-library'
 
 const METADATA_URL = 'https://fonts.google.com/metadata/fonts'
 const OUTPUT = new URL('../src/model/font-library.ts', import.meta.url)
@@ -118,6 +126,32 @@ function themeWeights(weights: number[]): number[] {
   return wanted.length > 0 ? wanted : [weights[0]!]
 }
 
+/**
+ * The weights a studio design can ask for (300–900) beyond the theme's four.
+ * Without them the canvas and the render service each pick the nearest face
+ * on their own, and a weight-800 headline need not land on the same one.
+ */
+const DESIGN_WEIGHTS = [300, 400, 500, 600, 700, 800, 900]
+
+function extraWeights(weights: number[], theme: number[]): number[] {
+  return DESIGN_WEIGHTS.filter((weight) => weights.includes(weight) && !theme.includes(weight))
+}
+
+/**
+ * The design weights that ship a true italic. A family without one has no
+ * italic at all as far as the studio is concerned: the browser would slant
+ * the upright face and the render service would not, so the two disagree.
+ */
+function italicWeights(family: FamilyMetadata): number[] {
+  const weights = new Set<number>()
+  for (const key of Object.keys(family.fonts ?? {})) {
+    if (!key.endsWith('i')) continue
+    const weight = Number(key.slice(0, -1))
+    if (DESIGN_WEIGHTS.includes(weight)) weights.add(weight)
+  }
+  return [...weights].sort((a, b) => a - b)
+}
+
 function fallbackFor(family: FamilyMetadata): string {
   switch (family.category) {
     case 'Serif':
@@ -141,8 +175,18 @@ async function main(): Promise<void> {
   const all = payload.familyMetadataList ?? []
 
   const featured = new Set<string>(FEATURED)
-  const chosen = all
+  const byName = new Map(all.map((family) => [family.family, family]))
+
+  // Every family already in the library, in its place — see the file header.
+  const kept = CURRENT.flatMap((option) => {
+    const family = byName.get(option.family)
+    if (!family) console.warn(`no longer on Google Fonts, kept as is: ${option.family}`)
+    return family ? [family] : []
+  })
+  const keptNames = new Set(CURRENT.map((option) => option.family))
+  const added = all
     .filter((family) => {
+      if (keptNames.has(family.family)) return false
       if (!family.isOpenSource || isExcluded(family.family)) return false
       // Every family here can set Latin copy; a family that cannot is useless
       // to a storefront whose copy is Latin-script.
@@ -150,25 +194,44 @@ async function main(): Promise<void> {
       return uprightWeights(family).includes(400)
     })
     .sort((a, b) => (a.popularity ?? 99_999) - (b.popularity ?? 99_999))
-    .slice(0, LIMIT)
+    .slice(0, Math.max(0, LIMIT - CURRENT.length))
+  const chosen = [...kept, ...added]
 
   const entries = chosen.map((family) => {
-    const weights = themeWeights(uprightWeights(family))
+    const upright = uprightWeights(family)
+    const weights = themeWeights(upright)
     return {
       family: family.family,
       category: CATEGORY[family.category] ?? 'sans',
       fallback: fallbackFor(family),
       weights,
+      extraWeights: extraWeights(upright, weights),
+      italics: italicWeights(family),
       featured: featured.has(family.family),
     }
   })
+  // A family Google has withdrawn is carried over verbatim rather than lost.
+  for (const option of CURRENT) {
+    if (byName.has(option.family)) continue
+    entries.splice(CURRENT.indexOf(option), 0, {
+      family: option.family,
+      category: option.category,
+      fallback: option.fallback,
+      weights: [...option.weights],
+      extraWeights: [...(option.extraWeights ?? [])],
+      italics: [...(option.italics ?? [])],
+      featured: option.featured === true,
+    })
+  }
 
   const missing = [...featured].filter((name) => !entries.some((entry) => entry.family === name))
   if (missing.length > 0) console.warn(`featured not in the library: ${missing.join(', ')}`)
 
+  const list = (values: readonly number[]) => `[${values.join(', ')}]`
   const lines = entries.map((entry) => {
-    const weights = `[${entry.weights.join(', ')}]`
-    return `  { family: ${quote(entry.family)}, category: '${entry.category}', fallback: '${entry.fallback}', weights: ${weights}${entry.featured ? ', featured: true' : ''} },`
+    const extra = entry.extraWeights.length > 0 ? `, extraWeights: ${list(entry.extraWeights)}` : ''
+    const italics = entry.italics.length > 0 ? `, italics: ${list(entry.italics)}` : ''
+    return `  { family: ${quote(entry.family)}, category: '${entry.category}', fallback: '${entry.fallback}', weights: ${list(entry.weights)}${extra}${italics}${entry.featured ? ', featured: true' : ''} },`
   })
 
   const file = `/**
@@ -197,6 +260,10 @@ export interface FontOption {
   fallback: FontFallback
   /** The weights the family ships, narrowed to the four a theme uses. */
   weights: readonly number[]
+  /** Upright weights it also ships that a studio design can use (300, 800, 900). */
+  extraWeights?: readonly number[]
+  /** Weights (300–900) it ships a true italic for; absent when it has none. */
+  italics?: readonly number[]
   /** On the AI's shortlist: popular enough to suggest and cheap to prompt. */
   featured?: boolean
 }

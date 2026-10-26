@@ -3,8 +3,12 @@ import { describe, expect, test } from 'bun:test'
 import { FEATURED_FONTS, FONT_OPTIONS, findFont, isFontFamily } from '../src/model/font-library'
 import {
   DEFAULT_THEME_SETTINGS,
+  designFontHref,
+  designWeights,
   fontStack,
+  googleFontsCssUrl,
   googleFontsHref,
+  hasItalic,
   sanitizeThemeSettings,
   type ThemeSettings,
 } from '../src/model/settings'
@@ -67,5 +71,56 @@ describe('googleFontsHref', () => {
   test('an unknown stored font sanitises to the default', () => {
     const clean = sanitizeThemeSettings({ fonts: { heading: 'Nope Sans', body: 'Inter' } })
     expect(clean.fonts).toEqual({ heading: 'Poppins', body: 'Inter' })
+  })
+})
+
+describe('studio font faces', () => {
+  test('the library records true italics and the heavier weights, never inventing one', () => {
+    const poppins = findFont('Poppins')!
+    expect(poppins.extraWeights).toEqual([300, 800, 900])
+    expect(poppins.italics).toContain(400)
+    // Bebas Neue ships one upright face and no italic at all.
+    expect(findFont('Bebas Neue')!.italics).toBeUndefined()
+    for (const font of FONT_OPTIONS) {
+      for (const weight of [...(font.extraWeights ?? []), ...(font.italics ?? [])]) {
+        expect([300, 400, 500, 600, 700, 800, 900]).toContain(weight)
+      }
+      // The theme's four never move: storefront stylesheets stay as they were.
+      for (const weight of font.extraWeights ?? []) expect(font.weights).not.toContain(weight)
+    }
+  })
+
+  test('designWeights and hasItalic read the library', () => {
+    expect(designWeights('Poppins')).toEqual([300, 400, 500, 600, 700, 800, 900])
+    expect(designWeights('Nope Sans')).toEqual([])
+    expect(hasItalic('Playfair Display')).toBe(true)
+    expect(hasItalic('Bebas Neue')).toBe(false)
+  })
+
+  test('uprights, italics or both, as sorted ital,wght tuples', () => {
+    expect(designFontHref('Playfair Display', { upright: true, italic: false })).toBe(
+      'family=Playfair+Display:wght@400;500;600;700;800;900',
+    )
+    expect(designFontHref('Playfair Display', { upright: false, italic: true })).toBe(
+      'family=Playfair+Display:ital,wght@1,400;1,500;1,600;1,700;1,800;1,900',
+    )
+    expect(designFontHref('Lato', { upright: true, italic: true })).toBe(
+      'family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900',
+    )
+  })
+
+  test('a face the family lacks is never requested — Google would refuse the whole sheet', () => {
+    expect(designFontHref('Bebas Neue', { upright: true, italic: true })).toBe(
+      'family=Bebas+Neue:wght@400',
+    )
+    expect(designFontHref('Bebas Neue', { upright: false, italic: true })).toBeNull()
+    expect(designFontHref('Nope Sans', { upright: true, italic: true })).toBeNull()
+  })
+
+  test('googleFontsCssUrl joins parts and skips the empty ones', () => {
+    expect(googleFontsCssUrl([null])).toBeNull()
+    expect(googleFontsCssUrl(['family=A:wght@400', null, 'family=B:wght@700'])).toBe(
+      'https://fonts.googleapis.com/css2?family=A:wght@400&family=B:wght@700&display=swap',
+    )
   })
 })

@@ -82,6 +82,60 @@ export function fontHref(family: FontFamily): string | null {
   return `family=${family.replace(/ /g, '+')}:wght@${weights.join(';')}`
 }
 
+/**
+ * Every upright weight a studio design can get as a real face: the theme's
+ * four plus whatever else the family ships between 300 and 900.
+ */
+export function designWeights(family: FontFamily): number[] {
+  const option = findFont(family)
+  if (!option) return []
+  const weights = new Set([...option.weights, ...(option.extraWeights ?? [])])
+  return [...weights].sort((a, b) => a - b)
+}
+
+/**
+ * Whether the family ships a true italic. A studio design must not lean on
+ * a slanted fallback: the browser fakes one and the render service does not,
+ * so the canvas and the download would disagree.
+ */
+export function hasItalic(family: FontFamily): boolean {
+  return (findFont(family)?.italics?.length ?? 0) > 0
+}
+
+/**
+ * One family's `family=…` part for a studio document: every design weight
+ * upright, the true italics, or both — or `null` when there is nothing to
+ * ask for. Italic-only is how a brand face gains its italics without its
+ * uprights being requested twice.
+ *
+ * The CSS2 API wants `ital,wght` tuples sorted, uprights before italics, and
+ * refuses the whole request for a face the family lacks — so only shipped
+ * weights are named.
+ */
+export function designFontHref(
+  family: FontFamily,
+  faces: { upright: boolean; italic: boolean },
+): string | null {
+  const option = findFont(family)
+  if (!option) return null
+  const upright = faces.upright ? designWeights(family) : []
+  const italic = faces.italic ? [...(option.italics ?? [])] : []
+  if (upright.length === 0 && italic.length === 0) return null
+
+  const name = `family=${family.replace(/ /g, '+')}`
+  if (italic.length === 0) return `${name}:wght@${upright.join(';')}`
+  const tuples = [...upright.map((weight) => `0,${weight}`), ...italic.map((weight) => `1,${weight}`)]
+  return `${name}:ital,wght@${tuples.join(';')}`
+}
+
+/** A Google Fonts stylesheet URL for `family=…` parts, or `null` for none. */
+export function googleFontsCssUrl(parts: readonly (string | null)[]): string | null {
+  const present = parts.filter((part): part is string => Boolean(part))
+  return present.length > 0
+    ? `https://fonts.googleapis.com/css2?${present.join('&')}&display=swap`
+    : null
+}
+
 /* -------------------------------------------------------------------------- */
 /* Settings                                                                   */
 /* -------------------------------------------------------------------------- */
