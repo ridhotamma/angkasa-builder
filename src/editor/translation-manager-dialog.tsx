@@ -41,6 +41,7 @@ import {
   collectTranslationFields,
   type TranslationField,
 } from '../model/translations'
+import { useBuilderDialogChildOverlay } from './builder-dialog'
 import { useEditorText } from './messages'
 
 function fieldKey(field: TranslationField): string {
@@ -132,6 +133,7 @@ export function TranslationManagerDialog({
   }) => Promise<string[]>
 }) {
   const { t, l } = useEditorText()
+  useBuilderDialogChildOverlay(open)
   const [untranslatedOnly, setUntranslatedOnly] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [notice, setNotice] = useState<{ kind: 'error' | 'info'; text: string } | null>(null)

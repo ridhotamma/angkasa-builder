@@ -41,6 +41,7 @@ import {
   type Palette,
 } from '../model/looks'
 import type { ThemeSettings } from '../model/settings'
+import { useBuilderDialogChildOverlay } from './builder-dialog'
 import { useEditorText } from './messages'
 import { PaletteDots, PaletteStrip } from './palette-swatch'
 
@@ -135,6 +136,7 @@ export function LookPickerDialog({
   priorityKeys = [],
 }: LookPickerDialogProps) {
   const { t, l } = useEditorText()
+  useBuilderDialogChildOverlay(open)
   const [tab, setTab] = useState<PickerTab>('looks')
   const [search, setSearch] = useState('')
 

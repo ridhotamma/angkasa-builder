@@ -447,6 +447,16 @@ function editTargetId(sections: readonly SectionInstance[], id: string): string 
   return linkedMaster(section, sections)?.id ?? id
 }
 
+/**
+ * What the add search was opened for. One object instead of three booleans:
+ * the target section a "+ Add block" belongs to cannot be lost when another
+ * flag changes, and the dialog's mode is always unambiguous.
+ */
+type AddDialogState =
+  | { mode: 'all' }
+  | { mode: 'insert'; insertAt: number }
+  | { mode: 'blocks'; targetSectionId: string }
+
 export function PageBuilder(props: PageBuilderProps) {
   return (
     <PaletteDragProvider>
@@ -506,20 +516,11 @@ function Builder({
   // full-screen sheet from a button pinned to the bottom instead.
   const compact = useBreakpointValue({ base: true, lg: false }, { ssr: false }) ?? false
   const { splitter, root: splitterRoot, reset: resetPanel } = usePanelSplitter()
-  const [commandOpen, setCommandOpen] = useState(false)
+  const [addDialog, setAddDialog] = useState<AddDialogState | null>(null)
   // The tree's open sections, kept here: the list unmounts while a section's
   // settings are open, and the way back should find it as it was.
   const [treeExpanded, setTreeExpanded] = useState<ReadonlySet<string>>(() => new Set())
-  // Where Ctrl+K adds, when the preview's "+" opened it for one spot; `null`
-  // adds after the selection, as Ctrl+K itself does.
-  const [commandInsertAt, setCommandInsertAt] = useState<number | null>(null)
-  // "+ Add block" under a section in the tree: Ctrl+K with only blocks.
-  const [commandBlocksOnly, setCommandBlocksOnly] = useState(false)
-  const closeCommand = useCallback(() => {
-    setCommandOpen(false)
-    setCommandInsertAt(null)
-    setCommandBlocksOnly(false)
-  }, [])
+  const closeAddDialog = useCallback(() => setAddDialog(null), [])
   // The phone's sheet: the sections, the theme or the selection's settings.
   const [sheetOpen, setSheetOpen] = useState(false)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
@@ -922,12 +923,13 @@ function Builder({
   }
 
   /**
-   * A section added from Ctrl+K: after the selected section, or at the end —
-   * the add palette's own rule — and opened, ready to fill in.
+   * A section added from the add search: at the "+" it came from, or after
+   * the selected section as Ctrl+K always did.
    */
-  /** Where a section from Ctrl+K goes: the "+" it came from, else after the selection. */
-  const commandIndex = () => {
-    if (commandInsertAt !== null) return Math.max(0, Math.min(sections.length, commandInsertAt))
+  const addDialogIndex = () => {
+    if (addDialog?.mode === 'insert') {
+      return Math.max(0, Math.min(sections.length, addDialog.insertAt))
+    }
     const after = selected ? sections.findIndex((other) => other.id === selected.id) + 1 : 0
     return after > 0 ? after : sections.length
   }
@@ -935,47 +937,56 @@ function Builder({
   const addSectionFromCommand = (type: SectionType, preset: SectionPreset | null) => {
     const section = createStarterSection(type, preset)
     const next = [...sections]
-    next.splice(commandIndex(), 0, section)
+    next.splice(addDialogIndex(), 0, section)
     onSectionsChange(next)
     select(section.id)
   }
 
   /**
-   * Blocks added from Ctrl+K go into the open Custom blocks section, after the
-   * selected block when there is one; anywhere else they start a new one.
+   * Blocks added from the add search. "+ Add block" targets the section it
+   * was opened from and appends there; Ctrl+K goes into the selected Custom
+   * blocks section, after the selected block when there is one. Anywhere else
+   * they start a new section.
    */
   const addBlocksFromCommand = (blocks: readonly PaletteBlock[]) => {
     const donor = createSection('blocks', { blocks: blocks as never })
     const created = readBlocks(donor.settings, 'blocks')
-    // From a "+" between sections: always a new section, in that spot.
-    if (
-      commandInsertAt === null &&
-      selected &&
-      schema?.type === 'blocks' &&
-      !selected.linkedTo &&
-      created.length > 0
-    ) {
-      const container = selectedBlock
-        ? { parentId: selectedBlock.parentId, fieldKey: selectedBlock.field.key }
+    const target =
+      addDialog?.mode === 'blocks'
+        ? (sections.find((section) => section.id === addDialog.targetSectionId) ?? null)
+        : addDialog?.mode === 'all' && selected && schema?.type === 'blocks' && !selected.linkedTo
+          ? selected
+          : null
+    const targetSchema = target ? sectionSchema(target.type) : null
+
+    if (target && targetSchema && created.length > 0) {
+      const afterSelected =
+        addDialog?.mode === 'all' && selectedBlock && target.id === selected?.id
+          ? selectedBlock
+          : null
+      const container = afterSelected
+        ? { parentId: afterSelected.parentId, fieldKey: afterSelected.field.key }
         : { parentId: null, fieldKey: 'blocks' }
-      let values = selected.settings
-      let index = selectedBlock
-        ? selectedBlock.index + 1
-        : readBlocks(selected.settings, 'blocks').length
+      let values = target.settings
+      let index = afterSelected
+        ? afterSelected.index + 1
+        : readBlocks(target.settings, 'blocks').length
       for (const block of created) {
-        const inserted = insertBlock(schema.fields, values, container, index, block)
+        const inserted = insertBlock(targetSchema.fields, values, container, index, block)
         if (!inserted) break
         values = inserted
         index += 1
       }
-      if (values !== selected.settings) {
-        updateSection(selected.id, (section) => ({ ...section, settings: values }))
+      if (values !== target.settings) {
+        updateSection(target.id, (section) => ({ ...section, settings: values }))
+        select(target.id)
         setSelectedBlockId(created[0]!.id)
         return
       }
     }
+
     const next = [...sections]
-    next.splice(commandIndex(), 0, donor)
+    next.splice(addDialogIndex(), 0, donor)
     onSectionsChange(next)
     select(donor.id)
   }
@@ -1054,8 +1065,7 @@ function Builder({
         const key = event.key.toLowerCase()
         if (mod && !event.shiftKey && !event.altKey && key === 'k') {
           event.preventDefault()
-          setCommandInsertAt(null)
-          setCommandOpen((current) => !current)
+          setAddDialog((current) => (current ? null : { mode: 'all' }))
           return
         }
         if (event.defaultPrevented) return
@@ -1576,9 +1586,10 @@ function Builder({
         expanded={treeExpanded}
         onExpandedChange={setTreeExpanded}
         onAddBlock={(sectionId) => {
-          select(sectionId)
-          setCommandBlocksOnly(true)
-          setCommandOpen(true)
+          // Do not change the selection just to open the picker. The target
+          // section is carried by the dialog state; the new block selects it
+          // once it has actually been inserted.
+          setAddDialog({ mode: 'blocks', targetSectionId: sectionId })
         }}
         before={
           details || editableLayout ? (
@@ -1770,8 +1781,7 @@ function Builder({
   const onInsert = useCallback((sectionId: string, place: 'before' | 'after') => {
     const found = latest.current.sections.findIndex((section) => section.id === sectionId)
     if (found < 0) return
-    setCommandInsertAt(place === 'before' ? found : found + 1)
-    setCommandOpen(true)
+    setAddDialog({ mode: 'insert', insertAt: place === 'before' ? found : found + 1 })
   }, [])
   const sectionLabel = useCallback(
     (section: SectionInstance) => {
@@ -1996,7 +2006,7 @@ function Builder({
               aria-label={t('commandButton')}
               size="xs"
               variant="ghost"
-              onClick={() => setCommandOpen(true)}
+              onClick={() => setAddDialog({ mode: 'all' })}
             >
               <LuSearch />
             </IconButton>
@@ -2103,10 +2113,10 @@ function Builder({
   // never opens until the sheet does (the Tambah button's own bug).
   const palette = (
     <CommandPalette
-      open={commandOpen}
-      onClose={closeCommand}
-      addOnly={commandInsertAt !== null || commandBlocksOnly}
-      blocksOnly={commandBlocksOnly}
+      open={addDialog !== null}
+      onClose={closeAddDialog}
+      addOnly={addDialog?.mode === 'insert' || addDialog?.mode === 'blocks'}
+      blocksOnly={addDialog?.mode === 'blocks'}
       sections={sections}
       scope={scope}
       counts={commandCounts}
@@ -2213,8 +2223,10 @@ function Builder({
             t('mobileAdd'),
             () => {
               const after = selected ? sections.findIndex((other) => other.id === selected.id) : -1
-              setCommandInsertAt(after >= 0 ? after + 1 : sections.length)
-              setCommandOpen(true)
+              setAddDialog({
+                mode: 'insert',
+                insertAt: after >= 0 ? after + 1 : sections.length,
+              })
             },
           ],
           ...(onSettingsChange
@@ -2362,7 +2374,15 @@ function Builder({
                   <CloseButton size="sm" aria-label={t('closeSheet')} />
                 </Drawer.CloseTrigger>
               </HStack>
-              <Drawer.Body px="0" pt="0" pb="4" flex="1" minH="0" overflowY="auto" overscrollBehavior="contain">
+              <Drawer.Body
+                px="0"
+                pt="0"
+                pb="4"
+                flex="1"
+                minH="0"
+                overflowY="auto"
+                overscrollBehavior="contain"
+              >
                 {panelBox}
               </Drawer.Body>
             </Drawer.Content>

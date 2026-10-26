@@ -23,7 +23,7 @@ import {
   ScrollArea,
   Text,
 } from '@chakra-ui/react'
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { LuX } from 'react-icons/lu'
 
 import { EditorMenu, type EditorMenuItem } from './actions'
@@ -42,6 +42,23 @@ const FooterSlot = createContext<HTMLElement | null>(null)
 
 export function useBuilderDialogFooter(): HTMLElement | null {
   return useContext(FooterSlot)
+}
+
+/**
+ * Nested dialogs report themselves here while open. The editor dialog then
+ * stops answering Escape and outside clicks, so closing a picker or the add
+ * search cannot also tear down the editor underneath it.
+ */
+const ChildOverlay = createContext<((open: boolean) => void) | null>(null)
+
+export function useBuilderDialogChildOverlay(open: boolean) {
+  const setChildOpen = useContext(ChildOverlay)
+
+  useEffect(() => {
+    if (!setChildOpen || !open) return
+    setChildOpen(true)
+    return () => setChildOpen(false)
+  }, [open, setChildOpen])
 }
 
 export interface BuilderDialogProps {
@@ -88,8 +105,12 @@ export function BuilderDialog({
   const { t } = useEditorText()
   const [confirming, setConfirming] = useState(false)
   const [footer, setFooter] = useState<HTMLDivElement | null>(null)
+  const [childOverlayOpen, setChildOverlayOpen] = useState(false)
 
   function requestClose() {
+    // A picker or search owns the screen now; its own close is not the
+    // editor's close.
+    if (childOverlayOpen) return
     if (dirty) {
       setConfirming(true)
     } else {
@@ -101,7 +122,8 @@ export function BuilderDialog({
     <Dialog.Root
       open
       size="full"
-      closeOnEscape={closeOnEscape}
+      closeOnEscape={closeOnEscape && !childOverlayOpen}
+      closeOnInteractOutside={!childOverlayOpen}
       motionPreset="none"
       // Escape (unless turned off) and the close button both land here; the dialog itself never
       // closes on its own.
@@ -184,7 +206,9 @@ export function BuilderDialog({
                     // Vertical scrolling only — see the panel in `builder.tsx`.
                     style={{ minWidth: 0 }}
                   >
-                    <FooterSlot.Provider value={footer}>{children}</FooterSlot.Provider>
+                    <ChildOverlay.Provider value={setChildOverlayOpen}>
+                      <FooterSlot.Provider value={footer}>{children}</FooterSlot.Provider>
+                    </ChildOverlay.Provider>
                   </ScrollArea.Content>
                 </ScrollArea.Viewport>
                 <ScrollArea.Scrollbar />

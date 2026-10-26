@@ -6,9 +6,26 @@
  * and the blocks — saved ones first. The arrow keys move through them and
  * Enter picks one, so a seller who knows what they want never opens the
  * palette's categories at all.
+ *
+ * Rendered as a normal editor dialog: a titled header with a close button, a
+ * search field, a scrollable result list and a footer hint. It registers as a
+ * child overlay with `BuilderDialog`, so closing it never closes the editor
+ * underneath.
  */
 
-import { Box, Dialog, HStack, Icon, Input, Portal, Stack, Text } from '@chakra-ui/react'
+import {
+  Box,
+  CloseButton,
+  Dialog,
+  Flex,
+  HStack,
+  Icon,
+  Input,
+  InputGroup,
+  Portal,
+  Stack,
+  Text,
+} from '@chakra-ui/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { LuCornerDownLeft, LuPlus, LuSearch } from 'react-icons/lu'
 
@@ -27,6 +44,7 @@ import {
 } from '../model/sections'
 import type { PaletteBlock } from './add-palette'
 import { blockGlyph } from './block-icons'
+import { useBuilderDialogChildOverlay } from './builder-dialog'
 import { useEditorText } from './messages'
 import { paletteBlockOf, useSavedBlocks } from './saved-blocks'
 import { sectionIcon } from './section-icons'
@@ -76,7 +94,12 @@ export function CommandPalette({
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const saved = useSavedBlocks()
+
+  // The editor dialog must not answer Escape or outside clicks while this
+  // dialog is on top of it.
+  useBuilderDialogChildOverlay(open)
 
   useEffect(() => {
     if (!open) return
@@ -174,9 +197,28 @@ export function CommandPalette({
 
   function pick(command: Command | undefined) {
     if (!command) return
-    onClose()
+    // Run first: the handler reads the add dialog's target (the section a
+    // "+ Add block" belongs to) before `onClose` resets it.
     command.run()
+    onClose()
   }
+
+  const title = blocksOnly
+    ? t('commandAddBlock')
+    : addOnly
+      ? t('commandAddHere')
+      : t('commandTitle')
+  const help = blocksOnly
+    ? t('commandAddBlockHelp')
+    : addOnly
+      ? t('commandAddSectionHelp')
+      : t('commandHelp')
+  const placeholder = blocksOnly
+    ? t('commandPlaceholderBlock')
+    : addOnly
+      ? t('commandPlaceholderAdd')
+      : t('commandPlaceholder')
+  const HeaderIcon = blocksOnly || addOnly ? LuPlus : LuSearch
 
   const groupLabel = {
     open: t('commandOpen'),
@@ -190,139 +232,161 @@ export function CommandPalette({
       onOpenChange={({ open: next }) => {
         if (!next) onClose()
       }}
-      placement="top"
-      size="md"
+      onEscapeKeyDown={(event) => {
+        // Close only this dialog. The editor underneath handles Escape on its
+        // own only when no child overlay is registered.
+        event.preventDefault()
+        event.stopPropagation()
+        onClose()
+      }}
+      initialFocusEl={() => inputRef.current}
+      placement="center"
+      size="xl"
+      scrollBehavior="inside"
     >
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
-          <Dialog.Content mt="16" overflow="hidden" aria-label={t('commandTitle')}>
-            <HStack px="4" py="3" gap="3" borderBottomWidth="1px" borderColor="border.subtle">
-              <Icon as={LuSearch} color="fg.subtle" />
-              <Input
-                autoFocus
-                variant="subtle"
-                bg="transparent"
-                border="0"
-                size="md"
-                px="0"
-                _focusVisible={{ outline: 'none', boxShadow: 'none' }}
-                placeholder={
-                  blocksOnly
-                    ? t('commandPlaceholderBlock')
-                    : addOnly
-                      ? t('commandPlaceholderAdd')
-                      : t('commandPlaceholder')
-                }
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.currentTarget.value)
-                  setActive(0)
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'ArrowDown') {
-                    event.preventDefault()
-                    setActive(Math.min(results.length - 1, current + 1))
-                  } else if (event.key === 'ArrowUp') {
-                    event.preventDefault()
-                    setActive(Math.max(0, current - 1))
-                  } else if (event.key === 'Enter') {
-                    event.preventDefault()
-                    pick(results[current])
-                  }
-                }}
-                aria-activedescendant={results[current] ? `command-${current}` : undefined}
-                aria-controls="command-results"
-              />
-            </HStack>
-            <Box
-              ref={listRef}
-              id="command-results"
-              role="listbox"
-              maxH="min(26rem, 60dvh)"
-              overflowY="auto"
-              p="1.5"
-              style={{ overscrollBehavior: 'contain' }}
-            >
-              {results.length === 0 && (
-                <Text px="3" py="8" textAlign="center" fontSize="sm" color="fg.muted">
-                  {t('commandNoResults')}
-                </Text>
-              )}
-              {results.map((command, index) => {
-                const heading =
-                  index === 0 || results[index - 1]!.group !== command.group
-                    ? groupLabel[command.group]
-                    : null
-                const isActive = index === current
-                return (
-                  <Box key={command.key}>
-                    {heading && (
-                      <Text
-                        px="2.5"
-                        pt={index === 0 ? '1' : '3'}
-                        pb="1"
-                        fontSize="xs"
-                        fontWeight="semibold"
-                        color="fg.muted"
-                      >
-                        {heading}
-                      </Text>
-                    )}
-                    <HStack
-                      id={`command-${index}`}
-                      data-command-index={index}
-                      role="option"
-                      aria-selected={isActive}
-                      gap="3"
-                      px="2.5"
-                      py="2"
-                      rounded="md"
-                      cursor="pointer"
-                      bg={isActive ? 'bg.muted' : undefined}
-                      onMouseMove={() => {
-                        if (!isActive) setActive(index)
-                      }}
-                      onClick={() => pick(command)}
-                    >
-                      <Box
-                        boxSize="7"
-                        rounded="md"
-                        bg={isActive ? 'bg.panel' : 'bg.muted'}
-                        color="fg.muted"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        flexShrink="0"
-                      >
-                        {command.icon}
-                      </Box>
-                      <Stack gap="0" minW="0" flex="1">
-                        <Text fontSize="sm" fontWeight="medium" truncate>
-                          {command.label}
-                        </Text>
-                        {command.detail && (
-                          <Text fontSize="xs" color="fg.muted" truncate>
-                            {command.detail}
-                          </Text>
-                        )}
-                      </Stack>
-                      {isActive && <Icon as={LuCornerDownLeft} color="fg.subtle" />}
-                    </HStack>
+          <Dialog.Content maxH="min(42rem, calc(100dvh - 4rem))" overflow="hidden">
+            <Dialog.Header>
+              <Flex justify="space-between" align="center" gap="3" w="full">
+                <HStack gap="2.5" minW="0">
+                  <Box p="1.5" rounded="md" bg="brand.subtle" color="brand.solid" flexShrink="0">
+                    <Icon as={HeaderIcon} />
                   </Box>
-                )
-              })}
-            </Box>
-            <Text
-              px="4"
-              py="2"
-              fontSize="xs"
-              color="fg.subtle"
-              borderTopWidth="1px"
-              borderColor="border.subtle"
-            >
-              {t('commandHint')}
-            </Text>
+                  <Box minW="0">
+                    <Dialog.Title fontSize="md">{title}</Dialog.Title>
+                    <Dialog.Description fontSize="xs" color="fg.muted">
+                      {help}
+                    </Dialog.Description>
+                  </Box>
+                </HStack>
+                <Dialog.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Dialog.CloseTrigger>
+              </Flex>
+            </Dialog.Header>
+
+            <Dialog.Body display="flex" flexDirection="column" gap="3" minH="0" pt="1" pb="4">
+              <InputGroup startElement={<Icon as={LuSearch} color="fg.subtle" />}>
+                <Input
+                  ref={inputRef}
+                  autoFocus
+                  size="sm"
+                  placeholder={placeholder}
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.currentTarget.value)
+                    setActive(0)
+                  }}
+                  onKeyDown={(event) => {
+                    if (results.length === 0) return
+                    if (event.key === 'ArrowDown') {
+                      event.preventDefault()
+                      setActive(Math.min(results.length - 1, current + 1))
+                    } else if (event.key === 'ArrowUp') {
+                      event.preventDefault()
+                      setActive(Math.max(0, current - 1))
+                    } else if (event.key === 'Enter') {
+                      event.preventDefault()
+                      pick(results[current])
+                    }
+                  }}
+                  aria-activedescendant={results[current] ? `command-${current}` : undefined}
+                  aria-controls="command-results"
+                />
+              </InputGroup>
+
+              <Box
+                ref={listRef}
+                id="command-results"
+                role="listbox"
+                maxH="min(26rem, 52dvh)"
+                overflowY="auto"
+                pe="1"
+                style={{ overscrollBehavior: 'contain' }}
+              >
+                {results.length === 0 && (
+                  <Text px="3" py="8" textAlign="center" fontSize="sm" color="fg.muted">
+                    {t('commandNoResults')}
+                  </Text>
+                )}
+                {results.map((command, index) => {
+                  const heading = blocksOnly
+                    ? null
+                    : index === 0 || results[index - 1]!.group !== command.group
+                      ? groupLabel[command.group]
+                      : null
+                  const isActive = index === current
+                  return (
+                    <Box key={command.key}>
+                      {heading && (
+                        <Text
+                          px="2.5"
+                          pt={index === 0 ? '1' : '3'}
+                          pb="1"
+                          fontSize="xs"
+                          fontWeight="semibold"
+                          textTransform="uppercase"
+                          letterSpacing="wide"
+                          color="fg.muted"
+                        >
+                          {heading}
+                        </Text>
+                      )}
+                      <HStack
+                        id={`command-${index}`}
+                        data-command-index={index}
+                        role="option"
+                        aria-selected={isActive}
+                        gap="3"
+                        px="2.5"
+                        py="2"
+                        rounded="md"
+                        cursor="pointer"
+                        bg={isActive ? 'bg.muted' : undefined}
+                        _hover={{ bg: 'bg.muted' }}
+                        transition="background 120ms"
+                        onMouseMove={() => {
+                          if (!isActive) setActive(index)
+                        }}
+                        onClick={() => pick(command)}
+                      >
+                        <Box
+                          boxSize="7"
+                          rounded="md"
+                          bg={isActive ? 'bg.panel' : 'bg.subtle'}
+                          color="fg.muted"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          flexShrink="0"
+                        >
+                          {command.icon}
+                        </Box>
+                        <Stack gap="0" minW="0" flex="1">
+                          <Text fontSize="sm" fontWeight="medium" truncate>
+                            {command.label}
+                          </Text>
+                          {command.detail && (
+                            <Text fontSize="xs" color="fg.muted" truncate>
+                              {command.detail}
+                            </Text>
+                          )}
+                        </Stack>
+                        {isActive && <Icon as={LuCornerDownLeft} color="fg.subtle" />}
+                      </HStack>
+                    </Box>
+                  )
+                })}
+              </Box>
+            </Dialog.Body>
+
+            <Dialog.Footer py="2.5" style={{ justifyContent: 'flex-start' }}>
+              <Text fontSize="xs" color="fg.subtle">
+                {t('commandHint')}
+              </Text>
+            </Dialog.Footer>
           </Dialog.Content>
         </Dialog.Positioner>
       </Portal>

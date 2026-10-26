@@ -29,6 +29,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { LuCheck, LuImage, LuImagePlus, LuSearch } from 'react-icons/lu'
 
+import { useBuilderDialogChildOverlay } from './builder-dialog'
 import { useEditorText } from './messages'
 import type { EditorMediaItem, EditorServices } from './services'
 
@@ -48,6 +49,7 @@ export function MediaPickerDialog({
   services: EditorServices
 }) {
   const { t } = useEditorText()
+  useBuilderDialogChildOverlay(open)
   const browseImages = services.browseImages
   const [tab, setTab] = useState<PickerTab>('upload')
   const [query, setQuery] = useState('')
