@@ -184,6 +184,7 @@ import { useEditorText } from './messages'
 import { FieldGroups, type FieldGroup } from './field-groups'
 import { PanelSlide } from './panel-slide'
 import { SaveBlockPopover } from './save-block-popover'
+import { useSheetDrag } from './sheet-drag'
 import { canSaveBlock } from './saved-blocks'
 import { PreviewFrame, type PreviewDevice } from './preview-frame'
 import { flipElements, orderMoved, type SectionRects } from './reorder-flip'
@@ -519,6 +520,9 @@ function Builder({
   }, [])
   // The phone's sheet: the sections, the theme or the selection's settings.
   const [sheetOpen, setSheetOpen] = useState(false)
+  const closeSheet = useCallback(() => setSheetOpen(false), [])
+  // Dragged by its handle: up for the whole screen, down for half or closed.
+  const sheet = useSheetDrag({ onClose: closeSheet })
   const footerSlot = useBuilderDialogFooter()
 
   const editableLayout = Boolean(layout && onLayoutChange)
@@ -2154,6 +2158,7 @@ function Builder({
       clearSelection()
       setTab(view)
     }
+    if (!sheetOpen) sheet.reset()
     setSheetOpen(true)
   }
   const bottomBar = (
@@ -2254,32 +2259,75 @@ function Builder({
         // picking another section there swaps what the sheet shows.
         modal={false}
         closeOnInteractOutside={false}
-        onOpenChange={({ open }) => setSheetOpen(open)}
+        onOpenChange={({ open }) => {
+          setSheetOpen(open)
+          if (!open) sheet.reset()
+        }}
       >
         <Portal>
           <Drawer.Positioner pointerEvents="none">
             <Drawer.Content
               pointerEvents="auto"
-              roundedTop="xl"
-              maxH="62dvh"
+              roundedTop={sheet.stop === 'full' && !sheet.dragging ? 'lg' : 'xl'}
+              maxH="none"
               shadow="0 -8px 24px rgba(0,0,0,0.12)"
+              style={{
+                height: sheet.height,
+                // The finger leads while dragging; letting go eases to the stop.
+                transition: sheet.dragging ? 'none' : 'height 240ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+              }}
             >
-              <HStack px="3" pt="2" pb="1" position="relative" justify="flex-end">
+              {/* The handle row: drag it, tap it, or use its keys. Not the
+                  sheet's body, which scrolls its own settings. */}
+              <HStack
+                px="3"
+                pt="2"
+                pb="1"
+                minH="10"
+                position="relative"
+                justify="flex-end"
+                flexShrink="0"
+                cursor={sheet.dragging ? 'grabbing' : 'grab'}
+                touchAction="none"
+                userSelect="none"
+                role="button"
+                tabIndex={0}
+                aria-label={sheet.stop === 'full' ? t('sheetShrink') : t('sheetExpand')}
+                aria-expanded={sheet.stop === 'full'}
+                {...sheet.handleProps}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    sheet.setStop(sheet.stop === 'full' ? 'half' : 'full')
+                  } else if (event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    sheet.setStop('full')
+                  } else if (event.key === 'ArrowDown') {
+                    event.preventDefault()
+                    if (sheet.stop === 'full') sheet.setStop('half')
+                    else closeSheet()
+                  }
+                }}
+                _focusVisible={{ outline: '2px solid', outlineColor: 'brand.focusRing' }}
+              >
                 <Box
                   position="absolute"
                   left="50%"
-                  top="2"
+                  top="2.5"
                   transform="translateX(-50%)"
-                  h="1"
-                  w="10"
+                  h="1.5"
+                  w="12"
                   rounded="full"
-                  bg="border.emphasized"
+                  bg={sheet.dragging ? 'fg.muted' : 'border.emphasized'}
+                  transition="background 120ms"
+                  pointerEvents="none"
                 />
                 <Drawer.CloseTrigger asChild position="static">
                   <CloseButton size="sm" aria-label={t('closeSheet')} />
                 </Drawer.CloseTrigger>
               </HStack>
-              <Drawer.Body px="0" pt="0" pb="4" minH="0" overflowY="auto">
+              <Drawer.Body px="0" pt="0" pb="4" flex="1" minH="0" overflowY="auto" overscrollBehavior="contain">
                 {panelBox}
               </Drawer.Body>
             </Drawer.Content>

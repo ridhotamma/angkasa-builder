@@ -262,6 +262,14 @@ const MESSAGES = {
   mobileAdd: { en: 'Add', id: 'Tambah' },
   mobileEdit: { en: 'Edit', id: 'Edit' },
   closeSheet: { en: 'Close', id: 'Tutup' },
+  sheetExpand: {
+    en: 'Drag up or tap to show full screen',
+    id: 'Seret ke atas atau ketuk untuk layar penuh',
+  },
+  sheetShrink: {
+    en: 'Drag down or tap to shrink',
+    id: 'Seret ke bawah atau ketuk untuk mengecilkan',
+  },
   groupHeader: { en: 'Header', id: 'Header' },
   groupTemplate: { en: 'Template', id: 'Templat' },
   groupFooter: { en: 'Footer', id: 'Footer' },
