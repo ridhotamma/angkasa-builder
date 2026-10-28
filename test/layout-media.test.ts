@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { stockPhotoValue } from '@repo/appwrite-config'
+import { stockPhotoValue } from '../src/model/stock-photo'
 
 import { drawnSections, layoutMedia, pageEdges, sanitizeLayout, sanitizeSections } from '../src/index'
 

@@ -26,7 +26,7 @@ import {
 import { type ReactNode } from 'react'
 import { LuEllipsisVertical, LuSettings2 } from 'react-icons/lu'
 
-import { Tooltip } from '@repo/theme'
+import { Tooltip } from '../ui'
 
 import { useEditorText } from './messages'
 

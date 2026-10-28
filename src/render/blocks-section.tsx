@@ -31,9 +31,9 @@ import {
 import { createContext, useContext, type ReactNode } from 'react'
 import { LuStar } from 'react-icons/lu'
 
-import { StoreMap } from '@repo/geoapify/store-map'
-import { useLocale } from '@repo/i18n'
-import { ImageWithFallback } from '@repo/theme'
+import { StoreMap } from '../map/store-map'
+import { useLocale } from '../locale'
+import { ImageWithFallback } from '../ui'
 
 import { blockSchema, findBlock, GRID_MOBILE_COLUMNS } from '../model/blocks'
 import {

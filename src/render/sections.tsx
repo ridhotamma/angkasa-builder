@@ -29,8 +29,8 @@ import {
 import type { ReactNode } from 'react'
 import { LuMinus, LuPlus } from 'react-icons/lu'
 
-import { Image, ImageWithFallback } from '@repo/theme'
-import { useLocale } from '@repo/i18n'
+import { Image, ImageWithFallback } from '../ui'
+import { useLocale } from '../locale'
 
 import {
   readBoolean,

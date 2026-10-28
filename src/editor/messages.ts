@@ -8,7 +8,7 @@
 
 import { useMemo } from 'react'
 
-import { useLocale } from '@repo/i18n'
+import { useLocale } from '../locale'
 
 import { localize, type Localized } from '../model/localized'
 
@@ -433,7 +433,6 @@ const MESSAGES = {
   footerFollowUs: { en: 'Follow us', id: 'Ikuti kami' },
   footerLinks: { en: 'Links', id: 'Tautan' },
   footerTrackOrder: { en: 'Track order', id: 'Lacak pesanan' },
-  poweredBy: { en: 'Powered by Pesanle', id: 'Didukung oleh Pesanle' },
   standInSearch: { en: 'Search', id: 'Cari' },
   standInCart: { en: 'Cart', id: 'Keranjang' },
   standInAccount: { en: 'Account', id: 'Akun' },

@@ -19,8 +19,8 @@ import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../../src/locale'
+import { system } from '../../src/ui'
 
 import { createSection, DEFAULT_THEME_SETTINGS, type SectionInstance } from '../../src/index'
 import { PageBuilder, useUndoableState, type EditorServices } from '../../src/editor/index'
@@ -47,7 +47,7 @@ function Host({ initial }: { initial: SectionInstance[] }) {
   const [settings] = useState(DEFAULT_THEME_SETTINGS)
   return (
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <PageBuilder
           sections={value}
           onSectionsChange={set}
@@ -58,7 +58,7 @@ function Host({ initial }: { initial: SectionInstance[] }) {
           history={history}
           height="800px"
         />
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>
   )
 }

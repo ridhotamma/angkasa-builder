@@ -1,4 +1,4 @@
-/** `@repo/page-builder/render` — the Chakra renderers for stored layouts. */
+/** `angkasa-builder/render` — the Chakra renderers for stored layouts. */
 
 export {
   findProductCard,
@@ -94,3 +94,5 @@ export { SitePopup } from './popup'
 export { SplashScreen, splashSkipScript, type SplashShop } from './splash'
 export type { SectionProps } from './sections'
 export { SNAPSHOT_WIDTH, TemplateSnapshotPage, type SnapshotPageProps } from './theme-preview'
+export { DEFAULT_LOCALE, LOCALES, LocaleProvider, useLocale, type Locale } from '../locale'
+export { system } from '../ui/system'

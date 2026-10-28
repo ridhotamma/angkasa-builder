@@ -3,9 +3,9 @@ import { Box, ChakraProvider } from '@chakra-ui/react'
 import { renderToString } from 'react-dom/server'
 import type { ReactNode } from 'react'
 
-import { I18nProvider } from '@repo/i18n'
-import { SECTION_TEXT_SHADOW_ENABLED } from '@repo/appwrite-config'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { SECTION_TEXT_SHADOW_ENABLED } from '../src/model/flags'
+import { system } from '../src/ui'
 
 import {
   BANNER_SLIDES_PER_VIEW,
@@ -61,9 +61,9 @@ function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
 function render(node: ReactNode): string {
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         {node}
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

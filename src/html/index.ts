@@ -1,12 +1,12 @@
 /**
- * `@repo/page-builder/html` — themes and pages as plain HTML, for any server.
+ * `angkasa-builder/html` — themes and pages as plain HTML, for any server.
  *
  * Server-only. `renderPageHtml` and `renderPageDocument` draw a whole page;
  * `renderSectionHtml` draws one section as a fragment to swap into a page
  * already on screen (an htmx editor's response to a field change). The
  * browser needs no framework: serve `PAGE_RUNTIME_PATH` (built by
- * `bun run build`) as a script and the sliders, menus, popups and countdowns
- * work. Bundling it yourself? Import `@repo/page-builder/html/runtime`.
+ * `bun run build`; `angkasa-builder/page-runtime.js`) as a script and the sliders, menus, popups and countdowns
+ * work. Bundling it yourself? Import `angkasa-builder/html/runtime`.
  *
  * See docs/PAGE-BUILDER.md ("Plain HTML").
  */
@@ -26,8 +26,10 @@ export {
 
 /**
  * The built browser runtime on disk, for a server to send as
- * `text/javascript`. Exists once the package has been built.
+ * `text/javascript`. Resolved through the package's own exports, so it is the
+ * same file from the source and from the build. Exists once the package has
+ * been built (`bun run build`).
  */
 export const PAGE_RUNTIME_PATH = fileURLToPath(
-  new URL('../../dist/page-runtime.js', import.meta.url),
+  import.meta.resolve('angkasa-builder/page-runtime.js'),
 )

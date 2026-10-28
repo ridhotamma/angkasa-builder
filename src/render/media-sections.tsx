@@ -21,7 +21,7 @@ import {
 import { useState } from 'react'
 import { LuChevronLeft, LuChevronRight, LuPlus } from 'react-icons/lu'
 
-import { Image, ImageWithFallback } from '@repo/theme'
+import { Image, ImageWithFallback } from '../ui'
 
 import {
   readBoolean,

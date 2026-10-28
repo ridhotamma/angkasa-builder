@@ -17,8 +17,8 @@ import { cleanup, render, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { DEFAULT_THEME_SETTINGS } from '../src/index'
 import {
@@ -56,9 +56,9 @@ function env(): RenderEnvironment {
 function renderHeader(node: ReactNode) {
   return render(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <RenderProvider value={env()}>{node}</RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

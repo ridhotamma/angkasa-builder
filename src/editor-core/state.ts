@@ -31,6 +31,24 @@ export function createEditorState(sections: SectionInstance[]): EditorState {
   return { sections: createHistory(sections), selection: NO_SELECTION }
 }
 
+/**
+ * The commands that are typing: a burst of them is one undo step. Anything
+ * else — a move, a copy, a removal — is always a step of its own, and the
+ * typing after it starts a new one.
+ */
+const TYPING: ReadonlySet<EditorCommand['type']> = new Set([
+  'set-section-settings',
+  'set-section-style',
+  'set-section-overrides',
+  'set-block-settings',
+  'set-block-style',
+  'set-element',
+  'rename-section',
+  'rename-block',
+  'edit-text',
+  'edit-block-text',
+])
+
 export interface DispatchOptions {
   locale: StorefrontLocale
   /** The clock, for coalescing typing into one undo step. Defaults to `Date.now()`. */
@@ -38,9 +56,10 @@ export interface DispatchOptions {
 }
 
 /**
- * Apply a command. The new sections become an undo step (coalesced with the
- * last one when it was moments ago); the result carries what the view should
- * do next — reveal a section, open a tree branch.
+ * Apply a command. The new sections become an undo step — typing coalesced
+ * with the last edit when it was moments ago, anything structural always a
+ * step of its own; the result carries what the view should do next — reveal
+ * a section, open a tree branch.
  */
 export function dispatchCommand(
   state: EditorState,
@@ -50,10 +69,17 @@ export function dispatchCommand(
   const result = applyCommand(state.sections.present, state.selection, command, {
     locale: options.locale,
   })
+  const typing = TYPING.has(command.type)
   const sections =
     result.sections === state.sections.present
       ? state.sections
-      : pushHistory(state.sections, result.sections, options.now ?? Date.now())
+      : typing
+        ? pushHistory(state.sections, result.sections, options.now ?? Date.now())
+        : // Its own step, and a fresh start for whatever is typed next.
+          {
+            ...pushHistory({ ...state.sections, lastEditAt: 0 }, result.sections, 0),
+            lastEditAt: 0,
+          }
   const next =
     sections === state.sections && result.selection === state.selection
       ? state

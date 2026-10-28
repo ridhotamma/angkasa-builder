@@ -12,8 +12,8 @@ import { ChakraProvider } from '@chakra-ui/react'
 import { cleanup, render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { SectionList } from '../src/editor/section-list'
 
@@ -22,14 +22,14 @@ afterEach(() => cleanup())
 function list() {
   return render(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <SectionList
           sections={[]}
           onChange={() => undefined}
           selectedId={null}
           onSelect={() => undefined}
         />
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

@@ -436,6 +436,26 @@ describe('history', () => {
     expect(undone.selection).toEqual(NO_SELECTION)
   })
 
+  test('typing coalesces, but a structural command is always its own step', () => {
+    const sections = page()
+    const id = sections[0]!.id
+    let state = createEditorState(sections)
+    const run = (command: EditorCommand, now: number) => {
+      state = dispatchCommand(state, command, { locale: 'en', now }).state
+    }
+    run({ type: 'edit-text', sectionId: id, key: 'heading', value: 'A' }, 1000)
+    run({ type: 'edit-text', sectionId: id, key: 'heading', value: 'AB' }, 1100)
+    run({ type: 'move-section', id, by: 1 }, 1200)
+    run({ type: 'edit-text', sectionId: id, key: 'heading', value: 'ABC' }, 1300)
+    // Three steps: the typing, the move, the typing after it.
+    expect(state.sections.past).toHaveLength(3)
+    state = undoEditor(state)
+    expect(state.sections.present[1]!.settings.heading).toBe('AB')
+    state = undoEditor(state)
+    expect(state.sections.present[0]!.id).toBe(id)
+    expect(state.sections.present[0]!.settings.heading).toBe('AB')
+  })
+
   test('the state is plain JSON, so a server can keep it in a session', () => {
     const { state } = dispatchCommand(
       createEditorState(page()),

@@ -22,8 +22,8 @@ import {
   type RenderResult,
 } from '@testing-library/react'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { createSection, DEFAULT_THEME_SETTINGS } from '../src/index'
 import {
@@ -50,7 +50,7 @@ function env(): RenderEnvironment {
 function track(): RenderResult {
   return render(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <RenderProvider value={env()}>
           <Slider count={3} perPage={1} ratio={2} dots="inside">
             <Box bg="bg.subtle" h="full" />
@@ -58,7 +58,7 @@ function track(): RenderResult {
             <Box bg="bg.subtle" h="full" />
           </Slider>
         </RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }
@@ -86,7 +86,7 @@ describe('the wrap of a loop', () => {
   function looped(): RenderResult {
     return render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <RenderProvider value={env()}>
             <Slider count={3} perPage={1} ratio={2} loop dots="inside">
               <Box bg="bg.subtle" h="full" />
@@ -94,7 +94,7 @@ describe('the wrap of a loop', () => {
               <Box bg="bg.subtle" h="full" />
             </Slider>
           </RenderProvider>
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
   }
@@ -145,7 +145,7 @@ describe('a drag across several slides', () => {
   function row(): RenderResult {
     return render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <RenderProvider value={env()}>
             <Slider count={8} perPage={1} dots="below">
               {Array.from({ length: 8 }, (_, index) => (
@@ -153,7 +153,7 @@ describe('a drag across several slides', () => {
               ))}
             </Slider>
           </RenderProvider>
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
   }
@@ -253,7 +253,7 @@ describe('the banner slider view', () => {
   ): RenderResult {
     return render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <SectionsRenderer
             sections={[
               createSection('banner-slider', {
@@ -275,7 +275,7 @@ describe('the banner slider view', () => {
               }),
             }}
           />
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
   }
@@ -353,7 +353,7 @@ describe('the banner slider view', () => {
     const onSelect = mock(() => undefined)
     const view = render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <SectionsRenderer
             sections={[
               createSection('banner-slider', {
@@ -365,7 +365,7 @@ describe('the banner slider view', () => {
             env={{ ...env(), getWindow: () => windowAt(true) }}
             onSelect={onSelect}
           />
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
     const desktop = inScope(view)

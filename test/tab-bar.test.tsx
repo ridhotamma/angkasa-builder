@@ -14,8 +14,8 @@ import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 import { LuShoppingBag } from 'react-icons/lu'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { DEFAULT_THEME_SETTINGS, sanitizeThemeSettings, type ThemeSettings } from '../src/index'
 import { sanitizeLayout } from '../src/model/layout'
@@ -49,9 +49,9 @@ function render(node: ReactNode, settings: ThemeSettings = DEFAULT_THEME_SETTING
   }
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <RenderProvider value={env}>{node}</RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

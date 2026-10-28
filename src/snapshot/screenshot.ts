@@ -3,7 +3,7 @@
  *
  * Two places this runs, routed by environment:
  *  - **A deployed environment** (`RENDER_FUNCTION_URL` + `RENDER_FUNCTION_KEY`
- *    set): the HTML is POSTed to the `render` Appwrite Function, which renders
+ *    set): the HTML is POSTed to a remote render service, which renders
  *    it with WeasyPrint and rasterises the result. No browser is ever launched
  *    here, so `@sparticuz/chromium` is not a dependency and no Chromium ships
  *    in any app's deployed output.
@@ -16,7 +16,7 @@
  * is erased at build time, so it carries none of that bundling risk, and
  * `puppeteer`'s browser is structurally the same type.
  *
- * Server-only, like the rest of `@repo/page-builder/snapshot`.
+ * Server-only, like the rest of `angkasa-builder/snapshot`.
  */
 
 import type { Browser, Page } from 'puppeteer-core'

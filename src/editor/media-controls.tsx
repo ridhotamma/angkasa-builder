@@ -24,7 +24,7 @@ import {
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { LuFilm, LuMove, LuUpload, LuX } from 'react-icons/lu'
 
-import { InstantPicker } from '@repo/theme'
+import { InstantPicker } from '../ui'
 
 import { parseVideoUrl, sanitizeVideo, type PointValue, type VideoRef } from '../model/fields'
 import type { StorefrontProductCard } from '../render/context'

@@ -14,11 +14,7 @@
  * default below is "exactly as before".
  */
 
-import {
-  SECTION_STAGGER_ENABLED,
-  SECTION_STICKY_ENABLED,
-  SECTION_TEXT_SHADOW_ENABLED,
-} from '@repo/appwrite-config'
+import { SECTION_STAGGER_ENABLED, SECTION_STICKY_ENABLED, SECTION_TEXT_SHADOW_ENABLED } from './flags'
 
 import {
   readBoolean,

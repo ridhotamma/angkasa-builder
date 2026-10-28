@@ -13,8 +13,8 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
 import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { createSection, DEFAULT_THEME_SETTINGS } from '../src/index'
 import {
@@ -41,14 +41,14 @@ function gallery(toggled: string[]) {
   }
   return render(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <RenderProvider value={env}>
           <SectionsRenderer
             sections={[createSection('product-info', { gallery: 'mosaic', stickyInfo: true })]}
             env={env}
           />
         </RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }
@@ -90,7 +90,7 @@ function photos(images: number, settings: Record<string, unknown> = {}) {
   }
   return render(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <RenderProvider value={env}>
           <SectionsRenderer
             sections={[
@@ -99,7 +99,7 @@ function photos(images: number, settings: Record<string, unknown> = {}) {
             env={env}
           />
         </RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }
@@ -229,14 +229,14 @@ describe('the product gallery actions', () => {
     }
     const view = render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <RenderProvider value={env}>
             <SectionsRenderer
               sections={[createSection('product-info', { gallery: 'mosaic', stickyInfo: true })]}
               env={env}
             />
           </RenderProvider>
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
     expect(view.queryByLabelText('Save to wishlist')).toBeNull()

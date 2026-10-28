@@ -4,7 +4,7 @@
  * is only the chrome around it.
  */
 
-import { useLocale } from '@repo/i18n'
+import { useLocale } from '../locale'
 
 import { localize, type Localized } from '../model/localized'
 

@@ -10,7 +10,7 @@
 
 import { Box, type BoxProps } from '@chakra-ui/react'
 
-import { ImageWithFallback } from '@repo/theme'
+import { ImageWithFallback } from '../ui'
 
 import type { VideoRef } from '../model/fields'
 import { resolveScheme } from '../model/settings'

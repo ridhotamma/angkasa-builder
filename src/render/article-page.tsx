@@ -24,8 +24,8 @@ import { useState } from 'react'
 import { LuArrowLeft, LuArrowRight, LuCheck, LuLink } from 'react-icons/lu'
 import { FaWhatsapp } from 'react-icons/fa6'
 
-import { useLocale } from '@repo/i18n'
-import { ImageWithFallback } from '@repo/theme'
+import { useLocale } from '../locale'
+import { ImageWithFallback } from '../ui'
 
 import { readBoolean, readNumber, readText } from '../model/fields'
 import {

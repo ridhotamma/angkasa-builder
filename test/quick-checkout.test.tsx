@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
 import { renderToString } from 'react-dom/server'
 
-import { stockPhotoValue } from '@repo/appwrite-config'
-import { system } from '@repo/theme'
+import { stockPhotoValue } from '../src/model/stock-photo'
+import { system } from '../src/ui'
 
 import { contrastRatio } from '../src/model/settings'
 import {

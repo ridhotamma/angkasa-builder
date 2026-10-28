@@ -20,8 +20,8 @@ import { describe, expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
 import { renderToString } from 'react-dom/server'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import {
   SECTION_SCHEMAS,
@@ -62,11 +62,11 @@ function renderSections(sections: ReturnType<typeof createSection>[]): string {
   const environment = env('preview')
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <RenderProvider value={environment}>
           <SectionsRenderer sections={sections} env={environment} />
         </RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

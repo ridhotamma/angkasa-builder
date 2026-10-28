@@ -3,8 +3,8 @@ import { Box, Button, ChakraProvider, HStack, Text } from '@chakra-ui/react'
 import { useState, type ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import {
   createSection,
@@ -137,9 +137,9 @@ function env(overrides: Partial<RenderEnvironment> = {}): RenderEnvironment {
 function render(node: ReactNode): string {
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         {node}
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

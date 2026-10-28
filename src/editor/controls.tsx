@@ -81,7 +81,7 @@ import {
   LuTrash2,
 } from 'react-icons/lu'
 
-import { IconTile, Tooltip } from '@repo/theme'
+import { IconTile, Tooltip } from '../ui'
 
 import { readBlockDevices } from '../model/block-style'
 import {

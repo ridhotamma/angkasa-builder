@@ -3,7 +3,7 @@
  * service.
  *
  * Server-only: `react-dom/server` and `@emotion/server` have no place in a
- * client bundle, which is why this lives in `@repo/page-builder/snapshot`
+ * client bundle, which is why this lives in `angkasa-builder/snapshot`
  * rather than the root entry. Only server functions import it.
  *
  * The document draws `TemplateSnapshotPage` — the same component the
@@ -20,8 +20,8 @@ import createEmotionServer from '@emotion/server/create-instance'
 import { ChakraProvider } from '@chakra-ui/react'
 import { renderToString } from 'react-dom/server'
 
-import { I18nProvider, type Locale } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider, type Locale } from '../locale'
+import { system } from '../ui'
 
 import type { ThemeContent } from '../model/content'
 import { googleFontsHref } from '../model/settings'
@@ -73,7 +73,7 @@ export function renderTemplateSnapshotHtml({
   const body = renderToString(
     <CacheProvider value={cache}>
       <ChakraProvider value={system}>
-        <I18nProvider locale={locale} resources={{}}>
+        <LocaleProvider locale={locale}>
           <RenderProvider value={env}>
             <TemplateSnapshotPage
               content={content}
@@ -83,7 +83,7 @@ export function renderTemplateSnapshotHtml({
               videoUrl={videoUrl}
             />
           </RenderProvider>
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>
     </CacheProvider>,
   )

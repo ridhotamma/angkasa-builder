@@ -14,8 +14,8 @@ import { ChakraProvider } from '@chakra-ui/react'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { blockSchema, type BlocksField } from '../src/index'
 import {
@@ -54,7 +54,7 @@ const services: EditorServices = {
 function view(onSelect: (blockId: string) => void, custom = true) {
   return render(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <BlockEditorProvider
           fields={[field]}
           values={values}
@@ -71,7 +71,7 @@ function view(onSelect: (blockId: string) => void, custom = true) {
             services={services}
           />
         </BlockEditorProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }
@@ -114,9 +114,9 @@ describe('the block name popover', () => {
     const user = userEvent.setup()
     const { getByRole, getByLabelText } = render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <BlockNamePopover value="" fallback="Photo card" onChange={onChange} />
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
 
@@ -133,7 +133,7 @@ describe('the block name popover', () => {
     const user = userEvent.setup()
     const { getByRole, getByLabelText } = render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <BlockNamePopover
             value=""
             fallback="Blocks"
@@ -141,7 +141,7 @@ describe('the block name popover', () => {
             nameMessage="sectionName"
             onChange={onChange}
           />
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
 
@@ -158,7 +158,7 @@ describe('the move-to menu', () => {
   function menu(blockId: string, blocks: typeof values.blocks, compact = false) {
     return render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <BlockMoveMenu
             fields={[field]}
             values={{ blocks }}
@@ -166,7 +166,7 @@ describe('the move-to menu', () => {
             onChange={() => undefined}
             compact={compact}
           />
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
   }

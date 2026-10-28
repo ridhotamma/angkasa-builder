@@ -4,8 +4,8 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
 import { cleanup, render } from '@testing-library/react'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { DEFAULT_THEME_SETTINGS } from '../src'
 import { ThemeSettingsPanel } from '../src/editor/theme-settings'
@@ -16,9 +16,9 @@ describe('theme settings panel', () => {
   test('renders the photo flip switch and its help without a Field wrapper', () => {
     const view = render(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <ThemeSettingsPanel settings={DEFAULT_THEME_SETTINGS} onChange={() => undefined} />
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
 

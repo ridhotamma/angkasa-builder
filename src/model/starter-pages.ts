@@ -15,7 +15,7 @@
  * an intro, then a short section per topic, bulleted where it is a list — and
  * it is deliberately generic: it talks about "this store" and "we", never a
  * brand, because it is the same page for every shop until a seller edits it.
- * It is a starting point, not a legal document Pesanle is responsible for.
+ * It is a starting point, not a legal document the builder is responsible for.
  */
 
 import { CONTENT_VERSION, createSection, type PageContent } from './content'

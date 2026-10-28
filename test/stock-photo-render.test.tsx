@@ -13,9 +13,9 @@ import { ChakraProvider } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
-import { stockPhotoValue } from '@repo/appwrite-config'
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { stockPhotoValue } from '../src/model/stock-photo'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { createSection, DEFAULT_THEME_SETTINGS } from '../src/index'
 import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
@@ -43,9 +43,9 @@ function render(image: string): string {
   )
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         {node}
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

@@ -1,14 +1,14 @@
 import { expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
 import { renderToString } from 'react-dom/server'
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
-import { createSection, DEFAULT_THEME_SETTINGS, type SectionInstance } from '@repo/page-builder'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
+import { createSection, DEFAULT_THEME_SETTINGS, type SectionInstance } from '../src/index'
 import {
   sampleStorefrontData,
   SectionsRenderer,
   type RenderEnvironment,
-} from '@repo/page-builder/render'
+} from '../src/render/index'
 
 function env(): RenderEnvironment {
   return {
@@ -24,9 +24,9 @@ function env(): RenderEnvironment {
 function render(section: SectionInstance): string {
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <SectionsRenderer sections={[section]} env={env()} />
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

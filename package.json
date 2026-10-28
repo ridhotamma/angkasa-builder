@@ -1,29 +1,66 @@
 {
-  "name": "@repo/page-builder",
+  "name": "angkasa-builder",
   "version": "0.1.0",
-  "private": true,
+  "description": "A page builder whose pages, sections and editor logic are plain data: render to HTML on any server, wire it up with a small vanilla-JS runtime, and edit it from htmx, vanilla JS or React.",
+  "keywords": [
+    "page-builder",
+    "htmx",
+    "storefront",
+    "ssr",
+    "editor",
+    "no-framework"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
-    "./render": "./src/render/index.ts",
-    "./editor": "./src/editor/index.ts",
-    "./editor-core": "./src/editor-core/index.ts",
-    "./snapshot": "./src/snapshot/index.ts",
-    "./html": "./src/html/index.ts",
-    "./html/runtime": "./src/html/runtime.ts",
-    "./html/page-runtime.js": "./dist/page-runtime.js",
-    "./quick-checkout": "./src/quick-checkout/index.ts",
-    "./server": "./src/server/content.ts",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./render": {
+      "types": "./dist/render/index.d.ts",
+      "import": "./dist/render/index.js"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.ts",
+      "import": "./dist/editor/index.js"
+    },
+    "./editor-core": {
+      "types": "./dist/editor-core/index.d.ts",
+      "import": "./dist/editor-core/index.js"
+    },
+    "./snapshot": {
+      "types": "./dist/snapshot/index.d.ts",
+      "import": "./dist/snapshot/index.js"
+    },
+    "./html": {
+      "types": "./dist/html/index.d.ts",
+      "import": "./dist/html/index.js"
+    },
+    "./html/runtime": {
+      "types": "./dist/html/runtime.d.ts",
+      "import": "./dist/html/runtime.js"
+    },
+    "./quick-checkout": {
+      "types": "./dist/quick-checkout/index.d.ts",
+      "import": "./dist/quick-checkout/index.js"
+    },
+    "./page-runtime.js": "./dist/html/page-runtime.js",
     "./package.json": "./package.json"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
-    "build": "bun run scripts/build-runtime.ts",
+    "build": "tsup && tsc -p tsconfig.build.json && bun run scripts/build-runtime.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test && bun test ./test/isolated/builder-core.interaction.tsx",
-    "clean": "rimraf .turbo *.tsbuildinfo",
+    "example:htmx": "bun run build && bun examples/htmx/server.ts",
+    "clean": "rimraf dist",
     "generate:fonts": "bun run scripts/generate-fonts.ts",
-    "generate:icons": "bun run scripts/generate-icons.ts"
+    "generate:icons": "bun run scripts/generate-icons.ts",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -32,10 +69,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emotion/cache": "^11.14.0",
     "@emotion/server": "^11.11.0",
-    "@repo/appwrite-config": "workspace:*",
-    "@repo/geoapify": "workspace:*",
-    "@repo/i18n": "workspace:*",
-    "@repo/theme": "workspace:*",
+    "@internationalized/date": "^3.12.3",
     "@tanstack/react-virtual": "^3.14.14",
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
@@ -55,7 +89,6 @@
     "@chakra-ui/react": "^3.37.0",
     "@emotion/react": "^11.14.0",
     "@happy-dom/global-registrator": "^20.14.6",
-    "@repo/typescript-config": "workspace:*",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
@@ -64,10 +97,11 @@
     "@types/react-dom": "^19.3.0",
     "bun-types": "^1.2.23",
     "happy-dom": "^20.14.6",
+    "prettier": "^3.6.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "rimraf": "^6.0.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3"
-  },
-  "module": "src/index.ts"
+  }
 }

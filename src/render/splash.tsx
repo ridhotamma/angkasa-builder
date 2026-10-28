@@ -16,7 +16,7 @@
 import { Flex, Heading } from '@chakra-ui/react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-import { ImageWithFallback } from '@repo/theme'
+import { ImageWithFallback } from '../ui'
 
 import {
   resolveScheme,

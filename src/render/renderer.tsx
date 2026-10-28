@@ -2,7 +2,7 @@
  * A layout, drawn.
  *
  * `ThemeScope` puts a theme's CSS variables on one wrapping element, so the
- * same document can show the editor's own chrome in Pesanle's theme and the
+ * same document can show the editor's own chrome in the host's own theme and the
  * preview beside it in the shop's. `SectionsRenderer` walks the section list
  * and hands each one to its renderer, inside the frame its style asks for.
  */
@@ -19,8 +19,8 @@ import {
   type ReactNode,
 } from 'react'
 
-import { SECTION_STICKY_ENABLED } from '@repo/appwrite-config'
-import { useLocale } from '@repo/i18n'
+import { SECTION_STICKY_ENABLED } from '../model/flags'
+import { useLocale } from '../locale'
 
 import {
   drawnSections,
@@ -109,6 +109,11 @@ export interface SectionsRendererProps {
   onInsert?: (sectionId: string, place: 'before' | 'after') => void
   /** The "+" button's accessible name. */
   insertLabel?: string
+  /**
+   * Draw only this section, spaced as it sits among the others — what a
+   * fragment swapped into a page that is already showing needs.
+   */
+  only?: string
 }
 
 /** The space between two sections in the page column. */
@@ -136,6 +141,7 @@ export function SectionsRenderer({
   label,
   onInsert,
   insertLabel,
+  only,
 }: SectionsRendererProps) {
   const now = env.now ?? new Date()
   const visible = drawnSections(sections, env.mode, now)
@@ -162,6 +168,7 @@ export function SectionsRenderer({
     <RenderProvider value={env}>
       <Stack gap="0">
         {visible.map((section, index) => {
+          if (only !== undefined && section.id !== only) return null
           // Two full-bleed sections in a row touch, like bands on a poster:
           // the page gap between them would be a strip of page background.
           // Their own "space above/below" is what separates them. A floating

@@ -12,8 +12,8 @@ import { describe, expect, test } from 'bun:test'
 import { ChakraProvider } from '@chakra-ui/react'
 import { renderToString } from 'react-dom/server'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { createSection, DEFAULT_THEME_SETTINGS, sectionSchema } from '../src/index'
 import {
@@ -39,14 +39,14 @@ function env(): RenderEnvironment {
 function page(gallery = 'mosaic', settings: Record<string, unknown> = {}): string {
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <RenderProvider value={env()}>
           <SectionsRenderer
             sections={[createSection('product-info', { gallery, stickyInfo: true, ...settings })]}
             env={env()}
           />
         </RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

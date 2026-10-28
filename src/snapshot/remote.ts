@@ -1,8 +1,9 @@
 /**
- * Call the `render` Appwrite Function: HTML in, rendered bytes out.
+ * Call a remote render service: HTML in, rendered bytes out.
  *
- * Single implementation shared by `screenshotHtml` (this package) and the
- * admin's `renderHtmlToPdf` — one contract, one auth scheme, one timeout.
+ * Used by `screenshotHtml`; a host can call it for PDFs too — one contract,
+ * one auth scheme, one timeout. The service takes `{ action, html, … }` as
+ * JSON with a bearer key and answers with the bytes.
  *
  * Routing: when `RENDER_FUNCTION_URL` **and** `RENDER_FUNCTION_KEY` are set
  * (every deployed environment), rendering happens in the Function and the

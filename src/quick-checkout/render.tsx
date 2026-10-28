@@ -6,7 +6,7 @@
  * (`mode: 'preview'`, where nothing navigates and the buy buttons only show
  * what the shopper would tap). Everything it needs arrives as props —
  * products already resolved and priced by the caller, image URLs built by the
- * caller's own helper — so the package stays free of Appwrite and of either
+ * caller's own helper — so the package stays free of any storage backend and of either
  * app's routing.
  *
  * Colours come from `qcPalette`, never straight from the stored values: that
@@ -41,7 +41,7 @@ import {
 } from 'react-icons/lu'
 import { SiShopee } from 'react-icons/si'
 
-import { Image } from '@repo/theme'
+import { Image } from '../ui'
 
 import { contrastRatio, mix, readableOn } from '../model/settings'
 import { boldButton, boldCard } from '../render/bold'

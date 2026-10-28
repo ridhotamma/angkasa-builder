@@ -11,7 +11,8 @@
  * still renders, and a hand-crafted payload can only ever produce a valid one.
  */
 
-import { hasCoordinates, isAssetKey, sanitizeStockPhoto } from '@repo/appwrite-config'
+import { hasCoordinates, isAssetKey } from './values'
+import { sanitizeStockPhoto } from './stock-photo'
 
 import { NO_ICON, resolveIconName, type IconName } from './icons'
 import { sanitizeLink, NO_LINK, type Link } from './links'
@@ -303,7 +304,7 @@ export type FieldValues = { [key: string]: JsonValue }
 const ID = /^[A-Za-z0-9_-]{1,64}$/
 const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
-/** Whether a value is a media file id: a legacy Appwrite id, or an S3 asset key. */
+/** Whether a value is a media file id: a file id, or an object-storage key. */
 export function isMediaFileId(value: unknown): value is string {
   return typeof value === 'string' && (ID.test(value) || isAssetKey(value))
 }
@@ -311,7 +312,7 @@ export function isMediaFileId(value: unknown): value is string {
 /**
  * An image field holds one of exactly two things: a media file id in the
  * shop's own bucket, or a hotlinked stock photo (see `stock-image` in
- * `@repo/appwrite-config`). Nothing else — a free-form URL is still refused.
+ * `./stock-photo`). Nothing else — a free-form URL is still refused.
  */
 function sanitizeImage(value: unknown): string {
   if (isMediaFileId(value)) return value

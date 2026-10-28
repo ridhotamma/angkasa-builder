@@ -1,4 +1,4 @@
-/** `@repo/page-builder/editor` — the editor both dashboards render. */
+/** `angkasa-builder/editor` — the editor both dashboards render. */
 
 export { PageBuilder, type FrameDetails, type PageBuilderProps } from './builder'
 export { BuilderDialog, useBuilderDialogFooter, type BuilderDialogProps } from './builder-dialog'
@@ -32,3 +32,4 @@ export type {
   EditorOption,
   EditorServices,
 } from './services'
+export { LocaleProvider, useLocale, type Locale } from '../locale'

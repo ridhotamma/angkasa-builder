@@ -12,7 +12,7 @@
  * stored layout raw.
  */
 
-import { isStockPhoto } from '@repo/appwrite-config'
+import { isStockPhoto } from './stock-photo'
 
 import { findBlock, updateBlockSettings } from './blocks'
 import {

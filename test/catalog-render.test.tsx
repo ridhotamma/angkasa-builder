@@ -9,8 +9,8 @@ import { ChakraProvider } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { createSection, DEFAULT_THEME_SETTINGS, sectionSchema } from '../src/index'
 import {
@@ -59,9 +59,9 @@ function renderIn(
 ): string {
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale={locale} resources={{}}>
+      <LocaleProvider locale={locale}>
         <RenderProvider value={env(data)}>{node}</RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }
@@ -83,12 +83,12 @@ describe('the editor preview', () => {
   test('falls back to the sample listing when the host has none', () => {
     const html = renderToString(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <SectionsRenderer
             sections={[createSection('catalog-header'), createSection('catalog-products')]}
             env={{ ...env(), mode: 'preview', data: sampleStorefrontData('Toko') }}
           />
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
     expect(html).toContain('All products')
@@ -344,7 +344,7 @@ describe('the catalogue pagination', () => {
     }
     const html = renderToString(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <RenderProvider value={{ ...env(), settings: themed, mode: 'preview' }}>
             <ThemeScope settings={themed} mode="light">
               <SectionsRenderer
@@ -353,7 +353,7 @@ describe('the catalogue pagination', () => {
               />
             </ThemeScope>
           </RenderProvider>
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
     // The scope carries the theme's brand…

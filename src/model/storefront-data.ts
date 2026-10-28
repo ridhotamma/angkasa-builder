@@ -1,6 +1,6 @@
 /**
  * Shop data the storefront draws inside sections, in shapes that servers
- * produce too (`../server/content`). Pure; the renderer re-exports them from
+ * produce for it. Pure; the renderer re-exports them from
  * `../render/context`.
  */
 

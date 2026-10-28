@@ -51,8 +51,8 @@ import {
   LuPhone,
 } from 'react-icons/lu'
 
-import { useLocale } from '@repo/i18n'
-import { ImageWithFallback, Tooltip } from '@repo/theme'
+import { useLocale } from '../locale'
+import { ImageWithFallback, Tooltip } from '../ui'
 
 import { readBoolean, readLink, readList, readText, type FieldValues } from '../model/fields'
 import { readLocalizedText } from '../model/localized'
@@ -1253,7 +1253,7 @@ export interface StoreFooterProps {
    * built-in links — see `informationLinks`, which decides what goes in it.
    */
   labels: InformationLabels & { followUs: string; links: string }
-  /** The small print under everything — "Powered by Pesanle". */
+  /** The small print under everything — "Powered by …". */
   bottom?: ReactNode
   /** The page ends in a full-bleed section, which the footer should meet with no gap. */
   flush?: boolean

@@ -25,7 +25,7 @@ import { createPortal } from 'react-dom'
 import { FaWhatsapp } from 'react-icons/fa6'
 import { LuArrowUp, LuMail, LuPlay, LuRotate3D } from 'react-icons/lu'
 
-import { ImageWithFallback } from '@repo/theme'
+import { ImageWithFallback } from '../ui'
 
 import {
   readBoolean,
@@ -726,7 +726,7 @@ export function FloatingContact({ settings: section }: SectionProps) {
   const size = readToken(section, 'size', FLOATING_CONTACT_SIZES, 'md')
   const side = readText(section, 'position') === 'left' ? { left: '4' } : { right: '4' }
   // Portalled out of the theme's scope, the cluster must carry the theme's
-  // variables itself — otherwise `brand.solid` falls back to Pesanle's orange
+  // variables itself — otherwise `brand.solid` falls back to the default brand orange
   // in the editor preview. Light-mode surfaces only, exactly like the root.
   const theme = themeCssVarGroups(settings)
 

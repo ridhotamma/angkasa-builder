@@ -3,7 +3,7 @@ import { ChakraProvider } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
-import { system } from '@repo/theme'
+import { system } from '../src/ui'
 
 import { FeatureIcon, iconGlyph } from '../src/render/icons'
 

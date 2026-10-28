@@ -38,7 +38,7 @@ import {
 } from 'react'
 import { LuChevronLeft, LuPlus, LuSearch, LuX } from 'react-icons/lu'
 
-import { Tooltip } from '@repo/theme'
+import { Tooltip } from '../ui'
 
 import { registeredBlocks } from '../model/block-registry'
 import { BLOCK_PRESETS } from '../model/block-presets'
@@ -259,7 +259,7 @@ function PaletteCard({
 }
 
 /** Where the palette's mode is kept: this browser only, a matter of habit. */
-const ADD_MODE_KEY = 'pesanle.page-builder.add-mode'
+const ADD_MODE_KEY = 'angkasa-builder.add-mode'
 
 function readAddMode(): 'sections' | 'blocks' {
   try {

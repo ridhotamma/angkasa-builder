@@ -39,7 +39,7 @@ import {
 } from 'react'
 import { LuHeart, LuStar } from 'react-icons/lu'
 
-import { ImageWithFallback } from '@repo/theme'
+import { ImageWithFallback } from '../ui'
 
 import {
   ALIGN_SELF,

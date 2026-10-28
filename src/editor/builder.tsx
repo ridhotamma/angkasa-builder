@@ -89,8 +89,8 @@ import {
   LuX,
 } from 'react-icons/lu'
 
-import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
-import { Tooltip } from '@repo/theme'
+import { SECTION_LINKING_ENABLED } from '../model/flags'
+import { Tooltip } from '../ui'
 
 import { findBlock } from '../model/blocks'
 import {
@@ -1462,7 +1462,6 @@ function Builder({
                 links: t('footerLinks'),
                 trackOrder: t('footerTrackOrder'),
               }}
-              bottom={t('poweredBy')}
               flush={edges.flushBottom}
             />,
           )
@@ -2108,7 +2107,7 @@ function Builder({
 }
 
 /** Where the seller's panel width is kept: this browser only, a matter of taste. */
-const PANEL_WIDTH_KEY = 'pesanle:page-builder:panel-width'
+const PANEL_WIDTH_KEY = 'angkasa-builder:panel-width'
 
 /** One step of the panel's trail back to the section list. */
 interface Crumb {

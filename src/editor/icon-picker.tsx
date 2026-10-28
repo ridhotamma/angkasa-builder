@@ -24,7 +24,7 @@ import {
 } from '@chakra-ui/react'
 import { useState } from 'react'
 
-import { Tooltip } from '@repo/theme'
+import { Tooltip } from '../ui'
 
 import { ICON_NAMES, NO_ICON, resolveIconName, type IconName } from '../model/icons'
 import { ICON_GLYPHS } from './icon-glyphs'

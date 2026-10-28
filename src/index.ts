@@ -1,5 +1,5 @@
 /**
- * `@repo/page-builder` — themes, templates and pages, as data.
+ * `angkasa-builder` — themes, templates and pages, as data.
  *
  * This root entry is pure: no React, no Chakra. It is what servers import to
  * validate a layout before writing it. The renderers are `./render` and the

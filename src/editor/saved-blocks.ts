@@ -20,11 +20,11 @@ export interface SavedBlock {
   block: BlockValue
 }
 
-const SAVED_BLOCKS_KEY = 'pesanle.page-builder.saved-blocks'
+const SAVED_BLOCKS_KEY = 'angkasa-builder.saved-blocks'
 /** Enough for a seller's own kit of parts; the oldest drop off past it. */
 export const MAX_SAVED_BLOCKS = 24
 /** Fired on this window when the list changes, so every open palette follows. */
-const CHANGED_EVENT = 'pesanle:saved-blocks'
+const CHANGED_EVENT = 'angkasa-builder:saved-blocks'
 
 function isSaved(value: unknown): value is SavedBlock {
   if (typeof value !== 'object' || value === null) return false

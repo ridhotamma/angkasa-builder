@@ -16,8 +16,8 @@
 import { Box, Container, type BoxProps } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 
-import { ImageWithFallback } from '@repo/theme'
-import { SECTION_STAGGER_ENABLED, SECTION_TEXT_SHADOW_ENABLED } from '@repo/appwrite-config'
+import { ImageWithFallback } from '../ui'
+import { SECTION_STAGGER_ENABLED, SECTION_TEXT_SHADOW_ENABLED } from '../model/flags'
 
 import {
   isWithinSchedule,

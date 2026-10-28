@@ -13,7 +13,7 @@ import { ChakraProvider } from '@chakra-ui/react'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
-import { system } from '@repo/theme'
+import { system } from '../src/ui'
 
 import { PanelSlide } from '../src/editor/panel-slide'
 

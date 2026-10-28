@@ -3,7 +3,7 @@
 import { Box } from '@chakra-ui/react'
 import { useRef } from 'react'
 
-import { Image } from '@repo/theme'
+import { Image } from '../ui'
 
 import { readText, readVideo } from '../model/fields'
 import { readToken } from '../model/element-style'

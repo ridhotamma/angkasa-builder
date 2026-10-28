@@ -7,7 +7,7 @@ import { Button, Field, IconButton, Input, Popover, Portal, Stack, Text } from '
 import { useId, useState } from 'react'
 import { LuBookmarkPlus } from 'react-icons/lu'
 
-import { Tooltip } from '@repo/theme'
+import { Tooltip } from '../ui'
 
 import { MAX_BLOCK_NAME, type BlockValue } from '../model/fields'
 import { useEditorText } from './messages'

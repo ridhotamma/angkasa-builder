@@ -12,7 +12,7 @@
  * images stay valid without naming a photographer the data never carried.
  */
 
-import { stockPhotoValue } from '@repo/appwrite-config'
+import { stockPhotoValue } from './stock-photo'
 
 function unsplash(id: string): string {
   return stockPhotoValue(`https://images.unsplash.com/photo-${id}`, {

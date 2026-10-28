@@ -17,7 +17,7 @@ import {
 import { useState } from 'react'
 import { LuCheck, LuCopy } from 'react-icons/lu'
 
-import { ImageWithFallback } from '@repo/theme'
+import { ImageWithFallback } from '../ui'
 
 import { readBoolean, readDate, readList, readNumber, readText } from '../model/fields'
 import { useHtmlTarget, useMountProps } from './target'

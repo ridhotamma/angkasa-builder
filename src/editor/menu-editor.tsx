@@ -35,7 +35,7 @@ import {
   LuTrash2,
 } from 'react-icons/lu'
 
-import { Tooltip } from '@repo/theme'
+import { Tooltip } from '../ui'
 
 import { newId } from '../model/fields'
 import { NO_LINK, type Link } from '../model/links'

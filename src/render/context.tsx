@@ -307,7 +307,7 @@ export interface RenderEnvironment {
   /**
    * Who makes the page interactive in the browser. `react` (the default)
    * hydrates it. `html` means nothing will: the page is sent as plain markup
-   * and the framework-free runtime (`@repo/page-builder/html`) wires it up.
+   * and the framework-free runtime (`angkasa-builder/html`) wires it up.
    * Under `html`, overlays render in place instead of through a portal, and
    * interactive parts carry the `data-pb-*` hooks the runtime reads.
    */

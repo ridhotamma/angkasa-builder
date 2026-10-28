@@ -57,7 +57,7 @@ import {
   LuTrash2,
 } from 'react-icons/lu'
 
-import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
+import { SECTION_LINKING_ENABLED } from '../model/flags'
 
 import {
   canDuplicateSection,
@@ -99,7 +99,7 @@ import { sectionIcon } from './section-icons'
  * back through the sanitiser like any stored layout, and it may simply be
  * missing (a private window) — pasting is then just not offered.
  */
-const CLIPBOARD_KEY = 'pesanle.page-builder.clipboard'
+const CLIPBOARD_KEY = 'angkasa-builder.clipboard'
 
 function readClipboard(scope: SectionScope): SectionInstance | null {
   try {

@@ -15,7 +15,7 @@
  * http(s) is emptied — so a stored row can never take the page down.
  */
 
-import { isAssetKey } from '@repo/appwrite-config'
+import { isAssetKey } from '../model/values'
 import { z } from 'zod'
 
 import { findFont, isFontFamily } from '../model/font-library'
@@ -487,11 +487,11 @@ export interface QuickCheckoutContent {
 const HEX = /^#[0-9a-f]{6}$/i
 const ID = /^[a-zA-Z0-9_-]{1,36}$/
 /**
- * Appwrite ids, or a hotlinked stock photo (`https://images.pexels.com/...#credit`).
+ * media file ids, or a hotlinked stock photo (`https://images.pexels.com/...#credit`).
  * Pixabay serves both its original CDN renditions and `pixabay.com/get/` ones.
  */
 /**
- * A media reference: an Appwrite file id, an S3 asset key written after the
+ * A media reference: a media file id, an S3 asset key written after the
  * direct-upload migration (`isAssetKey`), or a hotlinked stock photo
  * (`https://images.pexels.com/...#credit`). Pixabay serves both its original
  * CDN renditions and `pixabay.com/get/` ones.

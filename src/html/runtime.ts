@@ -1,5 +1,5 @@
 /**
- * The browser half of `@repo/page-builder/html`: the page's interactive parts,
+ * The browser half of `angkasa-builder/html`: the page's interactive parts,
  * with no framework.
  *
  * `renderPageHtml` sends plain markup whose interactive parts carry hooks:

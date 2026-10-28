@@ -398,7 +398,7 @@ export interface ThemeSettings {
   popup: PopupSettings
 }
 
-/** Pesanle's own look, which is what an untouched storefront wears today. */
+/** The default look: what an untouched storefront wears. */
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   colors: {
     brand: '#ff4f00',

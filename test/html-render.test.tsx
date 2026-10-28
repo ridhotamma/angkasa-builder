@@ -1,5 +1,5 @@
 /**
- * Pages and sections as plain HTML (`@repo/page-builder/html`): what the
+ * Pages and sections as plain HTML (`angkasa-builder/html`): what the
  * markup carries for a browser with no React — every overlay in place, the
  * slider's whole configuration, ids that cannot collide — and that the React
  * render beside it is untouched.
@@ -9,8 +9,8 @@ import { describe, expect, test } from 'bun:test'
 import { renderToString } from 'react-dom/server'
 import { ChakraProvider } from '@chakra-ui/react'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import {
   CONTENT_VERSION,
@@ -150,6 +150,30 @@ describe('renderSectionHtml', () => {
     expect(html).toContain(`accordion:_pb-${section.id}-`)
   })
 
+  test('is spaced as the page draws it when told the sections around it', () => {
+    const first = createSection('rich-text', { heading: 'First' })
+    const second = createSection('rich-text', { heading: 'Second' })
+    const anchorClass = (html: string) =>
+      html.match(
+        new RegExp(
+          `id="section-${second.id}"[^>]*class="([^"]+)"|class="([^"]+)"[^>]*id="section-${second.id}"`,
+        ),
+      )
+    const page = renderPageHtml({ ...base, content: content([first, second]), chrome: false }).body
+    const alone = renderSectionHtml({ ...base, content: content([]), section: second })!
+    const placed = renderSectionHtml({
+      ...base,
+      content: content([]),
+      section: second,
+      sections: [first, second],
+    })!
+    const classOf = (match: RegExpMatchArray | null) => match?.[1] ?? match?.[2]
+    expect(classOf(anchorClass(placed))).toBe(classOf(anchorClass(page)))
+    // Alone it is the first section, which takes no gap above.
+    expect(classOf(anchorClass(alone))).not.toBe(classOf(anchorClass(page)))
+    expect(placed).not.toContain('First')
+  })
+
   test('draws nothing for a section whose schedule has ended', () => {
     const section = createSection(
       'rich-text',
@@ -171,9 +195,9 @@ describe('the React render is unchanged', () => {
     }
     const html = renderToString(
       <ChakraProvider value={system}>
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <SectionsRenderer sections={[carousel()]} env={env} />
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>,
     )
     expect(html).toContain('data-slider-track')

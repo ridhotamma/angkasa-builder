@@ -7,8 +7,7 @@
  * label that drifts. The shape is the same `{ en, id }` pair the plan copy
  * uses, so adding a locale is one more key here.
  *
- * Deliberately not typed against `@repo/i18n`'s `Locale`: this module is
- * imported by servers and Node scripts, and `@repo/i18n` pulls in React.
+ * Kept free of React: this module is imported by servers and Node scripts.
  */
 
 export interface Localized {
@@ -27,7 +26,7 @@ export function localize(text: Localized, locale: string): string {
 /**
  * The locales a storefront speaks, in fallback order — the shop's own language
  * first, English last. Adding one is one more entry here plus its catalogue in
- * `@repo/i18n`, the same shape the package's own copy uses above.
+ * `../locale`, the same shape the package's own copy uses above.
  */
 export const STOREFRONT_LOCALES = ['id', 'en'] as const
 export type StorefrontLocale = (typeof STOREFRONT_LOCALES)[number]

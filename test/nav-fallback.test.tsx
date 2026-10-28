@@ -12,8 +12,8 @@ import { ChakraProvider } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { DEFAULT_THEME_SETTINGS, sanitizeLayout } from '../src/index'
 import {
@@ -41,9 +41,9 @@ function env(): RenderEnvironment {
 function render(node: ReactNode, locale = 'en'): string {
   return renderToString(
     <ChakraProvider value={system}>
-      <I18nProvider locale={locale} resources={{}}>
+      <LocaleProvider locale={locale}>
         <RenderProvider value={env()}>{node}</RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

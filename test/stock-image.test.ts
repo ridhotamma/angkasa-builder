@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { stockPhotoValue } from '@repo/appwrite-config'
+import { stockPhotoValue } from '../src/model/stock-photo'
 
 import { createSection, imageFileIds, remapImageFileIds, type SectionInstance } from '../src/index'
 

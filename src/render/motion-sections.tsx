@@ -12,7 +12,7 @@
 import { AspectRatio, Box, Flex, Heading, Stack, Text } from '@chakra-ui/react'
 import { useEffect, useRef, useState } from 'react'
 
-import { ImageWithFallback } from '@repo/theme'
+import { ImageWithFallback } from '../ui'
 
 import {
   readBlocks,

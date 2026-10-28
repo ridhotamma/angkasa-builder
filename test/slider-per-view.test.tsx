@@ -13,8 +13,8 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { Box, ChakraProvider } from '@chakra-ui/react'
 import { cleanup, fireEvent, render, type RenderResult } from '@testing-library/react'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { DEFAULT_THEME_SETTINGS } from '../src/index'
 import { RenderProvider, sampleStorefrontData, type RenderEnvironment } from '../src/render/index'
@@ -37,7 +37,7 @@ function env(): RenderEnvironment {
 function view(perPage: number): RenderResult {
   return render(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <RenderProvider value={env()}>
           <Slider count={8} perPage={perPage} dots="below">
             {Array.from({ length: 8 }, (_, index) => (
@@ -45,7 +45,7 @@ function view(perPage: number): RenderResult {
             ))}
           </Slider>
         </RenderProvider>
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
 }

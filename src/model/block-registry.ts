@@ -3,7 +3,7 @@
  * block type the library does not ship.
  *
  * A block is two halves — a **schema** (name, fields, bounds) that the pure
- * model owns, and a **renderer** that `@repo/page-builder/render` owns. This
+ * model owns, and a **renderer** that `angkasa-builder/render` owns. This
  * module is the model half: `defineBlock` registers the schema with the shared
  * `BLOCK_TYPES` list every `blocks` field reads, so from that moment the new
  * type flows through the sanitiser, the editor's add-block menu, generated

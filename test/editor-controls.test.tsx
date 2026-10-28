@@ -3,8 +3,8 @@ import { ChakraProvider } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { ChoiceCards, ToggleCards } from '../src/editor/choice-cards'
 import { ColorInput, FieldsForm } from '../src/editor/controls'
@@ -91,9 +91,9 @@ describe('FieldsForm controls', () => {
   const services = {} as EditorServices
   const form = (fields: readonly FieldSpec[], values: FieldValues = {}) =>
     render(
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <FieldsForm fields={fields} values={values} services={services} onChange={() => {}} />
-      </I18nProvider>,
+      </LocaleProvider>,
     )
   const select = (labels: string[], extra: Partial<FieldSpec> = {}): FieldSpec =>
     ({
@@ -167,9 +167,9 @@ describe('FieldGroups', () => {
   ]
   const draw = (values: FieldValues, advanced = false) =>
     render(
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         <FieldGroups groups={groups(advanced)} values={values} services={services} onChange={() => {}} />
-      </I18nProvider>,
+      </LocaleProvider>,
     )
 
   test('a closed group summarises what it is set to', () => {
@@ -180,7 +180,7 @@ describe('FieldGroups', () => {
   test('an open group with changes offers one reset; an unchanged one none', () => {
     const open = (values: FieldValues) =>
       render(
-        <I18nProvider locale="en" resources={{}}>
+        <LocaleProvider locale="en">
           <FieldGroups
             groups={groups()}
             values={values}
@@ -188,7 +188,7 @@ describe('FieldGroups', () => {
             defaultOpen={['size']}
             onChange={() => {}}
           />
-        </I18nProvider>,
+        </LocaleProvider>,
       )
     expect(open({ width: 'edge' }).match(/Reset to default/g)).toHaveLength(1)
     expect(open({ width: 'contained' })).not.toContain('Reset to default')

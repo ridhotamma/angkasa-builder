@@ -1,5 +1,5 @@
 /**
- * `@repo/page-builder/editor-core` — the editor's logic, with no UI.
+ * `angkasa-builder/editor-core` — the editor's logic, with no UI.
  *
  * Everything the React editor (`./editor`) decides, as plain functions over
  * JSON values: what a command does to the page (`applyCommand`), what a
@@ -7,7 +7,7 @@
  * screen holds and how a submitted one applies (`panelForms`,
  * `formCommand`), and undo history. An htmx editor builds on the same core:
  * keep an `EditorState` in the session, turn each request into a command,
- * and render the result with `@repo/page-builder/html`.
+ * and render the result with `angkasa-builder/html`.
  *
  * See docs/PAGE-BUILDER.md ("Editor core").
  */

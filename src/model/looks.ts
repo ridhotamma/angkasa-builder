@@ -227,8 +227,8 @@ export const FONT_PAIRS: readonly FontPair[] = [
     heading: 'Poppins',
     body: 'Poppins',
     description: {
-      en: 'Pesanle standard geometric sans with open apertures.',
-      id: 'Sans geometris standar Pesanle yang seimbang dan bersahabat.',
+      en: 'A standard geometric sans with open apertures.',
+      id: 'Sans geometris standar yang seimbang dan bersahabat.',
     },
   },
   {
@@ -607,7 +607,8 @@ export const PALETTES: readonly Palette[] = [
   },
   {
     key: 'pesanle-heritage',
-    name: { en: 'Pesanle Heritage', id: 'Pesanle Klasik' },
+    // The key is kept so themes saved with it still resolve.
+    name: { en: 'Heritage', id: 'Klasik' },
     tags: ['bold', 'vibrant'],
     colors: {
       brand: '#ff4f00',

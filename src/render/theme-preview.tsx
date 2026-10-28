@@ -32,7 +32,7 @@ export interface SnapshotPageProps {
 /**
  * The page itself, with no frame, scaling or loading behaviour: header, home
  * sections and footer at a fixed desktop width. The server-side snapshot
- * renderer (`@repo/page-builder/snapshot`) draws this component into static
+ * renderer (`angkasa-builder/snapshot`) draws this component into static
  * HTML for headless-Chrome capture.
  */
 export function TemplateSnapshotPage({

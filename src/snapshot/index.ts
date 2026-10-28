@@ -1,5 +1,5 @@
 /**
- * `@repo/page-builder/snapshot` — a template's home page as a stored PNG.
+ * `angkasa-builder/snapshot` — a template's home page as a stored PNG.
  *
  * Server-only. `renderTemplateSnapshotHtml` draws the page to a standalone
  * document (same component the dashboard's live preview draws);

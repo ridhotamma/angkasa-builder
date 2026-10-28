@@ -19,8 +19,8 @@ import { Box, ChakraProvider, Container } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 
-import { I18nProvider, type Locale } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider, type Locale } from '../locale'
+import { system } from '../ui'
 
 import type { ThemeContent, SectionInstance } from '../model/content'
 import { drawnSections, pageEdges, type PageEdges } from '../model/drawn'
@@ -146,9 +146,9 @@ function draw(
   const html = renderToString(
     <CacheProvider value={cache}>
       <ChakraProvider value={system}>
-        <I18nProvider locale={input.locale ?? 'id'} resources={{}}>
+        <LocaleProvider locale={input.locale ?? 'id'}>
           <RenderProvider value={env}>{tree}</RenderProvider>
-        </I18nProvider>
+        </LocaleProvider>
       </ChakraProvider>
     </CacheProvider>,
     { identifierPrefix },
@@ -281,15 +281,26 @@ export function renderPageHtml(input: HtmlRenderInput): HtmlPage {
  * has ended, a type with no renderer).
  */
 export function renderSectionHtml(
-  input: Omit<HtmlRenderInput, 'sections' | 'template' | 'chrome'> & { section: SectionInstance },
+  input: Omit<HtmlRenderInput, 'sections' | 'template' | 'chrome'> & {
+    section: SectionInstance
+    /**
+     * The page's sections, `section` among them. The space above a section
+     * depends on the one before it (two edge-to-edge bands touch), so pass
+     * them and the fragment is spaced exactly as the full page draws it.
+     */
+    sections?: readonly SectionInstance[]
+  },
 ): string | null {
   const env = environment(input)
-  const drawn = drawnSections([input.section], env.mode, env.now ?? new Date())
-  if (drawn.length === 0) return null
+  const page = input.sections?.some((other) => other.id === input.section.id)
+    ? input.sections.map((other) => (other.id === input.section.id ? input.section : other))
+    : [input.section]
+  const drawn = drawnSections(page, env.mode, env.now ?? new Date())
+  if (!drawn.some((other) => other.id === input.section.id)) return null
   const { html, chunks } = draw(
     input,
     env,
-    <SectionsRenderer sections={drawn} env={env} />,
+    <SectionsRenderer sections={drawn} env={env} only={input.section.id} />,
     `pb-${input.section.id}-`,
   )
   // `SectionsRenderer` wraps its list in one stack; the fragment is the

@@ -23,9 +23,9 @@ import { useEffect, useRef, useState } from 'react'
 import { FaWhatsapp } from 'react-icons/fa6'
 import { LuClock, LuMail, LuMapPin, LuNavigation, LuPhone } from 'react-icons/lu'
 
-import { StoreMap } from '@repo/geoapify/store-map'
-import { externalMapUrl } from '@repo/geoapify/urls'
-import { Image, ImageWithFallback } from '@repo/theme'
+import { StoreMap } from '../map/store-map'
+import { externalMapUrl } from '../map/urls'
+import { Image, ImageWithFallback } from '../ui'
 
 import {
   readBoolean,

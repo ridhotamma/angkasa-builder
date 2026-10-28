@@ -20,8 +20,8 @@ import { cleanup, fireEvent, render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 
-import { I18nProvider } from '@repo/i18n'
-import { system } from '@repo/theme'
+import { LocaleProvider } from '../src/locale'
+import { system } from '../src/ui'
 
 import { createSection, DEFAULT_THEME_SETTINGS } from '../src/index'
 import { sampleStorefrontData, SectionsRenderer, type RenderEnvironment } from '../src/render/index'
@@ -64,9 +64,9 @@ function draw(selectedBlockId: string | null, pauseOnHover = true): HTMLElement 
   const tree: ReactNode = <SectionsRenderer sections={[section]} env={environment} />
   const { container } = render(
     <ChakraProvider value={system}>
-      <I18nProvider locale="en" resources={{}}>
+      <LocaleProvider locale="en">
         {tree}
-      </I18nProvider>
+      </LocaleProvider>
     </ChakraProvider>,
   )
   const track = container.querySelector<HTMLElement>('[data-scope="marquee"][data-part="root"]')

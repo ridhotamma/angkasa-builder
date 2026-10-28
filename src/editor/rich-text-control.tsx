@@ -36,7 +36,7 @@ import {
   LuUnderline,
 } from 'react-icons/lu'
 
-import { Tooltip } from '@repo/theme'
+import { Tooltip } from '../ui'
 
 import { isSafeRichHref, type RichDoc } from '../model/rich-text'
 import { useEditorText, type EditorMessage } from './messages'
