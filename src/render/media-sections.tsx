@@ -15,7 +15,6 @@ import {
   IconButton,
   Marquee,
   Popover,
-  Portal,
   Stack,
   Text,
 } from '@chakra-ui/react'
@@ -36,6 +35,7 @@ import {
   type FieldValues,
 } from '../model/fields'
 import { textElementKey } from '../model/element-style'
+import { RenderPortal, useMountProps } from './target'
 import { SectionColumn } from './column'
 import { findProductCard, useRenderEnvironment, type StorefrontProductCard } from './context'
 import { useRenderText } from './copy'
@@ -165,7 +165,8 @@ export function VideoReels({ settings }: SectionProps) {
   const items = readList(settings, 'items').filter(
     (item) => readVideo(item, 'video') || readText(item, 'poster'),
   )
-  const perPage = Math.min(useResponsive({ base: 2, md: 3, lg: 5 }), Math.max(1, items.length))
+  const perPageAt = { base: 2, md: 3, lg: 5 }
+  const perPage = Math.min(useResponsive(perPageAt), Math.max(1, items.length))
   const [open, setOpen] = useState<string | null>(null)
   const overlay = useOverlayProps()
   const active = items.find((item) => item.id === open) ?? null
@@ -183,7 +184,7 @@ export function VideoReels({ settings }: SectionProps) {
       {items.length === 0 ? (
         <EmptyNotice>{empty('items')}</EmptyNotice>
       ) : (
-        <Slider count={items.length} perPage={perPage}>
+        <Slider count={items.length} perPage={perPage} perPageAt={perPageAt}>
           {items.map((item, index) => {
             const video = readVideo(item, 'video')
             const product = findProductCard(data, readText(item, 'productId'))
@@ -239,7 +240,7 @@ export function VideoReels({ settings }: SectionProps) {
         size="sm"
         placement="center"
       >
-        <Portal>
+        <RenderPortal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
             <Dialog.Content bg="gray.950" overflow="hidden" maxW="min(26rem, calc(100vw - 2rem))">
@@ -249,7 +250,7 @@ export function VideoReels({ settings }: SectionProps) {
               </Dialog.CloseTrigger>
             </Dialog.Content>
           </Dialog.Positioner>
-        </Portal>
+        </RenderPortal>
       </Dialog.Root>
     </Stack>
   )
@@ -308,6 +309,7 @@ export function Lookbook({ settings }: SectionProps) {
     )
   const showList = readBoolean(settings, 'showList') && spots.length > 0
   const imageRight = readText(settings, 'imagePosition') === 'right'
+  const mount = useMountProps({ lazyMount: true })
 
   if (!src) return <EmptyNotice>{empty('image')}</EmptyNotice>
 
@@ -323,7 +325,7 @@ export function Lookbook({ settings }: SectionProps) {
       {spots.map(({ spot, product }, index) => {
         const { x, y } = readPoint(spot, 'position')
         return (
-          <Popover.Root key={spot.id} positioning={{ placement: 'top' }} lazyMount>
+          <Popover.Root key={spot.id} positioning={{ placement: 'top' }} {...mount}>
             <Popover.Trigger asChild>
               <IconButton
                 aria-label={product.name}
@@ -376,13 +378,13 @@ export function Lookbook({ settings }: SectionProps) {
                 </Flex>
               </IconButton>
             </Popover.Trigger>
-            <Portal>
+            <RenderPortal>
               <Popover.Positioner>
                 <Popover.Content w="64" p="1.5">
                   <ProductChip product={product} />
                 </Popover.Content>
               </Popover.Positioner>
-            </Portal>
+            </RenderPortal>
           </Popover.Root>
         )
       })}

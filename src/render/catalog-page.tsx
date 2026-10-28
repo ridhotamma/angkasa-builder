@@ -22,7 +22,6 @@ import {
   Flex,
   HStack,
   Icon,
-  Portal,
   SimpleGrid,
   Stack,
   Text,
@@ -32,6 +31,7 @@ import { useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 
 import { readBoolean, readText } from '../model/fields'
+import { RenderPortal } from './target'
 import { HEADER_OFFSET_VAR } from './chrome'
 import { previewListing, useRenderEnvironment, type StorefrontListingData } from './context'
 import { useRenderText } from './copy'
@@ -305,7 +305,7 @@ function CatalogFilter({
           <Combobox.Trigger />
         </Combobox.IndicatorGroup>
       </Combobox.Control>
-      <Portal>
+      <RenderPortal>
         <Combobox.Positioner>
           <Combobox.Content>
             <Combobox.Empty>{text('noMatches')}</Combobox.Empty>
@@ -317,7 +317,7 @@ function CatalogFilter({
             ))}
           </Combobox.Content>
         </Combobox.Positioner>
-      </Portal>
+      </RenderPortal>
     </Combobox.Root>
   )
 

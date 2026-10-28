@@ -16,7 +16,6 @@ import {
   Flex,
   Grid,
   IconButton,
-  Portal,
   SimpleGrid,
   Stack,
   Text,
@@ -42,6 +41,7 @@ import { readToken } from '../model/element-style'
 import { PHOTO_FIT_VALUES, PHOTO_POSITION_VALUES } from '../model/section-style'
 import { resolveScheme, schemeCssVars, themeCssVarGroups } from '../model/settings'
 import { textElementKey } from '../model/element-style'
+import { RenderPortal } from './target'
 import { TABBAR_HEIGHT_VAR } from './chrome'
 import { SectionColumn } from './column'
 import { whatsappHref } from './content-sections'
@@ -165,7 +165,7 @@ export function GalleryMasonry({ settings }: SectionProps) {
         size="xl"
         placement="center"
       >
-        <Portal>
+        <RenderPortal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
             <Dialog.Content bg="gray.950" overflow="hidden">
@@ -183,7 +183,7 @@ export function GalleryMasonry({ settings }: SectionProps) {
               </Dialog.CloseTrigger>
             </Dialog.Content>
           </Dialog.Positioner>
-        </Portal>
+        </RenderPortal>
       </Dialog.Root>
     </Stack>
   )
@@ -312,7 +312,7 @@ export function QuotesVideo({ settings }: SectionProps) {
         size="lg"
         placement="center"
       >
-        <Portal>
+        <RenderPortal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
             <Dialog.Content bg="gray.950" overflow="hidden" p="0">
@@ -330,7 +330,7 @@ export function QuotesVideo({ settings }: SectionProps) {
               </Dialog.CloseTrigger>
             </Dialog.Content>
           </Dialog.Positioner>
-        </Portal>
+        </RenderPortal>
       </Dialog.Root>
     </Stack>
   )

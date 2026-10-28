@@ -170,6 +170,8 @@ export function SplashScreen({
       </style>
       <Flex
         data-splash=""
+        // The HTML runtime remembers the visit, as the effect above does.
+        data-pb-splash-once={splash.oncePerSession && !replay ? SPLASH_SESSION_KEY : undefined}
         aria-hidden
         position="fixed"
         inset="0"

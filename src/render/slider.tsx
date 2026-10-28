@@ -33,6 +33,7 @@
 import {
   AspectRatio,
   Box,
+  useChakraContext,
   Flex,
   HStack,
   IconButton,
@@ -61,6 +62,26 @@ import {
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { useSectionLayout } from './section-layout'
+import {
+  AUTOPLAY_MS,
+  DEFAULT_GAP,
+  FLING_EASE,
+  FLING_PROJECTION_MS,
+  FLING_SAMPLE_MS,
+  flingGlideMs,
+  gestureTime,
+  releaseVelocity,
+  SLIDE_EASE,
+  SLIDE_MS,
+  SLIDE_SWIPE_PX,
+  sliderBasis,
+  sliderGeometry,
+  sliderTransform,
+  WRAP_FALLBACK_MS,
+} from './slider-math'
+import { useHtmlTarget } from './target'
+
+export { sliderBasis, sliderStep, sliderTransform } from './slider-math'
 
 /** Round arrows laid over a slider's edges; phones swipe instead. */
 export const OVERLAY_ARROW = {
@@ -92,37 +113,6 @@ export type SliderSlotProps = Omit<BoxProps, 'direction'> & Record<`data-${strin
 export type SliderArrowProps = Omit<ComponentProps<typeof IconButton>, 'children'> &
   Record<`data-${string}`, unknown>
 
-/** The room between slides, when the caller has no spacing of its own. */
-const DEFAULT_GAP = '12px'
-
-/** How long the track takes to glide one step, and its easing. */
-const SLIDE_MS = 420
-const SLIDE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
-
-/**
- * A flick keeps travelling after the finger lifts. The projection turns the
- * release speed into the distance the track coasts, and the glide is longer
- * and softer than an arrow press so several slides can pass in one gesture.
- */
-const FLING_PROJECTION_MS = 160
-const FLING_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)'
-/** The fastest flick we honour, in pixels per millisecond. */
-const MAX_FLING_PX_PER_MS = 3
-/** Below this gesture duration the speed is event noise, not a flick. */
-const MIN_FLING_MS = 16
-/** Only the last stretch of the gesture decides its speed. */
-const FLING_SAMPLE_MS = 100
-
-/**
- * How far a finger must travel before a swipe counts as a page when the
- * track cannot be measured — a snapshot, a test DOM. A measured track snaps
- * by distance instead, so a flick can cross several slides at once.
- */
-const SLIDE_SWIPE_PX = 40
-
-/** Autoplay's beat, unless the caller sets its own. */
-const AUTOPLAY_MS = 5000
-
 /**
  * How far the edge arrows sit from the band's own edge: a negative spacing,
  * so the button floats half over the slides and half over the page around
@@ -137,61 +127,11 @@ const ARROW_EDGE_INSET = '-5'
  */
 const ARROW_FULL_BLEED_INSET = '4'
 
-/** The browser clock behind a touch gesture, in milliseconds. */
-function gestureTime(): number {
-  return globalThis.performance?.now?.() ?? Date.now()
-}
+/** A control the HTML runtime hides wins over its own `display`. */
+const HIDDEN_CSS = { '&[hidden]': { display: 'none' } } as const
 
-/**
- * The release speed of a touch gesture, in pixels per millisecond. Only the
- * final stretch counts, so a finger that stops before lifting does not fling;
- * a gesture too short to time is a tap, not a flick.
- */
-function releaseVelocity(samples: Array<{ x: number; time: number }>): number {
-  if (samples.length < 2) return 0
-  const last = samples[samples.length - 1]!
-  const recent = samples.filter((sample) => sample.time >= last.time - FLING_SAMPLE_MS)
-  const first = recent[0] ?? samples[0]!
-  const elapsed = last.time - first.time
-  if (elapsed < MIN_FLING_MS) return 0
-  const speed = (last.x - first.x) / elapsed
-  return Math.max(-MAX_FLING_PX_PER_MS, Math.min(MAX_FLING_PX_PER_MS, speed))
-}
-
-/** One slide's width, with the gaps between the slides taken off. */
-export function sliderBasis(perPage: number, gap = DEFAULT_GAP): string {
-  // Whole or fractional, the gaps counted are one short of the view — and
-  // rounded to two places, so 1.2 does not print as 0.19999999999999996.
-  const gaps = Math.round((perPage - 1) * 100) / 100
-  return `(100% - ${gap} * ${gaps}) / ${perPage}`
-}
-
-/** One step along the track: a slide plus the gap that follows it. */
-export function sliderStep(perPage: number, gap = DEFAULT_GAP): string {
-  return `calc(${sliderBasis(perPage, gap)} + ${gap})`
-}
-
-/** How long a wrap's glide is given before its jump back is taken anyway. */
-const WRAP_FALLBACK_MS = 700
-
-/**
- * The track's transform at a position, with a finger's drag added on.
- *
- * At rest it is exactly the position's own, so the CSS in the page and the
- * first paint agree; a drag only ever adds a pixel offset, which settles back
- * to a position on release.
- */
-export function sliderTransform(
-  at: number,
-  perPage: number,
-  dragPx = 0,
-  gap = DEFAULT_GAP,
-  vertical = false,
-): string {
-  const axis = vertical ? 'Y' : 'X'
-  if (at === 0 && dragPx === 0) return `translate${axis}(0)`
-  return `translate${axis}(calc(${-at} * ${sliderStep(perPage, gap)} + ${dragPx}px))`
-}
+/** Slides per view at each breakpoint; `base` is the phone. */
+export type SliderPerPage = { base: number } & Partial<Record<'sm' | 'md' | 'lg' | 'xl', number>>
 
 export interface SliderProps {
   /** The slides themselves, one element each — the slider sizes and moves them. */
@@ -240,6 +180,12 @@ export interface SliderProps {
   peek?: string
   /** The room between slides. Defaults to `DEFAULT_GAP`. */
   gap?: string
+  /**
+   * `perPage` for every breakpoint, when the caller resolved it from one.
+   * Only the HTML runtime reads it: with no React in the browser to resolve
+   * the breakpoint again, the page's CSS and the runtime take the whole map.
+   */
+  perPageAt?: SliderPerPage
   /** The slide to open on. */
   start?: number
   /** Told whenever the resting slide changes (a viewer's backdrop follows it). */
@@ -275,6 +221,7 @@ export function Slider({
   peek,
   gap: gapProp = DEFAULT_GAP,
   start = 0,
+  perPageAt,
   onIndexChange,
   active,
   as,
@@ -297,30 +244,29 @@ export function Slider({
     arrowInset ?? (sectionWidth === 'edge' ? ARROW_FULL_BLEED_INSET : ARROW_EDGE_INSET)
   const vertical = orientation === 'vertical'
   const gap = gapProp
-  const perPageClamped = Math.max(1, Math.min(perPage, Math.max(1, count)))
+  const html = useHtmlTarget()
+  const system = useChakraContext()
   /**
-   * A looped slider whose slides all fit still moves: each step cycles the set
-   * by one slide, so three visible banners rotate 1-2-3 → 2-3-1. Without this
-   * a full view had no resting position but the first, and the arrows and dots
-   * disappeared — the banner looked frozen at "Slides on desktop: 3".
+   * Where the track can rest (see `sliderGeometry`). A looped slider whose
+   * slides all fit still moves: each step cycles the set by one slide, so
+   * three visible banners rotate 1-2-3 → 2-3-1. A fractional view still
+   * settles on whole slides, the last one flush with the band's edge. The
+   * loop wraps by doubling only for a whole-page view and never on the
+   * editor's own canvas.
    */
-  const rotating = loop && count > 1 && perPageClamped >= count && (wrapInEditor || !editing)
-  const last = rotating ? count - 1 : Math.max(0, count - perPageClamped)
-  // A fractional view still settles on whole slides: the last position is the
-  // last slide, its edge flush with the band's. A row of 2.5-a-view steps
-  // 1, 2, … and ends right-aligned rather than half-cut.
-  const end = Math.ceil(last)
-  const paged = last > 0
+  const geometry = sliderGeometry(count, perPage, { loop, wrap: wrapInEditor || !editing })
+  const { perPage: perPageClamped, last, end } = geometry
+  const rotating = geometry.rotating
   /**
-   * Whether the wrap doubles the track. A rotating full view always wraps;
-   * otherwise the loop wraps only for a whole-page view and never on the
-   * editor's own canvas — a wrap repeats whole pages, while a fractional one
-   * simply ends on its last slide.
+   * Under the HTML runtime the breakpoint is the browser's to decide, so the
+   * markup carries every control a breakpoint might need (the runtime hides
+   * the ones it does not), and no doubles: the runtime clones them for the
+   * view it lands on.
    */
-  const wraps =
-    rotating || (loop && paged && (wrapInEditor || !editing) && Number.isInteger(perPageClamped))
+  const paged = html ? count > 1 : geometry.paged
+  const wraps = html ? false : geometry.wraps
   /** How many slides the doubles repeat at each end: one page's worth. */
-  const doubles = wraps ? perPageClamped : 0
+  const doubles = wraps ? geometry.doubles : 0
   const [index, setIndex] = useState(Math.max(0, Math.min(start, end)))
   const [paused, setPaused] = useState(false)
   const [playing, setPlaying] = useState(autoplay)
@@ -516,6 +462,42 @@ export function Slider({
     : slides.map((child, position) => ({ child, key: `slide-${position}`, double: false }))
 
   /**
+   * A slide's share of the band. Under the HTML runtime, every breakpoint's
+   * share is in the CSS, so the page is laid out right before (and without)
+   * any script; React resolves the breakpoint itself and needs only one.
+   */
+  const slideFlex =
+    html && perPageAt
+      ? Object.fromEntries(
+          Object.entries(perPageAt).map(([key, value]) => [
+            key,
+            `0 0 calc(${sliderBasis(Math.max(1, Math.min(value ?? 1, Math.max(1, count))), gap)})`,
+          ]),
+        )
+      : `0 0 calc(${basis})`
+
+  /** What the HTML runtime needs to drive this slider without React. */
+  const runtimeRoot = html
+    ? {
+        'data-pb-slider': JSON.stringify({
+          count,
+          perPage: perPageAt ?? { base: perPage },
+          loop,
+          autoplay,
+          autoplayMs,
+          vertical,
+          gap,
+          start,
+          breakpoints: Object.fromEntries(
+            system.breakpoints.values
+              .filter((breakpoint) => breakpoint.name !== 'base')
+              .map((breakpoint) => [breakpoint.name, breakpoint.min]),
+          ),
+        }),
+      }
+    : {}
+
+  /**
    * The controls drawn over the band. They live inside the band on a plain
    * slider; a ratio band keeps them beside it, because `AspectRatio` clips
    * everything inside the band it shapes.
@@ -536,6 +518,8 @@ export function Slider({
           <IconButton
             {...OVERLAY_ARROW}
             data-slider-control=""
+            data-pb-slider-prev={html ? '' : undefined}
+            css={HIDDEN_CSS}
             position="static"
             transform="none"
             {...arrowProps}
@@ -548,6 +532,8 @@ export function Slider({
           <IconButton
             {...OVERLAY_ARROW}
             data-slider-control=""
+            data-pb-slider-next={html ? '' : undefined}
+            css={HIDDEN_CSS}
             position="static"
             transform="none"
             {...arrowProps}
@@ -564,6 +550,8 @@ export function Slider({
           <IconButton
             {...OVERLAY_ARROW}
             data-slider-control=""
+            data-pb-slider-prev={html ? '' : undefined}
+            css={HIDDEN_CSS}
             {...(vertical
               ? { top: '2', left: '50%', transform: 'translateX(-50%)' }
               : { left: resolvedArrowInset })}
@@ -577,6 +565,8 @@ export function Slider({
           <IconButton
             {...OVERLAY_ARROW}
             data-slider-control=""
+            data-pb-slider-next={html ? '' : undefined}
+            css={HIDDEN_CSS}
             {...(vertical
               ? { top: 'auto', bottom: '2', left: '50%', transform: 'translateX(-50%)' }
               : { right: resolvedArrowInset })}
@@ -590,7 +580,13 @@ export function Slider({
         </>
       )}
       {paged && dots === 'inside' && (
-        <SliderDots count={end + 1} at={at} onSelect={select} overBand />
+        <SliderDots
+          count={html ? count : end + 1}
+          shown={end + 1}
+          at={at}
+          onSelect={select}
+          overBand
+        />
       )}
     </>
   )
@@ -649,10 +645,7 @@ export function Slider({
           const projected = moved + velocity * FLING_PROJECTION_MS
           const steps = Math.round(-projected / width)
           if (steps !== 0) {
-            const glideMs = Math.min(
-              900,
-              SLIDE_MS + Math.max(0, Math.abs(steps) - 1) * 80 + Math.abs(velocity) * 120,
-            )
+            const glideMs = flingGlideMs(steps, velocity)
             goTo(at + steps, glideMs)
           }
           return
@@ -702,7 +695,7 @@ export function Slider({
           <Box
             key={lane.key}
             data-slider-slide=""
-            flex={`0 0 calc(${basis})`}
+            flex={slideFlex}
             minW="0"
             minH="0"
             {...slideProps}
@@ -718,12 +711,22 @@ export function Slider({
   )
 
   const under = paged && (dots === 'below' || indicator === 'count' || toggle) && (
-    <Flex direction={vertical ? 'column' : 'row'} align="center" justify="center" gap="3">
+    <Flex
+      direction={vertical ? 'column' : 'row'}
+      align="center"
+      justify="center"
+      gap="3"
+      data-pb-slider-under={html ? '' : undefined}
+      css={HIDDEN_CSS}
+    >
       {toggle && (
         // Anything that moves on its own for more than five seconds needs a
         // way to stop it (WCAG 2.2.2).
         <IconButton
           data-slider-control=""
+          data-pb-slider-toggle={html ? '' : undefined}
+          data-pb-label-pause={html ? text('pauseSlides') : undefined}
+          data-pb-label-play={html ? text('playSlides') : undefined}
           size="2xs"
           variant="ghost"
           rounded="full"
@@ -731,15 +734,46 @@ export function Slider({
           aria-label={playing ? text('pauseSlides') : text('playSlides')}
           onClick={() => setPlaying((value) => !value)}
         >
-          {playing ? <LuPause /> : <LuPlay />}
+          {html ? (
+            // Both icons; the runtime shows the one that matches.
+            <>
+              <Box
+                as="span"
+                display="contents"
+                data-pb-icon-playing=""
+                hidden={!playing || undefined}
+              >
+                <LuPause />
+              </Box>
+              <Box
+                as="span"
+                display="contents"
+                data-pb-icon-paused=""
+                hidden={playing || undefined}
+              >
+                <LuPlay />
+              </Box>
+            </>
+          ) : playing ? (
+            <LuPause />
+          ) : (
+            <LuPlay />
+          )}
         </IconButton>
       )}
       {indicator === 'count' && (
-        <Text fontSize="sm" color="fg.muted" fontVariantNumeric="tabular-nums">
+        <Text
+          fontSize="sm"
+          color="fg.muted"
+          fontVariantNumeric="tabular-nums"
+          data-pb-slider-count={html ? '' : undefined}
+        >
           {at + 1} / {end + 1}
         </Text>
       )}
-      {dots === 'below' && <SliderDots count={end + 1} at={at} onSelect={select} />}
+      {dots === 'below' && (
+        <SliderDots count={html ? count : end + 1} shown={end + 1} at={at} onSelect={select} />
+      )}
     </Flex>
   )
 
@@ -748,7 +782,7 @@ export function Slider({
   // box — inside, an arrow straddling the edge would be cut in half.
   if (ratio !== undefined) {
     return (
-      <Stack as={as} gap="3" {...rootProps}>
+      <Stack as={as} gap="3" {...runtimeRoot} {...rootProps}>
         <Box position="relative" data-slider-frame="">
           <AspectRatio ratio={ratio}>{band}</AspectRatio>
           {overlays}
@@ -759,7 +793,7 @@ export function Slider({
   }
 
   return (
-    <Stack as={as} gap="3" {...rootProps}>
+    <Stack as={as} gap="3" {...runtimeRoot} {...rootProps}>
       {band}
       {under}
     </Stack>
@@ -774,16 +808,20 @@ export function Slider({
  */
 function SliderDots({
   count,
+  shown = count,
   at,
   onSelect,
   overBand = false,
 }: {
   count: number
+  /** How many of the dots are resting positions now; the rest are hidden. */
+  shown?: number
   at: number
   onSelect: (position: number) => void
   overBand?: boolean
 }) {
   const text = useRenderText()
+  const html = useHtmlTarget()
   // Over a photo the dots are the shop's canvas (its own warm white) with a
   // shadow; under a card row they wear the page's ink. Either way it is a
   // theme colour, never a literal one.
@@ -813,6 +851,14 @@ function SliderDots({
           aria-label={text('slideNumber', { n: position + 1 })}
           aria-current={position === at ? 'true' : undefined}
           onClick={() => onSelect(position)}
+          data-pb-slider-dot={html ? position : undefined}
+          hidden={position >= shown || undefined}
+          // The current dot, by attribute: the HTML runtime moves
+          // `aria-current` and the look follows.
+          css={{
+            ...HIDDEN_CSS,
+            '&[aria-current=true]': { width: '6', bg: current, _hover: { bg: current } },
+          }}
         />
       ))}
     </HStack>

@@ -140,6 +140,9 @@ const TEXT = {
   shareWhatsapp: { en: 'Share via WhatsApp', id: 'Bagikan lewat WhatsApp' },
   shareEmail: { en: 'Share via Email', id: 'Bagikan lewat Email' },
   cancel: { en: 'Cancel', id: 'Batal' },
+  cart: { en: 'Cart', id: 'Keranjang' },
+  account: { en: 'Account', id: 'Akun' },
+  search: { en: 'Search', id: 'Cari' },
 } satisfies Record<string, Localized>
 
 export type RenderText = keyof typeof TEXT

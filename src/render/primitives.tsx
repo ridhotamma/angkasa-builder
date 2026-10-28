@@ -80,7 +80,10 @@ import { SplitText, useTilt } from './motion'
  * back on looks and behaves the same. The storefront keeps the real modal.
  */
 export function useOverlayProps() {
-  const { mode } = useRenderEnvironment()
+  const { mode, target } = useRenderEnvironment()
+  // The HTML runtime opens overlays itself, so every part must be in the
+  // markup it is handed: nothing mounts later.
+  if (target === 'html') return { lazyMount: false, unmountOnExit: false } as const
   return mode === 'preview'
     ? ({
         modal: false,
@@ -1444,15 +1447,14 @@ function ProductSlider({
   // desktop view — and the chosen desktop count, never more than the list.
   const desktop = slidesPerView(perPage, 4, 6)
   const base = slidesPerView(perPageMobile, 2, 3)
-  const perView = Math.min(
-    useResponsive({ base, md: Math.min(3, desktop), lg: desktop }),
-    products.length,
-  )
+  const perViewAt = { base, md: Math.min(3, desktop), lg: desktop }
+  const perView = Math.min(useResponsive(perViewAt), products.length)
 
   return (
     <Slider
       count={products.length}
       perPage={perView}
+      perPageAt={perViewAt}
       rootProps={{ 'data-product-layout': 'slider' }}
       slideProps={{ display: 'flex', alignItems: 'stretch', 'data-stagger-item': '' }}
     >

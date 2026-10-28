@@ -14,6 +14,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { resolveScheme, schemeCssVars, type ThemeSettings } from '../model/settings'
 import { TABBAR_HEIGHT_VAR } from './chrome'
 import { schemeCss } from './frame'
+import { useHtmlTarget } from './target'
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
@@ -38,6 +39,7 @@ export function SitePopup({
   const [dismissed, setDismissed] = useState(false)
   const onDoneRef = useRef(onDone)
   onDoneRef.current = onDone
+  const html = useHtmlTarget()
 
   useIsoLayoutEffect(() => {
     if (replay || popup.kind === 'none') return
@@ -66,7 +68,8 @@ export function SitePopup({
     return () => view.clearTimeout(timer)
   }, [popup.kind, popup.delaySeconds, popup.oncePerSession, replay])
 
-  if (popup.kind === 'none' || dismissed || (!open && !replay)) return null
+  // The HTML runtime decides when to show it, so its markup is always sent.
+  if (popup.kind === 'none' || dismissed || (!open && !replay && !html)) return null
 
   const close = () => {
     setOpen(false)
@@ -86,10 +89,20 @@ export function SitePopup({
   const vars = scheme ? schemeCssVars(resolveScheme(settings, scheme.key)) : null
   const toneCss = scheme && vars ? (schemeCss(scheme.key, vars) as Record<string, unknown>) : {}
 
+  /** What the HTML runtime needs to show the popup at the right moment. */
+  const runtimeHooks = html
+    ? {
+        'data-pb-popup': popup.kind,
+        'data-pb-delay': String(popup.delaySeconds),
+        'data-pb-once': popup.oncePerSession ? '' : undefined,
+      }
+    : {}
+
   if (popup.kind === 'cookie') {
     return (
       <Box
         data-popup="cookie"
+        {...runtimeHooks}
         position="fixed"
         insetX="0"
         // Above a phone's tab bar, when the theme has one.
@@ -113,7 +126,7 @@ export function SitePopup({
           <Text fontSize="sm" flex="1">
             {popup.body || popup.title}
           </Text>
-          <Button size="sm" colorPalette="brand" onClick={close}>
+          <Button size="sm" colorPalette="brand" onClick={close} data-pb-popup-close="">
             {popup.buttonLabel}
           </Button>
         </Flex>
@@ -121,9 +134,10 @@ export function SitePopup({
     )
   }
 
-  return (
+  const dialog = (
     <Dialog.Root
       open={open}
+      {...(html ? { lazyMount: false, unmountOnExit: false } : {})}
       onOpenChange={({ open: next }) => {
         // An age gate is answered, never dismissed by tapping away.
         if (!next && popup.kind !== 'age') close()
@@ -140,7 +154,7 @@ export function SitePopup({
               {popup.title}
             </Heading>
             {popup.body && <Text color="fg.muted">{popup.body}</Text>}
-            <Button colorPalette="brand" size="lg" onClick={close}>
+            <Button colorPalette="brand" size="lg" onClick={close} data-pb-popup-close="">
               {popup.buttonLabel}
             </Button>
           </Stack>
@@ -152,5 +166,13 @@ export function SitePopup({
         </Dialog.Content>
       </Dialog.Positioner>
     </Dialog.Root>
+  )
+  // The runtime finds the dialog through this wrapper; it draws no box.
+  return html ? (
+    <Box display="contents" {...runtimeHooks}>
+      {dialog}
+    </Box>
+  ) : (
+    dialog
   )
 }

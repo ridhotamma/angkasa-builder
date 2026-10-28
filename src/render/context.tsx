@@ -304,6 +304,14 @@ export interface RenderEnvironment {
    * editor's own window would lay the phone preview out as a desktop.
    */
   getWindow?: () => Window
+  /**
+   * Who makes the page interactive in the browser. `react` (the default)
+   * hydrates it. `html` means nothing will: the page is sent as plain markup
+   * and the framework-free runtime (`@repo/page-builder/html`) wires it up.
+   * Under `html`, overlays render in place instead of through a portal, and
+   * interactive parts carry the `data-pb-*` hooks the runtime reads.
+   */
+  target?: 'react' | 'html'
   /** Editor only: text typed and elements clicked straight in the preview. */
   editing?: {
     onEditText: (sectionId: string, key: string, value: string) => void
@@ -334,6 +342,15 @@ export function RenderProvider({
   children: ReactNode
 }) {
   return <RenderContext.Provider value={value}>{children}</RenderContext.Provider>
+}
+
+/**
+ * The environment, or `null` outside a `RenderProvider` — for the few parts
+ * a host draws on its own (the site popup sits beside the sections, not
+ * inside them).
+ */
+export function useOptionalRenderEnvironment(): RenderEnvironment | null {
+  return useContext(RenderContext)
 }
 
 export function useRenderEnvironment(): RenderEnvironment & {

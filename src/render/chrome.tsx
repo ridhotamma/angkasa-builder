@@ -22,7 +22,6 @@ import {
   Icon,
   IconButton,
   Link as ChakraLink,
-  Portal,
   ScrollArea,
   SimpleGrid,
   Stack,
@@ -67,6 +66,8 @@ import {
 } from '../model/menus'
 import { isContentWidth } from '../model/section-style'
 import { resolveScheme, schemeCssVars, SCHEME_KEYS, type SchemeKey } from '../model/settings'
+import { HEADER_HEIGHT_VAR, HEADER_OFFSET_VAR, TABBAR_HEIGHT_VAR } from './chrome-vars'
+import { RenderPortal, useHtmlTarget, useMountProps } from './target'
 import { BOLD_BORDER_WIDTH, BOLD_INK, boldShadow } from './bold'
 import { useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
@@ -167,6 +168,7 @@ function AnnouncementStrip({ header }: { header: FieldValues }) {
   const items = readList(header, 'announcements').filter((item) => readText(item, 'text'))
   const scheme = useSchemeCss(readText(header, 'announcementScheme') || 'brand')
   const [index, setIndex] = useState(0)
+  const html = useHtmlTarget()
 
   useEffect(() => {
     if (items.length < 2) return
@@ -178,23 +180,38 @@ function AnnouncementStrip({ header }: { header: FieldValues }) {
 
   if (items.length === 0) return null
   const current = items[index % items.length]!
+  // The HTML runtime takes turns itself: every announcement is in the markup,
+  // all but the first hidden.
+  const shown = html ? items : [current]
 
   return (
-    <Box {...scheme} fontSize="sm" fontWeight="medium" textAlign="center" py="2" px="4">
-      <SmartLink
-        key={current.id}
-        link={readLink(current, 'link')}
-        display="block"
-        css={{
-          animation: items.length > 1 ? 'pb-announce 400ms ease' : undefined,
-          '@keyframes pb-announce': {
-            from: { opacity: 0, transform: 'translateY(4px)' },
-            to: { opacity: 1, transform: 'none' },
-          },
-        }}
-      >
-        {readText(current, 'text')}
-      </SmartLink>
+    <Box
+      {...scheme}
+      fontSize="sm"
+      fontWeight="medium"
+      textAlign="center"
+      py="2"
+      px="4"
+      data-pb-announcements={html && items.length > 1 ? '' : undefined}
+    >
+      {shown.map((item, position) => (
+        <SmartLink
+          key={item.id}
+          link={readLink(item, 'link')}
+          display="block"
+          hidden={html && position > 0 ? true : undefined}
+          css={{
+            animation: items.length > 1 ? 'pb-announce 400ms ease' : undefined,
+            '&[hidden]': { display: 'none' },
+            '@keyframes pb-announce': {
+              from: { opacity: 0, transform: 'translateY(4px)' },
+              to: { opacity: 1, transform: 'none' },
+            },
+          }}
+        >
+          {readText(item, 'text')}
+        </SmartLink>
+      ))}
     </Box>
   )
 }
@@ -230,6 +247,7 @@ function NavLink({
  */
 function DesktopMenuItem({ item }: { item: MenuItem }) {
   const label = useMenuLabel()
+  const mount = useMountProps({ lazyMount: true })
   if (item.children.length === 0) return <NavLink item={item} py="2" />
 
   const mega = isMegaMenu(item)
@@ -238,7 +256,7 @@ function DesktopMenuItem({ item }: { item: MenuItem }) {
       openDelay={80}
       closeDelay={150}
       positioning={{ placement: 'bottom', gutter: 6 }}
-      lazyMount
+      {...mount}
     >
       <HoverCard.Trigger asChild>
         <HStack
@@ -256,7 +274,7 @@ function DesktopMenuItem({ item }: { item: MenuItem }) {
           <Icon as={LuChevronDown} boxSize="3.5" />
         </HStack>
       </HoverCard.Trigger>
-      <Portal>
+      <RenderPortal>
         <HoverCard.Positioner>
           <HoverCard.Content
             p={mega ? '6' : '2'}
@@ -293,7 +311,7 @@ function DesktopMenuItem({ item }: { item: MenuItem }) {
             )}
           </HoverCard.Content>
         </HoverCard.Positioner>
-      </Portal>
+      </RenderPortal>
     </HoverCard.Root>
   )
 }
@@ -367,7 +385,7 @@ function MobileMenu({
         </Accordion.ItemTrigger>
         <Accordion.ItemContent>
           <Accordion.ItemBody py="0">
-            <Accordion.Root collapsible multiple variant="plain">
+            <Accordion.Root collapsible multiple variant="plain" data-pb-multiple="">
               {item.link.kind !== 'none' && entry({ ...item, children: [] }, depth + 1)}
               {item.children.map((child) => entry(child, depth + 1))}
             </Accordion.Root>
@@ -389,7 +407,7 @@ function MobileMenu({
           <LuMenu />
         </IconButton>
       </Drawer.Trigger>
-      <Portal>
+      <RenderPortal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
           <Drawer.Content>
@@ -397,7 +415,7 @@ function MobileMenu({
               <Drawer.Title>{shop.name}</Drawer.Title>
             </Drawer.Header>
             <Drawer.Body>
-              <Accordion.Root collapsible multiple variant="plain">
+              <Accordion.Root collapsible multiple variant="plain" data-pb-multiple="">
                 {items.map((item) => entry(item, 0))}
               </Accordion.Root>
             </Drawer.Body>
@@ -415,7 +433,7 @@ function MobileMenu({
             )}
           </Drawer.Content>
         </Drawer.Positioner>
-      </Portal>
+      </RenderPortal>
     </Drawer.Root>
   )
 }
@@ -745,7 +763,7 @@ const HEADER_CONTROL_VARS = {
  * The room the header takes from the page; `StoreHeader` keeps it current.
  * Zero while a see-through header floats over a banner and is not in flow.
  */
-export const HEADER_HEIGHT_VAR = '--store-header-height'
+export { HEADER_HEIGHT_VAR } from './chrome-vars'
 
 /**
  * Where the sticky line sits below the header; `StoreHeader` keeps it current.
@@ -754,7 +772,7 @@ export const HEADER_HEIGHT_VAR = '--store-header-height'
  * `HEADER_HEIGHT_VAR` is zero — or zero when the header scrolls away with the
  * page. Anything sticking below the chrome keys off this.
  */
-export const HEADER_OFFSET_VAR = '--store-header-offset'
+export { HEADER_OFFSET_VAR } from './chrome-vars'
 
 /**
  * Where a sticky panel stops: a gap below the header's real height, whatever
@@ -833,6 +851,13 @@ export function StoreHeader({
 
   const clear = transparent && !scrolled
   const position = headerPosition(transparent, sticky)
+  const html = useHtmlTarget()
+  /**
+   * The HTML runtime cannot re-render the header when the page scrolls, so
+   * there both looks are in the CSS: the solid one by default and the clear
+   * one under `[data-transparent]`, which the runtime toggles.
+   */
+  const runtimeLook = html && transparent
   const search = showSearch ? searchButton : null
 
   // A host with separate cart and account slots gets the cart in the phone
@@ -903,14 +928,33 @@ export function StoreHeader({
       zIndex="docked"
       transition="background-color 250ms, color 250ms, border-color 250ms"
       borderBottomWidth="1px"
-      borderColor={clear ? 'transparent' : 'border'}
-      bg={clear ? 'transparent' : 'bg/85'}
-      color={clear ? 'white' : 'fg'}
-      backdropFilter={clear ? undefined : 'blur(8px)'}
+      borderColor={clear && !runtimeLook ? 'transparent' : 'border'}
+      bg={clear && !runtimeLook ? 'transparent' : 'bg/85'}
+      color={clear && !runtimeLook ? 'white' : 'fg'}
+      backdropFilter={clear && !runtimeLook ? undefined : 'blur(8px)'}
       data-transparent={clear ? '' : undefined}
+      data-pb-header=""
+      data-pb-transparent={html && transparent ? '' : undefined}
+      data-pb-sticky={html && sticky ? '' : undefined}
       // The clear palette first, then the control tint: over a photo the two
       // agree (white ink), and on a solid header the tint follows the theme.
-      css={clear ? { ...CLEAR_VARS, ...HEADER_CONTROL_VARS } : HEADER_CONTROL_VARS}
+      css={
+        runtimeLook
+          ? {
+              ...HEADER_CONTROL_VARS,
+              '&[data-transparent]': {
+                borderColor: 'transparent',
+                bg: 'transparent',
+                color: 'white',
+                backdropFilter: 'none',
+                ...CLEAR_VARS,
+                ...HEADER_CONTROL_VARS,
+              },
+            }
+          : clear
+            ? { ...CLEAR_VARS, ...HEADER_CONTROL_VARS }
+            : HEADER_CONTROL_VARS
+      }
     >
       {/* Before the measurement above can run — the server's HTML — a
           see-through header is already known to take no room, and a header
@@ -939,7 +983,7 @@ export function hasTabBar(header: FieldValues): boolean {
  * `0px` without it. Anything else fixed to the bottom of the screen — the
  * floating contact buttons, the cookie bar — sits on top of it with this.
  */
-export const TABBAR_HEIGHT_VAR = '--store-tabbar-height'
+export { TABBAR_HEIGHT_VAR } from './chrome-vars'
 
 const TABBAR_HEIGHT = 'calc(4rem + env(safe-area-inset-bottom, 0px))'
 

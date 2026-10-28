@@ -1236,7 +1236,8 @@ function SliderBlock({ block }: { block: BlockValue }) {
     readToken(block.settings, 'orientation', SLIDER_ORIENTATIONS, 'horizontal') === 'vertical'
   const desktop = perPageOf(block, 'perPage', 6)
   const phone = perPageOf(block, 'perPageMobile', 3)
-  const perPage = Math.min(useResponsive({ base: phone, md: desktop }), Math.max(1, slides.length))
+  const perPageAt = { base: phone, md: desktop }
+  const perPage = Math.min(useResponsive(perPageAt), Math.max(1, slides.length))
   const spacing = SPACE_LENGTH[readToken(block.settings, 'gap', SPACES, 'md')]
   const height = vertical
     ? TRACK_HEIGHT[readToken(block.settings, 'height', TRACK_HEIGHTS, 'md')]
@@ -1260,6 +1261,7 @@ function SliderBlock({ block }: { block: BlockValue }) {
     <Slider
       count={slides.length}
       perPage={perPage}
+      perPageAt={perPageAt}
       gap={spacing}
       autoplay={autoplay}
       autoplayMs={interval * 1000}

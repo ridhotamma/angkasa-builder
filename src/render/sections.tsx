@@ -1292,12 +1292,14 @@ function TestimonialMarquee({
  * on its last card.
  */
 function TestimonialCarousel({ items, autoplay }: { items: TestimonialItem[]; autoplay: boolean }) {
-  const perPage = Math.min(useResponsive({ base: 1, md: 2, lg: 3 }), items.length)
+  const perPageAt = { base: 1, md: 2, lg: 3 }
+  const perPage = Math.min(useResponsive(perPageAt), items.length)
 
   return (
     <Slider
       count={items.length}
       perPage={perPage}
+      perPageAt={perPageAt}
       autoplay={autoplay}
       slideProps={{ display: 'flex' }}
     >

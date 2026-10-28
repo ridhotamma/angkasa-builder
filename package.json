@@ -9,11 +9,15 @@
     "./render": "./src/render/index.ts",
     "./editor": "./src/editor/index.ts",
     "./snapshot": "./src/snapshot/index.ts",
+    "./html": "./src/html/index.ts",
+    "./html/runtime": "./src/html/runtime.ts",
+    "./html/page-runtime.js": "./dist/page-runtime.js",
     "./quick-checkout": "./src/quick-checkout/index.ts",
     "./server": "./src/server/content.ts",
     "./package.json": "./package.json"
   },
   "scripts": {
+    "build": "bun run scripts/build-runtime.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "clean": "rimraf .turbo *.tsbuildinfo",

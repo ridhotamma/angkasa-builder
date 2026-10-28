@@ -26,7 +26,6 @@ import {
   HStack,
   Icon,
   IconButton,
-  Portal,
   SimpleGrid,
   Stack,
   Text,
@@ -59,6 +58,7 @@ import {
   readText,
   type BlockValue,
 } from '../model/fields'
+import { RenderPortal, useMountProps } from './target'
 import { STICKY_BELOW_HEADER } from './chrome'
 import { previewProductDetail, useRenderEnvironment, type StorefrontProductDetail } from './context'
 import { useRenderText } from './copy'
@@ -263,6 +263,7 @@ function GalleryActions({ product }: { product: StorefrontProductDetail }) {
   const text = useRenderText()
   const { href, mode, wishlist } = useRenderEnvironment()
   const overlay = useOverlayProps()
+  const mount = useMountProps({ lazyMount: true, unmountOnExit: true })
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -312,8 +313,7 @@ function GalleryActions({ product }: { product: StorefrontProductDetail }) {
         {...overlay}
         open={open}
         onOpenChange={({ open }) => setOpen(open)}
-        lazyMount
-        unmountOnExit
+        {...mount}
         size="xs"
         placement={{ base: 'bottom', md: 'center' }}
       >
@@ -322,7 +322,7 @@ function GalleryActions({ product }: { product: StorefrontProductDetail }) {
             <LuForward />
           </IconButton>
         </Dialog.Trigger>
-        <Portal>
+        <RenderPortal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
             <Dialog.Content p="0" overflow="hidden" rounded={{ base: 't-xl', md: 'l3' }}>
@@ -394,7 +394,7 @@ function GalleryActions({ product }: { product: StorefrontProductDetail }) {
               </Dialog.Body>
             </Dialog.Content>
           </Dialog.Positioner>
-        </Portal>
+        </RenderPortal>
       </Dialog.Root>
       {wishlist && (
         <WishlistButton
@@ -466,7 +466,7 @@ function usePhotoViewer(images: GalleryImage[], name: string) {
       size="full"
       placement="center"
     >
-      <Portal>
+      <RenderPortal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
           {/* Fullscreen: the photo is the screen, so the viewer is the
@@ -502,7 +502,7 @@ function usePhotoViewer(images: GalleryImage[], name: string) {
             </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>
-      </Portal>
+      </RenderPortal>
     </Dialog.Root>
   )
 
@@ -761,7 +761,7 @@ function SizeGuideDrawer({ product, label }: { product: StorefrontProductDetail;
           {label || guide.name}
         </Button>
       </Drawer.Trigger>
-      <Portal>
+      <RenderPortal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
           <Drawer.Content>
@@ -779,7 +779,7 @@ function SizeGuideDrawer({ product, label }: { product: StorefrontProductDetail;
             </Drawer.CloseTrigger>
           </Drawer.Content>
         </Drawer.Positioner>
-      </Portal>
+      </RenderPortal>
     </Drawer.Root>
   )
 }
@@ -1078,6 +1078,7 @@ function BlockList({
           <Accordion.Root
             key={`tabs-${index}`}
             multiple
+            data-pb-multiple=""
             defaultValue={open}
             variant="plain"
             borderTopWidth="1px"

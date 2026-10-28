@@ -5,6 +5,7 @@ import {
   Badge,
   Box,
   Button,
+  chakra,
   Grid,
   Heading,
   HStack,
@@ -19,6 +20,7 @@ import { LuCheck, LuCopy } from 'react-icons/lu'
 import { ImageWithFallback } from '@repo/theme'
 
 import { readBoolean, readDate, readList, readNumber, readText } from '../model/fields'
+import { useHtmlTarget, useMountProps } from './target'
 import { findProductCard, useRenderEnvironment } from './context'
 import { useRenderText } from './copy'
 import { useMounted, useNow } from './hooks'
@@ -165,6 +167,7 @@ export function ProductListTabs({ settings }: SectionProps) {
       ? tabs
       : data.collections.slice(0, 3).map((shelf) => ({ id: shelf.id, label: shelf.name, shelf }))
 
+  const mount = useMountProps({ lazyMount: true })
   if (shown.length === 0) {
     return data.collections.length === 0 ? (
       <EmptyNotice>{empty('collections')}</EmptyNotice>
@@ -175,7 +178,7 @@ export function ProductListTabs({ settings }: SectionProps) {
 
   return (
     <Stack as="section" gap="5">
-      <Tabs.Root defaultValue={shown[0]!.id} variant="plain" lazyMount>
+      <Tabs.Root defaultValue={shown[0]!.id} variant="plain" {...mount}>
         <Stack gap="5">
           <Stack
             direction={{ base: 'column', md: 'row' }}
@@ -245,6 +248,7 @@ function split(ms: number) {
 export function Countdown({ settings }: SectionProps) {
   const { mode } = useRenderEnvironment()
   const text = useRenderText()
+  const html = useHtmlTarget()
   const mounted = useMounted()
   const now = useNow(1000)
   const end = readDate(settings, 'endsAt')
@@ -266,14 +270,28 @@ export function Countdown({ settings }: SectionProps) {
 
   const parts = split(left)
   const units = [
-    { value: parts.days, label: text('days') },
-    { value: parts.hours, label: text('hours') },
-    { value: parts.minutes, label: text('minutes') },
-    { value: parts.seconds, label: text('seconds') },
+    { key: 'days', value: parts.days, label: text('days') },
+    { key: 'hours', value: parts.hours, label: text('hours') },
+    { key: 'minutes', value: parts.minutes, label: text('minutes') },
+    { key: 'seconds', value: parts.seconds, label: text('seconds') },
   ]
+  const afterEnd = readText(settings, 'afterEnd') === 'message' ? 'message' : 'hide'
 
   return (
-    <Stack as="section" gap="5" align={align === 'center' ? 'center' : 'start'} textAlign={align}>
+    <Stack
+      as="section"
+      gap="5"
+      align={align === 'center' ? 'center' : 'start'}
+      textAlign={align}
+      // The HTML runtime ticks the digits and handles the end itself.
+      data-pb-countdown={html ? end.toISOString() : undefined}
+      data-pb-after-end={html ? afterEnd : undefined}
+    >
+      {html && afterEnd === 'message' && (
+        <chakra.div data-pb-countdown-ended="" hidden css={{ '&[hidden]': { display: 'none' } }}>
+          <SectionHeading align={align}>{readText(settings, 'endedText')}</SectionHeading>
+        </chakra.div>
+      )}
       <Stack gap="2" align={align === 'center' ? 'center' : 'start'}>
         <SectionHeading align={align} field="heading">
           {readText(settings, 'heading')}
@@ -304,6 +322,7 @@ export function Countdown({ settings }: SectionProps) {
               fontWeight="bold"
               lineHeight="1"
               fontVariantNumeric="tabular-nums"
+              data-pb-unit={html ? unit.key : undefined}
             >
               {mounted ? String(unit.value).padStart(2, '0') : '––'}
             </Text>
@@ -401,6 +420,7 @@ function VoucherCard({ code, title, terms }: { code: string; title: string; term
   const { frame } = useCard()
   const text = useRenderText()
   const [copied, setCopied] = useState(false)
+  const html = useHtmlTarget()
 
   const notch = {
     content: '""',
@@ -460,6 +480,7 @@ function VoucherCard({ code, title, terms }: { code: string; title: string; term
           colorPalette="brand"
           variant={copied ? 'subtle' : 'solid'}
           rounded="full"
+          data-pb-copy={html && mode !== 'preview' ? code : undefined}
           onClick={async (event) => {
             if (mode === 'preview') return
             const view = event.currentTarget.ownerDocument.defaultView
@@ -473,8 +494,29 @@ function VoucherCard({ code, title, terms }: { code: string; title: string; term
             }
           }}
         >
-          {copied ? <LuCheck /> : <LuCopy />}
-          {copied ? text('copied') : text('copy')}
+          {html ? (
+            // Both states in the markup; the HTML runtime swaps them.
+            <>
+              <chakra.span display="contents" data-pb-copy-idle="">
+                <LuCopy />
+                {text('copy')}
+              </chakra.span>
+              <chakra.span
+                display="contents"
+                data-pb-copy-done=""
+                hidden
+                css={{ '&[hidden]': { display: 'none' } }}
+              >
+                <LuCheck />
+                {text('copied')}
+              </chakra.span>
+            </>
+          ) : (
+            <>
+              {copied ? <LuCheck /> : <LuCopy />}
+              {copied ? text('copied') : text('copy')}
+            </>
+          )}
         </Button>
       </Box>
     </Box>
