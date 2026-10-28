@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./render": "./src/render/index.ts",
     "./editor": "./src/editor/index.ts",
+    "./editor-core": "./src/editor-core/index.ts",
     "./snapshot": "./src/snapshot/index.ts",
     "./html": "./src/html/index.ts",
     "./html/runtime": "./src/html/runtime.ts",
@@ -19,7 +20,7 @@
   "scripts": {
     "build": "bun run scripts/build-runtime.ts",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun test && bun test ./test/isolated/builder-core.interaction.tsx",
     "clean": "rimraf .turbo *.tsbuildinfo",
     "generate:fonts": "bun run scripts/generate-fonts.ts",
     "generate:icons": "bun run scripts/generate-icons.ts"

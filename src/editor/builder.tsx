@@ -92,31 +92,10 @@ import {
 import { SECTION_LINKING_ENABLED } from '@repo/appwrite-config'
 import { Tooltip } from '@repo/theme'
 
+import { findBlock } from '../model/blocks'
 import {
-  duplicateBlock,
-  findBlock,
-  insertBlock,
-  moveBlock,
-  removeBlock,
-  renameBlock,
-  updateBlockSettings,
-  updateBlockStyle,
-  updateBlocksIn,
-} from '../model/blocks'
-import {
-  clearOverrides,
-  createSection,
-  detachSection,
-  duplicateSection,
-  moveSection,
-  removeSection,
-  renameSection,
-  linkedMaster,
   overridableFields,
-  resolveLinkedSections,
   sectionDisplayName,
-  setBlockOverrides,
-  setSectionOverrides,
   TEMPLATE_KEYS,
   type SectionInstance,
   type TemplateKey,
@@ -128,9 +107,7 @@ import {
   TEXT_ELEMENT_FIELDS,
   type ElementKind,
 } from '../model/element-style'
-import { readBlocks, type Field, type FieldValues } from '../model/fields'
-import { isLocalizedText, withLocalizedEntry } from '../model/localized'
-import { createStarterSection, reseedSectionVariant } from '../model/section-starters'
+import type { FieldValues } from '../model/fields'
 import {
   FOOTER_FIELDS,
   HEADER_FIELDS,
@@ -139,12 +116,6 @@ import {
   type ThemeLayout,
 } from '../model/layout'
 import type { MenuItem } from '../model/menus'
-import {
-  SECTION_STYLE_FIELDS,
-  SECTION_STYLE_GROUPS,
-  SWITCHED_OFF_STYLE_KEYS,
-  VISIBILITY_STYLE_KEYS,
-} from '../model/section-style'
 import {
   sectionSchema,
   type SectionPreset,
@@ -194,23 +165,22 @@ import { PinnedRow, SectionList } from './section-list'
 import { SectionToolbar } from './section-toolbar'
 import type { EditorServices } from './services'
 import { ThemeSettingsPanel } from './theme-settings'
+import {
+  applyCommand,
+  DETAILS_ID,
+  FOOTER_ID,
+  HEADER_ID,
+  inspectSelection,
+  NO_SELECTION,
+  STYLE_GROUPS as CORE_STYLE_GROUPS,
+  VISIBILITY_FIELDS,
+  type EditorCommand,
+  type EditorSelection,
+  type NewBlock,
+} from '../editor-core'
 
-const STYLE_FIELDS = SECTION_STYLE_FIELDS.filter(
-  (field) =>
-    !(VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key) &&
-    // Built-but-switched-off features are not offered; the model and the
-    // renderer keep reading a stored value. See `SWITCHED_OFF_STYLE_KEYS`.
-    !SWITCHED_OFF_STYLE_KEYS.includes(field.key),
-)
-/** The Style tab's folds, each holding the offered fields it names. */
-const STYLE_GROUPS: FieldGroup[] = SECTION_STYLE_GROUPS.map((group) => ({
-  key: group.key,
-  label: group.label,
-  fields: STYLE_FIELDS.filter((field) => group.keys.includes(field.key)),
-}))
-const VISIBILITY_FIELDS = SECTION_STYLE_FIELDS.filter((field) =>
-  (VISIBILITY_STYLE_KEYS as readonly string[]).includes(field.key),
-)
+/** The Style tab's folds, each holding the offered fields it names (see the core). */
+const STYLE_GROUPS: FieldGroup[] = CORE_STYLE_GROUPS
 
 /** No menus yet: one object, so a default does not look like a change on every render. */
 const NO_MENUS: { main: MenuItem[]; footer: MenuItem[] } = { main: [], footer: [] }
@@ -225,31 +195,6 @@ const EditedContext = createContext<ReactNode>(null)
 
 function EditedOutlet() {
   return <>{useContext(EditedContext)}</>
-}
-
-const HEADER_ID = 'layout:header'
-/** The frame's details (`frame.details`), picked like a section. */
-const DETAILS_ID = 'frame:details'
-const FOOTER_ID = 'layout:footer'
-
-/**
- * How deep a selected block sits in the panel stack: a block directly in a
- * section is one step in from the section's settings, and every container
- * around it is another. Takes the block's parent, so the common top-level case
- * costs no tree walk; used only to tell a forward step from a back one.
- */
-function blockPanelDepth(
-  fields: readonly Field[],
-  values: FieldValues,
-  parentId: string | null,
-): number {
-  let depth = 2
-  let parent = parentId
-  while (parent) {
-    depth += 1
-    parent = findBlock(fields, values, parent)?.parentId ?? null
-  }
-  return depth
 }
 
 export interface PageBuilderProps {
@@ -437,17 +382,6 @@ const TEMPLATE_LABELS = {
 } as const satisfies Record<TemplateKey, string>
 
 /**
- * The section an edit should land on: a linked copy edits its original, so
- * every copy updates together — the component behaviour, not a silent write
- * to a section that draws nothing.
- */
-function editTargetId(sections: readonly SectionInstance[], id: string): string {
-  const section = sections.find((other) => other.id === id)
-  if (!section?.linkedTo) return id
-  return linkedMaster(section, sections)?.id ?? id
-}
-
-/**
  * What the add search was opened for. One object instead of three booleans:
  * the target section a "+ Add block" belongs to cannot be lost when another
  * flag changes, and the dialog's mode is always unambiguous.
@@ -492,15 +426,16 @@ function Builder({
   products,
 }: PageBuilderProps & { products: StorefrontRenderData['latest'] }) {
   const { t, l, locale } = useEditorText()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  // The block the canvas has selected inside the chosen section, if any. The
-  // panel follows it; clicking the section again clears it.
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
-  // The button (or text element) the canvas has selected, keyed in the
-  // section's `elements` map, and whether its panel is the button's or the
-  // text's. A block selection wins when both are set.
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
-  const [selectedElementKind, setSelectedElementKind] = useState<ElementKind>('button')
+  // What is picked: a section, maybe a block in it or a button / text element
+  // in its element map (see `EditorSelection`). Every change to it, and to the
+  // sections, goes through the core's commands (`run`, below).
+  const [selection, setSelection] = useState<EditorSelection>(NO_SELECTION)
+  const {
+    sectionId: selectedId,
+    blockId: selectedBlockId,
+    elementId: selectedElementId,
+    elementKind: selectedElementKind,
+  } = selection
   const [tab, setTab] = useState<'sections' | 'theme'>(startWithLooks ? 'theme' : 'sections')
   const [sectionTab, setSectionTab] = useState<'content' | 'style' | 'visibility'>('content')
   const [device, setDevice] = useState<PreviewDevice>('desktop')
@@ -529,19 +464,18 @@ function Builder({
   const footerSlot = useBuilderDialogFooter()
 
   const editableLayout = Boolean(layout && onLayoutChange)
-  const selected = sections.find((section) => section.id === selectedId) ?? null
-  // A linked copy edits through its original for structure and through its
-  // own overrides for content: `source` is the original (schema and master
+  const details = frame?.details
+  // What the selection means for the panel (see `inspectSelection`). A linked
+  // copy edits through its original for structure and through its own
+  // overrides for content: `source` is the original (schema and master
   // values), `resolvedSelected` is what the copy actually draws.
-  const source = selected?.linkedTo ? (linkedMaster(selected, sections) ?? selected) : selected
-  const resolvedSelected = selected?.linkedTo
-    ? (resolveLinkedSections(sections).find((section) => section.id === selected.id) ?? selected)
-    : selected
-  const schema = source ? sectionSchema(source.type) : null
-  const selectedBlock =
-    resolvedSelected && schema && selectedBlockId
-      ? findBlock(schema.fields, resolvedSelected.settings, selectedBlockId)
-      : null
+  const inspection = inspectSelection(sections, selection, {
+    locale,
+    editableLayout,
+    details: Boolean(details),
+  })
+  const { selected, source, schema, block: selectedBlock } = inspection
+  const resolvedSelected = inspection.resolved
 
   useHistoryKeys(
     history,
@@ -567,7 +501,7 @@ function Builder({
   }, [notice])
 
   // A template switch starts on its list, not on a section of the other one.
-  useEffect(() => setSelectedId(null), [template?.value])
+  useEffect(() => setSelection(NO_SELECTION), [template?.value])
 
   // Opened from outside the builder. A count, so the same request twice opens
   // twice; the first render's value is where it starts, not a request.
@@ -576,19 +510,9 @@ function Builder({
   useEffect(() => {
     if (openRequest === lastOpenRequest.current) return
     lastOpenRequest.current = openRequest
-    setSelectedId(DETAILS_ID)
+    setSelection({ ...NO_SELECTION, sectionId: DETAILS_ID })
     setTab('sections')
   }, [openRequest])
-
-  const updateSection = useCallback(
-    (id: string, change: (section: SectionInstance) => SectionInstance) =>
-      onSectionsChange(
-        sections.map((section) =>
-          section.id === editTargetId(sections, id) ? change(section) : section,
-        ),
-      ),
-    [sections, onSectionsChange],
-  )
 
   // What the preview draws: a deferred copy, drawn after the input updates.
   const previewSections = useDeferredValue(sections)
@@ -608,35 +532,58 @@ function Builder({
     previewIndexes.current = new Map(ids.map((id, index) => [id, index]))
   }, [previewDoc, previewSections])
 
-  // Text typed into the preview edits the latest sections, read through refs
-  // so the environment below does not change with every keystroke.
-  const latest = useRef({ sections, onSectionsChange })
-  latest.current = { sections, onSectionsChange }
+  /**
+   * Run one of the core's commands (see `editor-core/commands`) on the latest
+   * sections and selection: the host gets the new sections, the panel the new
+   * selection, and the preview scrolls to what the command points at. Read
+   * through refs, so every handler below keeps one identity and the memoized
+   * preview is not drawn again on each keystroke. Returns whether the command
+   * did anything — the keyboard's cue to swallow the key.
+   */
+  const latest = useRef({ sections, onSectionsChange, selection, previewDoc, locale })
+  latest.current = { sections, onSectionsChange, selection, previewDoc, locale }
+  const run = useCallback((command: EditorCommand): boolean => {
+    const current = latest.current
+    const result = applyCommand(current.sections, current.selection, command, {
+      locale: current.locale,
+    })
+    if (result.sections !== current.sections) {
+      // Two commands in one event read what the first one wrote.
+      current.sections = result.sections
+      current.onSectionsChange(result.sections)
+    }
+    if (result.selection !== current.selection) {
+      current.selection = result.selection
+      setSelection(result.selection)
+      // Anything picked is on the sections tab.
+      if (result.selection.sectionId) setTab('sections')
+    }
+    if (result.expand) {
+      const id = result.expand
+      // The way back to the tree shows the branch the block sits in.
+      setTreeExpanded((open) => (open.has(id) ? open : new Set([...open, id])))
+    }
+    const doc = current.previewDoc
+    if (result.reveal && doc) {
+      const { id, how } = result.reveal
+      // Picked from the list: into view now. Moved or copied: once the preview
+      // has re-rendered, and only a nudge if it went off-screen.
+      if (how === 'start') revealSection(doc, id, 'start')
+      else doc.defaultView?.requestAnimationFrame(() => revealSection(doc, id, 'nearest'))
+    }
+    return result.handled
+  }, [])
+
+  // Text typed into the preview, however deep the block sits in the tree.
   const onEditText = useCallback(
-    (sectionId: string, key: string, value: string) => {
-      const { sections: current, onSectionsChange: change } = latest.current
-      // A translated field stays a locale map: typing in the preview edits the
-      // language the editor is showing, and leaves the other one alone.
-      const written = (settings: FieldValues): FieldValues => {
-        const existing = settings[key]
-        return {
-          ...settings,
-          [key]: isLocalizedText(existing) ? withLocalizedEntry(existing, locale, value) : value,
-        }
-      }
-      // A linked copy's words are its own override; the original keeps its own.
-      if (current.find((section) => section.id === sectionId)?.linkedTo) {
-        change(setSectionOverrides(current, sectionId, { [key]: value }))
-        return
-      }
-      const target = editTargetId(current, sectionId)
-      change(
-        current.map((section) =>
-          section.id === target ? { ...section, settings: written(section.settings) } : section,
-        ),
-      )
-    },
-    [locale],
+    (sectionId: string, key: string, value: string) =>
+      void run({ type: 'edit-text', sectionId, key, value }),
+    [run],
+  )
+  const onEditBlockText = useCallback(
+    (sectionId: string, blockId: string, key: string, value: string) =>
+      void run({ type: 'edit-block-text', sectionId, blockId, key, value }),
+    [run],
   )
 
   // What the add palette is dragging, read through a ref so the drop handler
@@ -648,121 +595,45 @@ function Builder({
   /**
    * A palette item dropped on the preview: a section lands between sections,
    * blocks land in the container the pointer named — or in a new Custom
-   * section when dropped between sections instead.
+   * section when dropped between sections instead. Dropped, not selected: the
+   * palette stays open for the next item.
    */
-  const onPaletteDrop = useCallback((target: DropTarget) => {
-    const { item, end } = dragRef.current
-    end()
-    if (!item) return
-    const { sections: current, onSectionsChange: change } = latest.current
-    const at = (index: number) => Math.max(0, Math.min(current.length, index))
-
-    // Dropped, not selected: the palette stays open for the next item. An
-    // item added by click opens its settings instead (see `insert`).
-    if (item.kind === 'section') {
-      const section = createStarterSection(item.type, item.preset)
-      const next = [...current]
-      next.splice(at(target.kind === 'sections' ? target.index : current.length), 0, section)
-      change(next)
-      return
-    }
-
-    const donor = createSection('blocks', { blocks: item.blocks as never })
-    const created = readBlocks(donor.settings, 'blocks')
-
-    if (target.kind === 'blocks') {
-      const host = current.find((section) => section.id === editTargetId(current, target.sectionId))
-      const shape = host ? sectionSchema(host.type) : null
-      if (host && shape && created.length > 0) {
-        let values = host.settings
-        let index = target.index
-        for (const block of created) {
-          const inserted = insertBlock(
-            shape.fields,
-            values,
-            { parentId: target.parentId, fieldKey: target.fieldKey },
-            index,
-            block,
-          )
-          if (!inserted) break
-          values = inserted
-          index += 1
-        }
-        change(
-          current.map((section) =>
-            section.id === host.id ? { ...section, settings: values } : section,
-          ),
-        )
-        return
-      }
-    }
-
-    const next = [...current]
-    next.splice(at(target.kind === 'sections' ? target.index : current.length), 0, donor)
-    change(next)
-  }, [])
-
-  // A text typed into a block, however deep the block sits in the tree.
-  const onEditBlockText = useCallback(
-    (sectionId: string, blockId: string, key: string, value: string) => {
-      const { sections: current, onSectionsChange: change } = latest.current
-      // A linked copy's block words are its own override.
-      if (current.find((section) => section.id === sectionId)?.linkedTo) {
-        change(setBlockOverrides(current, sectionId, blockId, { [key]: value }))
-        return
-      }
-      const target = editTargetId(current, sectionId)
-      change(
-        current.map((section) => {
-          if (section.id !== target) return section
-          const shape = sectionSchema(section.type)
-          if (!shape) return section
-          const settings = updateBlocksIn(
-            shape.fields,
-            section.settings,
-            blockId,
-            (blocks, index) =>
-              blocks.map((block, at) =>
-                at === index ? { ...block, settings: { ...block.settings, [key]: value } } : block,
-              ),
-          )
-          return settings ? { ...section, settings } : section
-        }),
-      )
+  const onPaletteDrop = useCallback(
+    (target: DropTarget) => {
+      const { item, end } = dragRef.current
+      end()
+      if (!item) return
+      run({
+        type: 'drop',
+        target,
+        item:
+          item.kind === 'section'
+            ? { kind: 'section', sectionType: item.type, preset: item.preset }
+            : { kind: 'blocks', blocks: item.blocks as readonly NewBlock[] },
+      })
     },
-    [],
+    [run],
   )
 
   // A block clicked on the canvas: highlight it and open its panel.
-  const onSelectBlock = useCallback((sectionId: string, blockId: string) => {
-    setSelectedId(sectionId)
-    setSelectedBlockId(blockId)
-    // The way back to the tree shows the branch the block sits in.
-    setTreeExpanded((current) =>
-      current.has(sectionId) ? current : new Set([...current, sectionId]),
-    )
-    setSelectedElementId(null)
-    setTab('sections')
-  }, [])
+  const onSelectBlock = useCallback(
+    (sectionId: string, blockId: string) => void run({ type: 'select-block', sectionId, blockId }),
+    [run],
+  )
 
   // A block row clicked in the panel: the same selection, without re-picking
   // the section or moving it into view.
-  const onSelectBlockInPanel = useCallback((blockId: string) => {
-    setSelectedBlockId(blockId)
-    setSelectedElementId(null)
-  }, [])
+  const onSelectBlockInPanel = useCallback(
+    (blockId: string) => void run({ type: 'select-block-in-panel', blockId }),
+    [run],
+  )
 
   // A button or text element clicked on the canvas: same, through the
   // section's element map. The kind decides which panel opens.
   const onSelectElement = useCallback(
-    (sectionId: string, elementId: string, kind: ElementKind = 'button') => {
-      setSelectedId(sectionId)
-      setSelectedElementId(elementId)
-      setSelectedElementKind(kind)
-      setSelectedBlockId(null)
-      setTab('sections')
-    },
-    [],
+    (sectionId: string, elementId: string, kind: ElementKind = 'button') =>
+      void run({ type: 'select-element', sectionId, elementId, kind }),
+    [run],
   )
 
   // Callers build `data` inline (`{ ...context.data, products }`); its parts
@@ -824,19 +695,11 @@ function Builder({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const footerPages = useMemo(() => footerPagesProp, [footerKey])
 
+  // A section picked: from the list it scrolls into view; from the preview
+  // it is already there. Any block or element of the previous one is dropped.
   const select = useCallback(
-    (id: string, fromPreview = false) => {
-      setSelectedId(id)
-      // Choosing a section drops any block or element of the previous one. A
-      // block or button click runs after the section's own selection, so its
-      // id lands here next.
-      setSelectedBlockId(null)
-      setSelectedElementId(null)
-      setTab('sections')
-      // Picked from the list: bring it into view in the preview, below the header.
-      if (!fromPreview && previewDoc) revealSection(previewDoc, id, 'start')
-    },
-    [previewDoc],
+    (id: string, fromPreview = false) => void run({ type: 'select', sectionId: id, fromPreview }),
+    [run],
   )
 
   /**
@@ -851,76 +714,49 @@ function Builder({
     [previewDoc],
   )
 
-  const clearSelection = () => {
-    setSelectedId(null)
-    setSelectedBlockId(null)
-    setSelectedElementId(null)
-  }
+  const clearSelection = () => void run({ type: 'clear-selection' })
 
   const layoutPart =
     selectedId === HEADER_ID ? 'header' : selectedId === FOOTER_ID ? 'footer' : null
 
-  // Actions on the canvas-selected block. Each rewrites the section's own
-  // settings, so a click on a stale panel can never clobber a newer edit.
+  // Actions on the canvas-selected block. Each is a command on the latest
+  // sections, so a click on a stale panel can never clobber a newer edit.
   const blockActions =
     selectedBlock && selected && schema
       ? {
           up: () =>
-            updateSection(selected.id, (section) => {
-              const next = moveBlock(schema.fields, section.settings, selectedBlock.block.id, -1)
-              return next ? { ...section, settings: next } : section
+            void run({
+              type: 'move-block',
+              sectionId: selected.id,
+              blockId: selectedBlock.block.id,
+              by: -1,
             }),
           down: () =>
-            updateSection(selected.id, (section) => {
-              const next = moveBlock(schema.fields, section.settings, selectedBlock.block.id, 1)
-              return next ? { ...section, settings: next } : section
+            void run({
+              type: 'move-block',
+              sectionId: selected.id,
+              blockId: selectedBlock.block.id,
+              by: 1,
             }),
-          duplicate: () => {
-            const result = duplicateBlock(
-              schema.fields,
-              source?.settings ?? selected.settings,
-              selectedBlock.block.id,
-            )
-            if (!result) return
-            updateSection(selected.id, (section) => ({ ...section, settings: result.values }))
-            setSelectedBlockId(result.copy.id)
-          },
-          remove: () => {
-            updateSection(selected.id, (section) => {
-              const next = removeBlock(schema.fields, section.settings, selectedBlock.block.id)
-              return next ? { ...section, settings: next } : section
-            })
-            // Removing a child returns to its parent, not all the way out.
-            setSelectedBlockId(selectedBlock.parentId)
-          },
+          duplicate: () =>
+            void run({
+              type: 'duplicate-block',
+              sectionId: selected.id,
+              blockId: selectedBlock.block.id,
+            }),
+          remove: () =>
+            void run({
+              type: 'remove-block',
+              sectionId: selected.id,
+              blockId: selectedBlock.block.id,
+            }),
         }
       : null
 
-  const details = frame?.details
   // Which screen the panel shows, and how deep it sits in the stack. The
   // slide between screens reads the depth: deeper is forward, shallower back.
   // Picking another section at the same depth is lateral, and slides forward.
-  let panelView: { view: string; depth: number }
-  if (selectedId === DETAILS_ID && details) {
-    panelView = { view: 'details', depth: 1 }
-  } else if (layoutPart && layout && onLayoutChange) {
-    panelView = { view: `layout:${layoutPart}`, depth: 1 }
-  } else if (selected && schema && selectedBlock && blockActions) {
-    panelView = {
-      view: `block:${selected.id}:${selectedBlock.block.id}`,
-      depth: blockPanelDepth(
-        schema.fields,
-        resolvedSelected?.settings ?? selected.settings,
-        selectedBlock.parentId,
-      ),
-    }
-  } else if (selected && selectedElementId) {
-    panelView = { view: `element:${selected.id}:${selectedElementId}`, depth: 2 }
-  } else if (selected && schema) {
-    panelView = { view: `section:${selected.id}`, depth: 1 }
-  } else {
-    panelView = { view: 'list', depth: 0 }
-  }
+  const panelView = { view: inspection.panel.key, depth: inspection.panel.depth }
 
   /**
    * A section added from the add search: at the "+" it came from, or after
@@ -934,13 +770,8 @@ function Builder({
     return after > 0 ? after : sections.length
   }
 
-  const addSectionFromCommand = (type: SectionType, preset: SectionPreset | null) => {
-    const section = createStarterSection(type, preset)
-    const next = [...sections]
-    next.splice(addDialogIndex(), 0, section)
-    onSectionsChange(next)
-    select(section.id)
-  }
+  const addSectionFromCommand = (type: SectionType, preset: SectionPreset | null) =>
+    void run({ type: 'add-section', sectionType: type, preset, index: addDialogIndex() })
 
   /**
    * Blocks added from the add search. "+ Add block" targets the section it
@@ -948,111 +779,31 @@ function Builder({
    * blocks section, after the selected block when there is one. Anywhere else
    * they start a new section.
    */
-  const addBlocksFromCommand = (blocks: readonly PaletteBlock[]) => {
-    const donor = createSection('blocks', { blocks: blocks as never })
-    const created = readBlocks(donor.settings, 'blocks')
-    const target =
-      addDialog?.mode === 'blocks'
-        ? (sections.find((section) => section.id === addDialog.targetSectionId) ?? null)
-        : addDialog?.mode === 'all' && selected && schema?.type === 'blocks' && !selected.linkedTo
-          ? selected
-          : null
-    const targetSchema = target ? sectionSchema(target.type) : null
-
-    if (target && targetSchema && created.length > 0) {
-      const afterSelected =
-        addDialog?.mode === 'all' && selectedBlock && target.id === selected?.id
-          ? selectedBlock
-          : null
-      const container = afterSelected
-        ? { parentId: afterSelected.parentId, fieldKey: afterSelected.field.key }
-        : { parentId: null, fieldKey: 'blocks' }
-      let values = target.settings
-      let index = afterSelected
-        ? afterSelected.index + 1
-        : readBlocks(target.settings, 'blocks').length
-      for (const block of created) {
-        const inserted = insertBlock(targetSchema.fields, values, container, index, block)
-        if (!inserted) break
-        values = inserted
-        index += 1
-      }
-      if (values !== target.settings) {
-        updateSection(target.id, (section) => ({ ...section, settings: values }))
-        select(target.id)
-        setSelectedBlockId(created[0]!.id)
-        return
-      }
-    }
-
-    const next = [...sections]
-    next.splice(addDialogIndex(), 0, donor)
-    onSectionsChange(next)
-    select(donor.id)
-  }
+  const addBlocksFromCommand = (blocks: readonly PaletteBlock[]) =>
+    void run({
+      type: 'add-blocks',
+      blocks: blocks as readonly NewBlock[],
+      index: addDialogIndex(),
+      into:
+        addDialog?.mode === 'blocks'
+          ? { sectionId: addDialog.targetSectionId }
+          : addDialog?.mode === 'all' && selected && schema?.type === 'blocks' && !selected.linkedTo
+            ? { sectionId: selected.id, afterBlockId: selectedBlock?.block.id ?? null }
+            : null,
+    })
 
   /**
-   * The editor's keys, read through a ref so the listener is attached once:
-   * Delete removes the selection, Ctrl/⌘+D duplicates it, Alt+↑/↓ moves it,
-   * and — in the preview — Escape steps out to its parent. Ctrl/⌘+K opens the
-   * command palette from anywhere, a text field included.
+   * The editor's keys, attached once: Delete removes the selection, Ctrl/⌘+D
+   * duplicates it, Alt+↑/↓ moves it, and — in the preview — Escape steps out
+   * to its parent. Ctrl/⌘+K opens the command palette from anywhere, a text
+   * field included. Each is a command on whatever is selected.
    */
-  const shortcuts = useRef<{
-    remove: () => boolean
-    duplicate: () => boolean
-    move: (by: -1 | 1) => boolean
-    escape: () => boolean
-  }>({
-    remove: () => false,
-    duplicate: () => false,
-    move: () => false,
-    escape: () => false,
+  const shortcuts = useRef({
+    remove: () => run({ type: 'remove-selection' }),
+    duplicate: () => run({ type: 'duplicate-selection' }),
+    move: (by: -1 | 1) => run({ type: 'move-selection', by }),
+    escape: () => run({ type: 'step-out' }),
   })
-  shortcuts.current = {
-    remove: () => {
-      if (blockActions) {
-        blockActions.remove()
-        return true
-      }
-      if (!selected) return false
-      const next = removeSection(sections, selected.id)
-      if (next === sections) return false
-      onSectionsChange(next)
-      clearSelection()
-      return true
-    },
-    duplicate: () => {
-      if (blockActions && selectedBlock && selectedBlock.count < selectedBlock.field.max) {
-        blockActions.duplicate()
-        return true
-      }
-      if (!selected || blockActions) return false
-      const result = duplicateSection(sections, selected.id)
-      if (!result) return false
-      onSectionsChange(result.sections)
-      select(result.copy.id, true)
-      revealSoon(result.copy.id)
-      return true
-    },
-    move: (by) => {
-      if (blockActions) {
-        if (by < 0) blockActions.up()
-        else blockActions.down()
-        return true
-      }
-      if (!selected) return false
-      onSectionsChange(moveSection(sections, selected.id, by))
-      revealSoon(selected.id)
-      return true
-    },
-    escape: () => {
-      if (selectedBlock) setSelectedBlockId(selectedBlock.parentId)
-      else if (selectedElementId) setSelectedElementId(null)
-      else if (selectedId) clearSelection()
-      else return false
-      return true
-    },
-  }
 
   useEffect(() => {
     const docs = [globalThis.document ?? null, previewDoc].filter(
@@ -1109,28 +860,10 @@ function Builder({
   // sections, the section, then each block the selection sits in. Every step
   // is a link, so a nested block is one click from any level above it.
   // The section wears the seller's own name when it has one, like its blocks.
-  const sectionName =
-    schema && selected ? sectionDisplayName(selected, sections, l(schema.name)) : ''
-  const crumbs: Crumb[] = [{ label: t('back'), onClick: clearSelection }]
-  if (panelView.view.startsWith('block:') && selectedBlock && schema) {
-    crumbs.push({ label: sectionName, onClick: () => setSelectedBlockId(null) })
-    const values = resolvedSelected?.settings ?? selected?.settings ?? {}
-    const parents: Crumb[] = []
-    let parentId = selectedBlock.parentId
-    while (parentId) {
-      const parent = findBlock(schema.fields, values, parentId)
-      if (!parent) break
-      const id = parent.block.id
-      parents.unshift({
-        label: parent.block.name?.trim() || l(parent.schema.name),
-        onClick: () => setSelectedBlockId(id),
-      })
-      parentId = parent.parentId
-    }
-    crumbs.push(...parents)
-  } else if (panelView.view.startsWith('element:')) {
-    crumbs.push({ label: sectionName, onClick: () => setSelectedElementId(null) })
-  }
+  const crumbs: Crumb[] = inspection.crumbs.map((crumb) => ({
+    label: crumb.kind === 'list' ? t('back') : crumb.label,
+    onClick: () => void run(crumb.command),
+  }))
   const trail = <PanelTrail crumbs={crumbs} />
 
   const inspector =
@@ -1177,17 +910,14 @@ function Builder({
               <BlockNamePopover
                 value={selectedBlock.block.name ?? ''}
                 fallback={l(selectedBlock.schema.name)}
-                onChange={(name) => {
-                  updateSection(selected.id, (section) => {
-                    const settings = renameBlock(
-                      schema.fields,
-                      section.settings,
-                      selectedBlock.block.id,
-                      name,
-                    )
-                    return settings ? { ...section, settings } : section
+                onChange={(name) =>
+                  void run({
+                    type: 'rename-block',
+                    sectionId: selected.id,
+                    blockId: selectedBlock.block.id,
+                    name,
                   })
-                }}
+                }
               />
             )}
           </HStack>
@@ -1246,7 +976,12 @@ function Builder({
               values={selected.settings}
               blockId={selectedBlock.block.id}
               onChange={(settings) =>
-                updateSection(selected.id, (section) => ({ ...section, settings }))
+                void run({
+                  type: 'set-section-settings',
+                  id: selected.id,
+                  values: settings,
+                  reseed: false,
+                })
               }
             />
           )}
@@ -1255,25 +990,15 @@ function Builder({
           fields={selectedBlock.schema.fields}
           values={selectedBlock.block.settings}
           services={services}
-          onChange={(values) => {
-            // A linked copy's block content is its own; structure still
-            // belongs to the original, which `setBlockOverrides` routes.
-            if (selected.linkedTo) {
-              onSectionsChange(
-                setBlockOverrides(sections, selected.id, selectedBlock.block.id, values),
-              )
-              return
-            }
-            updateSection(selected.id, (section) => {
-              const settings = updateBlockSettings(
-                schema.fields,
-                section.settings,
-                selectedBlock.block.id,
-                values,
-              )
-              return settings ? { ...section, settings } : section
+          // A linked copy's block content is its own override; the command routes it.
+          onChange={(values) =>
+            void run({
+              type: 'set-block-settings',
+              sectionId: selected.id,
+              blockId: selectedBlock.block.id,
+              values,
             })
-          }}
+          }
         />
         {selectedBlock.field.styleFields && (
           <BlockStylePanel
@@ -1281,14 +1006,11 @@ function Builder({
             values={selectedBlock.block.style ?? {}}
             services={services}
             onChange={(style) =>
-              updateSection(selected.id, (section) => {
-                const settings = updateBlockStyle(
-                  schema.fields,
-                  section.settings,
-                  selectedBlock.block.id,
-                  style,
-                )
-                return settings ? { ...section, settings } : section
+              void run({
+                type: 'set-block-style',
+                sectionId: selected.id,
+                blockId: selectedBlock.block.id,
+                style,
               })
             }
           />
@@ -1315,10 +1037,12 @@ function Builder({
           }
           services={services}
           onChange={(values) =>
-            updateSection(selected.id, (section) => ({
-              ...section,
-              elements: { ...(section.elements ?? {}), [selectedElementId]: values },
-            }))
+            void run({
+              type: 'set-element',
+              sectionId: selected.id,
+              elementId: selectedElementId,
+              values,
+            })
           }
         />
         <Button
@@ -1326,16 +1050,10 @@ function Builder({
           variant="outline"
           alignSelf="start"
           onClick={() =>
-            updateSection(selected.id, (section) => {
-              const current = section.elements
-              if (!current?.[selectedElementId]) return section
-              const remaining = { ...current }
-              delete remaining[selectedElementId]
-              if (Object.keys(remaining).length === 0) {
-                const { elements: _cleared, ...rest } = section
-                return rest
-              }
-              return { ...section, elements: remaining }
+            void run({
+              type: 'reset-element',
+              sectionId: selected.id,
+              elementId: selectedElementId,
             })
           }
         >
@@ -1362,7 +1080,7 @@ function Builder({
             values={resolvedSelected?.settings ?? selected.settings}
             services={services}
             onChange={(values) =>
-              onSectionsChange(setSectionOverrides(sections, selected.id, values))
+              void run({ type: 'set-section-overrides', id: selected.id, values })
             }
           />
         )}
@@ -1383,7 +1101,7 @@ function Builder({
                     size="2xs"
                     variant="ghost"
                     onClick={() =>
-                      onSectionsChange(clearOverrides(sections, selected.id, { field: key }))
+                      void run({ type: 'clear-overrides', id: selected.id, field: key })
                     }
                   >
                     <LuX />
@@ -1402,9 +1120,7 @@ function Builder({
                     aria-label={t('resetOverride')}
                     size="2xs"
                     variant="ghost"
-                    onClick={() =>
-                      onSectionsChange(clearOverrides(sections, selected.id, { blockId }))
-                    }
+                    onClick={() => void run({ type: 'clear-overrides', id: selected.id, blockId })}
                   >
                     <LuX />
                   </IconButton>
@@ -1423,7 +1139,7 @@ function Builder({
           <Button
             size="xs"
             variant="outline"
-            onClick={() => onSectionsChange(detachSection(sections, selected.id))}
+            onClick={() => void run({ type: 'detach-section', id: selected.id })}
           >
             <Icon as={LuUnlink} />
             {t('detach')}
@@ -1433,7 +1149,7 @@ function Builder({
               size="xs"
               variant="ghost"
               colorPalette="danger"
-              onClick={() => onSectionsChange(clearOverrides(sections, selected.id))}
+              onClick={() => void run({ type: 'clear-overrides', id: selected.id })}
             >
               {t('resetAll')}
             </Button>
@@ -1454,7 +1170,7 @@ function Builder({
                 fallback={l(schema.name)}
                 renameMessage="renameSection"
                 nameMessage="sectionName"
-                onChange={(name) => onSectionsChange(renameSection(sections, selected.id, name))}
+                onChange={(name) => void run({ type: 'rename-section', id: selected.id, name })}
               />
             )}
           </HStack>
@@ -1485,15 +1201,12 @@ function Builder({
                   fields={schema.fields}
                   values={selected.settings}
                   services={services}
+                  // A changed choice may re-seed the content that goes with it —
+                  // the gallery's look trades its sample photos — but only while
+                  // the seller has not made that content their own (see
+                  // `reseedSectionVariant`); the command does that.
                   onChange={(values) =>
-                    updateSection(selected.id, (section) => ({
-                      ...section,
-                      // A changed choice may re-seed the content that goes with
-                      // it — the gallery's look trades its sample photos — but
-                      // only while the seller has not made that content their
-                      // own (see `reseedSectionVariant`).
-                      settings: reseedSectionVariant(section.type, section.settings, values),
-                    }))
+                    void run({ type: 'set-section-settings', id: selected.id, values })
                   }
                 />
               )}
@@ -1505,7 +1218,7 @@ function Builder({
               values={selected.style}
               services={services}
               defaultOpen={['surface']}
-              onChange={(style) => updateSection(selected.id, (section) => ({ ...section, style }))}
+              onChange={(style) => void run({ type: 'set-section-style', id: selected.id, style })}
             />
           </Tabs.Content>
           <Tabs.Content value="visibility" p="0">
@@ -1515,7 +1228,7 @@ function Builder({
                 values={selected.style}
                 services={services}
                 onChange={(style) =>
-                  updateSection(selected.id, (section) => ({ ...section, style }))
+                  void run({ type: 'set-section-style', id: selected.id, style })
                 }
               />
             </Stack>
@@ -1653,13 +1366,14 @@ function Builder({
    * reaches that section's own capture-phase picker first and is left alone
    * here.
    */
-  const clickAway = useCallback((event: { target: EventTarget | null }) => {
-    const target = event.target as HTMLElement | null
-    if (typeof target?.closest !== 'function' || target.closest('[data-section-id]')) return
-    setSelectedId(null)
-    setSelectedBlockId(null)
-    setSelectedElementId(null)
-  }, [])
+  const clickAway = useCallback(
+    (event: { target: EventTarget | null }) => {
+      const target = event.target as HTMLElement | null
+      if (typeof target?.closest !== 'function' || target.closest('[data-section-id]')) return
+      void run({ type: 'clear-selection' })
+    },
+    [run],
+  )
 
   const pickable = useCallback(
     (id: string, content: ReactNode, sticky = false) =>
@@ -1816,7 +1530,7 @@ function Builder({
               revealSoon(id)
             }}
             onMoved={revealSoon}
-            onRemoved={() => setSelectedId(null)}
+            onRemoved={() => void run({ type: 'clear-selection' })}
           />
         )}
       />
@@ -2094,7 +1808,7 @@ function Builder({
         values={resolvedSelected?.settings ?? {}}
         onChange={(values) => {
           if (!selected || selected.linkedTo) return
-          updateSection(selected.id, (section) => ({ ...section, settings: values }))
+          void run({ type: 'set-section-settings', id: selected.id, values, reseed: false })
         }}
         editable={Boolean(selected && !selected.linkedTo)}
         custom={schema?.type === 'blocks'}
